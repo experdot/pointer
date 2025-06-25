@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest]
     
     runs-on: ${{ matrix.os }}
     
@@ -35,6 +35,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       
+
+      
       - name: Build application
         run: pnpm run build
       
@@ -44,17 +46,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Build for macOS
-        if: matrix.os == 'macos-latest'
-        run: pnpm run build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       
-      - name: Build for Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: pnpm run build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -62,11 +56,6 @@ jobs:
           name: release-${{ matrix.os }}
           path: |
             dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.snap
-            dist/*.tar.gz
             dist/*.zip
           if-no-files-found: ignore
   

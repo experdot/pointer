@@ -35,6 +35,15 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+snap:
+  publish:
+    - provider: snapStore
+      channels: [edge]
+  plugs:
+    - default
+    - home
+    - network
+    - removable-media
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
