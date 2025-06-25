@@ -1,0 +1,115 @@
+.tabs-area {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabs-area .ant-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabs-area .ant-tabs-content-holder {
+  flex: 1;
+  overflow: hidden;
+}
+
+.tabs-area .ant-tabs-content {
+  height: 100%;
+}
+
+.tabs-area .ant-tabs-tabpane {
+  height: 100%;
+}
+
+.tabs-area-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #666;
+  text-align: center;
+}
+
+.tabs-area-empty p {
+  margin-top: 16px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* 右键菜单样式优化 */
+.ant-dropdown-menu-item-disabled {
+  opacity: 0.5;
+}
+
+.ant-dropdown-menu-item-disabled:hover {
+  background-color: transparent !important;
+}
+
+/* 右键菜单中快捷键的样式 */
+.tab-context-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 180px;
+}
+
+.tab-context-menu-shortcut {
+  color: #999;
+  font-size: 12px;
+  margin-left: 20px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* 标签页标题区域的样式 */
+.tab-label-content {
+  display: flex;
+  align-items: center;
+  max-width: 200px;
+  overflow: hidden;
+  gap: 4px;
+}
+
+.tab-label-content .pin-icon {
+  color: #1890ff;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.tab-label-content .message-icon {
+  flex-shrink: 0;
+}
+
+.tab-label-content .status-badge {
+  flex-shrink: 0;
+}
+
+.tab-label-content .tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .tab-label-content {
+    max-width: 120px;
+  }
+}
+
+/* 标签页动画效果 */
+.tabs-area .ant-tabs-tab {
+  transition: all 0.2s ease;
+}
+
+.tabs-area .ant-tabs-tab:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.tabs-area .ant-tabs-tab-active {
+  font-weight: 500;
+}
