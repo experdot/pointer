@@ -1,5 +1,5 @@
 import { AppState, AppAction, SearchResult } from '../../types'
-import { ChatMessage } from '../../shared/types'
+import { ChatMessage } from '@shared/types'
 
 export const handleSearchActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {

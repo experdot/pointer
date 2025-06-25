@@ -51,7 +51,7 @@ export default function ModelSelector({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {config.isDefault && (
-            <Tag color="gold" size="small" icon={<StarFilled />}>
+            <Tag color="gold" icon={<StarFilled />}>
               默认
             </Tag>
           )}

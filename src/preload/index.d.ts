@@ -8,9 +8,9 @@ declare global {
         sendMessageStreaming: (request: any) => Promise<void>
         sendMessage: (request: any) => Promise<{ success: boolean; content?: string; reasoning_content?: string; error?: string }>
         testConnection: (config: any) => Promise<{ success: boolean; error?: string }>
-        stopStreaming: () => Promise<void>
-        onStreamData: (callback: (data: any) => void) => void
-        removeStreamListener: () => void
+        stopStreaming: (requestId: string) => Promise<void>
+        onStreamData: (requestId: string, callback: (data: any) => void) => void
+        removeStreamListener: (requestId: string) => void
       }
       saveFile: (options: { 
         content: string; 

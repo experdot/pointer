@@ -1,5 +1,7 @@
+// 导入共享类型
+import type { ChatMessage, LLMConfig } from '@shared/types'
 // 重新导出共享类型
-export { ChatMessage, LLMConfig } from '../../shared/types'
+export type { ChatMessage, LLMConfig }
 
 export interface Chat {
   id: string
