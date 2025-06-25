@@ -1,6 +1,12 @@
 # Pointer 智能聊天助手
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/experdot/pointer)
+![GitHub all releases](https://img.shields.io/github/downloads/experdot/pointer/total)
+![GitHub](https://img.shields.io/github/license/experdot/pointer)
+
 一个基于 Electron + React + TypeScript 构建的现代化AI聊天应用，**独有的文件夹管理系统和OpenAI/DeepSeek数据无缝导入**，让您的AI对话更有序高效。
+
+![Pointer App Screenshot](./Screenshot.png)
 
 ## ✨ 主要特性
 
