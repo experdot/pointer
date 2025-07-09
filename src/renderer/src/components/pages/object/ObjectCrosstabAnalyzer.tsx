@@ -6,7 +6,7 @@ import {
   ArrowRightOutlined, 
   InfoCircleOutlined 
 } from '@ant-design/icons'
-import { ObjectChat } from '../../../types'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 
 const { Title, Text } = Typography
@@ -36,6 +36,45 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       node.children && node.children.length > 0
     )
   }, [nodes])
+
+  // 获取节点的祖先节点链
+  const getAncestorChain = (nodeId: string): ObjectNodeType[] => {
+    const node = nodes[nodeId]
+    if (!node) return []
+    
+    const chain = [node]
+    let current = node
+    while (current.parentId && nodes[current.parentId]) {
+      current = nodes[current.parentId]
+      chain.unshift(current)
+    }
+    return chain
+  }
+
+  // 获取节点的完整上下文信息
+  const getNodeContext = (nodeId: string) => {
+    const node = nodes[nodeId]
+    if (!node) return null
+
+    const ancestorChain = getAncestorChain(nodeId)
+    const children = (node.children || [])
+      .map(childId => nodes[childId])
+      .filter(Boolean)
+
+    // 获取平级节点
+    const siblings = node.parentId && nodes[node.parentId] 
+      ? nodes[node.parentId].children
+          .map(childId => nodes[childId])
+          .filter(child => child && child.id !== node.id)
+      : []
+
+    return {
+      node,
+      ancestorChain,
+      children,
+      siblings
+    }
+  }
 
   // 获取选中节点的子节点信息
   const getNodeChildrenInfo = (nodeId: string | null) => {
@@ -74,10 +113,14 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       return
     }
 
+    // 获取横轴和纵轴的完整上下文信息
+    const horizontalContext = getNodeContext(selectedHorizontalNode)
+    const verticalContext = getNodeContext(selectedVerticalNode)
+
     // 创建交叉分析标题
     const title = `${horizontalNode.name} × ${verticalNode.name} 交叉分析`
 
-    // 派发创建交叉表的action
+    // 派发创建交叉表的action，传递完整的上下文信息
     dispatch({
       type: 'CREATE_CROSSTAB_FROM_OBJECTS',
       payload: {
@@ -85,7 +128,9 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
         folderId: chat.folderId,
         horizontalNodeId: selectedHorizontalNode,
         verticalNodeId: selectedVerticalNode,
-        objectData: chat.objectData
+        objectData: chat.objectData,
+        horizontalContext,
+        verticalContext
       }
     })
 

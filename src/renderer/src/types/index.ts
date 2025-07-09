@@ -120,6 +120,14 @@ export interface ObjectNode {
   properties?: { [key: string]: any } // 对象属性（键值对）
 }
 
+// 节点上下文信息，用于交叉分析
+export interface NodeContext {
+  node: ObjectNode
+  ancestorChain: ObjectNode[]
+  children: ObjectNode[]
+  siblings: ObjectNode[]
+}
+
 // 对象数据结构
 export interface ObjectData {
   rootNodeId: string // 根节点ID
@@ -214,6 +222,8 @@ export type AppAction =
         horizontalNodeId: string
         verticalNodeId: string
         objectData: ObjectData
+        horizontalContext?: NodeContext
+        verticalContext?: NodeContext
       }
     }
   | { type: 'CREATE_OBJECT_CHAT'; payload: { title: string; folderId?: string } }

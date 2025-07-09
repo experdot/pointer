@@ -134,7 +134,7 @@ ${cellContent}
     }
 
     case 'CREATE_CROSSTAB_FROM_OBJECTS': {
-      const { title, folderId, horizontalNodeId, verticalNodeId, objectData } = action.payload
+      const { title, folderId, horizontalNodeId, verticalNodeId, objectData, horizontalContext, verticalContext } = action.payload
       
       // 获取横轴和纵轴节点
       const horizontalNode = objectData.nodes[horizontalNodeId]
@@ -152,12 +152,100 @@ ${cellContent}
         .map(childId => objectData.nodes[childId]?.name)
         .filter(Boolean)
 
-      // 构建预填充的元数据
+      // 构建层级结构描述
+      const buildHierarchyDescription = (context: any) => {
+        if (!context || !context.ancestorChain) return ''
+        
+        const hierarchy = context.ancestorChain
+          .map((node: any, index: number) => {
+            const indent = '  '.repeat(index)
+            return `${indent}- ${node.name}${node.description ? ` (${node.description})` : ''}`
+          })
+          .join('\n')
+        
+        return hierarchy
+      }
+
+      // 构建节点详细信息
+      const buildNodeDetails = (node: any, context: any) => {
+        const details = []
+        
+        // 节点基本信息
+        details.push(`节点名称: ${node.name}`)
+        details.push(`节点类型: ${node.type}`)
+        if (node.description) details.push(`描述: ${node.description}`)
+        if (node.value !== undefined && node.value !== null) {
+          details.push(`值: ${typeof node.value === 'object' ? JSON.stringify(node.value) : node.value}`)
+        }
+        
+        // 属性信息
+        if (node.properties && Object.keys(node.properties).length > 0) {
+          details.push('属性:')
+          Object.entries(node.properties).forEach(([key, value]) => {
+            details.push(`  ${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+          })
+        }
+        
+        // 上下文信息
+        if (context) {
+          if (context.siblings && context.siblings.length > 0) {
+            details.push(`平级节点: ${context.siblings.map((s: any) => s.name).join(', ')}`)
+          }
+          if (context.children && context.children.length > 0) {
+            details.push(`子节点: ${context.children.map((c: any) => c.name).join(', ')}`)
+          }
+        }
+        
+        return details.join('\n')
+      }
+
+      // 构建预填充的元数据，包含丰富的背景信息
       const metadata = {
         Topic: `${horizontalNode.name} 与 ${verticalNode.name} 的交叉分析`,
         HorizontalAxis: horizontalNode.name,
         VerticalAxis: verticalNode.name,
-        Value: '分析各项目在两个维度交叉点的关系、特征或影响'
+        Value: '分析各项目在两个维度交叉点的关系、特征或影响',
+        // 添加背景上下文信息
+        ObjectContext: {
+          // 整体对象结构信息
+          rootNodeId: objectData.rootNodeId,
+          totalNodes: Object.keys(objectData.nodes).length,
+          
+          // 横轴节点的详细信息
+          horizontalNodeDetails: horizontalContext ? {
+            hierarchy: buildHierarchyDescription(horizontalContext),
+            nodeInfo: buildNodeDetails(horizontalNode, horizontalContext),
+            parentContext: horizontalNode.parentId ? objectData.nodes[horizontalNode.parentId]?.name : '根节点'
+          } : null,
+          
+          // 纵轴节点的详细信息
+          verticalNodeDetails: verticalContext ? {
+            hierarchy: buildHierarchyDescription(verticalContext),
+            nodeInfo: buildNodeDetails(verticalNode, verticalContext),
+            parentContext: verticalNode.parentId ? objectData.nodes[verticalNode.parentId]?.name : '根节点'
+          } : null,
+          
+          // 子节点的详细信息
+          horizontalChildrenDetails: horizontalValues.map(childName => {
+            const childNode = Object.values(objectData.nodes).find(n => n.name === childName && n.parentId === horizontalNodeId)
+            return childNode ? {
+              name: childNode.name,
+              type: childNode.type,
+              description: childNode.description,
+              value: childNode.value
+            } : { name: childName }
+          }),
+          
+          verticalChildrenDetails: verticalValues.map(childName => {
+            const childNode = Object.values(objectData.nodes).find(n => n.name === childName && n.parentId === verticalNodeId)
+            return childNode ? {
+              name: childNode.name,
+              type: childNode.type,
+              description: childNode.description,
+              value: childNode.value
+            } : { name: childName }
+          })
+        }
       }
 
       // 创建交叉表聊天并预填充数据
