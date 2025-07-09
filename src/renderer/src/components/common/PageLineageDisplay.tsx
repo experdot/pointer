@@ -130,6 +130,11 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   const handleNavigateToPage = (targetPageId: string) => {
     dispatch({ type: 'OPEN_TAB', payload: { chatId: targetPageId } })
     dispatch({ type: 'SET_ACTIVE_TAB', payload: { chatId: targetPageId } })
+    // 同时选中该聊天节点
+    dispatch({
+      type: 'SET_SELECTED_NODE',
+      payload: { nodeId: targetPageId, nodeType: 'chat' }
+    })
   }
 
   // 获取上下文信息描述
