@@ -10,6 +10,7 @@ import { createAIService } from '../../../services/aiService'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectNode as ObjectNodeType } from '../../../types'
+import { createObjectAIService } from './ObjectAIService'
 
 const { Sider, Content } = Layout
 
@@ -90,7 +91,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
     }
   }, [chat.objectData])
 
-  // 处理AI生成子节点
+  // 处理AI生成子节点（只生成名称）
   const handleGenerateChildren = useCallback(async (nodeId: string, prompt: string) => {
     const llmConfig = getLLMConfig()
     if (!llmConfig) {
@@ -103,8 +104,6 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
       message.error('无法获取节点上下文')
       return
     }
-
-    const { node: parentNode, ancestorChain, siblings, existingChildren } = context
 
     try {
       // 首先记录生成请求
@@ -120,156 +119,70 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         }
       })
 
-      // 构建层级结构信息
-      const hierarchyInfo = ancestorChain.map((ancestor, index) => {
-        const indent = '  '.repeat(index)
-        return `${indent}- ${ancestor.name} (${ancestor.type}): ${ancestor.description || '无描述'}`
-      }).join('\n')
-
-      // 构建平级节点信息
-      const siblingsInfo = siblings.length > 0 
-        ? siblings.map(sibling => `  - ${sibling.name} (${sibling.type}): ${sibling.description || '无描述'}`).join('\n')
-        : '  无平级节点'
-
-      // 构建已有子节点信息
-      const existingChildrenInfo = existingChildren.length > 0
-        ? existingChildren.map(child => `  - ${child.name} (${child.type}): ${child.description || '无描述'}`).join('\n')
-        : '  暂无子节点'
-
-      // 构建AI提示词
-      const aiPrompt = `# 任务
-根据用户的描述，为指定的对象节点生成子节点。你需要生成一个JSON数组，包含多个子节点的定义。
-
-# 对象结构上下文
-
-## 层级结构（从根节点到当前节点）
-${hierarchyInfo}
-
-## 当前节点信息
-- 节点名称: ${parentNode.name}
-- 节点类型: ${parentNode.type}
-- 节点描述: ${parentNode.description || '无'}
-- 节点值: ${parentNode.value || '无'}
-
-## 平级节点信息
-${siblingsInfo}
-
-## 已有子节点
-${existingChildrenInfo}
-
-# 用户需求
-${prompt}
-
-# 输出格式
-请严格按照以下JSON格式输出：
-\`\`\`json
-[
-  {
-    "name": "子节点名称",
-    "type": "object|array|string|number|boolean|null|function|custom",
-    "description": "详细描述",
-    "value": "如果是基础类型，提供具体值，否则可以为null",
-    "properties": {} // 如果type是object且有具体属性，提供键值对
-  }
-]
-\`\`\`
-
-# 生成要求
-1. 根据整个对象结构的上下文，生成合理的子节点
-2. 避免与已有子节点重复，确保命名的一致性
-3. 参考平级节点的命名风格和结构模式
-4. 每个子节点必须有name、type、description字段
-5. 如果是基础类型（string、number、boolean），提供合理的value
-6. 如果是object类型且有具体属性，在properties中提供
-7. 生成的子节点数量建议在3-8个之间，确保质量优于数量
-8. 考虑父节点的类型和用途，生成符合语义的子节点
-
-请开始生成：`
-
-      // 调用AI服务
+      // 创建AI服务
       const aiService = createAIService(llmConfig)
-      const response = await new Promise<string>((resolve, reject) => {
-        aiService.sendMessage(
-          [{ id: 'temp', role: 'user', content: aiPrompt, timestamp: Date.now() }],
-          {
-            onChunk: () => {}, // 空的chunk处理函数
-            onComplete: (response) => resolve(response),
-            onError: (error) => reject(error)
+      const objectAIService = createObjectAIService(llmConfig, aiService)
+      
+      // 调用AI服务生成子节点名称
+      const names = await objectAIService.generateChildrenNames(context, prompt)
+
+      // 创建节点对象（只有名称，其他属性为默认值）
+      const newNodes: ObjectNodeType[] = []
+      const newNodeIds: string[] = []
+      
+      names.forEach((name: string) => {
+        const newNodeId = uuidv4()
+        const newNode: ObjectNodeType = {
+          id: newNodeId,
+          name: name,
+          type: 'custom', // 默认类型
+          description: '', // 空描述，后续可以单独生成
+          value: null, // 空值，后续可以单独生成
+          properties: {}, // 空属性，后续可以单独生成
+          children: [],
+          expanded: false,
+          parentId: nodeId,
+          metadata: {
+            createdAt: Date.now(),
+            source: 'ai' as const,
+            aiPrompt: prompt
           }
-        )
+        }
+        
+        newNodes.push(newNode)
+        newNodeIds.push(newNodeId)
       })
 
-      // 解析AI响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-      
-      try {
-        const generatedNodes = JSON.parse(jsonContent)
-        if (!Array.isArray(generatedNodes)) {
-          throw new Error('AI响应格式错误：期望数组格式')
+      // 批量添加节点
+      newNodes.forEach(node => {
+        dispatch({
+          type: 'ADD_OBJECT_NODE',
+          payload: { chatId: chat.id, node, parentId: nodeId }
+        })
+      })
+
+      // 更新生成记录
+      dispatch({
+        type: 'UPDATE_GENERATION_RECORD',
+        payload: { 
+          chatId: chat.id, 
+          generationId,
+          generatedNodeIds: newNodeIds
         }
+      })
 
-        // 创建节点对象
-        const newNodes: ObjectNodeType[] = []
-        const newNodeIds: string[] = []
-        
-        generatedNodes.forEach((nodeData: any) => {
-          const newNodeId = uuidv4()
-          const newNode: ObjectNodeType = {
-            id: newNodeId,
-            name: nodeData.name || '未命名节点',
-            type: nodeData.type || 'custom',
-            description: nodeData.description || '',
-            value: nodeData.value,
-            properties: nodeData.properties || {},
-            children: [],
-            expanded: false,
-            parentId: nodeId,
-            metadata: {
-              createdAt: Date.now(),
-              source: 'ai' as const,
-              aiPrompt: prompt
-            }
-          }
-          
-          newNodes.push(newNode)
-          newNodeIds.push(newNodeId)
-        })
+      // 展开父节点以显示新生成的子节点
+      dispatch({
+        type: 'EXPAND_OBJECT_NODE',
+        payload: { chatId: chat.id, nodeId }
+      })
 
-        // 批量添加节点
-        newNodes.forEach(node => {
-          dispatch({
-            type: 'ADD_OBJECT_NODE',
-            payload: { chatId: chat.id, node, parentId: nodeId }
-          })
-        })
-
-        // 更新生成记录
-        dispatch({
-          type: 'UPDATE_GENERATION_RECORD',
-          payload: { 
-            chatId: chat.id, 
-            generationId,
-            generatedNodeIds: newNodeIds
-          }
-        })
-
-        // 展开父节点以显示新生成的子节点
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
-
-        message.success(`成功生成了 ${newNodes.length} 个子节点`)
-      } catch (parseError) {
-        console.error('解析AI响应失败:', parseError)
-        message.error('AI响应格式错误，请重试')
-      }
+      message.success(`成功生成了 ${newNodes.length} 个子节点`)
     } catch (error) {
       console.error('AI生成失败:', error)
       message.error('AI生成失败，请检查网络连接和配置')
     }
-  }, [dispatch, chat.id, chat.objectData, getLLMConfig])
+  }, [dispatch, chat.id, chat.objectData, getLLMConfig, getNodeContext])
 
   // 初始化对象数据（如果需要）
   useEffect(() => {

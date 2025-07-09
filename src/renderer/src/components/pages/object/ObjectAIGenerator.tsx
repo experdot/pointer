@@ -1,14 +1,20 @@
-import React, { useState, useRef } from 'react'
-import { Button, Input, Typography, Space, Tag, Card, Divider, Tooltip, Empty } from 'antd'
+import React, { useState, useRef, useCallback } from 'react'
+import { Button, Input, Typography, Space, Tag, Card, Divider, Tooltip, Empty, Tabs, message } from 'antd'
 import { 
   StarOutlined, 
   SendOutlined, 
   LoadingOutlined, 
   HistoryOutlined,
-  BulbOutlined
+  BulbOutlined,
+  FileTextOutlined,
+  ToolOutlined,
+  SettingOutlined
 } from '@ant-design/icons'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
+import { createObjectAIService } from './ObjectAIService'
+import { createAIService } from '../../../services/aiService'
+import { useSettings } from '../../../store/hooks/useSettings'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -24,10 +30,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   selectedNodeId,
   onGenerate
 }) => {
-  const { state } = useAppContext()
+  const { state, dispatch } = useAppContext()
+  const { settings } = useSettings()
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [activeTab, setActiveTab] = useState('children')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // 从状态中获取对象聊天数据
@@ -39,6 +47,61 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
   const { nodes, generationHistory } = chat.objectData
   const selectedNode = selectedNodeId ? nodes[selectedNodeId] : null
+
+  // 获取LLM配置
+  const getLLMConfig = useCallback(() => {
+    const { llmConfigs, defaultLLMId } = settings
+    if (!llmConfigs || llmConfigs.length === 0) {
+      return null
+    }
+    return llmConfigs.find(config => config.id === defaultLLMId) || llmConfigs[0]
+  }, [settings])
+
+  // 获取节点的完整上下文信息
+  const getNodeContext = useCallback((nodeId: string) => {
+    const node = nodes[nodeId]
+    if (!node) return null
+
+    // 获取祖先节点链
+    const getAncestorChain = (currentNode: any): any[] => {
+      const chain = [currentNode]
+      let current = currentNode
+      while (current.parentId && nodes[current.parentId]) {
+        current = nodes[current.parentId]
+        chain.unshift(current)
+      }
+      return chain
+    }
+
+    // 获取平级节点
+    const getSiblings = (currentNode: any): any[] => {
+      if (!currentNode.parentId) return []
+      const parent = nodes[currentNode.parentId]
+      if (!parent) return []
+      
+      return parent.children
+        .map((childId: string) => nodes[childId])
+        .filter((child: any) => child && child.id !== currentNode.id)
+    }
+
+    // 获取已有的子节点
+    const getExistingChildren = (currentNode: any): any[] => {
+      return currentNode.children
+        .map((childId: string) => nodes[childId])
+        .filter((child: any) => child)
+    }
+
+    const ancestorChain = getAncestorChain(node)
+    const siblings = getSiblings(node)
+    const existingChildren = getExistingChildren(node)
+
+    return {
+      node,
+      ancestorChain,
+      siblings,
+      existingChildren
+    }
+  }, [nodes])
 
   // 预设提示模板
   const promptTemplates = [
@@ -68,7 +131,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     }
   ]
 
-  // 处理生成
+  // 处理生成子节点
   const handleGenerate = async () => {
     if (!selectedNode || !prompt.trim()) return
 
@@ -79,6 +142,125 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     } catch (error) {
       console.error('生成失败:', error)
       alert('生成失败，请稍后重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 生成节点描述
+  const handleGenerateDescription = async () => {
+    if (!selectedNode || !prompt.trim()) return
+
+    const llmConfig = getLLMConfig()
+    if (!llmConfig) {
+      message.error('请先在设置中配置LLM')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const aiService = createAIService(llmConfig)
+      const objectAIService = createObjectAIService(llmConfig, aiService)
+      
+      const description = await objectAIService.generateNodeDescription(selectedNode, prompt.trim())
+      
+      // 更新节点描述
+      dispatch({
+        type: 'UPDATE_OBJECT_NODE',
+        payload: {
+          chatId: chat.id,
+          nodeId: selectedNode.id,
+          updates: { description }
+        }
+      })
+      
+      message.success('描述生成成功')
+      setPrompt('')
+    } catch (error) {
+      console.error('生成描述失败:', error)
+      message.error('生成描述失败，请稍后重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 生成节点值
+  const handleGenerateValue = async () => {
+    if (!selectedNode || !prompt.trim()) return
+
+    const llmConfig = getLLMConfig()
+    if (!llmConfig) {
+      message.error('请先在设置中配置LLM')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const aiService = createAIService(llmConfig)
+      const objectAIService = createObjectAIService(llmConfig, aiService)
+      
+      const value = await objectAIService.generateNodeValue(selectedNode, prompt.trim())
+      
+      // 更新节点值
+      dispatch({
+        type: 'UPDATE_OBJECT_NODE',
+        payload: {
+          chatId: chat.id,
+          nodeId: selectedNode.id,
+          updates: { value }
+        }
+      })
+      
+      message.success('值生成成功')
+      setPrompt('')
+    } catch (error) {
+      console.error('生成值失败:', error)
+      message.error('生成值失败，请稍后重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 生成对象属性
+  const handleGenerateProperties = async () => {
+    if (!selectedNode || !prompt.trim()) return
+
+    const llmConfig = getLLMConfig()
+    if (!llmConfig) {
+      message.error('请先在设置中配置LLM')
+      return
+    }
+
+    if (selectedNode.type !== 'object') {
+      message.error('只能为object类型的节点生成属性')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const aiService = createAIService(llmConfig)
+      const objectAIService = createObjectAIService(llmConfig, aiService)
+      
+      const properties = await objectAIService.generateObjectProperties(selectedNode, prompt.trim())
+      
+      // 合并新属性到现有属性
+      const updatedProperties = { ...selectedNode.properties, ...properties }
+      
+      // 更新节点属性
+      dispatch({
+        type: 'UPDATE_OBJECT_NODE',
+        payload: {
+          chatId: chat.id,
+          nodeId: selectedNode.id,
+          updates: { properties: updatedProperties }
+        }
+      })
+      
+      message.success(`成功生成了 ${Object.keys(properties).length} 个属性`)
+      setPrompt('')
+    } catch (error) {
+      console.error('生成属性失败:', error)
+      message.error('生成属性失败，请稍后重试')
     } finally {
       setIsGenerating(false)
     }
@@ -100,17 +282,127 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     }
   }
 
-  // 处理键盘事件
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault()
-      handleGenerate()
-    }
-  }
+
 
   // 格式化时间
   const formatTime = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString('zh-CN')
+  }
+
+  // 获取当前功能的处理函数
+  const getCurrentHandler = () => {
+    switch (activeTab) {
+      case 'children':
+        return handleGenerate
+      case 'description':
+        return handleGenerateDescription
+      case 'value':
+        return handleGenerateValue
+      case 'properties':
+        return handleGenerateProperties
+      default:
+        return handleGenerate
+    }
+  }
+
+  // 获取当前功能的提示文本
+  const getCurrentPlaceholder = () => {
+    switch (activeTab) {
+      case 'children':
+        return `描述您希望生成的子对象...
+
+例如：
+- 生成用户信息相关的属性
+- 添加配置选项和默认值
+- 创建状态管理相关的字段
+
+按 Ctrl+Enter 快速生成`
+      case 'description':
+        return `描述您希望为节点生成的描述...
+
+例如：
+- 生成详细的功能说明
+- 添加用途和特点描述
+- 创建技术规格说明
+
+按 Ctrl+Enter 快速生成`
+      case 'value':
+        return `描述您希望生成的值...
+
+例如：
+- 生成默认配置值
+- 创建示例数据
+- 设置合理的初始值
+
+按 Ctrl+Enter 快速生成`
+      case 'properties':
+        return `描述您希望生成的对象属性...
+
+例如：
+- 生成配置相关属性
+- 添加状态管理字段
+- 创建元数据属性
+
+按 Ctrl+Enter 快速生成`
+      default:
+        return ''
+    }
+  }
+
+  // 获取当前功能的按钮文本
+  const getCurrentButtonText = () => {
+    if (isGenerating) return '生成中...'
+    
+    switch (activeTab) {
+      case 'children':
+        return '生成子对象'
+      case 'description':
+        return '生成描述'
+      case 'value':
+        return '生成值'
+      case 'properties':
+        return '生成属性'
+      default:
+        return '生成'
+    }
+  }
+
+  // 检查当前功能是否可用
+  const isCurrentFunctionAvailable = () => {
+    if (!selectedNode) return false
+    
+    switch (activeTab) {
+      case 'children':
+        return true
+      case 'description':
+        return true
+      case 'value':
+        return true
+      case 'properties':
+        return selectedNode.type === 'object'
+      default:
+        return true
+    }
+  }
+
+  // 获取功能不可用的提示
+  const getUnavailableReason = () => {
+    if (!selectedNode) return '请选择一个节点'
+    
+    switch (activeTab) {
+      case 'properties':
+        return selectedNode.type !== 'object' ? '只能为object类型的节点生成属性' : ''
+      default:
+        return ''
+    }
+  }
+
+  // 修改键盘事件处理
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      getCurrentHandler()()
+    }
   }
 
   return (
@@ -123,7 +415,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       {!selectedNode ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="请选择一个节点来生成子对象"
+          description="请选择一个节点来使用AI生成功能"
           style={{ padding: '20px 0' }}
         />
       ) : (
@@ -131,47 +423,114 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           {/* 当前选中节点信息 */}
           <Card size="small" style={{ backgroundColor: '#f9f9f9' }}>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              为 <Text strong>{selectedNode.name}</Text> ({selectedNode.type}) 生成子对象
+              当前节点：<Text strong>{selectedNode.name}</Text> ({selectedNode.type})
             </Text>
           </Card>
 
-          {/* 快速模板 */}
-          <div>
-            <Text type="secondary" style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
-              快速模板：
-            </Text>
-            <Space wrap>
-              {promptTemplates.map((template, index) => (
-                <Tag
-                  key={index}
-                  color="blue"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => useTemplate(template.prompt)}
-                  title={template.prompt}
-                >
-                  {template.name}
-                </Tag>
-              ))}
-            </Space>
-          </div>
+          {/* 功能标签页 */}
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            size="small"
+            items={[
+              {
+                key: 'children',
+                label: (
+                  <span>
+                    <StarOutlined />
+                    生成子对象
+                  </span>
+                ),
+                children: (
+                  <div>
+                    {/* 快速模板 */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Text type="secondary" style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
+                        快速模板：
+                      </Text>
+                      <Space wrap>
+                        {promptTemplates.map((template, index) => (
+                          <Tag
+                            key={index}
+                            color="blue"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => useTemplate(template.prompt)}
+                            title={template.prompt}
+                          >
+                            {template.name}
+                          </Tag>
+                        ))}
+                      </Space>
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'description',
+                label: (
+                  <span>
+                    <FileTextOutlined />
+                    生成描述
+                  </span>
+                ),
+                children: (
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      当前描述：{selectedNode.description || '暂无描述'}
+                    </Text>
+                  </div>
+                )
+              },
+              {
+                key: 'value',
+                label: (
+                  <span>
+                    <ToolOutlined />
+                    生成值
+                  </span>
+                ),
+                children: (
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      当前值：{selectedNode.value !== null && selectedNode.value !== undefined ? JSON.stringify(selectedNode.value) : '暂无值'}
+                    </Text>
+                  </div>
+                )
+              },
+              {
+                key: 'properties',
+                label: (
+                  <span>
+                    <SettingOutlined />
+                    生成属性
+                  </span>
+                ),
+                children: (
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      当前属性：{Object.keys(selectedNode.properties || {}).length > 0 ? Object.keys(selectedNode.properties).join(', ') : '暂无属性'}
+                    </Text>
+                    {selectedNode.type !== 'object' && (
+                      <Text type="warning" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+                        ⚠️ 只能为object类型的节点生成属性
+                      </Text>
+                    )}
+                  </div>
+                )
+              }
+            ]}
+          />
 
           {/* 提示输入框 */}
           <div>
             <TextArea
               ref={textareaRef}
-              placeholder={`描述您希望生成的子对象...
-
-例如：
-- 生成用户信息相关的属性
-- 添加配置选项和默认值
-- 创建状态管理相关的字段
-
-按 Ctrl+Enter 快速生成`}
+              placeholder={getCurrentPlaceholder()}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isGenerating}
-              rows={8}
+              disabled={isGenerating || !isCurrentFunctionAvailable()}
+              rows={6}
               style={{ fontSize: '12px' }}
             />
           </div>
@@ -197,13 +556,22 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
               type="primary"
               size="small"
               icon={isGenerating ? <LoadingOutlined spin /> : <SendOutlined />}
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
+              onClick={getCurrentHandler()}
+              disabled={isGenerating || !prompt.trim() || !isCurrentFunctionAvailable()}
               loading={isGenerating}
             >
-              {isGenerating ? '生成中...' : '生成 (Ctrl+Enter)'}
+              {getCurrentButtonText()} (Ctrl+Enter)
             </Button>
           </Space>
+
+          {/* 功能不可用提示 */}
+          {!isCurrentFunctionAvailable() && (
+            <Card size="small" style={{ backgroundColor: '#fff2e8', border: '1px solid #ffbb96' }}>
+              <Text type="warning" style={{ fontSize: '11px' }}>
+                {getUnavailableReason()}
+              </Text>
+            </Card>
+          )}
 
           {/* 生成历史 */}
           {showHistory && generationHistory.length > 0 && (
