@@ -1,0 +1,14 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+这是一个 react+typescript+antd 的 electron-vite 应用，一个界面类似Vscode的AI聊天应用
+
+- 项目左侧是侧边栏，聊天历史列表，聊天历史按文件夹分类，可以手动创建文件夹和新聊天
+- 项目右侧是页签导航区，主要展示聊天消息，点击聊天历史时，就会新加一个Tab页签
+- 设置里支持配置LLM,主题等
+
+
+
+代码应该设计合理，合理拆分小的组件。优先使用 Ant Design 官方功能或者推荐做法。

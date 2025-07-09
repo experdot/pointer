@@ -1,0 +1,72 @@
+/* 对象页面样式 - 已大幅简化，主要使用Ant Design组件 */
+
+/* 仅保留一些必要的全局样式和特殊布局样式 */
+
+/* 对象节点悬停时显示操作按钮 */
+.object-node-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.object-node:hover .object-node-actions {
+  opacity: 1;
+}
+
+/* 响应式布局 - 移动端适配 */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    height: 300px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+  }
+  
+  .ant-layout-content {
+    height: calc(100vh - 300px) !important;
+  }
+}
+
+/* 自定义滚动条（可选） */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}
+
+/* 加载状态动画 */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* 代码块样式调整 */
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  margin: 0;
+}
+
+/* 简化的工具提示样式 */
+.ant-tooltip {
+  font-size: 12px;
+} 

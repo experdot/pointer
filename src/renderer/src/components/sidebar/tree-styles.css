@@ -1,0 +1,252 @@
+.chat-history-tree {
+  overflow: hidden;
+}
+
+.tree-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.tree-node:hover {
+  background-color: #f5f5f5;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+}
+
+.tree-node-icon {
+  flex-shrink: 0;
+  color: #666;
+}
+
+.tree-node-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tree-node:hover .tree-node-actions {
+  opacity: 1;
+}
+
+.tree-node-folder {
+  font-weight: 500;
+}
+
+.tree-node-chat {
+  font-weight: normal;
+}
+
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-actions-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sidebar-content {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fafafa;
+  border-right: 1px solid #f0f0f0;
+}
+
+.sidebar-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px;
+  background: #fafafa;
+  border-right: 1px solid #f0f0f0;
+}
+
+/* Antd Tree customizations */
+.ant-tree .ant-tree-node-content-wrapper {
+  padding: 0;
+}
+
+.ant-tree .ant-tree-title {
+  width: 100%;
+}
+
+.ant-tree .ant-tree-node-selected {
+  background-color: #e6f7ff !important;
+}
+
+.ant-tree .ant-tree-node-selected .tree-node {
+  background-color: #e6f7ff;
+}
+
+/* Multi-select mode styles */
+.chat-history-tree.multi-select-mode .ant-tree-checkbox {
+  margin-right: 8px;
+}
+
+.chat-history-tree.multi-select-mode .ant-tree-node-content-wrapper:hover {
+  background-color: transparent;
+}
+
+.chat-history-tree.multi-select-mode .tree-node {
+  padding-left: 4px;
+}
+
+.multi-select-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #1890ff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10;
+}
+
+.sidebar-actions .ant-btn-primary {
+  background: #1890ff;
+}
+
+.sidebar-actions .ant-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 批量删除按钮样式 */
+.batch-delete-btn {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 拖拽相关样式 */
+.ant-tree-drag-over {
+  background-color: #e6f7ff !important;
+}
+
+.ant-tree-drag-over-gap-top {
+  border-top: 2px solid #1890ff !important;
+}
+
+.ant-tree-drag-over-gap-bottom {
+  border-bottom: 2px solid #1890ff !important;
+}
+
+.ant-tree-draggable-icon {
+  color: #1890ff;
+  cursor: grab;
+}
+
+.ant-tree-draggable-icon:active {
+  cursor: grabbing;
+}
+
+.ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background-color: #e6f7ff;
+}
+
+/* 拖拽时的ghost样式 */
+.ant-tree-drag-ghost {
+  opacity: 0.5;
+  background-color: #f0f0f0;
+  border: 1px dashed #d9d9d9;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+/* 拖拽提示样式 */
+.ant-tree-drop-indicator {
+  height: 2px;
+  background-color: #1890ff;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+/* 暗色主题的拖拽样式 */
+.dark .ant-tree-drag-over {
+  background-color: #2a2a2a !important;
+}
+
+.dark .ant-tree-drag-over-gap-top {
+  border-top-color: #40a9ff !important;
+}
+
+.dark .ant-tree-drag-over-gap-bottom {
+  border-bottom-color: #40a9ff !important;
+}
+
+.dark .ant-tree-draggable-icon {
+  color: #40a9ff;
+}
+
+.dark .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background-color: #2a2a2a;
+}
+
+.dark .ant-tree-drag-ghost {
+  background-color: #2a2a2a;
+  border-color: #555;
+}
+
+.dark .ant-tree-drop-indicator {
+  background-color: #40a9ff;
+}

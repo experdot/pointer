@@ -1,0 +1,58 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import { electronAPI } from '@electron-toolkit/preload'
+
+// 管理多个流式监听器
+const streamListeners = new Map<string, (data: any) => void>()
+
+// Custom APIs for renderer
+const api = {
+  // AI相关API
+  ai: {
+    sendMessageStreaming: (request: any) => ipcRenderer.invoke('ai:send-message-streaming', request),
+    sendMessage: (request: any) => ipcRenderer.invoke('ai:send-message', request),
+    testConnection: (config: any) => ipcRenderer.invoke('ai:test-connection', config),
+    stopStreaming: (requestId: string) => ipcRenderer.invoke('ai:stop-streaming', requestId),
+    onStreamData: (requestId: string, callback: (data: any) => void) => {
+      // 为每个请求ID创建独立的监听器
+      streamListeners.set(requestId, callback)
+      
+      // 如果是第一个监听器，则设置全局监听器
+      if (streamListeners.size === 1) {
+        ipcRenderer.on('ai-stream-data', (_, data) => {
+          const listener = streamListeners.get(data.requestId)
+          if (listener) {
+            listener(data)
+          }
+        })
+      }
+    },
+    removeStreamListener: (requestId: string) => {
+      streamListeners.delete(requestId)
+      
+      // 如果没有监听器了，移除全局监听器
+      if (streamListeners.size === 0) {
+        ipcRenderer.removeAllListeners('ai-stream-data')
+      }
+    }
+  },
+  // 文件操作API
+  saveFile: (options: { content: string; defaultPath: string; filters?: Array<{ name: string; extensions: string[] }> }) => 
+    ipcRenderer.invoke('save-file', options)
+}
+
+// Use `contextBridge` APIs to expose Electron APIs to
+// renderer only if context isolation is enabled, otherwise
+// just add to the DOM global.
+if (process.contextIsolated) {
+  try {
+    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('api', api)
+  } catch (error) {
+    console.error(error)
+  }
+} else {
+  // @ts-ignore (define in dts)
+  window.electron = electronAPI
+  // @ts-ignore (define in dts)
+  window.api = api
+}

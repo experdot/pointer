@@ -1,0 +1,936 @@
+.crosstab-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f5f5f5;
+  padding: 16px;
+}
+
+.crosstab-header {
+  margin-bottom: 16px;
+  text-align: left;
+  background: white;
+  border-radius: 4px;
+}
+
+.crosstab-header h4 {
+  color: #1890ff;
+  margin: 8px;
+}
+
+.crosstab-content {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+}
+
+.crosstab-steps {
+  flex: 0 0 320px;
+  background: white;
+  padding: 16px;
+  border-radius: 4px;
+  overflow-y: auto;
+}
+
+.crosstab-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 新的Tab样式 */
+.crosstab-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.crosstab-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.crosstab-tabs .ant-tabs-content-holder {
+  flex: 1;
+  background: white;
+  border-radius: 0 0 4px 4px;
+}
+
+.crosstab-tabs .ant-tabs-content {
+  height: 100%;
+  padding: 0;
+}
+
+.crosstab-tabs .ant-tabs-tabpane {
+  height: 100%;
+  padding: 16px;
+}
+
+.crosstab-tabs .ant-tabs-tab {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 16px 16px;
+}
+
+.crosstab-tabs .ant-tabs-tab-active {
+  background: white;
+}
+
+/* Tab卡片样式 */
+.tab-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ant-card-body {
+  flex: 1;
+  flex-basis: 0;
+  overflow: auto;
+  height: 100%;
+  padding: 16px;
+}
+
+/* 全屏卡片样式 */
+.fullscreen-card {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 1000 !important;
+  background: white !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.fullscreen-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+  background: #fafafa;
+}
+
+.fullscreen-card .ant-card-body {
+  padding: 24px;
+  height: calc(100vh - 64px);
+}
+
+.fullscreen-card .ant-table-wrapper {
+  height: 100%;
+}
+
+.fullscreen-card .ant-table-container {
+  height: 100%;
+}
+
+.fullscreen-card .ant-table-body {
+  height: calc(100% - 39px);
+  overflow: auto;
+}
+
+/* 步骤内容样式 */
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.step-info {
+  flex: 1;
+}
+
+.step-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 4px;
+}
+
+.step-description {
+  font-size: 12px;
+  color: #8c8c8c;
+  line-height: 1.4;
+}
+
+.step-actions {
+  margin-bottom: 16px;
+}
+
+.step-actions .ant-btn {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-state div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 主题结构样式 */
+.metadata-display {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metadata-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 4px solid #1890ff;
+}
+
+.metadata-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+}
+
+.metadata-item-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.metadata-item strong {
+  color: #1890ff;
+  font-weight: 600;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.metadata-item span {
+  color: #262626;
+  line-height: 1.5;
+}
+
+/* 输入提示样式 */
+.input-hint {
+  padding: 8px 12px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+/* 轴数据容器样式 */
+.axis-data-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  height: 100%;
+}
+
+/* 轴卡片样式 */
+.axis-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.axis-card .ant-card-head {
+  color: #333;
+  border-radius: 4px 8px 0 0;
+}
+
+.axis-card .ant-card-head-title {
+  color: #333;
+  font-weight: 600;
+}
+
+.axis-values {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.axis-value-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.axis-value-item:hover {
+  background: #f0f2f5;
+  border-color: #1890ff;
+}
+
+.axis-value {
+  display: inline-block;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+}
+
+.axis-value-actions {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.axis-value-item:hover .axis-value-actions {
+  opacity: 1;
+}
+
+.add-axis-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f6ffed;
+  border: 1px dashed #52c41a;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.add-axis-item .ant-input {
+  flex: 1;
+}
+
+/* 表格卡片样式 */
+.table-card .ant-card-head {
+  border-radius: 4px 8px 0 0;
+}
+
+.table-card .ant-card-head-title {
+  font-weight: 600;
+}
+
+/* 表格容器样式 */
+.table-card .ant-table-wrapper {
+  border-radius: 6px;
+}
+
+.table-card .ant-table-container {
+  border-radius: 6px;
+}
+
+/* 表格头部样式 */
+.table-card .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* 固定列样式 */
+.table-card .ant-table-thead > tr > th.ant-table-cell-fix-left {
+  background: #f0f2f5;
+  font-weight: 600;
+  z-index: 3;
+}
+
+.table-card .ant-table-tbody > tr > td.ant-table-cell-fix-left {
+  background: #f0f2f5;
+  font-weight: 600;
+  vertical-align: middle;
+  text-align: center;
+  z-index: 1;
+}
+
+/* 固定列阴影效果 */
+.table-card .ant-table-thead > tr > th.ant-table-cell-fix-left-last::after,
+.table-card .ant-table-tbody > tr > td.ant-table-cell-fix-left-last::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: -1px;
+  width: 30px;
+  transform: translateX(100%);
+  transition: box-shadow 0.3s;
+  content: '';
+  pointer-events: none;
+  border: 1px solid #d9d9d9;
+}
+
+.table-card .ant-table-tbody > tr > td {
+  padding: 8px;
+  vertical-align: top;
+  line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+.table-card .ant-table-tbody > tr > td:first-child {
+  background: #f0f2f5;
+  font-weight: 600;
+  vertical-align: middle;
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* 滚动条样式 */
+
+.table-card .ant-table-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-card .ant-table-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-card .ant-table-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.table-card .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 表格行悬停效果 */
+.table-card .ant-table-tbody > tr:hover > td {
+  background-color: #f5f5f5;
+}
+
+.table-card .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left {
+  background-color: #e6f7ff;
+}
+
+/* 确保固定列在滚动时保持位置 */
+.table-card .ant-table-ping-left .ant-table-cell-fix-left-last::after {
+  box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+.table-card .ant-table-ping-right .ant-table-cell-fix-right-first::before {
+  box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+.crosstab-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 16px;
+  color: #999;
+}
+
+/* 响应式样式 */
+@media (max-width: 1200px) {
+  .crosstab-content {
+    flex-direction: column;
+  }
+
+  .crosstab-steps {
+    flex: none;
+    max-height: 300px;
+  }
+
+  .axis-data-container {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .axis-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .crosstab-page {
+    padding: 8px;
+  }
+
+  .crosstab-header {
+    padding: 16px;
+  }
+
+  .crosstab-content {
+    gap: 16px;
+  }
+
+  .crosstab-steps {
+    padding: 16px;
+  }
+
+  .axis-data-container {
+    flex-direction: column;
+  }
+
+  .axis-card {
+    min-height: 200px;
+  }
+}
+
+/* 自定义步骤样式 */
+.ant-steps-vertical .ant-steps-item-icon {
+  margin-right: 16px;
+}
+
+.ant-steps-vertical .ant-steps-item-content {
+  min-height: 60px;
+}
+
+.ant-steps-vertical .ant-steps-item-title {
+  line-height: 1.2;
+  padding-right: 0;
+}
+
+.ant-steps-item-process .ant-steps-item-icon {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.ant-steps-item-wait .ant-steps-item-icon {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #8c8c8c;
+}
+
+/* 卡片阴影动画 */
+.step-card,
+.metadata-card,
+.axis-card,
+.table-card {
+  transition: all 0.3s;
+}
+
+.step-card:hover,
+.metadata-card:hover,
+.axis-card:hover,
+.table-card:hover {
+  border: 1px solid #d9d9d9;
+}
+
+/* 表格优化 */
+.table-card .ant-table-wrapper {
+  border-radius: 6px;
+}
+
+.table-card .ant-table-container {
+  border-radius: 6px;
+}
+
+/* 加载状态 */
+.ant-spin-nested-loading > div > .ant-spin {
+  max-height: none;
+}
+
+/* 滚动条样式 */
+
+/* 编辑元数据对话框样式 */
+.ant-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px 8px 0 0;
+}
+
+.ant-modal-title {
+  color: white;
+  font-weight: 600;
+}
+
+.ant-modal-close {
+  color: white;
+}
+
+.ant-modal-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: #333;
+}
+
+.ant-form-item-label > label::after {
+  content: '';
+}
+
+.ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 12px;
+}
+
+/* 按钮样式增强 */
+.axis-value-actions .ant-btn[title='编辑'] {
+  color: #1890ff;
+}
+
+.axis-value-actions .ant-btn[title='编辑']:hover {
+  color: #40a9ff;
+}
+
+.axis-value-actions .ant-btn.ant-btn-dangerous {
+  color: #ff4d4f;
+}
+
+.axis-value-actions .ant-btn.ant-btn-dangerous:hover {
+  color: #ff7875;
+}
+
+/* 列头按钮样式 */
+.column-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.column-title {
+  font-weight: 600;
+  color: #262626;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.column-generate-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.column-generate-btn:hover {
+  opacity: 1;
+}
+
+.column-generate-btn .anticon {
+  font-size: 12px;
+}
+
+/* 行头按钮样式 */
+.row-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.row-title {
+  flex: 1;
+  font-weight: 600;
+  color: #262626;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.row-generate-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.row-generate-btn:hover {
+  opacity: 1;
+}
+
+.row-generate-btn .anticon {
+  font-size: 12px;
+}
+
+/* 单元格内容样式 */
+.cell-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  min-height: 24px;
+}
+
+.cell-value {
+  flex: 1;
+  margin-right: 4px;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* 小三角形菜单触发器样式 */
+.cell-menu-trigger {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-bottom: 10px solid #bfbfbf;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.cell-content:hover .cell-menu-trigger,
+.column-header:hover .cell-menu-trigger,
+.row-header:hover .cell-menu-trigger {
+  opacity: 0.8;
+}
+
+.cell-menu-trigger:hover {
+  border-bottom-color: #1890ff;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* 菜单项的危险样式 */
+.ant-dropdown-menu-item[data-menu-id$='clear'] {
+  color: #ff4d4f !important;
+}
+
+.ant-dropdown-menu-item[data-menu-id$='clear']:hover {
+  background-color: #fff2f0 !important;
+}
+
+.cell-generate-btn {
+  opacity: 0;
+  font-size: 10px;
+  color: #666;
+  transition: opacity 0.2s;
+  border: none;
+  background: transparent;
+  padding: 0;
+  height: 16px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.cell-content:hover .cell-generate-btn {
+  opacity: 1;
+}
+
+.cell-generate-btn:hover {
+  color: #1890ff;
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.cell-generate-btn .anticon {
+  font-size: 10px;
+}
+
+/* 启发按钮样式 */
+.metadata-item .ant-btn-link {
+  color: #1890ff;
+  height: auto;
+  padding: 0;
+  font-size: 12px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.metadata-item .ant-btn-link:hover {
+  color: #40a9ff;
+  text-decoration: underline;
+}
+
+.metadata-item .ant-btn-link:disabled {
+  color: #d9d9d9;
+  cursor: not-allowed;
+}
+
+.metadata-item .ant-btn-link .anticon {
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+/* 候选项弹窗样式 */
+.ant-modal .ant-modal-content {
+  border-radius: 8px;
+}
+
+.ant-modal .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 8px 8px 0 0;
+}
+
+.ant-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.ant-modal .ant-tag {
+  margin-bottom: 8px;
+  transition: all 0.3s;
+  user-select: none;
+}
+
+.ant-modal .ant-tag:hover {
+  background: #52c41a;
+  border-color: #52c41a;
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.3);
+}
+
+.ant-modal .ant-tag:active {
+  transform: scale(0.98);
+}
+
+.suggestion-item {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  background: white;
+  margin-bottom: 8px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.suggestion-item:hover {
+  border-color: #52c41a;
+  background: #f6ffed;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item:active {
+  transform: translateY(0);
+}
+
+.current-axis-tag {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+}
+
+.loading-suggestions {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8c8c8c;
+}
+
+.loading-suggestions .ant-spin {
+  margin-bottom: 16px;
+}
+
+/* 内联候选项样式 */
+.suggestions-container {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.suggestions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.suggestions-header-content {
+  flex: 1;
+}
+
+.suggestions-header-content .ant-typography {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 0;
+}
+
+.suggestions-header-actions {
+  flex-shrink: 0;
+}
+
+.suggestions-header-actions .ant-btn {
+  color: #6c757d;
+  padding: 0 4px;
+  height: auto;
+  line-height: 1;
+}
+
+.suggestions-header-actions .ant-btn:hover {
+  color: #1890ff;
+}
+
+.suggestions-content {
+  margin-top: 8px;
+}
+
+.suggestions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.suggestions-content .ant-tag {
+  margin-bottom: 4px;
+  margin-right: 4px;
+  user-select: none;
+}
+
+.suggestions-content .ant-tag:hover {
+  background: #28a745;
+  border-color: #28a745;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.suggestions-content .ant-tag:active {
+  transform: scale(0.95);
+}
+
+.suggestions-content .ant-tag.current-selection {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+}
+
+.suggestions-content .ant-tag.current-selection:hover {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+  transform: none;
+  box-shadow: none;
+  cursor: default;
+}

@@ -1,0 +1,546 @@
+/*  Chat Components Styles */
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e5e5);
+  background: var(--background-color, #ffffff);
+  min-height: 56px;
+}
+
+.chat-header-left {
+  flex: 1;
+}
+
+.chat-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Chat Window Styles */
+.chat-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.chat-welcome {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-content {
+  text-align: center;
+  color: #8c8c8c;
+}
+
+.welcome-content h3 {
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.message-time {
+  font-size: 12px;
+}
+
+.message-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.user-message .message-card {
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-color: #91d5ff;
+}
+
+.assistant-message .message-card {
+  background: #fff;
+  border-color: #d9d9d9;
+}
+
+.chat-input-area {
+  border-top: 1px solid #f0f0f0;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.chat-input-container .ant-input {
+  flex: 1;
+}
+
+.chat-window-error {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff4d4f;
+  font-size: 16px;
+}
+
+/* Message Actions */
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* 用户消息头部样式调整 */
+.user-message .message-header {
+  flex-direction: row-reverse;
+}
+
+.message-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-model-selector {
+  font-size: 12px;
+  min-width: 80px;
+}
+
+.message-model-selector .ant-select-selector {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 4px;
+  height: auto;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.message-model-selector:hover .ant-select-selector {
+  color: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.message-model-selector .ant-select-arrow {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  margin-top: 8px;
+  padding: 0 8px;
+}
+
+/* 用户消息操作按钮对齐 */
+.user-message .message-actions {
+  justify-content: flex-end;
+}
+
+.message-actions.visible {
+  opacity: 1;
+}
+
+.message-item:hover .message-actions {
+  opacity: 1;
+}
+
+.message-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-action-buttons .ant-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.message-action-buttons .ant-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.message-action-buttons .ant-btn.favorited {
+  color: #faad14;
+}
+
+.message-action-buttons .ant-btn.favorited:hover {
+  color: #d48806;
+  background-color: rgba(250, 173, 20, 0.1);
+}
+
+/* Message Edit Container */
+.message-edit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Message Collapse Button */
+.message-collapse-btn {
+  opacity: 0.5;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+}
+
+.message-collapse-btn:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Message Collapsed State */
+.message-collapsed {
+  border: 1px dashed #d9d9d9 !important;
+  background-color: #fafafa !important;
+}
+
+.message-collapsed .ant-typography {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Message Preview */
+.message-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-preview-text {
+  font-style: italic;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message-preview-reasoning {
+  font-size: 12px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+}
+
+/* Always show collapse button on hover */
+.message-item:hover .message-collapse-btn {
+  opacity: 1;
+}
+
+/* Chat Input Area */
+.chat-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 12px;
+}
+
+.chat-input-container .ant-input {
+  flex: 1;
+}
+
+/* Model Selector */
+.ant-select .ant-select-selector {
+  border-radius: 6px;
+}
+
+.ant-select-dropdown .ant-select-item-option-content {
+  padding: 8px 0;
+}
+
+/* Messages Container */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Chat Window with Header */
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/*  Message Item */
+.message-item {
+  display: flex;
+  gap: 12px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 用户消息靠右显示 */
+.user-message {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  margin-left: auto;
+  max-width: 80%;
+}
+
+/* 助手消息保持左侧显示 */
+.assistant-message {
+  margin-right: auto;
+  max-width: 80%;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.message-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* 允许消息内容区域的文本选择 */
+.message-card,
+.message-reasoning-card {
+  user-select: text !important;
+}
+
+.user-message .message-card {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .messages-container {
+    padding: 12px;
+  }
+
+  .chat-input-area {
+    padding: 8px;
+  }
+
+  .message-item {
+    gap: 8px;
+  }
+}
+
+/* 分支导航器样式 */
+.branch-navigator {
+  margin-left: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.branch-nav-btn {
+  padding: 0 4px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 4px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.branch-nav-btn:hover:not(:disabled) {
+  color: #1890ff;
+  background-color: #f0f8ff;
+}
+
+.branch-nav-btn:disabled {
+  color: #d9d9d9;
+  cursor: not-allowed;
+}
+
+.branch-info {
+  font-size: 12px;
+  color: #999;
+  margin: 0 4px;
+  user-select: none;
+}
+
+.message-branch-nav {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.message-item:hover .message-branch-nav {
+  opacity: 1;
+}
+
+/* 消息内容文本选择样式 */
+.message-card .ant-typography {
+  user-select: text !important;
+  cursor: text;
+}
+
+.message-card .ant-typography::selection {
+  background-color: #1890ff;
+  color: white;
+}
+
+.message-reasoning-card .ant-typography {
+  user-select: text !important;
+  cursor: text;
+}
+
+.message-reasoning-card .ant-typography::selection {
+  background-color: #52c41a;
+  color: white;
+}
+
+/* Welcome Message Styles */
+.chat-welcome {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.welcome-content .ant-typography-title {
+  margin-bottom: 16px !important;
+}
+
+.welcome-content .ant-typography {
+  margin-bottom: 0 !important;
+}
+
+/* No Model Configuration State */
+.welcome-content .config-steps {
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+  margin: 16px 0;
+}
+
+.welcome-content .config-steps ol {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  color: #ad6800;
+}
+
+.welcome-content .config-steps ol li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+/* Chat Input Warning Alerts */
+.chat-input-area .ant-alert {
+  border-radius: 6px;
+}
+
+.chat-input-area .ant-alert-warning {
+  background: #fff7e6;
+  border-color: #ffd591;
+}
+
+.chat-input-area .ant-alert-info {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+/* Disabled input styling */
+.chat-input-container .ant-input[disabled] {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
