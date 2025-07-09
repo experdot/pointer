@@ -1,4 +1,4 @@
-import { Chat, ChatMessage, RegularChat } from '../types'
+import { Page, ChatMessage, RegularChat } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import { MessageTree } from '../components/pages/chat/messageTree'
 import './exporter.css'
@@ -89,7 +89,7 @@ export type ChatFormat = 'deepseek' | 'openai' | 'unknown'
 // 导入结果
 export interface ImportResult {
   success: boolean
-  pages: Chat[]
+  pages: Page[]
   folder?: { id: string; name: string }
   successCount: number
   errorCount: number
@@ -276,8 +276,8 @@ export function convertDeepSeekMessages(mapping: {
 function processDeepSeekData(
   data: DeepSeekChat[],
   folderId?: string
-): { pages: Chat[]; successCount: number; errorCount: number; skippedCount: number } {
-  const pages: Chat[] = []
+): { pages: Page[]; successCount: number; errorCount: number; skippedCount: number } {
+  const pages: Page[] = []
   let successCount = 0
   let errorCount = 0
   let skippedCount = 0
@@ -295,8 +295,9 @@ function processDeepSeekData(
         const messageTree = new MessageTree(messages)
         const currentPath = messageTree.getCurrentPath()
 
-        const chat: Chat = {
+        const chat: Page = {
           id: uuidv4(), // 生成新的ID避免冲突
+          type: 'regular',
           title: chatData.title,
           messages,
           currentPath, // 设置正确的当前路径
@@ -323,8 +324,8 @@ function processDeepSeekData(
 function processOpenAIData(
   data: OpenAIChat[] | OpenAIChat,
   folderId?: string
-): { pages: Chat[]; successCount: number; errorCount: number; skippedCount: number } {
-  const pages: Chat[] = []
+): { pages: Page[]; successCount: number; errorCount: number; skippedCount: number } {
+  const pages: Page[] = []
   let successCount = 0
   let errorCount = 0
   let skippedCount = 0
@@ -345,8 +346,9 @@ function processOpenAIData(
         const messageTree = new MessageTree(messages)
         const currentPath = messageTree.getCurrentPath()
 
-        const chat: Chat = {
+        const chat: Page = {
           id: uuidv4(),
+          type: 'regular',
           title: chatData.title,
           messages,
           currentPath, // 设置正确的当前路径
@@ -495,7 +497,7 @@ export function importSelectedChats(
     }
   }
 
-  const pages: Chat[] = []
+  const pages: Page[] = []
   let successCount = 0
   let errorCount = 0
 

@@ -11,13 +11,13 @@ import {
   FolderAddOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { Chat, PageFolder } from '../../types'
+import { Page, PageFolder } from '../../types'
 
 const { Text } = Typography
 
 interface ChatHistoryTreeNodeProps {
   type: 'folder' | 'chat'
-  data: PageFolder | Chat
+  data: PageFolder | Page
   isEditing?: boolean
   onEdit?: () => void
   onDelete?: () => void
@@ -147,14 +147,14 @@ export default function ChatHistoryTreeNode({
   }
 
   const getName = () => {
-    return type === 'folder' ? (data as PageFolder).name : (data as Chat).title
+    return type === 'folder' ? (data as PageFolder).name : (data as Page).title
   }
 
   // 获取聊天状态指示器的颜色和状态文本
   const getChatStatus = () => {
     if (type !== 'chat') return null
 
-    const chat = data as Chat
+    const chat = data as Page
     const messageCount = chat.messages?.length || 0
     const hasStreamingMessage = !!chat.streamingMessage
     const hasStreamingInMessages = chat.messages?.some((msg) => msg.isStreaming) || false

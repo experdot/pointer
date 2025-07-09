@@ -951,7 +951,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       <div className="crosstab-content">
         <StepFlow
-          chat={chat}
+          chat={chat as any}
           userInput={userInput}
           onStepComplete={handleStepComplete}
           getLLMConfig={getLLMConfig}

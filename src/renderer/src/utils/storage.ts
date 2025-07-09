@@ -1,4 +1,4 @@
-import { AppState, Settings, Chat, PageFolder } from '../types'
+import { AppState, Settings, Page, PageFolder } from '../types'
 
 const STORAGE_KEYS = {
   APP_STATE: 'ai-chat-app-state',
@@ -87,7 +87,7 @@ export class StorageService {
   }
 
   // 保存页面记录
-  static savePages(pages: Chat[]): void {
+  static savePages(pages: Page[]): void {
     try {
       // 清理流式消息状态，避免保存临时状态
       const cleanPages = pages.map((page) => ({
@@ -101,7 +101,7 @@ export class StorageService {
   }
 
   // 加载页面记录
-  static loadPages(): Chat[] | null {
+  static loadPages(): Page[] | null {
     try {
       const pagesStr = localStorage.getItem(STORAGE_KEYS.PAGES)
       if (pagesStr) {

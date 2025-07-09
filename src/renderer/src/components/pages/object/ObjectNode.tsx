@@ -199,7 +199,6 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
         </Text>
         <Tag
           color={getTypeColor(node.type)}
-          size="small"
           style={{
             fontSize: 10,
             margin: 0,

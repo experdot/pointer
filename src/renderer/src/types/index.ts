@@ -54,7 +54,7 @@ export interface PageLineage {
   description?: string // 溯源描述
 }
 
-export interface Page {
+export interface PageBase {
   id: string
   title: string
   type: 'regular' | 'crosstab' | 'object'
@@ -66,8 +66,8 @@ export interface Page {
   order?: number // 添加排序字段
   pinned?: boolean // 是否固定标签页
 
-  // 页面溯源信息
-  lineage?: PageLineage
+
+  lineage?: PageLineage // 页面溯源信息
 
   data?: any
 }
@@ -82,7 +82,7 @@ export interface PageFolder {
 }
 
 // 普通聊天类型
-export interface RegularChat extends Page {
+export interface RegularChat extends PageBase {
   type: 'regular'
   messages: ChatMessage[]
 
@@ -185,13 +185,31 @@ export interface ObjectGenerationRecord {
 }
 
 // 对象聊天类型
-export interface ObjectChat extends Page {
+export interface ObjectChat extends PageBase {
   type: 'object'
   objectData: ObjectData
 }
 
-// 聊天类型联合
-export type Chat = RegularChat | CrosstabChat | ObjectChat
+// 聊天类型 - 包含所有属性
+export interface Page extends PageBase {
+  type: 'regular' | 'crosstab' | 'object'
+  
+  // RegularChat 的属性
+  messages?: ChatMessage[]
+  messageMap?: { [messageId: string]: ChatMessage }
+  currentPath?: string[]
+  rootMessageId?: string
+  streamingMessage?: {
+    content: string
+    timestamp: number
+  }
+  
+  // CrosstabChat 的属性
+  crosstabData?: CrosstabData
+  
+  // ObjectChat 的属性
+  objectData?: ObjectData
+}
 
 export interface Settings {
   llmConfigs: LLMConfig[]
@@ -210,7 +228,7 @@ export interface SearchResult {
 }
 
 export interface AppState {
-  pages: Chat[]
+  pages: Page[]
   folders: PageFolder[]
   openTabs: string[] // chat ids
   activeTabId: string | null
@@ -284,7 +302,7 @@ export type AppAction =
       type: 'CREATE_AND_OPEN_OBJECT_CHAT'
       payload: { title: string; folderId?: string; lineage?: PageLineage }
     }
-  | { type: 'UPDATE_CHAT'; payload: { id: string; updates: Partial<Chat> } }
+  | { type: 'UPDATE_CHAT'; payload: { id: string; updates: Partial<Page> } }
   | { type: 'UPDATE_PAGE_LINEAGE'; payload: { pageId: string; lineage: Partial<PageLineage> } }
   | { type: 'ADD_GENERATED_PAGE'; payload: { sourcePageId: string; generatedPageId: string } }
   | {
