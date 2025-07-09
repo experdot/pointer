@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, Space, Tag, Button, Empty, Divider, Timeline, Tooltip } from 'antd'
+import { Card, Typography, Space, Tag, Button, Empty, Divider, Timeline, Tooltip, Collapse } from 'antd'
 import { 
   UserOutlined, 
   NodeIndexOutlined, 
@@ -9,7 +9,9 @@ import {
   HistoryOutlined, 
   BranchesOutlined,
   InfoCircleOutlined,
-  LinkOutlined
+  LinkOutlined,
+  CaretRightOutlined,
+  CaretDownOutlined
 } from '@ant-design/icons'
 import { Page, PageLineage } from '../../types'
 import { useAppContext } from '../../store/AppContext'
@@ -19,7 +21,7 @@ const { Title, Text, Paragraph } = Typography
 interface PageLineageDisplayProps {
   pageId: string
   showInCard?: boolean
-  size?: 'small' | 'default' | 'large'
+  size?: 'small' | 'default'
 }
 
 const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({ 
@@ -37,6 +39,14 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   }
 
   const lineage = currentPage.lineage
+  
+  // 获取折叠状态，默认为折叠状态
+  const isCollapsed = state.lineageDisplayCollapsed[pageId] ?? true
+  
+  // 处理折叠状态切换
+  const handleToggleCollapse = () => {
+    dispatch({ type: 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE', payload: { pageId } })
+  }
 
   // 获取源页面信息
   const getSourcePageInfo = () => {
@@ -151,26 +161,46 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     return null
   }
 
+  // 折叠标题
+  const collapseHeader = (
+    <div 
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        cursor: 'pointer',
+        fontSize: size === 'small' ? '12px' : '14px'
+      }}
+      onClick={handleToggleCollapse}
+    >
+      {isCollapsed ? <CaretRightOutlined /> : <CaretDownOutlined />}
+      <BranchesOutlined />
+      <Text strong>页面溯源</Text>
+    </div>
+  )
+
   const content = (
     <div style={{ fontSize: size === 'small' ? '12px' : '14px' }}>
       <Space direction="vertical" size={size === 'small' ? 8 : 16} style={{ width: '100%' }}>
-        {/* 当前页面信息 */}
-        <div>
-          <Title level={size === 'small' ? 5 : 4} style={{ margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BranchesOutlined />
-            页面溯源
-          </Title>
-          <Space>
-            {getPageTypeIcon(currentPage.type)}
-            <Text strong>{currentPage.title}</Text>
-            <Tag color="blue">{getPageTypeName(currentPage.type)}</Tag>
-          </Space>
-        </div>
+        {/* 折叠标题 */}
+        {collapseHeader}
 
-        <Divider style={{ margin: '8px 0' }} />
+        {/* 折叠内容 */}
+        {!isCollapsed && (
+          <>
+            {/* 当前页面信息 */}
+            <div style={{ marginLeft: '16px' }}>
+              <Space>
+                {getPageTypeIcon(currentPage.type)}
+                <Text strong>{currentPage.title}</Text>
+                <Tag color="blue">{getPageTypeName(currentPage.type)}</Tag>
+              </Space>
+            </div>
 
-        {/* 来源信息 */}
-        <div>
+            <Divider style={{ margin: '8px 0' }} />
+
+            {/* 来源信息 */}
+            <div style={{ marginLeft: '16px' }}>
           <Space style={{ marginBottom: '8px' }}>
             <HistoryOutlined />
             <Text strong>来源：</Text>
@@ -219,100 +249,101 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
           )}
         </div>
 
-        {/* 后续生成的页面 */}
-        {generatedPages.length > 0 && (
-          <div>
-            <Space style={{ marginBottom: '8px' }}>
-              <ArrowRightOutlined />
-              <Text strong>后续生成：</Text>
-            </Space>
-            <div style={{ marginLeft: '16px' }}>
-              <Space direction="vertical" size={4}>
-                {generatedPages.map(page => (
-                  <Space key={page.id}>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={getPageTypeIcon(page.type)}
-                      onClick={() => handleNavigateToPage(page.id)}
-                      style={{ padding: 0, height: 'auto' }}
-                    >
-                      {page.title}
-                    </Button>
-                    <Tag size="small" color="green">
-                      {getPageTypeName(page.type)}
-                    </Tag>
+            {/* 后续生成的页面 */}
+            {generatedPages.length > 0 && (
+              <div style={{ marginLeft: '16px' }}>
+                <Space style={{ marginBottom: '8px' }}>
+                  <ArrowRightOutlined />
+                  <Text strong>后续生成：</Text>
+                </Space>
+                <div style={{ marginLeft: '16px' }}>
+                  <Space direction="vertical" size={4}>
+                    {generatedPages.map(page => (
+                      <Space key={page.id}>
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={getPageTypeIcon(page.type)}
+                          onClick={() => handleNavigateToPage(page.id)}
+                          style={{ padding: 0, height: 'auto' }}
+                        >
+                          {page.title}
+                        </Button>
+                        <Tag color="green">
+                          {getPageTypeName(page.type)}
+                        </Tag>
+                      </Space>
+                    ))}
                   </Space>
-                ))}
-              </Space>
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            )}
 
-        {/* 溯源时间线 */}
-        {(sourcePage || generatedPages.length > 0) && (
-          <div>
-            <Space style={{ marginBottom: '8px' }}>
-              <LinkOutlined />
-              <Text strong>溯源链路：</Text>
-            </Space>
-            <Timeline
-              size="small"
-              items={[
-                ...(sourcePage ? [{
-                  dot: getSourceIcon(lineage.source),
-                  children: (
-                    <Space>
-                      <Button
-                        type="link"
-                        size="small"
-                        onClick={() => handleNavigateToPage(sourcePage.id)}
-                        style={{ padding: 0, height: 'auto' }}
-                      >
-                        {sourcePage.title}
-                      </Button>
-                      <Tag size="small">{getPageTypeName(sourcePage.type)}</Tag>
-                    </Space>
-                  )
-                }] : []),
-                {
-                  dot: getPageTypeIcon(currentPage.type),
-                  children: (
-                    <Space>
-                      <Text strong>{currentPage.title}</Text>
-                      <Tag color="blue">{getPageTypeName(currentPage.type)}</Tag>
-                      <Text type="secondary">当前页面</Text>
-                    </Space>
-                  )
-                },
-                ...generatedPages.map(page => ({
-                  dot: getPageTypeIcon(page.type),
-                  children: (
-                    <Space>
-                      <Button
-                        type="link"
-                        size="small"
-                        onClick={() => handleNavigateToPage(page.id)}
-                        style={{ padding: 0, height: 'auto' }}
-                      >
-                        {page.title}
-                      </Button>
-                      <Tag size="small" color="green">{getPageTypeName(page.type)}</Tag>
-                    </Space>
-                  )
-                }))
-              ]}
-            />
-          </div>
-        )}
+            {/* 溯源时间线 */}
+            {(sourcePage || generatedPages.length > 0) && (
+              <div style={{ marginLeft: '16px' }}>
+                <Space style={{ marginBottom: '8px' }}>
+                  <LinkOutlined />
+                  <Text strong>溯源链路：</Text>
+                </Space>
+                <Timeline
+                  items={[
+                    ...(sourcePage ? [{
+                      dot: getSourceIcon(lineage.source),
+                      children: (
+                        <Space>
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => handleNavigateToPage(sourcePage.id)}
+                            style={{ padding: 0, height: 'auto' }}
+                          >
+                            {sourcePage.title}
+                          </Button>
+                          <Tag>{getPageTypeName(sourcePage.type)}</Tag>
+                        </Space>
+                      )
+                    }] : []),
+                    {
+                      dot: getPageTypeIcon(currentPage.type),
+                      children: (
+                        <Space>
+                          <Text strong>{currentPage.title}</Text>
+                          <Tag color="blue">{getPageTypeName(currentPage.type)}</Tag>
+                          <Text type="secondary">当前页面</Text>
+                        </Space>
+                      )
+                    },
+                    ...generatedPages.map(page => ({
+                      dot: getPageTypeIcon(page.type),
+                      children: (
+                        <Space>
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => handleNavigateToPage(page.id)}
+                            style={{ padding: 0, height: 'auto' }}
+                          >
+                            {page.title}
+                          </Button>
+                          <Tag color="green">{getPageTypeName(page.type)}</Tag>
+                        </Space>
+                      )
+                    }))
+                  ]}
+                />
+              </div>
+            )}
 
-        {/* 空状态 */}
-        {lineage.source === 'user' && generatedPages.length === 0 && (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="该页面为用户手动创建，暂无相关溯源信息"
-            style={{ padding: '16px 0' }}
-          />
+            {/* 空状态 */}
+            {lineage.source === 'user' && generatedPages.length === 0 && (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="该页面为用户手动创建，暂无相关溯源信息"
+                style={{ padding: '16px 0' }}
+              />
+            )}
+          </>
         )}
       </Space>
     </div>

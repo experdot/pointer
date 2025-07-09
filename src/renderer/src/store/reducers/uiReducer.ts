@@ -112,6 +112,19 @@ export const handleUIActions = (state: AppState, action: AppAction): AppState =>
       }
     }
 
+    case 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE': {
+      const { pageId } = action.payload
+      const isCurrentlyCollapsed = state.lineageDisplayCollapsed[pageId] || false
+
+      return {
+        ...state,
+        lineageDisplayCollapsed: {
+          ...state.lineageDisplayCollapsed,
+          [pageId]: !isCurrentlyCollapsed
+        }
+      }
+    }
+
     default:
       return state
   }

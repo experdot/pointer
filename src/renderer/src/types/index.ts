@@ -223,6 +223,8 @@ export interface AppState {
   // 消息折叠状态
   collapsedMessages: { [chatId: string]: string[] } // 每个聊天中折叠的消息ID列表
   allMessagesCollapsed: { [chatId: string]: boolean } // 每个聊天的全部折叠状态
+  // 页面溯源显示折叠状态
+  lineageDisplayCollapsed: { [pageId: string]: boolean } // 每个页面的溯源显示折叠状态
 }
 
 export type AppAction =
@@ -402,3 +404,5 @@ export type AppAction =
   | { type: 'TOGGLE_MESSAGE_COLLAPSE'; payload: { chatId: string; messageId: string } }
   | { type: 'COLLAPSE_ALL_MESSAGES'; payload: { chatId: string } }
   | { type: 'EXPAND_ALL_MESSAGES'; payload: { chatId: string } }
+  // 页面溯源显示折叠相关操作
+  | { type: 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE'; payload: { pageId: string } }

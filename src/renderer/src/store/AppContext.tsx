@@ -23,6 +23,7 @@ const initialState: AppState = {
   showSearchResults: false,
   collapsedMessages: {},
   allMessagesCollapsed: {},
+  lineageDisplayCollapsed: {},
   settings: INITIAL_SETTINGS
 }
 
