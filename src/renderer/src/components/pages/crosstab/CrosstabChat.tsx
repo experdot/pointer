@@ -16,6 +16,7 @@ import MetadataDisplay from './MetadataDisplay'
 import MetadataEditor from './MetadataEditor'
 import AxisDataManager from './AxisDataManager'
 import CrosstabTable from './CrosstabTable'
+import PageLineageDisplay from '../../common/PageLineageDisplay'
 import './crosstab-page.css'
 
 const { Title } = Typography
@@ -334,13 +335,14 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           horizontalItem,
           verticalItem,
           cellContent,
-          metadata
+          metadata,
+          sourcePageId: chatId
         }
       })
 
       message.success(`已创建新聊天窗口分析 "${horizontalItem} × ${verticalItem}"`)
     },
-    [chat, dispatch, message]
+    [chat, dispatch, message, chatId]
   )
 
   const handleStepComplete = useCallback(
@@ -891,6 +893,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
   return (
     <div className="crosstab-page">
+      {/* 页面溯源信息 */}
+      <div style={{ 
+        borderBottom: '1px solid #f0f0f0', 
+        backgroundColor: '#fafafa',
+        padding: '8px 16px'
+      }}>
+        <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
+      </div>
+
       <div className="crosstab-header">
         <Title level={4}>
           <TableOutlined /> 交叉视图生成器

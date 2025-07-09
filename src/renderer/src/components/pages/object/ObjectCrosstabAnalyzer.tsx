@@ -130,7 +130,8 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
         verticalNodeId: selectedVerticalNode,
         objectData: chat.objectData,
         horizontalContext,
-        verticalContext
+        verticalContext,
+        sourcePageId: chatId
       }
     })
 

@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid'
 export const handleChatActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'CREATE_CHAT': {
-      const newChat = createNewChat(action.payload.title, action.payload.folderId)
+      const newChat = createNewChat(action.payload.title, action.payload.folderId, action.payload.lineage)
       return {
         ...state,
         pages: [...state.pages, newChat]
@@ -26,7 +26,7 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
     }
 
     case 'CREATE_AND_OPEN_CHAT': {
-      const newChat = createNewChat(action.payload.title, action.payload.folderId)
+      const newChat = createNewChat(action.payload.title, action.payload.folderId, action.payload.lineage)
 
       // 如果有初始消息，添加到聊天中
       if (action.payload.initialMessage) {
@@ -51,7 +51,7 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
     }
 
     case 'CREATE_CHAT_FROM_CELL': {
-      const { folderId, horizontalItem, verticalItem, cellContent, metadata } = action.payload
+      const { folderId, horizontalItem, verticalItem, cellContent, metadata, sourcePageId } = action.payload
 
       // 构建用户提示词
       const prompt = `# 基于交叉分析表单元格的深度分析
@@ -89,8 +89,24 @@ ${cellContent}
         timestamp: Date.now()
       }
 
+      // 创建溯源信息
+      const lineage = {
+        source: 'crosstab_to_chat' as const,
+        sourcePageId,
+        sourceContext: {
+          crosstabChat: {
+            horizontalItem,
+            verticalItem,
+            cellContent
+          }
+        },
+        generatedPageIds: [],
+        generatedAt: Date.now(),
+        description: `从交叉分析表的单元格 "${horizontalItem} × ${verticalItem}" 生成的深度分析聊天`
+      }
+
       // 创建并打开新的普通聊天窗口
-      const newChat = createNewChat(chatTitle, folderId)
+      const newChat = createNewChat(chatTitle, folderId, lineage)
       const regularChat = newChat as RegularChat
       regularChat.messages = [userMessage]
       regularChat.currentPath = [userMessage.id]
@@ -99,9 +115,23 @@ ${cellContent}
         ? state.openTabs
         : [...state.openTabs, newChat.id]
 
+      // 更新源页面的generatedPageIds
+      const updatedPages = state.pages.map(page => {
+        if (page.id === sourcePageId && page.lineage) {
+          return {
+            ...page,
+            lineage: {
+              ...page.lineage,
+              generatedPageIds: [...page.lineage.generatedPageIds, newChat.id]
+            }
+          }
+        }
+        return page
+      })
+
       return {
         ...state,
-        pages: [...state.pages, newChat],
+        pages: [...updatedPages, newChat],
         openTabs: newOpenTabs,
         activeTabId: newChat.id,
         selectedNodeId: newChat.id,
@@ -110,7 +140,7 @@ ${cellContent}
     }
 
     case 'CREATE_CROSSTAB_CHAT': {
-      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId)
+      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId, action.payload.lineage)
       return {
         ...state,
         pages: [...state.pages, newCrosstabChat]
@@ -118,7 +148,7 @@ ${cellContent}
     }
 
     case 'CREATE_AND_OPEN_CROSSTAB_CHAT': {
-      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId)
+      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId, action.payload.lineage)
       const newOpenTabs = state.openTabs.includes(newCrosstabChat.id)
         ? state.openTabs
         : [...state.openTabs, newCrosstabChat.id]
@@ -134,7 +164,7 @@ ${cellContent}
     }
 
     case 'CREATE_CROSSTAB_FROM_OBJECTS': {
-      const { title, folderId, horizontalNodeId, verticalNodeId, objectData, horizontalContext, verticalContext } = action.payload
+      const { title, folderId, horizontalNodeId, verticalNodeId, objectData, horizontalContext, verticalContext, sourcePageId } = action.payload
       
       // 获取横轴和纵轴节点
       const horizontalNode = objectData.nodes[horizontalNodeId]
@@ -248,8 +278,25 @@ ${cellContent}
         }
       }
 
+      // 创建溯源信息
+      const lineage = {
+        source: 'object_to_crosstab' as const,
+        sourcePageId,
+        sourceContext: {
+          objectCrosstab: {
+            horizontalNodeId,
+            verticalNodeId,
+            horizontalNodeName: horizontalNode.name,
+            verticalNodeName: verticalNode.name
+          }
+        },
+        generatedPageIds: [],
+        generatedAt: Date.now(),
+        description: `从对象页面的 "${horizontalNode.name}" 和 "${verticalNode.name}" 节点生成的交叉分析表`
+      }
+
       // 创建交叉表聊天并预填充数据
-      const baseCrosstabChat = createNewCrosstabChat(title, folderId)
+      const baseCrosstabChat = createNewCrosstabChat(title, folderId, lineage)
       const newCrosstabChat: CrosstabChat = {
         ...baseCrosstabChat,
         crosstabData: {
@@ -275,9 +322,23 @@ ${cellContent}
         ? state.openTabs
         : [...state.openTabs, newCrosstabChat.id]
 
+      // 更新源页面的generatedPageIds
+      const updatedPages = state.pages.map(page => {
+        if (page.id === sourcePageId && page.lineage) {
+          return {
+            ...page,
+            lineage: {
+              ...page.lineage,
+              generatedPageIds: [...page.lineage.generatedPageIds, newCrosstabChat.id]
+            }
+          }
+        }
+        return page
+      })
+
       return {
         ...state,
-        pages: [...state.pages, newCrosstabChat],
+        pages: [...updatedPages, newCrosstabChat],
         openTabs: newOpenTabs,
         activeTabId: newCrosstabChat.id,
         selectedNodeId: newCrosstabChat.id,
@@ -287,7 +348,7 @@ ${cellContent}
 
     // 对象聊天相关操作
     case 'CREATE_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId)
+      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId, action.payload.lineage)
       return {
         ...state,
         pages: [...state.pages, newObjectChat]
@@ -295,7 +356,7 @@ ${cellContent}
     }
 
     case 'CREATE_AND_OPEN_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId)
+      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId, action.payload.lineage)
       const newOpenTabs = state.openTabs.includes(newObjectChat.id)
         ? state.openTabs
         : [...state.openTabs, newObjectChat.id]
@@ -691,6 +752,42 @@ ${cellContent}
           chat.id === action.payload.id 
             ? { ...chat, ...action.payload.updates, updatedAt: Date.now() }
             : chat
+        )
+      }
+    }
+
+    case 'UPDATE_PAGE_LINEAGE': {
+      return {
+        ...state,
+        pages: state.pages.map(page => 
+          page.id === action.payload.pageId 
+            ? { 
+                ...page, 
+                lineage: { 
+                  ...page.lineage, 
+                  ...action.payload.lineage 
+                }, 
+                updatedAt: Date.now() 
+              }
+            : page
+        )
+      }
+    }
+
+    case 'ADD_GENERATED_PAGE': {
+      return {
+        ...state,
+        pages: state.pages.map(page => 
+          page.id === action.payload.sourcePageId && page.lineage
+            ? { 
+                ...page, 
+                lineage: { 
+                  ...page.lineage, 
+                  generatedPageIds: [...page.lineage.generatedPageIds, action.payload.generatedPageId] 
+                }, 
+                updatedAt: Date.now() 
+              }
+            : page
         )
       }
     }

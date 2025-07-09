@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid'
-import { Page, PageFolder, CrosstabChat, CrosstabData, CrosstabStep, RegularChat, ObjectChat, ObjectData, ObjectNode } from '../types'
+import { Page, PageFolder, CrosstabChat, CrosstabData, CrosstabStep, RegularChat, ObjectChat, ObjectData, ObjectNode, PageLineage } from '../types'
 import { SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from './constants'
 
 // Chat helpers
-export const createNewChat = (title: string, folderId?: string): RegularChat => ({
+export const createNewChat = (title: string, folderId?: string, lineage?: PageLineage): RegularChat => ({
   id: uuidv4(),
   title,
   type: 'regular',
@@ -11,11 +11,15 @@ export const createNewChat = (title: string, folderId?: string): RegularChat => 
   folderId,
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  order: Date.now() // 使用创建时间作为默认排序
+  order: Date.now(), // 使用创建时间作为默认排序
+  lineage: lineage || {
+    source: 'user',
+    generatedPageIds: []
+  }
 })
 
 // 创建交叉视图聊天的helper函数
-export const createNewCrosstabChat = (title: string, folderId?: string): CrosstabChat => {
+export const createNewCrosstabChat = (title: string, folderId?: string, lineage?: PageLineage): CrosstabChat => {
   const chatId = uuidv4()
   const timestamp = Date.now()
 
@@ -76,12 +80,16 @@ export const createNewCrosstabChat = (title: string, folderId?: string): Crossta
     createdAt: timestamp,
     updatedAt: timestamp,
     folderId,
-    order: timestamp
+    order: timestamp,
+    lineage: lineage || {
+      source: 'user',
+      generatedPageIds: []
+    }
   }
 }
 
 // 创建对象聊天的helper函数
-export const createNewObjectChat = (title: string, folderId?: string): ObjectChat => {
+export const createNewObjectChat = (title: string, folderId?: string, lineage?: PageLineage): ObjectChat => {
   const chatId = uuidv4()
   const timestamp = Date.now()
   
@@ -119,7 +127,11 @@ export const createNewObjectChat = (title: string, folderId?: string): ObjectCha
     createdAt: timestamp,
     updatedAt: timestamp,
     folderId,
-    order: timestamp
+    order: timestamp,
+    lineage: lineage || {
+      source: 'user',
+      generatedPageIds: []
+    }
   }
 }
 

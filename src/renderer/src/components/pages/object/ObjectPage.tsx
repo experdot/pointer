@@ -6,6 +6,7 @@ import ObjectBrowser from './ObjectBrowser'
 import ObjectPropertyView from './ObjectPropertyView'
 import ObjectAIGenerator from './ObjectAIGenerator'
 import ObjectCrosstabAnalyzer from './ObjectCrosstabAnalyzer'
+import PageLineageDisplay from '../../common/PageLineageDisplay'
 import { createAIService } from '../../../services/aiService'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { v4 as uuidv4 } from 'uuid'
@@ -224,58 +225,71 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   }, [chat.id, chat.objectData, dispatch])
 
   return (
-    <Layout style={{ height: '100%' }}>
-      {/* 左侧：对象浏览器 */}
-      <Sider 
-        width={350} 
-        theme="light"
-        style={{ 
-          minWidth: 300,
-          maxWidth: 500,
-          background: '#fafafa',
-          borderRight: '1px solid #f0f0f0',
-          resize: 'horizontal',
-          overflow: 'auto'
-        }}
-      >
-        <ObjectBrowser chatId={chatId} />
-      </Sider>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* 顶部：页面溯源信息 */}
+      <div style={{ 
+        flexShrink: 0, 
+        background: '#fff',
+        borderBottom: '1px solid #f0f0f0',
+        padding: '0 16px'
+      }}>
+        <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
+      </div>
 
-      {/* 中间：属性视图 */}
-      <Content style={{ background: '#fff', overflow: 'auto' }}>
-        <ObjectPropertyView chatId={chatId} />
-      </Content>
+      {/* 主体内容 */}
+      <Layout style={{ flex: 1 }}>
+        {/* 左侧：对象浏览器 */}
+        <Sider 
+          width={350} 
+          theme="light"
+          style={{ 
+            minWidth: 300,
+            maxWidth: 500,
+            background: '#fafafa',
+            borderRight: '1px solid #f0f0f0',
+            resize: 'horizontal',
+            overflow: 'auto'
+          }}
+        >
+          <ObjectBrowser chatId={chatId} />
+        </Sider>
 
-      {/* 右侧：工具面板 */}
-      <Sider 
-        width={400} 
-        theme="light"
-        style={{ 
-          minWidth: 350,
-          maxWidth: 600,
-          background: '#fafafa',
-          borderLeft: '1px solid #f0f0f0',
-          resize: 'horizontal',
-          overflow: 'auto'
-        }}
-      >
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {/* AI生成器 */}
-          <div style={{ flex: '1', overflow: 'auto' }}>
-            <ObjectAIGenerator
-              chatId={chatId}
-              selectedNodeId={chat.objectData.selectedNodeId}
-              onGenerate={handleGenerateChildren}
-            />
+        {/* 中间：属性视图 */}
+        <Content style={{ background: '#fff', overflow: 'auto' }}>
+          <ObjectPropertyView chatId={chatId} />
+        </Content>
+
+        {/* 右侧：工具面板 */}
+        <Sider 
+          width={400} 
+          theme="light"
+          style={{ 
+            minWidth: 350,
+            maxWidth: 600,
+            background: '#fafafa',
+            borderLeft: '1px solid #f0f0f0',
+            resize: 'horizontal',
+            overflow: 'auto'
+          }}
+        >
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* AI生成器 */}
+            <div style={{ flex: '1', overflow: 'auto' }}>
+              <ObjectAIGenerator
+                chatId={chatId}
+                selectedNodeId={chat.objectData.selectedNodeId}
+                onGenerate={handleGenerateChildren}
+              />
+            </div>
+            
+            {/* 交叉分析工具 */}
+            <div style={{ flexShrink: 0 }}>
+              <ObjectCrosstabAnalyzer chatId={chatId} />
+            </div>
           </div>
-          
-          {/* 交叉分析工具 */}
-          <div style={{ flexShrink: 0 }}>
-            <ObjectCrosstabAnalyzer chatId={chatId} />
-          </div>
-        </div>
-      </Sider>
-    </Layout>
+        </Sider>
+      </Layout>
+    </div>
   )
 }
 

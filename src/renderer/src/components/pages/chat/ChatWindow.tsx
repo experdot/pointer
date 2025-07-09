@@ -5,6 +5,7 @@ import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
 import ChatInput, { ChatInputRef } from './ChatInput'
 import Settings from '../../Settings'
+import PageLineageDisplay from '../../common/PageLineageDisplay'
 import { MessageTree } from './messageTree'
 
 interface ChatWindowProps {
@@ -79,6 +80,15 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
 
   return (
     <div className="chat-window">
+      {/* 页面溯源信息 */}
+      <div style={{ 
+        borderBottom: '1px solid #f0f0f0', 
+        backgroundColor: '#fafafa',
+        padding: '8px 16px'
+      }}>
+        <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
+      </div>
+
       <ChatLogic chatId={chatId}>
         {({
           isLoading,
