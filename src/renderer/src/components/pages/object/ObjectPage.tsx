@@ -1,5 +1,6 @@
-import React, { useEffect, useCallback } from 'react'
-import { Layout, message } from 'antd'
+import React, { useEffect, useCallback, useState } from 'react'
+import { Layout, message, Card, Space, Typography } from 'antd'
+import { ProjectOutlined } from '@ant-design/icons'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 import ObjectBrowser from './ObjectBrowser'
@@ -7,6 +8,7 @@ import ObjectPropertyView from './ObjectPropertyView'
 import ObjectAIGenerator from './ObjectAIGenerator'
 import ObjectCrosstabAnalyzer from './ObjectCrosstabAnalyzer'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
+import ModelSelector from '../chat/ModelSelector'
 import { createAIService } from '../../../services/aiService'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { v4 as uuidv4 } from 'uuid'
@@ -14,6 +16,7 @@ import { ObjectNode as ObjectNodeType } from '../../../types'
 import { createObjectAIService } from './ObjectAIService'
 
 const { Sider, Content } = Layout
+const { Title } = Typography
 
 interface ObjectPageProps {
   chatId: string
@@ -22,6 +25,9 @@ interface ObjectPageProps {
 const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   const { state, dispatch } = useAppContext()
   const { settings } = useSettings()
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    state.settings.defaultLLMId
+  )
   
   // 从状态中获取对象聊天数据
   const chat = state.pages.find(p => p.id === chatId) as ObjectChat | undefined
@@ -37,13 +43,18 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
   // 获取LLM配置
   const getLLMConfig = useCallback(() => {
-    const { llmConfigs, defaultLLMId } = settings
+    const targetModelId = selectedModel || state.settings.defaultLLMId
+    const { llmConfigs } = settings
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }
     
-    return llmConfigs.find(config => config.id === defaultLLMId) || llmConfigs[0]
-  }, [settings])
+    return llmConfigs.find(config => config.id === targetModelId) || llmConfigs[0]
+  }, [selectedModel, settings, state.settings.defaultLLMId])
+
+  const handleModelChange = useCallback((modelId: string) => {
+    setSelectedModel(modelId)
+  }, [])
 
   // 获取节点的完整上下文信息
   const getNodeContext = useCallback((nodeId: string) => {
@@ -234,6 +245,31 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         padding: '0 16px'
       }}>
         <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
+      </div>
+
+      {/* 页面标题和模型选择器 */}
+      <div style={{ 
+        flexShrink: 0, 
+        background: '#fff',
+        borderBottom: '1px solid #f0f0f0',
+        padding: '12px 16px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={4} style={{ margin: 0 }}>
+            <ProjectOutlined /> 对象浏览器
+          </Title>
+          
+          {/* 模型选择器 */}
+          <Space>
+              <span style={{ fontSize: '12px', color: '#666' }}>模型选择:</span>
+              <ModelSelector
+                llmConfigs={state.settings.llmConfigs || []}
+                selectedModel={selectedModel}
+                onChange={handleModelChange}
+                size="small"
+              />
+            </Space>
+        </div>
       </div>
 
       {/* 主体内容 */}

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { Typography, Tabs, App, Space } from 'antd'
+import { Typography, Tabs, App, Space, Card } from 'antd'
 import {
   FileTextOutlined,
   BorderOutlined,
@@ -17,6 +17,7 @@ import MetadataEditor from './MetadataEditor'
 import AxisDataManager from './AxisDataManager'
 import CrosstabTable from './CrosstabTable'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
+import ModelSelector from '../chat/ModelSelector'
 import './crosstab-page.css'
 
 const { Title } = Typography
@@ -31,6 +32,9 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const [userInput, setUserInput] = useState('')
   const [activeTab, setActiveTab] = useState('0')
   const [isEditingMetadata, setIsEditingMetadata] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    state.settings.defaultLLMId
+  )
   const [isGeneratingColumn, setIsGeneratingColumn] = useState<string | null>(null)
   const [isGeneratingRow, setIsGeneratingRow] = useState<string | null>(null)
   const [isGeneratingCell, setIsGeneratingCell] = useState<string | null>(null)
@@ -46,10 +50,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   }, [state.pages, chatId])
 
   const getLLMConfig = useCallback(() => {
-    return (
-      state.settings.llmConfigs?.find((config) => config.id === state.settings.defaultLLMId) || null
-    )
-  }, [state.settings.llmConfigs, state.settings.defaultLLMId])
+    const targetModelId = selectedModel || state.settings.defaultLLMId
+    return state.settings.llmConfigs?.find((config) => config.id === targetModelId) || null
+  }, [selectedModel, state.settings.llmConfigs, state.settings.defaultLLMId])
+
+  const handleModelChange = useCallback((modelId: string) => {
+    setSelectedModel(modelId)
+  }, [])
 
   const handleGenerateColumn = useCallback(
     async (horizontalItem: string) => {
@@ -570,7 +577,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
           // 保存候选项到metadata中
-          const newMetadata = { ...chat.crosstabData.metadata!, TopicSuggestions: parsedSuggestions }
+          const newMetadata = {
+            ...chat.crosstabData.metadata!,
+            TopicSuggestions: parsedSuggestions
+          }
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
             payload: {
@@ -631,7 +641,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
           // 保存候选项到metadata中
-          const newMetadata = { ...chat.crosstabData.metadata!, HorizontalAxisSuggestions: parsedSuggestions }
+          const newMetadata = {
+            ...chat.crosstabData.metadata!,
+            HorizontalAxisSuggestions: parsedSuggestions
+          }
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
             payload: {
@@ -692,7 +705,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
           // 保存候选项到metadata中
-          const newMetadata = { ...chat.crosstabData.metadata!, VerticalAxisSuggestions: parsedSuggestions }
+          const newMetadata = {
+            ...chat.crosstabData.metadata!,
+            VerticalAxisSuggestions: parsedSuggestions
+          }
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
             payload: {
@@ -755,7 +771,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
           // 保存候选项到metadata中
-          const newMetadata = { ...chat.crosstabData.metadata!, ValueSuggestions: parsedSuggestions }
+          const newMetadata = {
+            ...chat.crosstabData.metadata!,
+            ValueSuggestions: parsedSuggestions
+          }
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
             payload: {
@@ -894,18 +913,40 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   return (
     <div className="crosstab-page">
       {/* 页面溯源信息 */}
-      <div style={{ 
-        borderBottom: '1px solid #f0f0f0', 
-        backgroundColor: '#fafafa',
-        padding: '8px 16px'
-      }}>
+      <div
+        style={{
+          borderBottom: '1px solid #f0f0f0',
+          backgroundColor: '#fafafa',
+          padding: '8px 16px'
+        }}
+      >
         <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
       </div>
 
       <div className="crosstab-header">
-        <Title level={4}>
-          <TableOutlined /> 交叉视图生成器
-        </Title>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px'
+          }}
+        >
+          <Title level={4} style={{ margin: 0 }}>
+            <TableOutlined /> 交叉视图生成器
+          </Title>
+
+          {/* 模型选择器 */}
+          <Space>
+            <span style={{ fontSize: '12px', color: '#666' }}>模型选择:</span>
+            <ModelSelector
+              llmConfigs={state.settings.llmConfigs || []}
+              selectedModel={selectedModel}
+              onChange={handleModelChange}
+              size="small"
+            />
+          </Space>
+        </div>
       </div>
 
       <div className="crosstab-content">
