@@ -43,6 +43,53 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
     return llmConfigs.find(config => config.id === defaultLLMId) || llmConfigs[0]
   }, [settings])
 
+  // 获取节点的完整上下文信息
+  const getNodeContext = useCallback((nodeId: string) => {
+    const { nodes } = chat.objectData
+    const node = nodes[nodeId]
+    if (!node) return null
+
+    // 获取祖先节点链
+    const getAncestorChain = (currentNode: ObjectNodeType): ObjectNodeType[] => {
+      const chain = [currentNode]
+      let current = currentNode
+      while (current.parentId && nodes[current.parentId]) {
+        current = nodes[current.parentId]
+        chain.unshift(current)
+      }
+      return chain
+    }
+
+    // 获取平级节点
+    const getSiblings = (currentNode: ObjectNodeType): ObjectNodeType[] => {
+      if (!currentNode.parentId) return []
+      const parent = nodes[currentNode.parentId]
+      if (!parent) return []
+      
+      return parent.children
+        .map(childId => nodes[childId])
+        .filter(child => child && child.id !== currentNode.id)
+    }
+
+    // 获取已有的子节点
+    const getExistingChildren = (currentNode: ObjectNodeType): ObjectNodeType[] => {
+      return currentNode.children
+        .map(childId => nodes[childId])
+        .filter(child => child)
+    }
+
+    const ancestorChain = getAncestorChain(node)
+    const siblings = getSiblings(node)
+    const existingChildren = getExistingChildren(node)
+
+    return {
+      node,
+      ancestorChain,
+      siblings,
+      existingChildren
+    }
+  }, [chat.objectData])
+
   // 处理AI生成子节点
   const handleGenerateChildren = useCallback(async (nodeId: string, prompt: string) => {
     const llmConfig = getLLMConfig()
@@ -51,7 +98,13 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
       return
     }
 
-    const { nodes } = chat.objectData
+    const context = getNodeContext(nodeId)
+    if (!context) {
+      message.error('无法获取节点上下文')
+      return
+    }
+
+    const { node: parentNode, ancestorChain, siblings, existingChildren } = context
 
     try {
       // 首先记录生成请求
@@ -67,15 +120,42 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         }
       })
 
+      // 构建层级结构信息
+      const hierarchyInfo = ancestorChain.map((ancestor, index) => {
+        const indent = '  '.repeat(index)
+        return `${indent}- ${ancestor.name} (${ancestor.type}): ${ancestor.description || '无描述'}`
+      }).join('\n')
+
+      // 构建平级节点信息
+      const siblingsInfo = siblings.length > 0 
+        ? siblings.map(sibling => `  - ${sibling.name} (${sibling.type}): ${sibling.description || '无描述'}`).join('\n')
+        : '  无平级节点'
+
+      // 构建已有子节点信息
+      const existingChildrenInfo = existingChildren.length > 0
+        ? existingChildren.map(child => `  - ${child.name} (${child.type}): ${child.description || '无描述'}`).join('\n')
+        : '  暂无子节点'
+
       // 构建AI提示词
-      const parentNode = nodes[nodeId]
       const aiPrompt = `# 任务
 根据用户的描述，为指定的对象节点生成子节点。你需要生成一个JSON数组，包含多个子节点的定义。
 
-# 父节点信息
+# 对象结构上下文
+
+## 层级结构（从根节点到当前节点）
+${hierarchyInfo}
+
+## 当前节点信息
 - 节点名称: ${parentNode.name}
 - 节点类型: ${parentNode.type}
 - 节点描述: ${parentNode.description || '无'}
+- 节点值: ${parentNode.value || '无'}
+
+## 平级节点信息
+${siblingsInfo}
+
+## 已有子节点
+${existingChildrenInfo}
 
 # 用户需求
 ${prompt}
@@ -95,11 +175,14 @@ ${prompt}
 \`\`\`
 
 # 生成要求
-1. 根据父节点的类型和上下文，生成合理的子节点
-2. 每个子节点必须有name、type、description字段
-3. 如果是基础类型（string、number、boolean），提供合理的value
-4. 如果是object类型且有具体属性，在properties中提供
-5. 生成的子节点数量建议在3-8个之间，确保质量优于数量
+1. 根据整个对象结构的上下文，生成合理的子节点
+2. 避免与已有子节点重复，确保命名的一致性
+3. 参考平级节点的命名风格和结构模式
+4. 每个子节点必须有name、type、description字段
+5. 如果是基础类型（string、number、boolean），提供合理的value
+6. 如果是object类型且有具体属性，在properties中提供
+7. 生成的子节点数量建议在3-8个之间，确保质量优于数量
+8. 考虑父节点的类型和用途，生成符合语义的子节点
 
 请开始生成：`
 
