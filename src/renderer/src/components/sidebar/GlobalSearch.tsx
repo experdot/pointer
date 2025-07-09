@@ -1,12 +1,6 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Input, List, Avatar, Typography, Empty, Spin, Card, Tag, Button } from 'antd'
-import {
-  SearchOutlined,
-  MessageOutlined,
-  UserOutlined,
-  RobotOutlined,
-  CloseOutlined
-} from '@ant-design/icons'
+import { SearchOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../store/AppContext'
 import { searchMessages } from '../../store/reducers/searchReducer'
 import { SearchResult } from '../../types'

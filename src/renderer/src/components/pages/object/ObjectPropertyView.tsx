@@ -17,8 +17,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   const [editValue, setEditValue] = useState<string>('')
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find(p => p.id === chatId) as ObjectChat | undefined
-  
+  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
   }
@@ -146,8 +146,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           </Space.Compact>
         ) : (
           <Space>
-            <Text 
-              style={{ 
+            <Text
+              style={{
                 fontSize: '12px',
                 fontFamily: field === 'value' || field === 'properties' ? 'monospace' : 'inherit',
                 wordBreak: 'break-word'
@@ -180,12 +180,14 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
             属性详情
           </Title>
         </div>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '200px' 
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '200px'
+          }}
+        >
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="请选择一个对象节点查看详细信息"
@@ -234,15 +236,23 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           {/* 层级信息 */}
           <Card size="small" title="层级信息" style={{ width: '100%' }}>
             {renderPropertyItem('是否展开', selectedNode.expanded ? '是' : '否')}
-            {selectedNode.children && renderPropertyItem('子节点数量', selectedNode.children.length)}
+            {selectedNode.children &&
+              renderPropertyItem('子节点数量', selectedNode.children.length)}
             {selectedNode.children && selectedNode.children.length > 0 && (
               <div style={{ marginBottom: '8px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}>
+                <Text
+                  type="secondary"
+                  style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}
+                >
                   子节点ID:
                 </Text>
                 <div style={{ paddingLeft: '92px' }}>
-                  {selectedNode.children.map(id => (
-                    <Text key={id} code style={{ display: 'block', fontSize: '11px', marginBottom: '2px' }}>
+                  {selectedNode.children.map((id) => (
+                    <Text
+                      key={id}
+                      code
+                      style={{ display: 'block', fontSize: '11px', marginBottom: '2px' }}
+                    >
                       {id}
                     </Text>
                   ))}
@@ -254,11 +264,20 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           {/* 元数据 */}
           {selectedNode.metadata && (
             <Card size="small" title="元数据" style={{ width: '100%' }}>
-              {selectedNode.metadata.source && renderPropertyItem('来源', selectedNode.metadata.source === 'ai' ? 'AI生成' : '用户创建')}
-              {selectedNode.metadata.createdAt && renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
-              {selectedNode.metadata.updatedAt && renderPropertyItem('更新时间', formatTime(selectedNode.metadata.updatedAt))}
-              {selectedNode.metadata.aiPrompt && renderPropertyItem('AI提示', selectedNode.metadata.aiPrompt)}
-              {selectedNode.metadata.tags && selectedNode.metadata.tags.length > 0 && renderPropertyItem('标签', selectedNode.metadata.tags.join(', '))}
+              {selectedNode.metadata.source &&
+                renderPropertyItem(
+                  '来源',
+                  selectedNode.metadata.source === 'ai' ? 'AI生成' : '用户创建'
+                )}
+              {selectedNode.metadata.createdAt &&
+                renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
+              {selectedNode.metadata.updatedAt &&
+                renderPropertyItem('更新时间', formatTime(selectedNode.metadata.updatedAt))}
+              {selectedNode.metadata.aiPrompt &&
+                renderPropertyItem('AI提示', selectedNode.metadata.aiPrompt)}
+              {selectedNode.metadata.tags &&
+                selectedNode.metadata.tags.length > 0 &&
+                renderPropertyItem('标签', selectedNode.metadata.tags.join(', '))}
               {selectedNode.metadata.readonly && renderPropertyItem('只读', '是')}
             </Card>
           )}
@@ -268,4 +287,4 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   )
 }
 
-export default ObjectPropertyView 
+export default ObjectPropertyView

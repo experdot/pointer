@@ -20,11 +20,12 @@ export default function ModelSelector({
   disabled = false,
   size = 'middle'
 }: ModelSelectorProps) {
-
   const options = llmConfigs.map((config) => ({
     value: config.id,
     label: (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',gap: 4 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <RobotOutlined />
           <div>

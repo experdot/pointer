@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useMemo } from 'react'
-import { Empty } from 'antd'
 import { ChatMessage, LLMConfig } from '../../../types'
 import MessageItem from './MessageItem'
 import WelcomeMessage from './WelcomeMessage'
@@ -97,26 +96,6 @@ export default function MessageList({
     prevMessagesLength.current = currentMessagesLength
     prevStreamingContent.current = currentStreamingContent
   }, [messages.length, streamingContent])
-
-  // 处理子分支切换
-  const handleChildBranchSwitch = (parentMessageId: string, direction: 'previous' | 'next') => {
-    const currentIndex = messageTree.getCurrentChildBranchIndex(parentMessageId)
-    const branchCount = messageTree.getChildBranchCount(parentMessageId)
-
-    let newIndex: number
-    if (direction === 'previous') {
-      newIndex = Math.max(0, currentIndex - 1)
-    } else {
-      newIndex = Math.min(branchCount - 1, currentIndex + 1)
-    }
-
-    if (newIndex !== currentIndex) {
-      // 直接调用消息树的子分支切换方法
-      const newPath = messageTree.switchToChildBranch(parentMessageId, newIndex)
-      // 通过回调更新状态
-      onSwitchBranch?.(parentMessageId, newIndex)
-    }
-  }
 
   // 处理兄弟分支切换
   const handleSiblingBranchSwitch = (messageId: string, direction: 'previous' | 'next') => {

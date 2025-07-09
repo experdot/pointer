@@ -25,20 +25,20 @@ export function useSettings() {
     (config: LLMConfig) => {
       const currentConfigs = state.settings.llmConfigs || []
       const isFirstConfig = currentConfigs.length === 0
-      
+
       // 如果是第一个配置，自动设为默认
       const newConfig = isFirstConfig ? { ...config, isDefault: true } : config
       const newConfigs = [...currentConfigs, newConfig]
-      
+
       // 如果是第一个配置，更新defaultLLMId
-      const updatedSettings: Partial<Settings> = { 
-        llmConfigs: newConfigs 
+      const updatedSettings: Partial<Settings> = {
+        llmConfigs: newConfigs
       }
-      
+
       if (isFirstConfig) {
         updatedSettings.defaultLLMId = newConfig.id
       }
-      
+
       updateSettings(updatedSettings)
     },
     [state.settings.llmConfigs, updateSettings]
@@ -67,7 +67,7 @@ export function useSettings() {
           // 选择第一个配置作为新的默认配置
           const newDefaultConfig = newConfigs[0]
           newDefaultLLMId = newDefaultConfig.id
-          
+
           // 更新配置列表，设置新的默认配置
           newConfigs[0] = { ...newDefaultConfig, isDefault: true }
         } else {

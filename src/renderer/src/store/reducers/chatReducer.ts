@@ -1,9 +1,15 @@
-import { AppState, AppAction, RegularChat, CrosstabChat, ObjectChat, ObjectGenerationRecord } from '../../types'
-import { 
-  createNewChat, 
-  createNewCrosstabChat, 
+import {
+  AppState,
+  AppAction,
+  RegularChat,
+  CrosstabChat,
+  ObjectChat,
+  ObjectGenerationRecord
+} from '../../types'
+import {
+  createNewChat,
+  createNewCrosstabChat,
   createNewObjectChat,
-  updatePageById, 
   removeFromArray,
   addNodeToObjectData,
   deleteNodeFromObjectData,
@@ -18,7 +24,11 @@ import { v4 as uuidv4 } from 'uuid'
 export const handleChatActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'CREATE_CHAT': {
-      const newChat = createNewChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newChat = createNewChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
       return {
         ...state,
         pages: [...state.pages, newChat]
@@ -26,7 +36,11 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
     }
 
     case 'CREATE_AND_OPEN_CHAT': {
-      const newChat = createNewChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newChat = createNewChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
 
       // 如果有初始消息，添加到聊天中
       if (action.payload.initialMessage) {
@@ -51,7 +65,8 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
     }
 
     case 'CREATE_CHAT_FROM_CELL': {
-      const { folderId, horizontalItem, verticalItem, cellContent, metadata, sourcePageId } = action.payload
+      const { folderId, horizontalItem, verticalItem, cellContent, metadata, sourcePageId } =
+        action.payload
 
       // 构建用户提示词
       const prompt = `# 基于交叉分析表单元格的深度分析
@@ -116,7 +131,7 @@ ${cellContent}
         : [...state.openTabs, newChat.id]
 
       // 更新源页面的generatedPageIds
-      const updatedPages = state.pages.map(page => {
+      const updatedPages = state.pages.map((page) => {
         if (page.id === sourcePageId && page.lineage) {
           return {
             ...page,
@@ -140,7 +155,11 @@ ${cellContent}
     }
 
     case 'CREATE_CROSSTAB_CHAT': {
-      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newCrosstabChat = createNewCrosstabChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
       return {
         ...state,
         pages: [...state.pages, newCrosstabChat]
@@ -148,7 +167,11 @@ ${cellContent}
     }
 
     case 'CREATE_AND_OPEN_CROSSTAB_CHAT': {
-      const newCrosstabChat = createNewCrosstabChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newCrosstabChat = createNewCrosstabChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
       const newOpenTabs = state.openTabs.includes(newCrosstabChat.id)
         ? state.openTabs
         : [...state.openTabs, newCrosstabChat.id]
@@ -164,50 +187,61 @@ ${cellContent}
     }
 
     case 'CREATE_CROSSTAB_FROM_OBJECTS': {
-      const { title, folderId, horizontalNodeId, verticalNodeId, objectData, horizontalContext, verticalContext, sourcePageId } = action.payload
-      
+      const {
+        title,
+        folderId,
+        horizontalNodeId,
+        verticalNodeId,
+        objectData,
+        horizontalContext,
+        verticalContext,
+        sourcePageId
+      } = action.payload
+
       // 获取横轴和纵轴节点
       const horizontalNode = objectData.nodes[horizontalNodeId]
       const verticalNode = objectData.nodes[verticalNodeId]
-      
+
       if (!horizontalNode || !verticalNode) {
         return state
       }
 
       // 获取横轴和纵轴的子节点名称作为值列表
       const horizontalValues = (horizontalNode.children || [])
-        .map(childId => objectData.nodes[childId]?.name)
+        .map((childId) => objectData.nodes[childId]?.name)
         .filter(Boolean)
       const verticalValues = (verticalNode.children || [])
-        .map(childId => objectData.nodes[childId]?.name)
+        .map((childId) => objectData.nodes[childId]?.name)
         .filter(Boolean)
 
       // 构建层级结构描述
       const buildHierarchyDescription = (context: any) => {
         if (!context || !context.ancestorChain) return ''
-        
+
         const hierarchy = context.ancestorChain
           .map((node: any, index: number) => {
             const indent = '  '.repeat(index)
             return `${indent}- ${node.name}${node.description ? ` (${node.description})` : ''}`
           })
           .join('\n')
-        
+
         return hierarchy
       }
 
       // 构建节点详细信息
       const buildNodeDetails = (node: any, context: any) => {
         const details = []
-        
+
         // 节点基本信息
         details.push(`节点名称: ${node.name}`)
         details.push(`节点类型: ${node.type}`)
         if (node.description) details.push(`描述: ${node.description}`)
         if (node.value !== undefined && node.value !== null) {
-          details.push(`值: ${typeof node.value === 'object' ? JSON.stringify(node.value) : node.value}`)
+          details.push(
+            `值: ${typeof node.value === 'object' ? JSON.stringify(node.value) : node.value}`
+          )
         }
-        
+
         // 属性信息
         if (node.properties && Object.keys(node.properties).length > 0) {
           details.push('属性:')
@@ -215,7 +249,7 @@ ${cellContent}
             details.push(`  ${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
           })
         }
-        
+
         // 上下文信息
         if (context) {
           if (context.siblings && context.siblings.length > 0) {
@@ -225,7 +259,7 @@ ${cellContent}
             details.push(`子节点: ${context.children.map((c: any) => c.name).join(', ')}`)
           }
         }
-        
+
         return details.join('\n')
       }
 
@@ -240,40 +274,56 @@ ${cellContent}
           // 整体对象结构信息
           rootNodeId: objectData.rootNodeId,
           totalNodes: Object.keys(objectData.nodes).length,
-          
+
           // 横轴节点的详细信息
-          horizontalNodeDetails: horizontalContext ? {
-            hierarchy: buildHierarchyDescription(horizontalContext),
-            nodeInfo: buildNodeDetails(horizontalNode, horizontalContext),
-            parentContext: horizontalNode.parentId ? objectData.nodes[horizontalNode.parentId]?.name : '根节点'
-          } : null,
-          
+          horizontalNodeDetails: horizontalContext
+            ? {
+                hierarchy: buildHierarchyDescription(horizontalContext),
+                nodeInfo: buildNodeDetails(horizontalNode, horizontalContext),
+                parentContext: horizontalNode.parentId
+                  ? objectData.nodes[horizontalNode.parentId]?.name
+                  : '根节点'
+              }
+            : null,
+
           // 纵轴节点的详细信息
-          verticalNodeDetails: verticalContext ? {
-            hierarchy: buildHierarchyDescription(verticalContext),
-            nodeInfo: buildNodeDetails(verticalNode, verticalContext),
-            parentContext: verticalNode.parentId ? objectData.nodes[verticalNode.parentId]?.name : '根节点'
-          } : null,
-          
+          verticalNodeDetails: verticalContext
+            ? {
+                hierarchy: buildHierarchyDescription(verticalContext),
+                nodeInfo: buildNodeDetails(verticalNode, verticalContext),
+                parentContext: verticalNode.parentId
+                  ? objectData.nodes[verticalNode.parentId]?.name
+                  : '根节点'
+              }
+            : null,
+
           // 子节点的详细信息
-          horizontalChildrenDetails: horizontalValues.map(childName => {
-            const childNode = Object.values(objectData.nodes).find(n => n.name === childName && n.parentId === horizontalNodeId)
-            return childNode ? {
-              name: childNode.name,
-              type: childNode.type,
-              description: childNode.description,
-              value: childNode.value
-            } : { name: childName }
+          horizontalChildrenDetails: horizontalValues.map((childName) => {
+            const childNode = Object.values(objectData.nodes).find(
+              (n) => n.name === childName && n.parentId === horizontalNodeId
+            )
+            return childNode
+              ? {
+                  name: childNode.name,
+                  type: childNode.type,
+                  description: childNode.description,
+                  value: childNode.value
+                }
+              : { name: childName }
           }),
-          
-          verticalChildrenDetails: verticalValues.map(childName => {
-            const childNode = Object.values(objectData.nodes).find(n => n.name === childName && n.parentId === verticalNodeId)
-            return childNode ? {
-              name: childNode.name,
-              type: childNode.type,
-              description: childNode.description,
-              value: childNode.value
-            } : { name: childName }
+
+          verticalChildrenDetails: verticalValues.map((childName) => {
+            const childNode = Object.values(objectData.nodes).find(
+              (n) => n.name === childName && n.parentId === verticalNodeId
+            )
+            return childNode
+              ? {
+                  name: childNode.name,
+                  type: childNode.type,
+                  description: childNode.description,
+                  value: childNode.value
+                }
+              : { name: childName }
           })
         }
       }
@@ -309,9 +359,17 @@ ${cellContent}
             if (index === 0) {
               return { ...step, isCompleted: true, response: JSON.stringify(metadata, null, 2) }
             } else if (index === 1) {
-              return { ...step, isCompleted: true, response: JSON.stringify(horizontalValues, null, 2) }
+              return {
+                ...step,
+                isCompleted: true,
+                response: JSON.stringify(horizontalValues, null, 2)
+              }
             } else if (index === 2) {
-              return { ...step, isCompleted: true, response: JSON.stringify(verticalValues, null, 2) }
+              return {
+                ...step,
+                isCompleted: true,
+                response: JSON.stringify(verticalValues, null, 2)
+              }
             }
             return step
           })
@@ -323,7 +381,7 @@ ${cellContent}
         : [...state.openTabs, newCrosstabChat.id]
 
       // 更新源页面的generatedPageIds
-      const updatedPages = state.pages.map(page => {
+      const updatedPages = state.pages.map((page) => {
         if (page.id === sourcePageId && page.lineage) {
           return {
             ...page,
@@ -348,7 +406,11 @@ ${cellContent}
 
     // 对象聊天相关操作
     case 'CREATE_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newObjectChat = createNewObjectChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
       return {
         ...state,
         pages: [...state.pages, newObjectChat]
@@ -356,7 +418,11 @@ ${cellContent}
     }
 
     case 'CREATE_AND_OPEN_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(action.payload.title, action.payload.folderId, action.payload.lineage)
+      const newObjectChat = createNewObjectChat(
+        action.payload.title,
+        action.payload.folderId,
+        action.payload.lineage
+      )
       const newOpenTabs = state.openTabs.includes(newObjectChat.id)
         ? state.openTabs
         : [...state.openTabs, newObjectChat.id]
@@ -526,14 +592,15 @@ ${cellContent}
         pages: state.pages.map((chat) => {
           if (chat.id === chatId && chat.type === 'object') {
             // 执行搜索逻辑
-            const filteredNodeIds = query.trim() 
+            const filteredNodeIds = query.trim()
               ? Object.values(chat.objectData.nodes)
-                  .filter(node => 
-                    node.name.toLowerCase().includes(query.toLowerCase()) ||
-                    node.description?.toLowerCase().includes(query.toLowerCase()) ||
-                    node.type.toLowerCase().includes(query.toLowerCase())
+                  .filter(
+                    (node) =>
+                      node.name.toLowerCase().includes(query.toLowerCase()) ||
+                      node.description?.toLowerCase().includes(query.toLowerCase()) ||
+                      node.type.toLowerCase().includes(query.toLowerCase())
                   )
-                  .map(node => node.id)
+                  .map((node) => node.id)
               : undefined
 
             return {
@@ -574,7 +641,7 @@ ${cellContent}
 
     case 'GENERATE_OBJECT_CHILDREN': {
       const { chatId, nodeId, prompt, modelId, generationId } = action.payload
-      
+
       return {
         ...state,
         pages: state.pages.map((chat) => {
@@ -629,10 +696,8 @@ ${cellContent}
         ...state,
         pages: state.pages.map((chat) => {
           if (chat.id === chatId && chat.type === 'object') {
-            const updatedHistory = chat.objectData.generationHistory.map(record => 
-              record.id === generationId 
-                ? { ...record, generatedNodeIds }
-                : record
+            const updatedHistory = chat.objectData.generationHistory.map((record) =>
+              record.id === generationId ? { ...record, generatedNodeIds } : record
             )
             return {
               ...chat,
@@ -748,8 +813,8 @@ ${cellContent}
     case 'UPDATE_CHAT': {
       return {
         ...state,
-        pages: state.pages.map(chat => 
-          chat.id === action.payload.id 
+        pages: state.pages.map((chat) =>
+          chat.id === action.payload.id
             ? { ...chat, ...action.payload.updates, updatedAt: Date.now() }
             : chat
         )
@@ -759,15 +824,15 @@ ${cellContent}
     case 'UPDATE_PAGE_LINEAGE': {
       return {
         ...state,
-        pages: state.pages.map(page => 
-          page.id === action.payload.pageId 
-            ? { 
-                ...page, 
-                lineage: { 
-                  ...page.lineage, 
-                  ...action.payload.lineage 
-                }, 
-                updatedAt: Date.now() 
+        pages: state.pages.map((page) =>
+          page.id === action.payload.pageId
+            ? {
+                ...page,
+                lineage: {
+                  ...page.lineage,
+                  ...action.payload.lineage
+                },
+                updatedAt: Date.now()
               }
             : page
         )
@@ -777,15 +842,18 @@ ${cellContent}
     case 'ADD_GENERATED_PAGE': {
       return {
         ...state,
-        pages: state.pages.map(page => 
+        pages: state.pages.map((page) =>
           page.id === action.payload.sourcePageId && page.lineage
-            ? { 
-                ...page, 
-                lineage: { 
-                  ...page.lineage, 
-                  generatedPageIds: [...page.lineage.generatedPageIds, action.payload.generatedPageId] 
-                }, 
-                updatedAt: Date.now() 
+            ? {
+                ...page,
+                lineage: {
+                  ...page.lineage,
+                  generatedPageIds: [
+                    ...page.lineage.generatedPageIds,
+                    action.payload.generatedPageId
+                  ]
+                },
+                updatedAt: Date.now()
               }
             : page
         )
@@ -796,7 +864,7 @@ ${cellContent}
       const chatToDelete = state.pages.find((chat) => chat.id === action.payload.id)
       if (!chatToDelete) return state
 
-      const newOpenTabs = state.openTabs.filter(id => id !== action.payload.id)
+      const newOpenTabs = state.openTabs.filter((id) => id !== action.payload.id)
       let newActiveTabId = state.activeTabId
 
       if (state.activeTabId === action.payload.id) {
@@ -819,7 +887,8 @@ ${cellContent}
 
       let newActiveTabId = state.activeTabId
       if (state.activeTabId && chatIdsToDelete.includes(state.activeTabId)) {
-        newActiveTabId = updatedOpenTabs.length > 0 ? updatedOpenTabs[updatedOpenTabs.length - 1] : null
+        newActiveTabId =
+          updatedOpenTabs.length > 0 ? updatedOpenTabs[updatedOpenTabs.length - 1] : null
       }
 
       return {

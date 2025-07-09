@@ -24,7 +24,13 @@ export interface ChatMessage {
 
 // 页面溯源信息
 export interface PageLineage {
-  source: 'user' | 'object_to_crosstab' | 'crosstab_to_chat' | 'object_to_chat' | 'chat_to_object' | 'other'
+  source:
+    | 'user'
+    | 'object_to_crosstab'
+    | 'crosstab_to_chat'
+    | 'object_to_chat'
+    | 'chat_to_object'
+    | 'other'
   sourcePageId?: string // 源页面ID
   sourceContext?: {
     // 对象页面到交叉分析页面的上下文
@@ -231,7 +237,12 @@ export type AppAction =
   | { type: 'CREATE_CHAT'; payload: { title: string; folderId?: string; lineage?: PageLineage } }
   | {
       type: 'CREATE_AND_OPEN_CHAT'
-      payload: { title: string; folderId?: string; initialMessage?: ChatMessage; lineage?: PageLineage }
+      payload: {
+        title: string
+        folderId?: string
+        initialMessage?: ChatMessage
+        lineage?: PageLineage
+      }
     }
   | {
       type: 'CREATE_CHAT_FROM_CELL'
@@ -244,8 +255,14 @@ export type AppAction =
         sourcePageId?: string
       }
     }
-  | { type: 'CREATE_CROSSTAB_CHAT'; payload: { title: string; folderId?: string; lineage?: PageLineage } }
-  | { type: 'CREATE_AND_OPEN_CROSSTAB_CHAT'; payload: { title: string; folderId?: string; lineage?: PageLineage } }
+  | {
+      type: 'CREATE_CROSSTAB_CHAT'
+      payload: { title: string; folderId?: string; lineage?: PageLineage }
+    }
+  | {
+      type: 'CREATE_AND_OPEN_CROSSTAB_CHAT'
+      payload: { title: string; folderId?: string; lineage?: PageLineage }
+    }
   | {
       type: 'CREATE_CROSSTAB_FROM_OBJECTS'
       payload: {
@@ -259,8 +276,14 @@ export type AppAction =
         sourcePageId?: string
       }
     }
-  | { type: 'CREATE_OBJECT_CHAT'; payload: { title: string; folderId?: string; lineage?: PageLineage } }
-  | { type: 'CREATE_AND_OPEN_OBJECT_CHAT'; payload: { title: string; folderId?: string; lineage?: PageLineage } }
+  | {
+      type: 'CREATE_OBJECT_CHAT'
+      payload: { title: string; folderId?: string; lineage?: PageLineage }
+    }
+  | {
+      type: 'CREATE_AND_OPEN_OBJECT_CHAT'
+      payload: { title: string; folderId?: string; lineage?: PageLineage }
+    }
   | { type: 'UPDATE_CHAT'; payload: { id: string; updates: Partial<Chat> } }
   | { type: 'UPDATE_PAGE_LINEAGE'; payload: { pageId: string; lineage: Partial<PageLineage> } }
   | { type: 'ADD_GENERATED_PAGE'; payload: { sourcePageId: string; generatedPageId: string } }
@@ -316,7 +339,13 @@ export type AppAction =
     }
   | {
       type: 'GENERATE_OBJECT_CHILDREN'
-      payload: { chatId: string; nodeId: string; prompt: string; modelId?: string; generationId?: string }
+      payload: {
+        chatId: string
+        nodeId: string
+        prompt: string
+        modelId?: string
+        generationId?: string
+      }
     }
   | {
       type: 'ADD_OBJECT_GENERATION_RECORD'

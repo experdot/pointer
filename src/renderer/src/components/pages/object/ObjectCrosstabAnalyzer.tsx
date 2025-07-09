@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react'
 import { Button, Card, Select, Space, Typography, Alert, message, Tooltip } from 'antd'
-import { 
-  TableOutlined, 
-  NodeIndexOutlined, 
-  ArrowRightOutlined, 
-  InfoCircleOutlined 
+import {
+  TableOutlined,
+  NodeIndexOutlined,
+  ArrowRightOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 const { Option } = Select
 
 interface ObjectCrosstabAnalyzerProps {
@@ -22,8 +22,8 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
   const [selectedVerticalNode, setSelectedVerticalNode] = useState<string | null>(null)
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find(p => p.id === chatId) as ObjectChat | undefined
-  
+  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
   }
@@ -32,16 +32,14 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
 
   // 获取有子节点的节点列表（可用作横轴/纵轴）
   const availableNodes = useMemo(() => {
-    return Object.values(nodes).filter(node => 
-      node.children && node.children.length > 0
-    )
+    return Object.values(nodes).filter((node) => node.children && node.children.length > 0)
   }, [nodes])
 
   // 获取节点的祖先节点链
   const getAncestorChain = (nodeId: string): ObjectNodeType[] => {
     const node = nodes[nodeId]
     if (!node) return []
-    
+
     const chain = [node]
     let current = node
     while (current.parentId && nodes[current.parentId]) {
@@ -57,16 +55,15 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     if (!node) return null
 
     const ancestorChain = getAncestorChain(nodeId)
-    const children = (node.children || [])
-      .map(childId => nodes[childId])
-      .filter(Boolean)
+    const children = (node.children || []).map((childId) => nodes[childId]).filter(Boolean)
 
     // 获取平级节点
-    const siblings = node.parentId && nodes[node.parentId] 
-      ? nodes[node.parentId].children
-          .map(childId => nodes[childId])
-          .filter(child => child && child.id !== node.id)
-      : []
+    const siblings =
+      node.parentId && nodes[node.parentId]
+        ? nodes[node.parentId].children
+            .map((childId) => nodes[childId])
+            .filter((child) => child && child.id !== node.id)
+        : []
 
     return {
       node,
@@ -81,8 +78,8 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     if (!nodeId) return null
     const node = nodes[nodeId]
     if (!node || !node.children) return null
-    
-    const children = node.children.map(childId => nodes[childId]).filter(Boolean)
+
+    const children = node.children.map((childId) => nodes[childId]).filter(Boolean)
     return {
       node,
       children,
@@ -143,17 +140,18 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
   }
 
   // 检查是否可以创建交叉分析
-  const canCreateCrosstab = selectedHorizontalNode && 
-                           selectedVerticalNode && 
-                           selectedHorizontalNode !== selectedVerticalNode &&
-                           horizontalNodeInfo && 
-                           verticalNodeInfo &&
-                           horizontalNodeInfo.count > 0 && 
-                           verticalNodeInfo.count > 0
+  const canCreateCrosstab =
+    selectedHorizontalNode &&
+    selectedVerticalNode &&
+    selectedHorizontalNode !== selectedVerticalNode &&
+    horizontalNodeInfo &&
+    verticalNodeInfo &&
+    horizontalNodeInfo.count > 0 &&
+    verticalNodeInfo.count > 0
 
   return (
-    <Card 
-      size="small" 
+    <Card
+      size="small"
       style={{ margin: '16px', borderRadius: '8px' }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -195,7 +193,7 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
               style={{ width: '100%' }}
               size="small"
             >
-              {availableNodes.map(node => (
+              {availableNodes.map((node) => (
                 <Option key={node.id} value={node.id}>
                   <Space>
                     <NodeIndexOutlined />
@@ -209,7 +207,7 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             </Select>
             {horizontalNodeInfo && (
               <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
-                子节点：{horizontalNodeInfo.children.map(child => child.name).join(', ')}
+                子节点：{horizontalNodeInfo.children.map((child) => child.name).join(', ')}
               </div>
             )}
           </div>
@@ -226,12 +224,8 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
               style={{ width: '100%' }}
               size="small"
             >
-              {availableNodes.map(node => (
-                <Option 
-                  key={node.id} 
-                  value={node.id}
-                  disabled={node.id === selectedHorizontalNode}
-                >
+              {availableNodes.map((node) => (
+                <Option key={node.id} value={node.id} disabled={node.id === selectedHorizontalNode}>
                   <Space>
                     <NodeIndexOutlined />
                     <span>{node.name}</span>
@@ -244,28 +238,32 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             </Select>
             {verticalNodeInfo && (
               <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
-                子节点：{verticalNodeInfo.children.map(child => child.name).join(', ')}
+                子节点：{verticalNodeInfo.children.map((child) => child.name).join(', ')}
               </div>
             )}
           </div>
 
           {/* 预览信息 */}
-          {horizontalNodeInfo && verticalNodeInfo && selectedHorizontalNode !== selectedVerticalNode && (
-            <Alert
-              message={
-                <div style={{ fontSize: '11px' }}>
-                  <div>将创建 {horizontalNodeInfo.count} × {verticalNodeInfo.count} 的交叉分析表</div>
-                  <div style={{ marginTop: '4px', color: '#8c8c8c' }}>
-                    横轴：{horizontalNodeInfo.node.name} ({horizontalNodeInfo.count} 项)
-                    <ArrowRightOutlined style={{ margin: '0 8px' }} />
-                    纵轴：{verticalNodeInfo.node.name} ({verticalNodeInfo.count} 项)
+          {horizontalNodeInfo &&
+            verticalNodeInfo &&
+            selectedHorizontalNode !== selectedVerticalNode && (
+              <Alert
+                message={
+                  <div style={{ fontSize: '11px' }}>
+                    <div>
+                      将创建 {horizontalNodeInfo.count} × {verticalNodeInfo.count} 的交叉分析表
+                    </div>
+                    <div style={{ marginTop: '4px', color: '#8c8c8c' }}>
+                      横轴：{horizontalNodeInfo.node.name} ({horizontalNodeInfo.count} 项)
+                      <ArrowRightOutlined style={{ margin: '0 8px' }} />
+                      纵轴：{verticalNodeInfo.node.name} ({verticalNodeInfo.count} 项)
+                    </div>
                   </div>
-                </div>
-              }
-              type="success"
-              showIcon
-            />
-          )}
+                }
+                type="success"
+                showIcon
+              />
+            )}
 
           {/* 创建按钮 */}
           <Button
@@ -284,4 +282,4 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
   )
 }
 
-export default ObjectCrosstabAnalyzer 
+export default ObjectCrosstabAnalyzer

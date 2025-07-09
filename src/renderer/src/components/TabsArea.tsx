@@ -140,7 +140,7 @@ export default function TabsArea() {
 
   // 获取右键菜单项
   const getContextMenuItems = (chatId: string): MenuProps['items'] => {
-            const chat = state.pages.find((c) => c.id === chatId)
+    const chat = state.pages.find((c) => c.id === chatId)
     const isPinned = chat?.pinned || false
     const currentIndex = state.openTabs.indexOf(chatId)
     const hasTabsToRight = currentIndex < state.openTabs.length - 1

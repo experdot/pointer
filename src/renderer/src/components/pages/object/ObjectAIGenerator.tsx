@@ -1,9 +1,21 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { Button, Input, Typography, Space, Tag, Card, Divider, Tooltip, Empty, Tabs, message } from 'antd'
-import { 
-  StarOutlined, 
-  SendOutlined, 
-  LoadingOutlined, 
+import {
+  Button,
+  Input,
+  Typography,
+  Space,
+  Tag,
+  Card,
+  Divider,
+  Tooltip,
+  Empty,
+  Tabs,
+  message
+} from 'antd'
+import {
+  StarOutlined,
+  SendOutlined,
+  LoadingOutlined,
   HistoryOutlined,
   BulbOutlined,
   FileTextOutlined,
@@ -39,8 +51,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find(p => p.id === chatId) as ObjectChat | undefined
-  
+  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
   }
@@ -54,54 +66,57 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }
-    return llmConfigs.find(config => config.id === defaultLLMId) || llmConfigs[0]
+    return llmConfigs.find((config) => config.id === defaultLLMId) || llmConfigs[0]
   }, [settings])
 
   // 获取节点的完整上下文信息
-  const getNodeContext = useCallback((nodeId: string) => {
-    const node = nodes[nodeId]
-    if (!node) return null
+  const getNodeContext = useCallback(
+    (nodeId: string) => {
+      const node = nodes[nodeId]
+      if (!node) return null
 
-    // 获取祖先节点链
-    const getAncestorChain = (currentNode: any): any[] => {
-      const chain = [currentNode]
-      let current = currentNode
-      while (current.parentId && nodes[current.parentId]) {
-        current = nodes[current.parentId]
-        chain.unshift(current)
+      // 获取祖先节点链
+      const getAncestorChain = (currentNode: any): any[] => {
+        const chain = [currentNode]
+        let current = currentNode
+        while (current.parentId && nodes[current.parentId]) {
+          current = nodes[current.parentId]
+          chain.unshift(current)
+        }
+        return chain
       }
-      return chain
-    }
 
-    // 获取平级节点
-    const getSiblings = (currentNode: any): any[] => {
-      if (!currentNode.parentId) return []
-      const parent = nodes[currentNode.parentId]
-      if (!parent) return []
-      
-      return parent.children
-        .map((childId: string) => nodes[childId])
-        .filter((child: any) => child && child.id !== currentNode.id)
-    }
+      // 获取平级节点
+      const getSiblings = (currentNode: any): any[] => {
+        if (!currentNode.parentId) return []
+        const parent = nodes[currentNode.parentId]
+        if (!parent) return []
 
-    // 获取已有的子节点
-    const getExistingChildren = (currentNode: any): any[] => {
-      return currentNode.children
-        .map((childId: string) => nodes[childId])
-        .filter((child: any) => child)
-    }
+        return parent.children
+          .map((childId: string) => nodes[childId])
+          .filter((child: any) => child && child.id !== currentNode.id)
+      }
 
-    const ancestorChain = getAncestorChain(node)
-    const siblings = getSiblings(node)
-    const existingChildren = getExistingChildren(node)
+      // 获取已有的子节点
+      const getExistingChildren = (currentNode: any): any[] => {
+        return currentNode.children
+          .map((childId: string) => nodes[childId])
+          .filter((child: any) => child)
+      }
 
-    return {
-      node,
-      ancestorChain,
-      siblings,
-      existingChildren
-    }
-  }, [nodes])
+      const ancestorChain = getAncestorChain(node)
+      const siblings = getSiblings(node)
+      const existingChildren = getExistingChildren(node)
+
+      return {
+        node,
+        ancestorChain,
+        siblings,
+        existingChildren
+      }
+    },
+    [nodes]
+  )
 
   // 预设提示模板
   const promptTemplates = [
@@ -161,9 +176,9 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     try {
       const aiService = createAIService(llmConfig)
       const objectAIService = createObjectAIService(llmConfig, aiService)
-      
+
       const description = await objectAIService.generateNodeDescription(selectedNode, prompt.trim())
-      
+
       // 更新节点描述
       dispatch({
         type: 'UPDATE_OBJECT_NODE',
@@ -173,7 +188,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           updates: { description }
         }
       })
-      
+
       message.success('描述生成成功')
       setPrompt('')
     } catch (error) {
@@ -198,9 +213,9 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     try {
       const aiService = createAIService(llmConfig)
       const objectAIService = createObjectAIService(llmConfig, aiService)
-      
+
       const value = await objectAIService.generateNodeValue(selectedNode, prompt.trim())
-      
+
       // 更新节点值
       dispatch({
         type: 'UPDATE_OBJECT_NODE',
@@ -210,7 +225,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           updates: { value }
         }
       })
-      
+
       message.success('值生成成功')
       setPrompt('')
     } catch (error) {
@@ -240,12 +255,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     try {
       const aiService = createAIService(llmConfig)
       const objectAIService = createObjectAIService(llmConfig, aiService)
-      
+
       const properties = await objectAIService.generateObjectProperties(selectedNode, prompt.trim())
-      
+
       // 合并新属性到现有属性
       const updatedProperties = { ...selectedNode.properties, ...properties }
-      
+
       // 更新节点属性
       dispatch({
         type: 'UPDATE_OBJECT_NODE',
@@ -255,7 +270,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           updates: { properties: updatedProperties }
         }
       })
-      
+
       message.success(`成功生成了 ${Object.keys(properties).length} 个属性`)
       setPrompt('')
     } catch (error) {
@@ -281,8 +296,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       textareaRef.current.focus()
     }
   }
-
-
 
   // 格式化时间
   const formatTime = (timestamp: number): string => {
@@ -352,7 +365,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   // 获取当前功能的按钮文本
   const getCurrentButtonText = () => {
     if (isGenerating) return '生成中...'
-    
+
     switch (activeTab) {
       case 'children':
         return '生成子对象'
@@ -370,7 +383,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   // 检查当前功能是否可用
   const isCurrentFunctionAvailable = () => {
     if (!selectedNode) return false
-    
+
     switch (activeTab) {
       case 'children':
         return true
@@ -388,7 +401,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   // 获取功能不可用的提示
   const getUnavailableReason = () => {
     if (!selectedNode) return '请选择一个节点'
-    
+
     switch (activeTab) {
       case 'properties':
         return selectedNode.type !== 'object' ? '只能为object类型的节点生成属性' : ''
@@ -407,7 +420,10 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
   return (
     <div style={{ padding: '16px' }}>
-      <Title level={5} style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Title
+        level={5}
+        style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}
+      >
         <StarOutlined />
         AI 生成器
       </Title>
@@ -445,7 +461,10 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                   <div>
                     {/* 快速模板 */}
                     <div style={{ marginBottom: '12px' }}>
-                      <Text type="secondary" style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}
+                      >
                         快速模板：
                       </Text>
                       <Space wrap>
@@ -475,7 +494,10 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                 ),
                 children: (
                   <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}
+                    >
                       当前描述：{selectedNode.description || '暂无描述'}
                     </Text>
                   </div>
@@ -491,8 +513,14 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                 ),
                 children: (
                   <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                      当前值：{selectedNode.value !== null && selectedNode.value !== undefined ? JSON.stringify(selectedNode.value) : '暂无值'}
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}
+                    >
+                      当前值：
+                      {selectedNode.value !== null && selectedNode.value !== undefined
+                        ? JSON.stringify(selectedNode.value)
+                        : '暂无值'}
                     </Text>
                   </div>
                 )
@@ -507,11 +535,20 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                 ),
                 children: (
                   <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                      当前属性：{Object.keys(selectedNode.properties || {}).length > 0 ? Object.keys(selectedNode.properties).join(', ') : '暂无属性'}
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}
+                    >
+                      当前属性：
+                      {Object.keys(selectedNode.properties || {}).length > 0
+                        ? Object.keys(selectedNode.properties).join(', ')
+                        : '暂无属性'}
                     </Text>
                     {selectedNode.type !== 'object' && (
-                      <Text type="warning" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+                      <Text
+                        type="warning"
+                        style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}
+                      >
                         ⚠️ 只能为object类型的节点生成属性
                       </Text>
                     )}
@@ -530,7 +567,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isGenerating || !isCurrentFunctionAvailable()}
-              rows={6}
+              rows={8}
               style={{ fontSize: '12px' }}
             />
           </div>
@@ -575,11 +612,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
           {/* 生成历史 */}
           {showHistory && generationHistory.length > 0 && (
-            <Card 
-              size="small" 
-              title="生成历史" 
-              style={{ maxHeight: '200px', overflow: 'auto' }}
-            >
+            <Card size="small" title="生成历史" style={{ maxHeight: '200px', overflow: 'auto' }}>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {generationHistory
                   .slice()
@@ -603,20 +636,20 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                         }}
                       >
                         <Text style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>
-                          {record.prompt.length > 50 
-                            ? record.prompt.substring(0, 50) + '...' 
-                            : record.prompt
-                          }
+                          {record.prompt.length > 50
+                            ? record.prompt.substring(0, 50) + '...'
+                            : record.prompt}
                         </Text>
                         <Space split={<Divider type="vertical" />} style={{ fontSize: '10px' }}>
                           <Text type="secondary">{formatTime(record.timestamp)}</Text>
-                          <Text type="secondary">生成了 {record.generatedNodeIds.length} 个节点</Text>
+                          <Text type="secondary">
+                            生成了 {record.generatedNodeIds.length} 个节点
+                          </Text>
                         </Space>
                       </Card>
                       {index < 9 && <Divider style={{ margin: '4px 0' }} />}
                     </div>
-                  ))
-                }
+                  ))}
               </Space>
             </Card>
           )}
@@ -636,4 +669,4 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   )
 }
 
-export default ObjectAIGenerator 
+export default ObjectAIGenerator

@@ -20,8 +20,6 @@ import {
 import { useSettings } from '../../store/hooks/useSettings'
 import { StorageService } from '../../utils/storage'
 
-const { Text, Title } = Typography
-
 export default function SettingsDemo() {
   const { settings } = useSettings()
   const [storageInfo, setStorageInfo] = useState({

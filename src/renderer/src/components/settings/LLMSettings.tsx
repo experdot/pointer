@@ -28,7 +28,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { createAIService } from '../../services/aiService'
 import { useSettings } from '../../store/hooks/useSettings'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 interface LLMConfigFormProps {
   open: boolean
@@ -193,16 +193,16 @@ export default function LLMSettings() {
     const currentConfigs = settings.llmConfigs || []
     const isDefaultConfig = config.isDefault
     const isLastConfig = currentConfigs.length === 1
-    
+
     const title = isDefaultConfig ? '删除默认配置' : '删除配置'
     let content = `确定要删除配置 "${config.name}" 吗？`
-    
+
     if (isDefaultConfig && !isLastConfig) {
       content += '\n\n删除后，系统将自动选择另一个配置作为默认配置。'
     } else if (isLastConfig) {
       content += '\n\n这是最后一个配置，删除后您将无法使用AI功能。'
     }
-    
+
     modal.confirm({
       title,
       content,
@@ -218,8 +218,8 @@ export default function LLMSettings() {
 
   const handleCopyConfig = (config: LLMConfig) => {
     const currentConfigs = settings.llmConfigs || []
-    const hasDefaultConfig = currentConfigs.some(c => c.isDefault)
-    
+    const hasDefaultConfig = currentConfigs.some((c) => c.isDefault)
+
     const newConfig: LLMConfig = {
       ...config,
       id: uuidv4(),

@@ -27,20 +27,24 @@ export class ObjectAIService {
     const { node: parentNode, ancestorChain, siblings, existingChildren } = context
 
     // 构建层级结构信息
-    const hierarchyInfo = ancestorChain.map((ancestor, index) => {
-      const indent = '  '.repeat(index)
-      return `${indent}- ${ancestor.name}`
-    }).join('\n')
+    const hierarchyInfo = ancestorChain
+      .map((ancestor, index) => {
+        const indent = '  '.repeat(index)
+        return `${indent}- ${ancestor.name}`
+      })
+      .join('\n')
 
     // 构建平级节点信息
-    const siblingsInfo = siblings.length > 0 
-      ? siblings.map(sibling => `  - ${sibling.name}`).join('\n')
-      : '  无平级节点'
+    const siblingsInfo =
+      siblings.length > 0
+        ? siblings.map((sibling) => `  - ${sibling.name}`).join('\n')
+        : '  无平级节点'
 
     // 构建已有子节点信息
-    const existingChildrenInfo = existingChildren.length > 0
-      ? existingChildren.map(child => `  - ${child.name}`).join('\n')
-      : '  暂无子节点'
+    const existingChildrenInfo =
+      existingChildren.length > 0
+        ? existingChildren.map((child) => `  - ${child.name}`).join('\n')
+        : '  暂无子节点'
 
     const aiPrompt = `# 任务
 根据用户的描述，为指定的对象节点生成子节点名称。你只需要生成一个JSON字符串数组，包含多个子节点的名称。
@@ -80,17 +84,17 @@ ${userPrompt}
 请开始生成：`
 
     const response = await this.callAI(aiPrompt)
-    
+
     // 解析响应
     const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
     const jsonContent = jsonMatch ? jsonMatch[1] : response
-    
+
     try {
       const names = JSON.parse(jsonContent)
       if (!Array.isArray(names)) {
         throw new Error('期望数组格式')
       }
-      return names.filter(name => typeof name === 'string' && name.trim())
+      return names.filter((name) => typeof name === 'string' && name.trim())
     } catch (error) {
       throw new Error('AI响应格式错误')
     }
@@ -147,7 +151,7 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
 请开始生成：`
 
     const response = await this.callAI(aiPrompt)
-    
+
     // 尝试解析为JSON，如果失败则作为字符串返回
     try {
       return JSON.parse(response.trim())
@@ -157,7 +161,10 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
   }
 
   // 生成对象属性
-  async generateObjectProperties(node: ObjectNodeType, userPrompt?: string): Promise<Record<string, any>> {
+  async generateObjectProperties(
+    node: ObjectNodeType,
+    userPrompt?: string
+  ): Promise<Record<string, any>> {
     if (node.type !== 'object') {
       throw new Error('只能为object类型的节点生成属性')
     }
@@ -193,10 +200,10 @@ ${userPrompt || '生成一些符合对象用途的属性'}
 请开始生成：`
 
     const response = await this.callAI(aiPrompt)
-    
+
     const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
     const jsonContent = jsonMatch ? jsonMatch[1] : response
-    
+
     try {
       const properties = JSON.parse(jsonContent)
       if (typeof properties !== 'object' || Array.isArray(properties)) {
@@ -209,11 +216,17 @@ ${userPrompt || '生成一些符合对象用途的属性'}
   }
 
   // 优化节点结构
-  async optimizeNodeStructure(node: ObjectNodeType, children: ObjectNodeType[], userPrompt?: string): Promise<{
+  async optimizeNodeStructure(
+    node: ObjectNodeType,
+    children: ObjectNodeType[],
+    userPrompt?: string
+  ): Promise<{
     suggestions: string[]
     optimizedChildren?: ObjectNodeType[]
   }> {
-    const childrenInfo = children.map(child => `- ${child.name} (${child.type}): ${child.description || '无描述'}`).join('\n')
+    const childrenInfo = children
+      .map((child) => `- ${child.name} (${child.type}): ${child.description || '无描述'}`)
+      .join('\n')
 
     const aiPrompt = `# 任务
 分析当前节点结构并提供优化建议。
@@ -250,10 +263,10 @@ ${userPrompt || '分析当前结构并提供优化建议'}
 请开始分析：`
 
     const response = await this.callAI(aiPrompt)
-    
+
     const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
     const jsonContent = jsonMatch ? jsonMatch[1] : response
-    
+
     try {
       const result = JSON.parse(jsonContent)
       return {
@@ -283,4 +296,4 @@ ${userPrompt || '分析当前结构并提供优化建议'}
 // 工厂函数
 export function createObjectAIService(llmConfig: any, aiService: any): ObjectAIService {
   return new ObjectAIService(llmConfig, aiService)
-} 
+}

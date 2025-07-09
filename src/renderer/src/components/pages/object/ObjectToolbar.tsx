@@ -1,13 +1,11 @@
 import React, { useRef } from 'react'
 import { Button, Space, Tooltip, Dropdown, Divider } from 'antd'
-import { 
-  PlusOutlined, 
-  DownloadOutlined, 
-  UploadOutlined, 
+import {
+  PlusOutlined,
+  DownloadOutlined,
+  UploadOutlined,
   ReloadOutlined,
   DeleteOutlined,
-  ExpandOutlined,
-  CompressOutlined,
   MoreOutlined,
   FolderOpenOutlined,
   FolderOutlined
@@ -24,8 +22,8 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find(p => p.id === chatId) as ObjectChat | undefined
-  
+  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
   }
@@ -47,7 +45,9 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       'object'
     ) as any
 
-    if (!['object', 'array', 'string', 'number', 'boolean', 'function', 'custom'].includes(nodeType)) {
+    if (
+      !['object', 'array', 'string', 'number', 'boolean', 'function', 'custom'].includes(nodeType)
+    ) {
       alert('无效的节点类型')
       return
     }
@@ -64,11 +64,18 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         source: 'user' as const
       },
       properties: nodeType === 'object' ? {} : undefined,
-      value: nodeType === 'string' ? '' : 
-             nodeType === 'number' ? 0 : 
-             nodeType === 'boolean' ? false : 
-             nodeType === 'array' ? [] : 
-             nodeType === 'object' ? {} : undefined
+      value:
+        nodeType === 'string'
+          ? ''
+          : nodeType === 'number'
+            ? 0
+            : nodeType === 'boolean'
+              ? false
+              : nodeType === 'array'
+                ? []
+                : nodeType === 'object'
+                  ? {}
+                  : undefined
     }
 
     dispatch({
@@ -95,7 +102,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       }
 
       const jsonString = JSON.stringify(exportData, null, 2)
-      
+
       // 创建下载链接
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -126,7 +133,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
     reader.onload = (e) => {
       try {
         const jsonData = JSON.parse(e.target?.result as string)
-        
+
         // 验证数据格式
         if (jsonData.objectData && jsonData.objectData.nodes) {
           dispatch({
@@ -154,7 +161,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   // 展开所有节点
   const handleExpandAll = () => {
     const allNodeIds = Object.keys(nodes)
-    allNodeIds.forEach(nodeId => {
+    allNodeIds.forEach((nodeId) => {
       if (!expandedNodes.includes(nodeId)) {
         dispatch({
           type: 'EXPAND_OBJECT_NODE',
@@ -166,7 +173,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
   // 折叠所有节点
   const handleCollapseAll = () => {
-    expandedNodes.forEach(nodeId => {
+    expandedNodes.forEach((nodeId) => {
       dispatch({
         type: 'COLLAPSE_OBJECT_NODE',
         payload: { chatId: chat.id, nodeId }
@@ -218,17 +225,17 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       const userTypesId = generateId()
       const featuresId = generateId()
       const platformsId = generateId()
-      
+
       // 用户类型子节点
       const adminId = generateId()
       const editorId = generateId()
       const viewerId = generateId()
-      
+
       // 功能模块子节点
       const authId = generateId()
       const analyticsId = generateId()
       const notificationId = generateId()
-      
+
       // 平台子节点
       const webId = generateId()
       const mobileId = generateId()
@@ -496,13 +503,15 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   ]
 
   return (
-    <div style={{ 
-      padding: '12px 16px', 
-      backgroundColor: '#fff',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    }}>
+    <div
+      style={{
+        padding: '12px 16px',
+        backgroundColor: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}
+    >
       {/* 隐藏的文件输入 */}
       <input
         ref={fileInputRef}
@@ -520,7 +529,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             size="middle"
             icon={<PlusOutlined />}
             onClick={handleAddNode}
-            style={{ 
+            style={{
               borderRadius: '6px',
               boxShadow: '0 2px 4px rgba(24, 144, 255, 0.2)'
             }}
@@ -537,7 +546,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             size="middle"
             icon={<UploadOutlined />}
             onClick={handleImport}
-            style={{ 
+            style={{
               borderRadius: '6px',
               color: '#666'
             }}
@@ -550,7 +559,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             size="middle"
             icon={<DownloadOutlined />}
             onClick={handleExport}
-            style={{ 
+            style={{
               borderRadius: '6px',
               color: '#666'
             }}
@@ -566,7 +575,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             size="middle"
             icon={<FolderOpenOutlined />}
             onClick={handleExpandAll}
-            style={{ 
+            style={{
               borderRadius: '6px',
               color: '#666'
             }}
@@ -579,7 +588,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             size="middle"
             icon={<FolderOutlined />}
             onClick={handleCollapseAll}
-            style={{ 
+            style={{
               borderRadius: '6px',
               color: '#666'
             }}
@@ -589,16 +598,12 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         <Divider type="vertical" style={{ height: '20px', margin: '0 8px' }} />
 
         {/* 更多操作下拉菜单 */}
-        <Dropdown
-          menu={{ items: moreMenuItems }}
-          trigger={['click']}
-          placement="bottomRight"
-        >
+        <Dropdown menu={{ items: moreMenuItems }} trigger={['click']} placement="bottomRight">
           <Button
             type="text"
             size="middle"
             icon={<MoreOutlined />}
-            style={{ 
+            style={{
               borderRadius: '6px',
               color: '#666'
             }}
@@ -609,4 +614,4 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   )
 }
 
-export default ObjectToolbar 
+export default ObjectToolbar

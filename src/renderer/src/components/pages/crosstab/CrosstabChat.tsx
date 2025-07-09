@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { Typography, Tabs, App, Space, Card } from 'antd'
+import { Typography, Tabs, App, Space } from 'antd'
 import {
   FileTextOutlined,
   BorderOutlined,

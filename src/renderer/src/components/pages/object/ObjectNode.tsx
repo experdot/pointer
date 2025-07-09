@@ -1,8 +1,8 @@
 import React from 'react'
 import { Button, Tag, Typography, Space, Tooltip } from 'antd'
-import { 
-  RightOutlined, 
-  DeleteOutlined, 
+import {
+  RightOutlined,
+  DeleteOutlined,
   StarOutlined,
   FileTextOutlined,
   UnorderedListOutlined,
@@ -176,36 +176,46 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
       </div>
 
       {/* 节点内容 */}
-      <Space size={4} style={{ 
-        flex: 1, 
-        minWidth: 0,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden'
-      }}>
-        <Text strong style={{ 
-          fontSize: 13,
+      <Space
+        size={4}
+        style={{
+          flex: 1,
+          minWidth: 0,
           whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          maxWidth: '150px'
-        }}>
+          overflow: 'hidden'
+        }}
+      >
+        <Text
+          strong
+          style={{
+            fontSize: 13,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '150px'
+          }}
+        >
           {node.name}
         </Text>
-        <Tag color={getTypeColor(node.type)} size="small" style={{ 
-          fontSize: 10, 
-          margin: 0,
-          whiteSpace: 'nowrap',
-          flexShrink: 0
-        }}>
+        <Tag
+          color={getTypeColor(node.type)}
+          size="small"
+          style={{
+            fontSize: 10,
+            margin: 0,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+        >
           {node.type}
         </Tag>
-        
+
         {/* 显示值（对于非容器类型） */}
         {node.type !== 'object' && node.type !== 'array' && node.value !== undefined && (
-          <Text 
-            type="secondary" 
-            style={{ 
-              fontSize: 11, 
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 11,
               fontFamily: 'monospace',
               marginLeft: 'auto',
               maxWidth: '120px',
@@ -221,7 +231,9 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
       </Space>
 
       {/* 操作按钮 */}
-      <Space size={2} style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
+      <Space
+        size={2}
+        style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = '1'
         }}
@@ -263,4 +275,4 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
   )
 }
 
-export default ObjectNode 
+export default ObjectNode

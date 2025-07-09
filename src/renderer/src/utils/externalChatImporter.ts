@@ -522,7 +522,7 @@ export function importSelectedChats(
         const chat: RegularChat = {
           id: uuidv4(), // 生成新的ID避免冲突
           title: item.title,
-          type:"regular",
+          type: 'regular',
           messages,
           currentPath,
           folderId,

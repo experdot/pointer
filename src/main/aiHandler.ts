@@ -52,24 +52,27 @@ class AIHandler {
       const abortController = new AbortController()
       this.abortControllers.set(request.requestId, abortController)
 
-      const response = await fetch(`${request.config.apiHost.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${request.config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: request.config.modelName,
-          messages: request.messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 2000
-        }),
-        signal: abortController.signal // 添加中断信号
-      })
+      const response = await fetch(
+        `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${request.config.apiKey}`
+          },
+          body: JSON.stringify({
+            model: request.config.modelName,
+            messages: request.messages.map((msg) => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            stream: true,
+            temperature: 0.7,
+            max_tokens: 2000
+          }),
+          signal: abortController.signal // 添加中断信号
+        }
+      )
 
       if (!response.ok) {
         event.sender.send('ai-stream-data', {
@@ -206,22 +209,25 @@ class AIHandler {
     request: AIRequest
   ): Promise<{ success: boolean; content?: string; reasoning_content?: string; error?: string }> {
     try {
-      const response = await fetch(`${request.config.apiHost.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${request.config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: request.config.modelName,
-          messages: request.messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      })
+      const response = await fetch(
+        `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${request.config.apiKey}`
+          },
+          body: JSON.stringify({
+            model: request.config.modelName,
+            messages: request.messages.map((msg) => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        }
+      )
 
       if (!response.ok) {
         return {

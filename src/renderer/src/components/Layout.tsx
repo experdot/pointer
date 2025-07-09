@@ -38,10 +38,6 @@ export default function Layout() {
     dispatch({ type: 'CLEAR_SEARCH' })
   }
 
-  const handleWidthChange = (newWidth: number) => {
-    dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: { width: newWidth } })
-  }
-
   const toggleSidebar = () => {
     dispatch({ type: 'TOGGLE_SIDEBAR' })
   }

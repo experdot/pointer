@@ -133,7 +133,7 @@ export default function CrosstabTable({
   }
 
   return (
-    <Card 
+    <Card
       title="交叉分析表"
       extra={extraContent}
       className={`tab-card table-card ${isFullscreen ? 'fullscreen-card' : ''}`}

@@ -1,5 +1,5 @@
 import { AppState, AppAction } from '../../types'
-import { createNewFolder, updateFolderById, removeFromArray } from '../helpers'
+import { createNewFolder, updateFolderById } from '../helpers'
 
 export const handleFolderActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {

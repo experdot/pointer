@@ -1,22 +1,21 @@
 import React from 'react'
-import { Card, Typography, Space, Tag, Button, Empty, Divider, Timeline, Tooltip, Collapse } from 'antd'
-import { 
-  UserOutlined, 
-  NodeIndexOutlined, 
-  TableOutlined, 
-  MessageOutlined, 
-  ArrowRightOutlined, 
-  HistoryOutlined, 
+import { Card, Typography, Space, Tag, Button, Empty, Divider, Timeline } from 'antd'
+import {
+  UserOutlined,
+  NodeIndexOutlined,
+  TableOutlined,
+  MessageOutlined,
+  ArrowRightOutlined,
+  HistoryOutlined,
   BranchesOutlined,
   InfoCircleOutlined,
   LinkOutlined,
   CaretRightOutlined,
   CaretDownOutlined
 } from '@ant-design/icons'
-import { Page, PageLineage } from '../../types'
 import { useAppContext } from '../../store/AppContext'
 
-const { Title, Text, Paragraph } = Typography
+const { Text, Paragraph } = Typography
 
 interface PageLineageDisplayProps {
   pageId: string
@@ -24,25 +23,25 @@ interface PageLineageDisplayProps {
   size?: 'small' | 'default'
 }
 
-const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({ 
-  pageId, 
+const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
+  pageId,
   showInCard = true,
   size = 'default'
 }) => {
   const { state, dispatch } = useAppContext()
 
   // 获取当前页面
-  const currentPage = state.pages.find(page => page.id === pageId)
-  
+  const currentPage = state.pages.find((page) => page.id === pageId)
+
   if (!currentPage) {
     return null
   }
 
   const lineage = currentPage.lineage
-  
+
   // 获取折叠状态，默认为折叠状态
   const isCollapsed = state.lineageDisplayCollapsed[pageId] ?? true
-  
+
   // 处理折叠状态切换
   const handleToggleCollapse = () => {
     dispatch({ type: 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE', payload: { pageId } })
@@ -51,17 +50,17 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   // 获取源页面信息
   const getSourcePageInfo = () => {
     if (!lineage?.sourcePageId) return null
-    
-    const sourcePage = state.pages.find(page => page.id === lineage.sourcePageId)
+
+    const sourcePage = state.pages.find((page) => page.id === lineage.sourcePageId)
     return sourcePage || null
   }
 
   // 获取后续生成的页面信息
   const getGeneratedPagesInfo = () => {
     if (!lineage?.generatedPageIds || lineage.generatedPageIds.length === 0) return []
-    
+
     return lineage.generatedPageIds
-      .map(id => state.pages.find(page => page.id === id))
+      .map((id) => state.pages.find((page) => page.id === id))
       .filter(Boolean)
   }
 
@@ -168,11 +167,11 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
 
   // 折叠标题
   const collapseHeader = (
-    <div 
-      style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px', 
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
         cursor: 'pointer',
         fontSize: size === 'small' ? '12px' : '14px'
       }}
@@ -206,53 +205,53 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
 
             {/* 来源信息 */}
             <div style={{ marginLeft: '16px' }}>
-          <Space style={{ marginBottom: '8px' }}>
-            <HistoryOutlined />
-            <Text strong>来源：</Text>
-            {getSourceIcon(lineage.source)}
-            <Text>{getSourceDescription(lineage.source)}</Text>
-          </Space>
-
-          {sourcePage && (
-            <div style={{ marginLeft: '16px', marginBottom: '8px' }}>
-              <Space>
-                <Text type="secondary">源页面：</Text>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={getPageTypeIcon(sourcePage.type)}
-                  onClick={() => handleNavigateToPage(sourcePage.id)}
-                  style={{ padding: 0, height: 'auto' }}
-                >
-                  {sourcePage.title}
-                </Button>
+              <Space style={{ marginBottom: '8px' }}>
+                <HistoryOutlined />
+                <Text strong>来源：</Text>
+                {getSourceIcon(lineage.source)}
+                <Text>{getSourceDescription(lineage.source)}</Text>
               </Space>
-            </div>
-          )}
 
-          {contextDescription && (
-            <div style={{ marginLeft: '16px', marginBottom: '8px' }}>
-              <Paragraph 
-                type="secondary" 
-                style={{ 
-                  fontSize: size === 'small' ? '11px' : '12px',
-                  margin: 0,
-                  fontStyle: 'italic'
-                }}
-              >
-                {contextDescription}
-              </Paragraph>
-            </div>
-          )}
+              {sourcePage && (
+                <div style={{ marginLeft: '16px', marginBottom: '8px' }}>
+                  <Space>
+                    <Text type="secondary">源页面：</Text>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={getPageTypeIcon(sourcePage.type)}
+                      onClick={() => handleNavigateToPage(sourcePage.id)}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      {sourcePage.title}
+                    </Button>
+                  </Space>
+                </div>
+              )}
 
-          {lineage.generatedAt && (
-            <div style={{ marginLeft: '16px' }}>
-              <Text type="secondary" style={{ fontSize: size === 'small' ? '11px' : '12px' }}>
-                生成时间：{new Date(lineage.generatedAt).toLocaleString('zh-CN')}
-              </Text>
+              {contextDescription && (
+                <div style={{ marginLeft: '16px', marginBottom: '8px' }}>
+                  <Paragraph
+                    type="secondary"
+                    style={{
+                      fontSize: size === 'small' ? '11px' : '12px',
+                      margin: 0,
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    {contextDescription}
+                  </Paragraph>
+                </div>
+              )}
+
+              {lineage.generatedAt && (
+                <div style={{ marginLeft: '16px' }}>
+                  <Text type="secondary" style={{ fontSize: size === 'small' ? '11px' : '12px' }}>
+                    生成时间：{new Date(lineage.generatedAt).toLocaleString('zh-CN')}
+                  </Text>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
             {/* 后续生成的页面 */}
             {generatedPages.length > 0 && (
@@ -263,7 +262,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
                 </Space>
                 <div style={{ marginLeft: '16px' }}>
                   <Space direction="vertical" size={4}>
-                    {generatedPages.map(page => (
+                    {generatedPages.map((page) => (
                       <Space key={page.id}>
                         <Button
                           type="link"
@@ -274,9 +273,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
                         >
                           {page.title}
                         </Button>
-                        <Tag color="green">
-                          {getPageTypeName(page.type)}
-                        </Tag>
+                        <Tag color="green">{getPageTypeName(page.type)}</Tag>
                       </Space>
                     ))}
                   </Space>
@@ -293,22 +290,26 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
                 </Space>
                 <Timeline
                   items={[
-                    ...(sourcePage ? [{
-                      dot: getSourceIcon(lineage.source),
-                      children: (
-                        <Space>
-                          <Button
-                            type="link"
-                            size="small"
-                            onClick={() => handleNavigateToPage(sourcePage.id)}
-                            style={{ padding: 0, height: 'auto' }}
-                          >
-                            {sourcePage.title}
-                          </Button>
-                          <Tag>{getPageTypeName(sourcePage.type)}</Tag>
-                        </Space>
-                      )
-                    }] : []),
+                    ...(sourcePage
+                      ? [
+                          {
+                            dot: getSourceIcon(lineage.source),
+                            children: (
+                              <Space>
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  onClick={() => handleNavigateToPage(sourcePage.id)}
+                                  style={{ padding: 0, height: 'auto' }}
+                                >
+                                  {sourcePage.title}
+                                </Button>
+                                <Tag>{getPageTypeName(sourcePage.type)}</Tag>
+                              </Space>
+                            )
+                          }
+                        ]
+                      : []),
                     {
                       dot: getPageTypeIcon(currentPage.type),
                       children: (
@@ -319,7 +320,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
                         </Space>
                       )
                     },
-                    ...generatedPages.map(page => ({
+                    ...generatedPages.map((page) => ({
                       dot: getPageTypeIcon(page.type),
                       children: (
                         <Space>
@@ -358,12 +359,12 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     return (
       <Card
         size={size}
-        style={{ 
+        style={{
           marginBottom: '16px',
           ...(size === 'small' && { fontSize: '12px' })
         }}
-        bodyStyle={{ 
-          padding: size === 'small' ? '12px' : '16px' 
+        bodyStyle={{
+          padding: size === 'small' ? '12px' : '16px'
         }}
       >
         {content}
@@ -374,4 +375,4 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   return content
 }
 
-export default PageLineageDisplay 
+export default PageLineageDisplay

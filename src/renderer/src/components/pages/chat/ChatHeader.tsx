@@ -17,11 +17,9 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({
-  chatId,
   chatTitle,
   messages,
   currentPath = [],
-  allMessagesCollapsed,
   onCollapseAll,
   onExpandAll
 }: ChatHeaderProps) {

@@ -81,11 +81,13 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   return (
     <div className="chat-window">
       {/* 页面溯源信息 */}
-      <div style={{ 
-        borderBottom: '1px solid #f0f0f0', 
-        backgroundColor: '#fafafa',
-        padding: '8px 16px'
-      }}>
+      <div
+        style={{
+          borderBottom: '1px solid #f0f0f0',
+          backgroundColor: '#fafafa',
+          padding: '8px 16px'
+        }}
+      >
         <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
       </div>
 

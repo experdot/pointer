@@ -8,14 +8,15 @@ const streamListeners = new Map<string, (data: any) => void>()
 const api = {
   // AI相关API
   ai: {
-    sendMessageStreaming: (request: any) => ipcRenderer.invoke('ai:send-message-streaming', request),
+    sendMessageStreaming: (request: any) =>
+      ipcRenderer.invoke('ai:send-message-streaming', request),
     sendMessage: (request: any) => ipcRenderer.invoke('ai:send-message', request),
     testConnection: (config: any) => ipcRenderer.invoke('ai:test-connection', config),
     stopStreaming: (requestId: string) => ipcRenderer.invoke('ai:stop-streaming', requestId),
     onStreamData: (requestId: string, callback: (data: any) => void) => {
       // 为每个请求ID创建独立的监听器
       streamListeners.set(requestId, callback)
-      
+
       // 如果是第一个监听器，则设置全局监听器
       if (streamListeners.size === 1) {
         ipcRenderer.on('ai-stream-data', (_, data) => {
@@ -28,7 +29,7 @@ const api = {
     },
     removeStreamListener: (requestId: string) => {
       streamListeners.delete(requestId)
-      
+
       // 如果没有监听器了，移除全局监听器
       if (streamListeners.size === 0) {
         ipcRenderer.removeAllListeners('ai-stream-data')
@@ -36,8 +37,11 @@ const api = {
     }
   },
   // 文件操作API
-  saveFile: (options: { content: string; defaultPath: string; filters?: Array<{ name: string; extensions: string[] }> }) => 
-    ipcRenderer.invoke('save-file', options)
+  saveFile: (options: {
+    content: string
+    defaultPath: string
+    filters?: Array<{ name: string; extensions: string[] }>
+  }) => ipcRenderer.invoke('save-file', options)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

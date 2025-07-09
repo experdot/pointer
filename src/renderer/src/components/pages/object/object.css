@@ -22,7 +22,7 @@
     border-right: none !important;
     border-bottom: 1px solid #f0f0f0 !important;
   }
-  
+
   .ant-layout-content {
     height: calc(100vh - 300px) !important;
   }
@@ -49,8 +49,12 @@
 
 /* 加载状态动画 */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-spin {
@@ -69,4 +73,4 @@ pre {
 /* 简化的工具提示样式 */
 .ant-tooltip {
   font-size: 12px;
-} 
+}
