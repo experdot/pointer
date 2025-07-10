@@ -332,6 +332,10 @@ export type AppAction =
       payload: { chatId: string; nodeId: string }
     }
   | {
+      type: 'CLEAR_OBJECT_NODE_CHILDREN'
+      payload: { chatId: string; nodeId: string }
+    }
+  | {
       type: 'SELECT_OBJECT_NODE'
       payload: { chatId: string; nodeId: string | null }
     }

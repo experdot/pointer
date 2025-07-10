@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Button, Space, Tooltip, Dropdown, Divider, Modal, Form, Input, Select, message } from 'antd'
+import { Button, Space, Tooltip, Dropdown, Divider, Modal, Form, Input, Select, TreeSelect, message } from 'antd'
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -30,15 +30,50 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
     return <div>数据加载错误</div>
   }
 
-  const { nodes, rootNodeId, expandedNodes } = chat.objectData
+  const { nodes, rootNodeId, expandedNodes, selectedNodeId } = chat.objectData
 
   // 生成唯一ID
   const generateId = () => {
     return `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
+  // 构建树形数据结构用于TreeSelect
+  const buildTreeData = () => {
+    const treeData: any[] = []
+    
+    const buildNode = (nodeId: string): any => {
+      const node = nodes[nodeId]
+      if (!node) return null
+      
+      return {
+        title: node.name,
+        value: nodeId,
+        key: nodeId,
+        children: node.children?.map(childId => buildNode(childId)).filter(Boolean) || []
+      }
+    }
+    
+    if (rootNodeId) {
+      const rootNode = buildNode(rootNodeId)
+      if (rootNode) {
+        treeData.push(rootNode)
+      }
+    }
+    
+    return treeData
+  }
+
   // 添加新节点 - 使用Modal替代window.prompt
   const handleAddNode = () => {
+    // 设置默认父节点：优先选择当前选中的节点，否则选择根节点
+    const defaultParentId = selectedNodeId || rootNodeId
+    
+    form.setFieldsValue({
+      parentId: defaultParentId,
+      type: 'object',
+      description: ''
+    })
+    
     setIsModalVisible(true)
   }
 
@@ -46,9 +81,9 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
-      const { name, type, description } = values
+      const { name, type, description, parentId } = values
 
-      console.log('创建新节点:', { name, type, description, parentId: rootNodeId })
+      console.log('创建新节点:', { name, type, description, parentId })
 
       const newNode = {
         id: generateId(),
@@ -57,7 +92,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         description: description || '',
         children: [],
         expanded: false,
-        parentId: rootNodeId, // 明确设置parentId
+        parentId: parentId, // 使用用户选择的父节点ID
         metadata: {
           createdAt: Date.now(),
           source: 'user' as const
@@ -84,15 +119,15 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         payload: {
           chatId: chat.id,
           node: newNode,
-          parentId: rootNodeId || undefined
+          parentId: parentId || undefined
         }
       })
 
-      // 展开根节点以显示新添加的节点
-      if (rootNodeId && !expandedNodes.includes(rootNodeId)) {
+      // 展开父节点以显示新添加的节点
+      if (parentId && !expandedNodes.includes(parentId)) {
         dispatch({
           type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId: rootNodeId }
+          payload: { chatId: chat.id, nodeId: parentId }
         })
       }
 
@@ -652,6 +687,25 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             description: ''
           }}
         >
+          <Form.Item
+            label="父节点"
+            name="parentId"
+            rules={[{ required: true, message: '请选择父节点' }]}
+          >
+            <TreeSelect
+              placeholder="请选择父节点"
+              treeData={buildTreeData()}
+              allowClear={false}
+              showSearch
+              style={{ width: '100%' }}
+              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              treeDefaultExpandAll
+              filterTreeNode={(search, node) => {
+                return node.title?.toString().toLowerCase().includes(search.toLowerCase())
+              }}
+            />
+          </Form.Item>
+
           <Form.Item
             label="节点名称"
             name="name"

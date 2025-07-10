@@ -219,6 +219,42 @@ export const deleteNodeFromObjectData = (objectData: ObjectData, nodeId: string)
   }
 }
 
+// 清空节点的所有子节点
+export const clearNodeChildren = (objectData: ObjectData, nodeId: string): ObjectData => {
+  const parentNode = objectData.nodes[nodeId]
+  if (!parentNode || !parentNode.children || parentNode.children.length === 0) {
+    return objectData
+  }
+
+  // 获取所有要删除的子节点（包括递归的子节点）
+  const nodesToDelete: string[] = []
+  parentNode.children.forEach((childId) => {
+    nodesToDelete.push(...getNodeAndAllChildren(objectData.nodes, childId))
+  })
+
+  const newNodes = { ...objectData.nodes }
+
+  // 删除所有子节点
+  nodesToDelete.forEach((id) => {
+    delete newNodes[id]
+  })
+
+  // 清空父节点的children数组
+  newNodes[nodeId] = {
+    ...parentNode,
+    children: []
+  }
+
+  return {
+    ...objectData,
+    nodes: newNodes,
+    selectedNodeId: nodesToDelete.includes(objectData.selectedNodeId || '') 
+      ? undefined 
+      : objectData.selectedNodeId,
+    expandedNodes: objectData.expandedNodes.filter((id) => !nodesToDelete.includes(id))
+  }
+}
+
 // 获取节点及其所有子节点的ID列表
 const getNodeAndAllChildren = (nodes: { [id: string]: ObjectNode }, nodeId: string): string[] => {
   const result = [nodeId]

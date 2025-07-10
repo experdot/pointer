@@ -196,17 +196,68 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
     [dispatch, chat.id, expandedNodes]
   )
 
+  // 递归获取所有子节点ID
+  const getAllChildrenIds = useCallback(
+    (nodeId: string): string[] => {
+      const node = nodes[nodeId]
+      if (!node || !node.children || node.children.length === 0) {
+        return []
+      }
+
+      let allChildrenIds: string[] = []
+      node.children.forEach(childId => {
+        allChildrenIds.push(childId)
+        // 递归获取子节点的子节点
+        allChildrenIds = allChildrenIds.concat(getAllChildrenIds(childId))
+      })
+
+      return allChildrenIds
+    },
+    [nodes]
+  )
+
   // 处理删除节点
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
-      if (window.confirm('确定要删除这个节点吗？这将同时删除所有子节点。')) {
+      const node = nodes[nodeId]
+      if (!node) return
+
+      const childrenIds = getAllChildrenIds(nodeId)
+      const childrenCount = childrenIds.length
+      
+      const confirmMessage = childrenCount > 0 
+        ? `确定要删除节点"${node.name}"吗？这将同时删除 ${childrenCount} 个子节点。`
+        : `确定要删除节点"${node.name}"吗？`
+
+      if (window.confirm(confirmMessage)) {
         dispatch({
           type: 'DELETE_OBJECT_NODE',
           payload: { chatId: chat.id, nodeId }
         })
       }
     },
-    [dispatch, chat.id]
+    [dispatch, chat.id, nodes, getAllChildrenIds]
+  )
+
+  // 处理清空子节点
+  const handleClearChildren = useCallback(
+    (nodeId: string) => {
+      const node = nodes[nodeId]
+      if (!node || !node.children || node.children.length === 0) return
+
+      const childrenIds = getAllChildrenIds(nodeId)
+      const childrenCount = childrenIds.length
+
+      const confirmMessage = `确定要清空节点"${node.name}"的所有子节点吗？这将删除 ${childrenCount} 个子节点。`
+
+      if (window.confirm(confirmMessage)) {
+        dispatch({
+          type: 'CLEAR_OBJECT_NODE_CHILDREN',
+          payload: { chatId: chat.id, nodeId }
+        })
+      }
+    },
+    [dispatch, chat.id, nodes, getAllChildrenIds]
   )
 
   // 处理搜索
@@ -229,29 +280,51 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
       const node = nodes[nodeId]
       if (!node) return { items: [] }
 
-      return {
-        items: [
-          {
-            key: 'edit',
-            label: '编辑节点',
-            icon: <EditOutlined />,
-            onClick: () => {
-              // 这里可以添加编辑功能
-              console.log('编辑节点:', nodeId)
-            }
-          },
-          {
-            key: 'delete',
-            label: '删除节点',
-            icon: <DeleteOutlined />,
-            onClick: () => handleDeleteNode(nodeId),
-            disabled: nodeId === rootNodeId, // 根节点不能删除
-            danger: true
+      const hasChildren = node.children && node.children.length > 0
+      const menuItems = [
+        {
+          key: 'edit',
+          label: '编辑节点',
+          icon: <EditOutlined />,
+          onClick: () => {
+            // 这里可以添加编辑功能
+            console.log('编辑节点:', nodeId)
           }
-        ]
+        }
+      ]
+
+      // 如果节点有子节点，添加清空子节点选项
+      if (hasChildren) {
+        menuItems.push({
+          key: 'clear-children',
+          label: '清空子节点',
+          icon: <DeleteOutlined style={{ color: '#ff7875' }} />,
+          onClick: () => handleClearChildren(nodeId),
+          style: { color: '#ff7875' }
+        })
       }
+
+      // 分割线
+      if (hasChildren) {
+        menuItems.push({
+          key: 'divider',
+          type: 'divider' as const
+        })
+      }
+
+      // 删除节点选项
+      menuItems.push({
+        key: 'delete',
+        label: '删除节点',
+        icon: <DeleteOutlined />,
+        onClick: () => handleDeleteNode(nodeId),
+        disabled: nodeId === rootNodeId, // 根节点不能删除
+        danger: true
+      })
+
+      return { items: menuItems }
     },
-    [nodes, rootNodeId, handleDeleteNode]
+    [nodes, rootNodeId, handleDeleteNode, handleClearChildren]
   )
 
   return (

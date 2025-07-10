@@ -13,6 +13,7 @@ import {
   removeFromArray,
   addNodeToObjectData,
   deleteNodeFromObjectData,
+  clearNodeChildren,
   updateNodeInObjectData,
   toggleNodeExpansion,
   expandNode,
@@ -500,6 +501,24 @@ ${cellContent}
         pages: state.pages.map((chat) => {
           if (chat.id === chatId && chat.type === 'object') {
             const newObjectData = deleteNodeFromObjectData(chat.objectData, nodeId)
+            return {
+              ...chat,
+              objectData: newObjectData,
+              updatedAt: Date.now()
+            }
+          }
+          return chat
+        })
+      }
+    }
+
+    case 'CLEAR_OBJECT_NODE_CHILDREN': {
+      const { chatId, nodeId } = action.payload
+      return {
+        ...state,
+        pages: state.pages.map((chat) => {
+          if (chat.id === chatId && chat.type === 'object') {
+            const newObjectData = clearNodeChildren(chat.objectData, nodeId)
             return {
               ...chat,
               objectData: newObjectData,
