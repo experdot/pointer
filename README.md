@@ -8,7 +8,9 @@
 
 An AI chat application built with Electron + React + TypeScript, supporting **multi-model conversations**, **intelligent crosstab data analysis**, and **knowledge organization management**.
 
-基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。[查看中文 README 介绍](README.zh-CN.md) 
+基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。
+
+[查看中文 README 介绍](README.zh-CN.md) 
 
 ## Key Features
 
