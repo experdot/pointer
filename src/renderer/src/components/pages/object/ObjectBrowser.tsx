@@ -1,15 +1,58 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { Input, Typography, Space } from 'antd'
-import { SearchOutlined, FolderOutlined } from '@ant-design/icons'
+import { Input, Typography, Space, Tree, Dropdown, Tag, Button } from 'antd'
+import { SearchOutlined, FolderOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../../store/AppContext'
-import { ObjectChat } from '../../../types'
-import ObjectNode from './ObjectNode'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import ObjectToolbar from './ObjectToolbar'
 
 const { Title } = Typography
 
 interface ObjectBrowserProps {
   chatId: string
+}
+
+// 获取节点类型的图标
+const getNodeIcon = (type: ObjectNodeType['type']) => {
+  switch (type) {
+    case 'object':
+      return '📦'
+    case 'array':
+      return '📋'
+    case 'string':
+      return '📝'
+    case 'number':
+      return '🔢'
+    case 'boolean':
+      return '✅'
+    case 'function':
+      return '⚙️'
+    case 'custom':
+      return '🔧'
+    default:
+      return '📄'
+  }
+}
+
+// 获取节点类型的颜色
+const getNodeTypeColor = (type: ObjectNodeType['type']) => {
+  switch (type) {
+    case 'object':
+      return 'blue'
+    case 'array':
+      return 'green'
+    case 'string':
+      return 'orange'
+    case 'number':
+      return 'purple'
+    case 'boolean':
+      return 'red'
+    case 'function':
+      return 'cyan'
+    case 'custom':
+      return 'magenta'
+    default:
+      return 'default'
+  }
 }
 
 const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
@@ -27,85 +70,130 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
   const objectData = chat.objectData
   const { nodes, rootNodeId, selectedNodeId, expandedNodes } = objectData
 
-  // 搜索过滤
-  const filteredNodes = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return Object.values(nodes)
+  // 构建Tree组件所需的数据结构
+  const buildTreeData = useCallback((nodeId: string) => {
+    const node = nodes[nodeId]
+    if (!node) return null
+
+    // 如果有搜索查询，过滤节点
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const matches = node.name.toLowerCase().includes(query) ||
+                     node.description?.toLowerCase().includes(query) ||
+                     node.type.toLowerCase().includes(query)
+      
+      // 如果当前节点不匹配，检查是否有子节点匹配
+      if (!matches && node.children) {
+        const hasMatchingChildren = node.children.some(childId => {
+          const childNode = nodes[childId]
+          return childNode && (
+            childNode.name.toLowerCase().includes(query) ||
+            childNode.description?.toLowerCase().includes(query) ||
+            childNode.type.toLowerCase().includes(query)
+          )
+        })
+        if (!hasMatchingChildren) return null
+      }
     }
 
-    const query = searchQuery.toLowerCase()
-    return Object.values(nodes).filter(
-      (node) =>
-        node.name.toLowerCase().includes(query) ||
-        node.description?.toLowerCase().includes(query) ||
-        node.type.toLowerCase().includes(query)
-    )
-  }, [nodes, searchQuery])
+    const nodeData = {
+      title: (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 6,
+          minWidth: 0, // 允许内容收缩
+          overflow: 'hidden' // 隐藏溢出内容
+        }}>
+          <span style={{ fontSize: '14px', flexShrink: 0 }}>{getNodeIcon(node.type)}</span>
+          <span style={{ 
+            fontWeight: selectedNodeId === nodeId ? 'bold' : 'normal',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            minWidth: 0,
+            flexShrink: 1
+          }}>
+            {node.name}
+          </span>
+          <Tag color={getNodeTypeColor(node.type)} size="small" style={{ flexShrink: 0 }}>
+            {node.type}
+          </Tag>
+          {node.description && (
+            <span style={{ 
+              color: '#666', 
+              fontSize: '12px', 
+              fontStyle: 'italic',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0,
+              flexShrink: 1,
+              maxWidth: '120px' // 限制描述文本的最大宽度
+            }}>
+              {node.description}
+            </span>
+          )}
+        </div>
+      ),
+      key: nodeId,
+      children: node.children?.map(childId => buildTreeData(childId)).filter(Boolean) || []
+    }
 
-  // 构建树状结构
-  const buildNodeTree = useCallback(
-    (nodeId: string, level: number = 0): React.ReactElement[] => {
-      const node = nodes[nodeId]
-      if (!node) return []
+    return nodeData
+  }, [nodes, searchQuery, selectedNodeId])
 
-      // 如果有搜索查询且当前节点不在过滤结果中，跳过
-      if (searchQuery && !filteredNodes.find((n) => n.id === nodeId)) {
-        return []
-      }
+  // 转换为Tree组件所需的数据格式
+  const treeData = useMemo(() => {
+    if (!rootNodeId || !nodes[rootNodeId]) {
+      return []
+    }
 
-      const isExpanded = expandedNodes.includes(nodeId)
-      const hasChildren = node.children && node.children.length > 0
-      const isSelected = selectedNodeId === nodeId
-
-      const nodeElement = (
-        <ObjectNode
-          key={nodeId}
-          node={node}
-          level={level}
-          isSelected={isSelected}
-          isExpanded={isExpanded}
-          hasChildren={hasChildren}
-          onSelect={() => handleNodeSelect(nodeId)}
-          onToggleExpansion={() => handleToggleExpansion(nodeId)}
-          onDelete={() => handleDeleteNode(nodeId)}
-          onGenerateChildren={() => {}} // 空函数，因为AI生成器已经移到右侧
-        />
-      )
-
-      const elements = [nodeElement]
-
-      // 如果展开且有子节点，递归渲染子节点
-      if (isExpanded && hasChildren) {
-        node.children?.forEach((childId) => {
-          elements.push(...buildNodeTree(childId, level + 1))
-        })
-      }
-
-      return elements
-    },
-    [nodes, expandedNodes, selectedNodeId, filteredNodes, searchQuery]
-  )
+    const rootTreeData = buildTreeData(rootNodeId)
+    return rootTreeData ? [rootTreeData] : []
+  }, [rootNodeId, nodes, buildTreeData])
 
   // 处理节点选择
   const handleNodeSelect = useCallback(
-    (nodeId: string) => {
-      dispatch({
-        type: 'SELECT_OBJECT_NODE',
-        payload: { chatId: chat.id, nodeId }
-      })
+    (selectedKeys: React.Key[]) => {
+      const nodeId = selectedKeys[0]?.toString()
+      if (nodeId) {
+        dispatch({
+          type: 'SELECT_OBJECT_NODE',
+          payload: { chatId: chat.id, nodeId }
+        })
+      }
     },
     [dispatch, chat.id]
   )
 
   // 处理节点展开/折叠
-  const handleToggleExpansion = useCallback(
-    (nodeId: string) => {
-      dispatch({
-        type: 'TOGGLE_OBJECT_NODE_EXPANSION',
-        payload: { chatId: chat.id, nodeId }
+  const handleNodeExpand = useCallback(
+    (expandedKeys: React.Key[]) => {
+      const currentExpandedNodes = expandedNodes
+      const newExpandedNodes = expandedKeys.map(key => key.toString())
+      
+      // 找出新展开的节点
+      const newlyExpanded = newExpandedNodes.filter(nodeId => !currentExpandedNodes.includes(nodeId))
+      // 找出新折叠的节点
+      const newlyCollapsed = currentExpandedNodes.filter(nodeId => !newExpandedNodes.includes(nodeId))
+      
+      // 批量更新展开状态
+      newlyExpanded.forEach(nodeId => {
+        dispatch({
+          type: 'EXPAND_OBJECT_NODE',
+          payload: { chatId: chat.id, nodeId }
+        })
+      })
+      
+      newlyCollapsed.forEach(nodeId => {
+        dispatch({
+          type: 'COLLAPSE_OBJECT_NODE',
+          payload: { chatId: chat.id, nodeId }
+        })
       })
     },
-    [dispatch, chat.id]
+    [dispatch, chat.id, expandedNodes]
   )
 
   // 处理删除节点
@@ -135,14 +223,36 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
     [dispatch, chat.id]
   )
 
-  // 渲染根节点及其子树
-  const renderTree = useMemo(() => {
-    if (!rootNodeId || !nodes[rootNodeId]) {
-      return <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>没有对象数据</div>
-    }
+  // 右键菜单
+  const getContextMenu = useCallback(
+    (nodeId: string) => {
+      const node = nodes[nodeId]
+      if (!node) return { items: [] }
 
-    return buildNodeTree(rootNodeId)
-  }, [rootNodeId, nodes, buildNodeTree])
+      return {
+        items: [
+          {
+            key: 'edit',
+            label: '编辑节点',
+            icon: <EditOutlined />,
+            onClick: () => {
+              // 这里可以添加编辑功能
+              console.log('编辑节点:', nodeId)
+            }
+          },
+          {
+            key: 'delete',
+            label: '删除节点',
+            icon: <DeleteOutlined />,
+            onClick: () => handleDeleteNode(nodeId),
+            disabled: nodeId === rootNodeId, // 根节点不能删除
+            danger: true
+          }
+        ]
+      }
+    },
+    [nodes, rootNodeId, handleDeleteNode]
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -172,7 +282,40 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
       </div>
 
       {/* 对象树 */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>{renderTree}</div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '8px 12px' }}>
+        {treeData.length > 0 ? (
+          <Tree
+            treeData={treeData}
+            selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+            expandedKeys={expandedNodes}
+            onSelect={handleNodeSelect}
+            onExpand={handleNodeExpand}
+            showLine={{ showLeafIcon: false }}
+            blockNode
+            style={{ fontSize: '14px' }}
+            titleRender={(nodeData: any) => (
+              <Dropdown
+                menu={getContextMenu(nodeData.key)}
+                trigger={['contextMenu']}
+                placement="bottomLeft"
+              >
+                <div style={{ 
+                  padding: '4px 0',
+                  width: '100%',
+                  minWidth: 0,
+                  overflow: 'hidden'
+                }}>
+                  {nodeData.title}
+                </div>
+              </Dropdown>
+            )}
+          />
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+            {searchQuery ? '没有找到匹配的节点' : '没有对象数据'}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
