@@ -1,171 +1,175 @@
-# Pointer 智能聊天助手
+# Pointer AI Chat Assistant
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/experdot/pointer)
 ![GitHub all releases](https://img.shields.io/github/downloads/experdot/pointer/total)
 ![GitHub](https://img.shields.io/github/license/experdot/pointer)
 
-基于 Electron + React + TypeScript 开发的AI聊天应用，支持多模型对话、智能数据分析和知识组织管理。
+[中文版](README.zh-CN.md) | **English**
 
-## 主要特性
+An AI chat application built with Electron + React + TypeScript, supporting **multi-model conversations**, **intelligent crosstab data analysis**, and **knowledge organization management**.
 
-### AI对话系统
+基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。[查看中文 README 介绍](README.zh-CN.md) 
 
-- 支持多 AI 模型配置 (OpenAI GPT、Claude、DeepSeek等)
-- 流式对话响应，支持推理过程显示
-- 消息树形分支管理，支持对话版本控制
-- 聊天历史分层组织，标签页并行工作
-- 全局内容搜索，关键词高亮
-- 全局 AI 生成任务管理，支持任务监控和取消
-- 全局问答溯源机制，追踪页面间的生成关系
+## Key Features
 
-### 独特功能
+### AI Conversation System
 
-- **AI 交叉分析表**: 自动生成结构化对比分析表格
-- **AI 对象管理器**: 可视化知识数据结构管理
-- **数据导入导出**: 支持主流AI平台数据迁移（OpenAI ChatGPT / Deepseek Chat）
+- Support for multiple AI models (OpenAI GPT, Claude, DeepSeek, etc.)
+- Streaming conversation responses with reasoning process display
+- Message tree branch management with conversation version control
+- Hierarchical chat history organization with parallel tab workflow
+- Global content search with keyword highlighting
+- Global AI generation task management with task monitoring and cancellation
+- Global Q&A traceability mechanism to track generation relationships across pages
 
-### 知识管理
+### Unique Features
 
-- 文件夹层级组织
-- 消息收藏和标记
-- 批量操作和拖拽排序
-- 数据备份和恢复
+- **AI Crosstab Analysis**: Automatically generate structured comparison analysis tables
+- **AI Object Manager**: Visual knowledge data structure management
+- **Data Import/Export**: Support for mainstream AI platform data migration (OpenAI ChatGPT / Deepseek Chat)
 
-#### 主界面
+### Knowledge Management
 
-![主界面](./Screenshot-1.png)
+- Folder hierarchical organization
+- Message bookmarking and tagging
+- Batch operations and drag-and-drop sorting
+- Data backup and recovery
 
-#### 交叉分析表
+#### Main Interface
 
-![交叉分析表](./Screenshot-2.png)
+![Main Interface](./Screenshot-1.png)
 
-#### 对象管理器
+#### Crosstab Analysis
 
-![对象管理器](./Screenshot-3.png)
+![Crosstab Analysis](./Screenshot-2.png)
 
-## 快速开始
+#### Object Manager
 
-### 环境要求
+![Object Manager](./Screenshot-3.png)
+
+## Quick Start
+
+### Requirements
 
 - Node.js 18+
-- Windows 10+, macOS 10.15+, 或 Linux
+- Windows 10+, macOS 10.15+, or Linux
 
-### 安装运行
+### Installation & Setup
 
 ```bash
-# 安装依赖
+# Install dependencies
 pnpm install
 
-# 开发模式
+# Development mode
 pnpm dev
 
-# 构建应用
+# Build application
 pnpm build:win    # Windows
 pnpm build:mac    # macOS
 pnpm build:linux  # Linux
 ```
 
-### 基本配置
+### Basic Configuration
 
-1. 启动应用后进入设置页面
-2. 配置AI模型参数：
-   - 配置名称
-   - API地址
-   - 访问密钥
-   - 模型标识符
-3. 选择默认模型并测试连接
+1. Launch the application and go to settings
+2. Configure AI model parameters:
+   - Configuration name
+   - API endpoint
+   - Access key
+   - Model identifier
+3. Select default model and test connection
 
-## 核心功能
+## Core Features
 
-### 交叉分析表
+### Crosstab Analysis
 
-将任意主题转换为结构化对比分析表格，适用于：
+Convert any topic into structured comparison analysis tables, suitable for:
 
-- 学术研究的文献对比
-- 商业决策的方案评估
-- 教学材料的知识点整理
-- 产品功能的竞品分析
+- Academic research literature comparison
+- Business decision solution evaluation
+- Educational material knowledge organization
+- Product feature competitive analysis
 
-操作流程：
+Workflow:
 
-1. 输入分析主题
-2. AI自动生成表格结构
-3. 填充交叉点数据
-4. 手动编辑和优化
+1. Input analysis topic
+2. AI automatically generates table structure
+3. Fill intersection data
+4. Manual editing and optimization
 
-### 对象浏览器
+### Object Browser
 
-可视化管理复杂数据结构，支持：
+Visualize complex data structures with support for:
 
-- 树状结构展示
-- AI自动生成节点
-- 手动编辑和组织
-- 结构化数据导出
+- Tree structure display
+- AI automatic node generation
+- Manual editing and organization
+- Structured data export
 
-### 聊天分支管理
+### Chat Branch Management
 
-- 消息树状结构
-- 分支间独立对话
-- 历史版本切换
-- 上下文继承
+- Message tree structure
+- Independent conversations between branches
+- Historical version switching
+- Context inheritance
 
-## 技术架构
+## Technical Architecture
 
-### 核心技术
+### Core Technologies
 
-- **前端**: React 19 + TypeScript + Ant Design
-- **后端**: Electron 主进程
-- **构建**: Vite + Electron Builder
-- **样式**: CSS Modules + SCSS
+- **Frontend**: React 19 + TypeScript + Ant Design
+- **Backend**: Electron main process
+- **Build**: Vite + Electron Builder
+- **Styling**: CSS Modules + SCSS
 
-### 项目结构
+### Project Structure
 
 ```
 src/
-├── main/          # Electron主进程
-├── renderer/      # 渲染进程
-│   ├── components/  # React组件
-│   ├── store/      # 状态管理
-│   ├── services/   # 业务逻辑
-│   └── utils/      # 工具函数
-└── preload/       # 预加载脚本
+├── main/          # Electron main process
+├── renderer/      # Renderer process
+│   ├── components/  # React components
+│   ├── store/      # State management
+│   ├── services/   # Business logic
+│   └── utils/      # Utility functions
+└── preload/       # Preload scripts
 ```
 
-### 关键依赖
+### Key Dependencies
 
-- `react-markdown`: Markdown渲染
-- `mermaid`: 图表绘制
-- `katex`: 数学公式
-- `html2canvas`: 截图功能
-- `rehype-highlight`: 代码高亮
+- `react-markdown`: Markdown rendering
+- `mermaid`: Chart drawing
+- `katex`: Mathematical formulas
+- `html2canvas`: Screenshot functionality
+- `rehype-highlight`: Code highlighting
 
-## 使用场景
+## Use Cases
 
-**教育研究**: 课程设计、知识整理、文献分析  
-**商业分析**: 市场调研、竞品对比、战略规划  
-**内容创作**: 选题策划、素材组织、结构化写作  
-**个人学习**: 笔记整理、知识对比、复习资料
+**Education & Research**: Course design, knowledge organization, literature analysis  
+**Business Analysis**: Market research, competitive comparison, strategic planning  
+**Content Creation**: Topic planning, material organization, structured writing  
+**Personal Learning**: Note organization, knowledge comparison, review materials
 
-## 开发贡献
+## Development & Contribution
 
-### 开发流程
+### Development Workflow
 
-1. Fork项目并创建特性分支
-2. 遵循TypeScript和ESLint规范
-3. 提交代码并创建Pull Request
+1. Fork the project and create a feature branch
+2. Follow TypeScript and ESLint standards
+3. Submit code and create Pull Request
 
-### 代码规范
+### Code Standards
 
-- 使用函数式组件和Hooks
-- 遵循conventional commits格式
-- 保持代码类型安全
+- Use functional components and Hooks
+- Follow conventional commits format
+- Maintain type safety
 
-### 重点改进方向
+### Key Improvement Areas
 
-- 缺陷修复
-- 生成提示词与上下文优化
-- 性能优化和用户体验改进
+- Bug fixes
+- Generation prompt and context optimization
+- Performance optimization and user experience improvement
 
-## 许可证
+## License
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+MIT License - See [LICENSE](LICENSE) file for details 
