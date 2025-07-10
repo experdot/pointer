@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Card, Select, Space, Typography, Alert, message, Tooltip } from 'antd'
+import { Button, Card, TreeSelect, Space, Typography, Alert, message, Tooltip } from 'antd'
 import {
   TableOutlined,
   NodeIndexOutlined,
@@ -10,10 +10,31 @@ import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 
 const { Text } = Typography
-const { Option } = Select
 
 interface ObjectCrosstabAnalyzerProps {
   chatId: string
+}
+
+// 获取节点类型的图标
+const getNodeIcon = (type: ObjectNodeType['type']) => {
+  switch (type) {
+    case 'object':
+      return '📦'
+    case 'array':
+      return '📋'
+    case 'string':
+      return '📝'
+    case 'number':
+      return '🔢'
+    case 'boolean':
+      return '✅'
+    case 'function':
+      return '⚙️'
+    case 'custom':
+      return '🔧'
+    default:
+      return '📄'
+  }
 }
 
 const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId }) => {
@@ -28,12 +49,44 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     return <div>数据加载错误</div>
   }
 
-  const { nodes } = chat.objectData
+  const { nodes, rootNodeId } = chat.objectData
 
-  // 获取有子节点的节点列表（可用作横轴/纵轴）
-  const availableNodes = useMemo(() => {
-    return Object.values(nodes).filter((node) => node.children && node.children.length > 0)
-  }, [nodes])
+  // 构建TreeSelect所需的树形数据结构
+  const buildTreeSelectData = useMemo(() => {
+    const buildTreeData = (nodeId: string): any => {
+      const node = nodes[nodeId]
+      if (!node) return null
+
+      const hasChildren = node.children && node.children.length > 0
+      const childrenData = hasChildren 
+        ? node.children.map(childId => buildTreeData(childId)).filter(Boolean)
+        : []
+
+      return {
+        title: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '12px' }}>{getNodeIcon(node.type)}</span>
+            <span>{node.name}</span>
+            {node.children && node.children.length > 0 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                ({node.children.length} 个子项)
+              </Text>
+            )}
+          </div>
+        ),
+        value: node.id,
+        key: node.id,
+        children: childrenData.length > 0 ? childrenData : undefined
+      }
+    }
+
+    if (!rootNodeId || !nodes[rootNodeId]) {
+      return []
+    }
+
+    const rootTreeData = buildTreeData(rootNodeId)
+    return rootTreeData ? [rootTreeData] : []
+  }, [nodes, rootNodeId])
 
   // 获取节点的祖先节点链
   const getAncestorChain = (nodeId: string): ObjectNodeType[] => {
@@ -73,13 +126,13 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     }
   }
 
-  // 获取选中节点的子节点信息
-  const getNodeChildrenInfo = (nodeId: string | null) => {
+  // 获取选中节点的信息
+  const getNodeInfo = (nodeId: string | null) => {
     if (!nodeId) return null
     const node = nodes[nodeId]
-    if (!node || !node.children) return null
+    if (!node) return null
 
-    const children = node.children.map((childId) => nodes[childId]).filter(Boolean)
+    const children = node.children ? node.children.map((childId) => nodes[childId]).filter(Boolean) : []
     return {
       node,
       children,
@@ -87,18 +140,13 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     }
   }
 
-  const horizontalNodeInfo = getNodeChildrenInfo(selectedHorizontalNode)
-  const verticalNodeInfo = getNodeChildrenInfo(selectedVerticalNode)
+  const horizontalNodeInfo = getNodeInfo(selectedHorizontalNode)
+  const verticalNodeInfo = getNodeInfo(selectedVerticalNode)
 
   // 处理创建交叉分析
   const handleCreateCrosstab = () => {
     if (!selectedHorizontalNode || !selectedVerticalNode) {
       message.warning('请选择横轴和纵轴节点')
-      return
-    }
-
-    if (selectedHorizontalNode === selectedVerticalNode) {
-      message.warning('横轴和纵轴不能是同一个节点')
       return
     }
 
@@ -142,12 +190,7 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
   // 检查是否可以创建交叉分析
   const canCreateCrosstab =
     selectedHorizontalNode &&
-    selectedVerticalNode &&
-    selectedHorizontalNode !== selectedVerticalNode &&
-    horizontalNodeInfo &&
-    verticalNodeInfo &&
-    horizontalNodeInfo.count > 0 &&
-    verticalNodeInfo.count > 0
+    selectedVerticalNode
 
   return (
     <Card
@@ -157,25 +200,17 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TableOutlined />
           <span>交叉分析</span>
-          <Tooltip title="选择两个有子节点的对象，基于它们的子节点创建交叉分析表">
+          <Tooltip title="选择两个对象进行交叉分析">
             <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: '14px' }} />
           </Tooltip>
         </div>
       }
     >
-      {availableNodes.length === 0 ? (
+      {Object.keys(nodes).length === 0 ? (
         <Alert
           message="暂无可用节点"
-          description="需要至少两个有子节点的对象才能进行交叉分析"
+          description="需要至少有对象数据才能进行交叉分析"
           type="info"
-          showIcon
-          style={{ fontSize: '12px' }}
-        />
-      ) : availableNodes.length < 2 ? (
-        <Alert
-          message="节点数量不足"
-          description={`当前只有 ${availableNodes.length} 个有子节点的对象，需要至少2个才能进行交叉分析`}
-          type="warning"
           showIcon
           style={{ fontSize: '12px' }}
         />
@@ -186,26 +221,19 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             <Text strong style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
               横轴节点：
             </Text>
-            <Select
+            <TreeSelect
               placeholder="选择横轴节点"
               value={selectedHorizontalNode}
               onChange={setSelectedHorizontalNode}
+              treeData={buildTreeSelectData}
               style={{ width: '100%' }}
               size="small"
-            >
-              {availableNodes.map((node) => (
-                <Option key={node.id} value={node.id}>
-                  <Space>
-                    <NodeIndexOutlined />
-                    <span>{node.name}</span>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>
-                      ({node.children?.length || 0} 个子项)
-                    </Text>
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-            {horizontalNodeInfo && (
+              showSearch
+              treeNodeFilterProp="title"
+              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              allowClear
+            />
+            {horizontalNodeInfo && horizontalNodeInfo.children.length > 0 && (
               <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
                 子节点：{horizontalNodeInfo.children.map((child) => child.name).join(', ')}
               </div>
@@ -217,26 +245,19 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             <Text strong style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
               纵轴节点：
             </Text>
-            <Select
+            <TreeSelect
               placeholder="选择纵轴节点"
               value={selectedVerticalNode}
               onChange={setSelectedVerticalNode}
+              treeData={buildTreeSelectData}
               style={{ width: '100%' }}
               size="small"
-            >
-              {availableNodes.map((node) => (
-                <Option key={node.id} value={node.id} disabled={node.id === selectedHorizontalNode}>
-                  <Space>
-                    <NodeIndexOutlined />
-                    <span>{node.name}</span>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>
-                      ({node.children?.length || 0} 个子项)
-                    </Text>
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-            {verticalNodeInfo && (
+              showSearch
+              treeNodeFilterProp="title"
+              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              allowClear
+            />
+            {verticalNodeInfo && verticalNodeInfo.children.length > 0 && (
               <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
                 子节点：{verticalNodeInfo.children.map((child) => child.name).join(', ')}
               </div>
@@ -244,26 +265,24 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
           </div>
 
           {/* 预览信息 */}
-          {horizontalNodeInfo &&
-            verticalNodeInfo &&
-            selectedHorizontalNode !== selectedVerticalNode && (
-              <Alert
-                message={
-                  <div style={{ fontSize: '11px' }}>
-                    <div>
-                      将创建 {horizontalNodeInfo.count} × {verticalNodeInfo.count} 的交叉分析表
-                    </div>
-                    <div style={{ marginTop: '4px', color: '#8c8c8c' }}>
-                      横轴：{horizontalNodeInfo.node.name} ({horizontalNodeInfo.count} 项)
-                      <ArrowRightOutlined style={{ margin: '0 8px' }} />
-                      纵轴：{verticalNodeInfo.node.name} ({verticalNodeInfo.count} 项)
-                    </div>
+          {selectedHorizontalNode && selectedVerticalNode && (
+            <Alert
+              message={
+                <div style={{ fontSize: '11px' }}>
+                  <div>
+                    将创建基于 {nodes[selectedHorizontalNode].name} × {nodes[selectedVerticalNode].name} 的交叉分析表
                   </div>
-                }
-                type="success"
-                showIcon
-              />
-            )}
+                  <div style={{ marginTop: '4px', color: '#8c8c8c' }}>
+                    横轴：{nodes[selectedHorizontalNode].name}
+                    <ArrowRightOutlined style={{ margin: '0 8px' }} />
+                    纵轴：{nodes[selectedVerticalNode].name}
+                  </div>
+                </div>
+              }
+              type="success"
+              showIcon
+            />
+          )}
 
           {/* 创建按钮 */}
           <Button
