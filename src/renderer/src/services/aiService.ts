@@ -18,6 +18,11 @@ export class AIService {
     this.requestId = uuidv4()
   }
 
+  // 添加getter方法来暴露requestId
+  get id(): string {
+    return this.requestId
+  }
+
   async stopStreaming(): Promise<void> {
     try {
       this.isAborted = true

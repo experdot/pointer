@@ -135,7 +135,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
         // 创建AI服务
         const aiService = createAIService(llmConfig)
-        const objectAIService = createObjectAIService(llmConfig, aiService)
+        const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
         // 调用AI服务生成子节点名称
         const names = await objectAIService.generateChildrenNames(context, prompt)

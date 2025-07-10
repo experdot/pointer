@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { App } from 'antd'
 import { v4 as uuidv4 } from 'uuid'
 import { useAppContext } from '../../../store/AppContext'
-import { ChatMessage, LLMConfig } from '../../../types'
+import { ChatMessage, LLMConfig, AITask } from '../../../types'
 import { createAIService } from '../../../services/aiService'
 import { MessageTree } from './messageTree'
 
@@ -61,12 +61,32 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
   }, [])
 
   const sendAIMessage = useCallback(
-    async (messages: ChatMessage[], llmConfig: LLMConfig, parentId?: string): Promise<string> => {
+    async (messages: ChatMessage[], llmConfig: LLMConfig, parentId?: string, taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat', taskContext?: any): Promise<string> => {
       const aiService = createAIService(llmConfig)
       const messageId = uuidv4()
 
       // 将AI服务实例添加到活跃服务列表中
       setActiveAIServices((prev) => new Map(prev).set(messageId, aiService))
+
+      // 创建AI任务监控
+      const task: AITask = {
+        id: messageId,
+        requestId: aiService.id, // 使用AI服务的requestId
+        type: taskType,
+        status: 'running',
+        title: taskType === 'chat' ? '发送消息' : taskType === 'retry' ? '重试消息' : taskType === 'edit_resend' ? '编辑重发' : '模型切换',
+        description: `使用模型 ${llmConfig.name} 生成回复`,
+        chatId,
+        messageId,
+        modelId: llmConfig.id,
+        startTime: Date.now(),
+        context: taskContext
+      }
+
+      dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
 
       return new Promise((resolve, reject) => {
         const streamingTimestamp = Date.now()
@@ -128,6 +148,17 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
                 reasoning_content: finalReasoning
               }
             })
+            // 更新任务状态为完成
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId: messageId,
+                updates: {
+                  status: 'completed',
+                  endTime: Date.now()
+                }
+              }
+            })
             // 从活跃服务列表中移除
             setActiveAIServices((prev) => {
               const newMap = new Map(prev)
@@ -141,6 +172,18 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
             dispatch({
               type: 'REMOVE_MESSAGE',
               payload: { chatId, messageId }
+            })
+            // 更新任务状态为失败
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId: messageId,
+                updates: {
+                  status: 'failed',
+                  endTime: Date.now(),
+                  error: error.message
+                }
+              }
             })
             // 从活跃服务列表中移除
             setActiveAIServices((prev) => {
@@ -208,7 +251,12 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       try {
         // Use the messages we just calculated instead of relying on state
         const allMessages = [...currentMessages, userMessageWithParent]
-        await sendAIMessage(allMessages, llmConfig, userMessageWithParent.id)
+        await sendAIMessage(allMessages, llmConfig, userMessageWithParent.id, 'chat', {
+          chat: {
+            messageContent: content.trim(),
+            parentMessageId: parentId
+          }
+        })
         // AI消息已经在sendAIMessage的onComplete中添加了
       } catch (error) {
         console.error('Send message failed:', error)
@@ -263,7 +311,11 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
 
       try {
         // 生成新的AI回复作为兄弟分支
-        await sendAIMessage(messagesToSend, llmConfig, parentMessage?.id)
+        await sendAIMessage(messagesToSend, llmConfig, parentMessage?.id, 'retry', {
+          retry: {
+            originalMessageId: messageId
+          }
+        })
         // AI消息已经在sendAIMessage的onComplete中添加了
       } catch (error) {
         console.error('Retry message failed:', error)
@@ -360,7 +412,12 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           }
 
           // 生成新的AI回复
-          await sendAIMessage(messagesToSend, llmConfig, editedUserMessage.id)
+          await sendAIMessage(messagesToSend, llmConfig, editedUserMessage.id, 'edit_resend', {
+            editResend: {
+              originalMessageId: messageId,
+              newContent: newContent
+            }
+          })
         } else {
           // 对于AI消息，从其父消息重新生成
           const currentPath = chat.currentPath || messageTree.getCurrentPath()
@@ -379,7 +436,12 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           }
 
           // 生成新的AI回复作为兄弟分支
-          await sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId)
+          await sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId, 'edit_resend', {
+            editResend: {
+              originalMessageId: messageId,
+              newContent: newContent
+            }
+          })
         }
       } catch (error) {
         console.error('Edit and resend failed:', error)
@@ -456,7 +518,12 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
 
       try {
         // 使用新模型生成AI回复作为兄弟分支
-        await sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId)
+        await sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId, 'model_change', {
+          modelChange: {
+            originalMessageId: messageId,
+            newModelId: newModelId
+          }
+        })
         // AI消息已经在sendAIMessage的onComplete中添加了
       } catch (error) {
         console.error('Model change failed:', error)
@@ -479,12 +546,23 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
 
   const handleStopGeneration = useCallback(() => {
     // 停止所有活跃的AI服务
-    activeAIServices.forEach((aiService) => {
+    activeAIServices.forEach((aiService, messageId) => {
       aiService.stopStreaming()
+      // 更新对应的任务状态
+      dispatch({
+        type: 'UPDATE_AI_TASK',
+        payload: {
+          taskId: messageId,
+          updates: {
+            status: 'cancelled',
+            endTime: Date.now()
+          }
+        }
+      })
     })
     setActiveAIServices(new Map())
     setIsLoading(false)
-  }, [activeAIServices])
+  }, [activeAIServices, dispatch])
 
   return children({
     isLoading,

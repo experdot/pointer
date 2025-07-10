@@ -175,7 +175,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     setIsGenerating(true)
     try {
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService)
+      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
       const description = await objectAIService.generateNodeDescription(selectedNode, prompt.trim())
 
@@ -212,7 +212,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     setIsGenerating(true)
     try {
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService)
+      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
       const value = await objectAIService.generateNodeValue(selectedNode, prompt.trim())
 
@@ -254,7 +254,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     setIsGenerating(true)
     try {
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService)
+      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
       const properties = await objectAIService.generateObjectProperties(selectedNode, prompt.trim())
 

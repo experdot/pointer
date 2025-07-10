@@ -1,4 +1,5 @@
-import { ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectNode as ObjectNodeType, AITask } from '../../../types'
+import { v4 as uuidv4 } from 'uuid'
 
 export interface AIGenerationContext {
   node: ObjectNodeType
@@ -16,37 +17,70 @@ export interface AIGenerationResult {
 export class ObjectAIService {
   private llmConfig: any
   private aiService: any
+  private dispatch: any
+  private chatId?: string
 
-  constructor(llmConfig: any, aiService: any) {
+  constructor(llmConfig: any, aiService: any, dispatch?: any, chatId?: string) {
     this.llmConfig = llmConfig
     this.aiService = aiService
+    this.dispatch = dispatch
+    this.chatId = chatId
   }
 
   // 生成子节点名称（简化版）
   async generateChildrenNames(context: AIGenerationContext, userPrompt: string): Promise<string[]> {
     const { node: parentNode, ancestorChain, siblings, existingChildren } = context
 
-    // 构建层级结构信息
-    const hierarchyInfo = ancestorChain
-      .map((ancestor, index) => {
-        const indent = '  '.repeat(index)
-        return `${indent}- ${ancestor.name}`
+    const taskId = uuidv4()
+
+    // 创建AI任务监控
+    if (this.dispatch && this.chatId) {
+      const task: AITask = {
+        id: taskId,
+        requestId: this.aiService.id, // 使用AI服务的requestId
+        type: 'object_generation',
+        status: 'running',
+        title: '生成子节点名称',
+        description: `为节点 "${parentNode.name}" 生成子节点名称`,
+        chatId: this.chatId,
+        modelId: this.llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          object: {
+            nodeId: parentNode.id,
+            prompt: userPrompt
+          }
+        }
+      }
+
+      this.dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
       })
-      .join('\n')
+    }
 
-    // 构建平级节点信息
-    const siblingsInfo =
-      siblings.length > 0
-        ? siblings.map((sibling) => `  - ${sibling.name}`).join('\n')
-        : '  无平级节点'
+    try {
+      // 构建层级结构信息
+      const hierarchyInfo = ancestorChain
+        .map((ancestor, index) => {
+          const indent = '  '.repeat(index)
+          return `${indent}- ${ancestor.name}`
+        })
+        .join('\n')
 
-    // 构建已有子节点信息
-    const existingChildrenInfo =
-      existingChildren.length > 0
-        ? existingChildren.map((child) => `  - ${child.name}`).join('\n')
-        : '  暂无子节点'
+      // 构建平级节点信息
+      const siblingsInfo =
+        siblings.length > 0
+          ? siblings.map((sibling) => `  - ${sibling.name}`).join('\n')
+          : '  无平级节点'
 
-    const aiPrompt = `# 任务
+      // 构建已有子节点信息
+      const existingChildrenInfo =
+        existingChildren.length > 0
+          ? existingChildren.map((child) => `  - ${child.name}`).join('\n')
+          : '  暂无子节点'
+
+      const aiPrompt = `# 任务
 根据用户的描述，为指定的对象节点生成子节点名称。你只需要生成一个JSON字符串数组，包含多个子节点的名称。
 
 # 对象结构上下文
@@ -83,26 +117,83 @@ ${userPrompt}
 
 请开始生成：`
 
-    const response = await this.callAI(aiPrompt)
+      const response = await this.callAI(aiPrompt)
 
-    // 解析响应
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-    const jsonContent = jsonMatch ? jsonMatch[1] : response
+      // 解析响应
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
+      const jsonContent = jsonMatch ? jsonMatch[1] : response
 
-    try {
       const names = JSON.parse(jsonContent)
       if (!Array.isArray(names)) {
         throw new Error('期望数组格式')
       }
+
+      // 更新任务状态为完成
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'completed',
+              endTime: Date.now()
+            }
+          }
+        })
+      }
+
       return names.filter((name) => typeof name === 'string' && name.trim())
     } catch (error) {
+      // 更新任务状态为失败
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+      }
       throw new Error('AI响应格式错误')
     }
   }
 
   // 生成节点描述
   async generateNodeDescription(node: ObjectNodeType, userPrompt?: string): Promise<string> {
-    const aiPrompt = `# 任务
+    const taskId = uuidv4()
+
+    // 创建AI任务监控
+    if (this.dispatch && this.chatId) {
+      const task: AITask = {
+        id: taskId,
+        requestId: this.aiService.id, // 使用AI服务的requestId
+        type: 'object_generation',
+        status: 'running',
+        title: '生成节点描述',
+        description: `为节点 "${node.name}" 生成描述`,
+        chatId: this.chatId,
+        modelId: this.llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          object: {
+            nodeId: node.id,
+            prompt: userPrompt || '生成描述'
+          }
+        }
+      }
+
+      this.dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+    }
+
+    try {
+      const aiPrompt = `# 任务
 为指定的对象节点生成一个准确、简洁的描述。
 
 # 节点信息
@@ -121,13 +212,74 @@ ${userPrompt || '生成一个符合节点名称和类型的描述'}
 
 请开始生成：`
 
-    const response = await this.callAI(aiPrompt)
-    return response.trim()
+      const response = await this.callAI(aiPrompt)
+
+      // 更新任务状态为完成
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'completed',
+              endTime: Date.now()
+            }
+          }
+        })
+      }
+
+      return response.trim()
+    } catch (error) {
+      // 更新任务状态为失败
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+      }
+      throw error
+    }
   }
 
   // 生成节点值
   async generateNodeValue(node: ObjectNodeType, userPrompt?: string): Promise<any> {
-    const aiPrompt = `# 任务
+    const taskId = uuidv4()
+
+    // 创建AI任务监控
+    if (this.dispatch && this.chatId) {
+      const task: AITask = {
+        id: taskId,
+        requestId: this.aiService.id, // 使用AI服务的requestId
+        type: 'object_generation',
+        status: 'running',
+        title: '生成节点值',
+        description: `为节点 "${node.name}" 生成值`,
+        chatId: this.chatId,
+        modelId: this.llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          object: {
+            nodeId: node.id,
+            prompt: userPrompt || '生成值'
+          }
+        }
+      }
+
+      this.dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+    }
+
+    try {
+      const aiPrompt = `# 任务
 为指定的对象节点生成一个合理的值。
 
 # 节点信息
@@ -150,13 +302,44 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
 
 请开始生成：`
 
-    const response = await this.callAI(aiPrompt)
+      const response = await this.callAI(aiPrompt)
 
-    // 尝试解析为JSON，如果失败则作为字符串返回
-    try {
-      return JSON.parse(response.trim())
-    } catch {
-      return response.trim()
+      // 更新任务状态为完成
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'completed',
+              endTime: Date.now()
+            }
+          }
+        })
+      }
+
+      // 尝试解析为JSON，如果失败则作为字符串返回
+      try {
+        return JSON.parse(response.trim())
+      } catch {
+        return response.trim()
+      }
+    } catch (error) {
+      // 更新任务状态为失败
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+      }
+      throw error
     }
   }
 
@@ -169,7 +352,36 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
       throw new Error('只能为object类型的节点生成属性')
     }
 
-    const aiPrompt = `# 任务
+    const taskId = uuidv4()
+
+    // 创建AI任务监控
+    if (this.dispatch && this.chatId) {
+      const task: AITask = {
+        id: taskId,
+        requestId: this.aiService.id, // 使用AI服务的requestId
+        type: 'object_generation',
+        status: 'running',
+        title: '生成对象属性',
+        description: `为节点 "${node.name}" 生成对象属性`,
+        chatId: this.chatId,
+        modelId: this.llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          object: {
+            nodeId: node.id,
+            prompt: userPrompt || '生成属性'
+          }
+        }
+      }
+
+      this.dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+    }
+
+    try {
+      const aiPrompt = `# 任务
 为指定的对象节点生成属性键值对。
 
 # 节点信息
@@ -199,18 +411,46 @@ ${userPrompt || '生成一些符合对象用途的属性'}
 
 请开始生成：`
 
-    const response = await this.callAI(aiPrompt)
+      const response = await this.callAI(aiPrompt)
 
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-    const jsonContent = jsonMatch ? jsonMatch[1] : response
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
+      const jsonContent = jsonMatch ? jsonMatch[1] : response
 
-    try {
       const properties = JSON.parse(jsonContent)
       if (typeof properties !== 'object' || Array.isArray(properties)) {
         throw new Error('期望对象格式')
       }
+
+      // 更新任务状态为完成
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'completed',
+              endTime: Date.now()
+            }
+          }
+        })
+      }
+
       return properties
     } catch (error) {
+      // 更新任务状态为失败
+      if (this.dispatch && this.chatId) {
+        this.dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+      }
       throw new Error('AI响应格式错误')
     }
   }
@@ -294,6 +534,6 @@ ${userPrompt || '分析当前结构并提供优化建议'}
 }
 
 // 工厂函数
-export function createObjectAIService(llmConfig: any, aiService: any): ObjectAIService {
-  return new ObjectAIService(llmConfig, aiService)
+export function createObjectAIService(llmConfig: any, aiService: any, dispatch?: any, chatId?: string): ObjectAIService {
+  return new ObjectAIService(llmConfig, aiService, dispatch, chatId)
 }

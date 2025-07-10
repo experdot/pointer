@@ -10,6 +10,8 @@ import {
 import { useAppContext } from '../../../store/AppContext'
 import { createAIService } from '../../../services/aiService'
 import { PROMPT_TEMPLATES, extractJsonContent } from './CrosstabUtils'
+import { AITask } from '../../../types'
+import { v4 as uuidv4 } from 'uuid'
 import StepFlow from './StepFlow'
 import TopicInput from './TopicInput'
 import MetadataDisplay from './MetadataDisplay'
@@ -75,13 +77,41 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       setIsGeneratingColumn(horizontalItem)
 
+      const taskId = uuidv4()
+
+      // 先创建AI服务实例
+      const aiService = createAIService(llmConfig)
+
+      // 创建AI任务监控
+      const task: AITask = {
+        id: taskId,
+        requestId: aiService.id, // 使用AI服务的requestId
+        type: 'crosstab_cell',
+        status: 'running',
+        title: '生成列数据',
+        description: `生成列 "${horizontalItem}" 的所有数据`,
+        chatId,
+        modelId: llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          crosstab: {
+            horizontalItem,
+            verticalItem: 'all',
+            metadata: chat.crosstabData.metadata
+          }
+        }
+      }
+
+      dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+
       try {
         const itemPrompt = PROMPT_TEMPLATES.values
           .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
           .replace(/\[HORIZONTAL_ITEM\]/g, horizontalItem)
           .replace('[VERTICAL_ITEMS]', JSON.stringify(chat.crosstabData.verticalValues, null, 2))
-
-        const aiService = createAIService(llmConfig)
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
             [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
@@ -106,6 +136,18 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             }
           })
 
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success(`列 "${horizontalItem}" 数据生成完成`)
         } catch (e) {
           message.error(`解析列 "${horizontalItem}" 的数据失败`)
@@ -114,6 +156,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       } catch (error) {
         console.error('Column generation error:', error)
         message.error('列数据生成失败，请重试')
+        
+        // 更新任务状态为失败
+        dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
       } finally {
         setIsGeneratingColumn(null)
       }
@@ -138,6 +193,36 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       setIsGeneratingRow(verticalItem)
 
+      const taskId = uuidv4()
+
+      // 先创建AI服务实例
+      const aiService = createAIService(llmConfig)
+
+      // 创建AI任务监控
+      const task: AITask = {
+        id: taskId,
+        requestId: aiService.id, // 使用AI服务的requestId
+        type: 'crosstab_cell',
+        status: 'running',
+        title: '生成行数据',
+        description: `生成行 "${verticalItem}" 的所有数据`,
+        chatId,
+        modelId: llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          crosstab: {
+            horizontalItem: 'all',
+            verticalItem,
+            metadata: chat.crosstabData.metadata
+          }
+        }
+      }
+
+      dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+
       try {
         const itemPrompt = PROMPT_TEMPLATES.rowValues
           .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
@@ -146,8 +231,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             '[HORIZONTAL_ITEMS]',
             JSON.stringify(chat.crosstabData.horizontalValues, null, 2)
           )
-
-        const aiService = createAIService(llmConfig)
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
             [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
@@ -181,6 +264,18 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             }
           })
 
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success(`行 "${verticalItem}" 数据生成完成`)
         } catch (e) {
           message.error(`解析行 "${verticalItem}" 的数据失败`)
@@ -189,6 +284,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       } catch (error) {
         console.error('Row generation error:', error)
         message.error('行数据生成失败，请重试')
+        
+        // 更新任务状态为失败
+        dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
       } finally {
         setIsGeneratingRow(null)
       }
@@ -214,13 +322,41 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       const cellKey = `${horizontalItem}_${verticalItem}`
       setIsGeneratingCell(cellKey)
 
+      const taskId = uuidv4()
+
+      // 先创建AI服务实例
+      const aiService = createAIService(llmConfig)
+
+      // 创建AI任务监控
+      const task: AITask = {
+        id: taskId,
+        requestId: aiService.id, // 使用AI服务的requestId
+        type: 'crosstab_cell',
+        status: 'running',
+        title: '生成单元格数据',
+        description: `生成 "${horizontalItem} × ${verticalItem}" 单元格数据`,
+        chatId,
+        modelId: llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          crosstab: {
+            horizontalItem,
+            verticalItem,
+            metadata: chat.crosstabData.metadata
+          }
+        }
+      }
+
+      dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
+      })
+
       try {
         const itemPrompt = PROMPT_TEMPLATES.cellValue
           .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
           .replace(/\[HORIZONTAL_ITEM\]/g, horizontalItem)
           .replace(/\[VERTICAL_ITEM\]/g, verticalItem)
-
-        const aiService = createAIService(llmConfig)
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
             [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
@@ -248,10 +384,35 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         })
 
+        // 更新任务状态为完成
+        dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'completed',
+              endTime: Date.now()
+            }
+          }
+        })
+
         message.success(`单元格 "${horizontalItem} × ${verticalItem}" 数据生成完成`)
       } catch (error) {
         console.error('Cell generation error:', error)
         message.error('单元格数据生成失败，请重试')
+        
+        // 更新任务状态为失败
+        dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
       } finally {
         setIsGeneratingCell(null)
       }
@@ -555,13 +716,41 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
     setIsGeneratingTopicSuggestions(true)
 
+    const taskId = uuidv4()
+
+    // 先创建AI服务实例
+    const aiService = createAIService(llmConfig)
+
+    // 创建AI任务监控
+    const task: AITask = {
+      id: taskId,
+      requestId: aiService.id, // 使用AI服务的requestId
+      type: 'crosstab_cell',
+      status: 'running',
+      title: '生成主题候选项',
+      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成相关候选项`,
+      chatId,
+      modelId: llmConfig.id,
+      startTime: Date.now(),
+      context: {
+        crosstab: {
+          horizontalItem: 'suggestions',
+          verticalItem: 'topic',
+          metadata: chat.crosstabData.metadata
+        }
+      }
+    }
+
+    dispatch({
+      type: 'ADD_AI_TASK',
+      payload: { task }
+    })
+
     try {
       const prompt = PROMPT_TEMPLATES.topicSuggestions.replace(
         '[CURRENT_TOPIC]',
         chat.crosstabData.metadata.Topic
       )
-
-      const aiService = createAIService(llmConfig)
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
@@ -588,6 +777,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               data: { metadata: newMetadata }
             }
           })
+
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success('主题候选项生成完成')
         } else {
           throw new Error('返回的不是数组格式')
@@ -599,6 +801,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     } catch (error) {
       console.error('Topic suggestions generation error:', error)
       message.error('主题候选项生成失败，请重试')
+      
+      // 更新任务状态为失败
+      dispatch({
+        type: 'UPDATE_AI_TASK',
+        payload: {
+          taskId,
+          updates: {
+            status: 'failed',
+            endTime: Date.now(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      })
     } finally {
       setIsGeneratingTopicSuggestions(false)
     }
@@ -620,12 +835,40 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
     setIsGeneratingHorizontalSuggestions(true)
 
+    const taskId = uuidv4()
+
+    // 先创建AI服务实例
+    const aiService = createAIService(llmConfig)
+
+    // 创建AI任务监控
+    const task: AITask = {
+      id: taskId,
+      requestId: aiService.id, // 使用AI服务的requestId
+      type: 'crosstab_cell',
+      status: 'running',
+      title: '生成横轴候选项',
+      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成横轴候选项`,
+      chatId,
+      modelId: llmConfig.id,
+      startTime: Date.now(),
+      context: {
+        crosstab: {
+          horizontalItem: 'suggestions',
+          verticalItem: 'horizontal',
+          metadata: chat.crosstabData.metadata
+        }
+      }
+    }
+
+    dispatch({
+      type: 'ADD_AI_TASK',
+      payload: { task }
+    })
+
     try {
       const prompt = PROMPT_TEMPLATES.horizontalSuggestions
         .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
         .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
-
-      const aiService = createAIService(llmConfig)
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
@@ -652,6 +895,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               data: { metadata: newMetadata }
             }
           })
+
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success('横轴候选项生成完成')
         } else {
           throw new Error('返回的不是数组格式')
@@ -663,10 +919,23 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     } catch (error) {
       console.error('Horizontal suggestions generation error:', error)
       message.error('横轴候选项生成失败，请重试')
+      
+      // 更新任务状态为失败
+      dispatch({
+        type: 'UPDATE_AI_TASK',
+        payload: {
+          taskId,
+          updates: {
+            status: 'failed',
+            endTime: Date.now(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      })
     } finally {
       setIsGeneratingHorizontalSuggestions(false)
     }
-  }, [chat, isGeneratingHorizontalSuggestions, getLLMConfig, message])
+  }, [chat, isGeneratingHorizontalSuggestions, getLLMConfig, dispatch, chatId, message])
 
   const handleGenerateVerticalSuggestions = useCallback(async () => {
     if (!chat || isGeneratingVerticalSuggestions) return
@@ -684,12 +953,40 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
     setIsGeneratingVerticalSuggestions(true)
 
+    const taskId = uuidv4()
+
+    // 先创建AI服务实例
+    const aiService = createAIService(llmConfig)
+
+    // 创建AI任务监控
+    const task: AITask = {
+      id: taskId,
+      requestId: aiService.id, // 使用AI服务的requestId
+      type: 'crosstab_cell',
+      status: 'running',
+      title: '生成纵轴候选项',
+      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成纵轴候选项`,
+      chatId,
+      modelId: llmConfig.id,
+      startTime: Date.now(),
+      context: {
+        crosstab: {
+          horizontalItem: 'suggestions',
+          verticalItem: 'vertical',
+          metadata: chat.crosstabData.metadata
+        }
+      }
+    }
+
+    dispatch({
+      type: 'ADD_AI_TASK',
+      payload: { task }
+    })
+
     try {
       const prompt = PROMPT_TEMPLATES.verticalSuggestions
         .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
         .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
-
-      const aiService = createAIService(llmConfig)
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
@@ -716,6 +1013,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               data: { metadata: newMetadata }
             }
           })
+
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success('纵轴候选项生成完成')
         } else {
           throw new Error('返回的不是数组格式')
@@ -727,10 +1037,23 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     } catch (error) {
       console.error('Vertical suggestions generation error:', error)
       message.error('纵轴候选项生成失败，请重试')
+      
+      // 更新任务状态为失败
+      dispatch({
+        type: 'UPDATE_AI_TASK',
+        payload: {
+          taskId,
+          updates: {
+            status: 'failed',
+            endTime: Date.now(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      })
     } finally {
       setIsGeneratingVerticalSuggestions(false)
     }
-  }, [chat, isGeneratingVerticalSuggestions, getLLMConfig, message])
+  }, [chat, isGeneratingVerticalSuggestions, getLLMConfig, dispatch, chatId, message])
 
   const handleGenerateValueSuggestions = useCallback(async () => {
     if (!chat || isGeneratingValueSuggestions) return
@@ -748,14 +1071,42 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
     setIsGeneratingValueSuggestions(true)
 
+    const taskId = uuidv4()
+
+    // 先创建AI服务实例
+    const aiService = createAIService(llmConfig)
+
+    // 创建AI任务监控
+    const task: AITask = {
+      id: taskId,
+      requestId: aiService.id, // 使用AI服务的requestId
+      type: 'crosstab_cell',
+      status: 'running',
+      title: '生成值候选项',
+      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成值的含义候选项`,
+      chatId,
+      modelId: llmConfig.id,
+      startTime: Date.now(),
+      context: {
+        crosstab: {
+          horizontalItem: 'suggestions',
+          verticalItem: 'value',
+          metadata: chat.crosstabData.metadata
+        }
+      }
+    }
+
+    dispatch({
+      type: 'ADD_AI_TASK',
+      payload: { task }
+    })
+
     try {
       const prompt = PROMPT_TEMPLATES.valueSuggestions
         .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
         .replace('[HORIZONTAL_AXIS]', chat.crosstabData.metadata.HorizontalAxis)
         .replace('[VERTICAL_AXIS]', chat.crosstabData.metadata.VerticalAxis)
         .replace('[CURRENT_VALUE]', chat.crosstabData.metadata.Value)
-
-      const aiService = createAIService(llmConfig)
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
@@ -782,6 +1133,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               data: { metadata: newMetadata }
             }
           })
+
+          // 更新任务状态为完成
+          dispatch({
+            type: 'UPDATE_AI_TASK',
+            payload: {
+              taskId,
+              updates: {
+                status: 'completed',
+                endTime: Date.now()
+              }
+            }
+          })
+
           message.success('值的含义候选项生成完成')
         } else {
           throw new Error('返回的不是数组格式')
@@ -793,6 +1157,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     } catch (error) {
       console.error('Value suggestions generation error:', error)
       message.error('值的含义候选项生成失败，请重试')
+      
+      // 更新任务状态为失败
+      dispatch({
+        type: 'UPDATE_AI_TASK',
+        payload: {
+          taskId,
+          updates: {
+            status: 'failed',
+            endTime: Date.now(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      })
     } finally {
       setIsGeneratingValueSuggestions(false)
     }

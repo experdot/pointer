@@ -5,6 +5,7 @@ import { handleTabActions } from './tabReducer'
 import { handleMessageActions } from './messageReducer'
 import { handleUIActions } from './uiReducer'
 import { handleSearchActions } from './searchReducer'
+import { handleTaskActions } from './taskReducer'
 import { INITIAL_SETTINGS } from '../constants'
 
 // Main reducer that combines all domain-specific reducers
@@ -26,6 +27,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   if (newState !== state) return newState
 
   newState = handleSearchActions(state, action)
+  if (newState !== state) return newState
+
+  newState = handleTaskActions(state, action)
   if (newState !== state) return newState
 
   // Handle remaining actions

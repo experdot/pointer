@@ -227,6 +227,75 @@ export interface SearchResult {
   highlightIndices: number[] // 高亮位置
 }
 
+// AI任务状态
+export type AITaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+// AI任务类型
+export type AITaskType = 'chat' | 'crosstab_cell' | 'object_generation' | 'retry' | 'edit_resend' | 'model_change'
+
+// AI任务信息
+export interface AITask {
+  id: string // 任务ID，通常是messageId
+  requestId: string // AI服务的请求ID，用于中止请求
+  type: AITaskType
+  status: AITaskStatus
+  title: string // 任务标题
+  description?: string // 任务描述
+  
+  // 关联信息
+  chatId?: string // 关联的聊天ID
+  messageId?: string // 关联的消息ID
+  modelId?: string // 使用的模型ID
+  
+  // 时间信息
+  startTime: number
+  endTime?: number
+  
+  // 进度信息
+  progress?: {
+    current: number
+    total: number
+    message?: string
+  }
+  
+  // 错误信息
+  error?: string
+  
+  // 任务特定的数据
+  context?: {
+    // 普通聊天上下文
+    chat?: {
+      messageContent?: string
+      parentMessageId?: string
+    }
+    // 交叉分析单元格上下文
+    crosstab?: {
+      horizontalItem: string
+      verticalItem: string
+      metadata: any
+    }
+    // 对象生成上下文
+    object?: {
+      nodeId: string
+      prompt: string
+    }
+    // 重试上下文
+    retry?: {
+      originalMessageId: string
+    }
+    // 编辑重发上下文
+    editResend?: {
+      originalMessageId: string
+      newContent: string
+    }
+    // 模型切换上下文
+    modelChange?: {
+      originalMessageId: string
+      newModelId: string
+    }
+  }
+}
+
 export interface AppState {
   pages: Page[]
   folders: PageFolder[]
@@ -249,6 +318,8 @@ export interface AppState {
   allMessagesCollapsed: { [chatId: string]: boolean } // 每个聊天的全部折叠状态
   // 页面溯源显示折叠状态
   lineageDisplayCollapsed: { [pageId: string]: boolean } // 每个页面的溯源显示折叠状态
+  // AI任务监控状态
+  aiTasks: AITask[] // 所有AI任务列表
 }
 
 export type AppAction =
@@ -457,3 +528,9 @@ export type AppAction =
   | { type: 'EXPAND_ALL_MESSAGES'; payload: { chatId: string } }
   // 页面溯源显示折叠相关操作
   | { type: 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE'; payload: { pageId: string } }
+  // AI任务监控相关操作
+  | { type: 'ADD_AI_TASK'; payload: { task: AITask } }
+  | { type: 'UPDATE_AI_TASK'; payload: { taskId: string; updates: Partial<AITask> } }
+  | { type: 'REMOVE_AI_TASK'; payload: { taskId: string } }
+  | { type: 'CLEAR_COMPLETED_AI_TASKS' }
+  | { type: 'CLEAR_ALL_AI_TASKS' }

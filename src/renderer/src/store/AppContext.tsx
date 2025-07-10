@@ -24,6 +24,7 @@ const initialState: AppState = {
   collapsedMessages: {},
   allMessagesCollapsed: {},
   lineageDisplayCollapsed: {},
+  aiTasks: [],
   settings: INITIAL_SETTINGS
 }
 
