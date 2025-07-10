@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Button, Typography, Card, Input, Space, Tooltip, Empty } from 'antd'
+import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
@@ -176,6 +176,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       </div>
 
       <div style={{ padding: '16px' }}>
+        {/* 基本信息 */}
         <Card size="small" style={{ marginBottom: '16px' }}>
           <Title level={5} style={{ margin: '0 0 12px 0' }}>
             基本信息
@@ -184,9 +185,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
             {renderPropertyItem('名称', selectedNode.name, 'name', true)}
             {renderPropertyItem('描述', selectedNode.description, 'description', true)}
-            {renderPropertyItem('ID', selectedNode.id)}
-            {renderPropertyItem('父节点ID', selectedNode.parentId)}
-            {renderPropertyItem('子节点数量', selectedNode.children ? selectedNode.children.length : 0)}
           </div>
         </Card>
 
@@ -204,19 +202,42 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
 
         {/* 元数据 */}
         {selectedNode.metadata && (
-          <Card size="small">
+          <Card size="small" style={{ marginBottom: '16px' }}>
             <Title level={5} style={{ margin: '0 0 12px 0' }}>
               元数据
             </Title>
             <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
               {renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
               {renderPropertyItem('来源', selectedNode.metadata.source)}
-              {selectedNode.metadata.lastModified && (
-                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.lastModified))
-              )}
+              {selectedNode.metadata.lastModified &&
+                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.lastModified))}
             </div>
           </Card>
         )}
+
+        {/* 层级信息 */}
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <Collapse
+            ghost
+            size="small"
+            items={[
+              {
+                key: 'hierarchy',
+                label: '层级信息',
+                children: (
+                  <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
+                    {renderPropertyItem('ID', selectedNode.id)}
+                    {renderPropertyItem('父节点ID', selectedNode.parentId)}
+                    {renderPropertyItem(
+                      '子节点数量',
+                      selectedNode.children ? selectedNode.children.length : 0
+                    )}
+                  </div>
+                )
+              }
+            ]}
+          />
+        </Card>
       </div>
     </div>
   )
