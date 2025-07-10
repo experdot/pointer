@@ -20,6 +20,9 @@ importers:
       antd:
         specifier: ^5.26.0
         version: 5.26.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.13
       electron-updater:
         specifier: ^6.3.9
         version: 6.6.2

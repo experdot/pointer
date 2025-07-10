@@ -27,6 +27,7 @@
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
     "antd": "^5.26.0",
+    "dayjs": "^1.11.13",
     "electron-updater": "^6.3.9",
     "html2canvas": "^1.4.1",
     "katex": "^0.16.11",

@@ -3,6 +3,7 @@ import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
+import PropertyTableEditor from './PropertyTableEditor'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -69,6 +70,20 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   const cancelEdit = () => {
     setEditingField(null)
     setEditValue('')
+  }
+
+  // 保存属性
+  const handlePropertiesSave = (properties: { [key: string]: any }) => {
+    if (!selectedNode) return
+    
+    dispatch({
+      type: 'UPDATE_OBJECT_NODE',
+      payload: {
+        chatId: chat.id,
+        nodeId: selectedNode.id,
+        updates: { properties }
+      }
+    })
   }
 
   // 格式化显示值
@@ -189,16 +204,15 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
         </Card>
 
         {/* 属性信息 */}
-        {selectedNode.properties && Object.keys(selectedNode.properties).length > 0 && (
-          <Card size="small" style={{ marginBottom: '16px' }}>
-            <Title level={5} style={{ margin: '0 0 12px 0' }}>
-              属性信息
-            </Title>
-            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
-              {renderPropertyItem('属性', selectedNode.properties, 'properties', true)}
-            </div>
-          </Card>
-        )}
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <Title level={5} style={{ margin: '0 0 12px 0' }}>
+            属性信息
+          </Title>
+          <PropertyTableEditor
+            properties={selectedNode.properties || {}}
+            onSave={handlePropertiesSave}
+          />
+        </Card>
 
         {/* 元数据 */}
         {selectedNode.metadata && (
