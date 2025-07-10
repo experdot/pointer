@@ -90,7 +90,7 @@ ${hierarchyInfo}
 
 ## 当前节点信息
 - 节点名称: ${parentNode.name}
-- 节点类型: ${parentNode.type}
+- 节点描述: ${parentNode.description || '无'}
 
 ## 平级节点信息
 ${siblingsInfo}
@@ -198,17 +198,19 @@ ${userPrompt}
 
 # 节点信息
 - 名称: ${node.name}
-- 类型: ${node.type}
 - 当前描述: ${node.description || '无'}
+- 属性数量: ${Object.keys(node.properties || {}).length}
+- 子节点数量: ${node.children?.length || 0}
 
 # 用户需求
-${userPrompt || '生成一个符合节点名称和类型的描述'}
+${userPrompt || '请生成一个简洁明了的节点描述'}
 
 # 输出要求
-请直接输出描述文本，不要包含任何格式化标记。描述应该：
-1. 简洁明了，通常1-2句话
-2. 准确反映节点的用途和含义
-3. 符合中文表达习惯
+请直接输出节点描述，不要包含任何格式化标记或额外说明。描述应该：
+1. 简洁明了，50-200字左右
+2. 准确反映节点的用途和功能
+3. 使用自然语言，避免过于技术性的表述
+4. 符合整个对象系统的语境
 
 请开始生成：`
 
@@ -248,98 +250,192 @@ ${userPrompt || '生成一个符合节点名称和类型的描述'}
     }
   }
 
-  // 生成节点值
-  async generateNodeValue(node: ObjectNodeType, userPrompt?: string): Promise<any> {
-    const taskId = uuidv4()
-
-    // 创建AI任务监控
-    if (this.dispatch && this.chatId) {
-      const task: AITask = {
-        id: taskId,
-        requestId: this.aiService.id, // 使用AI服务的requestId
-        type: 'object_generation',
-        status: 'running',
-        title: '生成节点值',
-        description: `为节点 "${node.name}" 生成值`,
-        chatId: this.chatId,
-        modelId: this.llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          object: {
-            nodeId: node.id,
-            prompt: userPrompt || '生成值'
-          }
-        }
-      }
-
-      this.dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
-    }
+  // 获取生成子节点的推荐提示词
+  async getChildrenPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
+    const { node: parentNode, ancestorChain, siblings, existingChildren } = context
 
     try {
+      // 构建层级结构信息
+      const hierarchyInfo = ancestorChain
+        .map((ancestor, index) => {
+          const indent = '  '.repeat(index)
+          return `${indent}- ${ancestor.name}`
+        })
+        .join('\n')
+
+      // 构建已有子节点信息
+      const existingChildrenInfo =
+        existingChildren.length > 0
+          ? existingChildren.map((child) => `  - ${child.name}`).join('\n')
+          : '  暂无子节点'
+
       const aiPrompt = `# 任务
-为指定的对象节点生成一个合理的值。
+根据对象节点的上下文信息，为用户推荐5个用于生成子节点的提示词。
 
-# 节点信息
-- 名称: ${node.name}
-- 类型: ${node.type}
-- 描述: ${node.description || '无'}
-- 当前值: ${node.value || '无'}
+# 对象结构上下文
 
-# 用户需求
-${userPrompt || '生成一个符合节点类型和用途的默认值'}
+## 层级结构（从根节点到当前节点）
+${hierarchyInfo}
+
+## 当前节点信息
+- 节点名称: ${parentNode.name}
+- 节点描述: ${parentNode.description || '无'}
+
+## 已有子节点
+${existingChildrenInfo}
 
 # 输出格式
-根据节点类型，直接输出对应的值：
-- string类型：直接输出字符串内容
-- number类型：直接输出数字
-- boolean类型：直接输出true或false
-- object类型：输出JSON对象
-- array类型：输出JSON数组
-- null类型：输出null
+请严格按照以下JSON格式输出，只包含提示词数组：
+\`\`\`json
+["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
+\`\`\`
+
+# 生成要求
+1. 提示词应该简洁明了，15-30字左右
+2. 提示词应该具有启发性，能够指导用户生成相关的子节点
+3. 考虑节点的类型和用途，提供有针对性的建议
+4. 避免与已有子节点重复
+5. 提示词应该涵盖不同的角度和维度
 
 请开始生成：`
 
       const response = await this.callAI(aiPrompt)
 
-      // 更新任务状态为完成
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'completed',
-              endTime: Date.now()
-            }
-          }
-        })
+      // 解析响应
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
+      const jsonContent = jsonMatch ? jsonMatch[1] : response
+
+      const recommendations = JSON.parse(jsonContent)
+      if (!Array.isArray(recommendations)) {
+        throw new Error('期望数组格式')
       }
 
-      // 尝试解析为JSON，如果失败则作为字符串返回
-      try {
-        return JSON.parse(response.trim())
-      } catch {
-        return response.trim()
-      }
+      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
     } catch (error) {
-      // 更新任务状态为失败
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
+      console.error('获取子节点推荐失败:', error)
+      // 返回默认推荐
+      return [
+        '添加基本功能模块',
+        '生成配置相关选项',
+        '创建状态管理字段',
+        '添加数据处理逻辑',
+        '生成用户界面组件'
+      ]
+    }
+  }
+
+  // 获取生成描述的推荐提示词
+  async getDescriptionPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
+    const { node } = context
+
+    try {
+      const aiPrompt = `# 任务
+根据对象节点的信息，为用户推荐5个用于生成节点描述的提示词。
+
+# 节点信息
+- 节点名称: ${node.name}
+- 当前描述: ${node.description || '无'}
+- 属性数量: ${Object.keys(node.properties || {}).length}
+- 子节点数量: ${node.children?.length || 0}
+
+# 输出格式
+请严格按照以下JSON格式输出，只包含提示词数组：
+\`\`\`json
+["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
+\`\`\`
+
+# 生成要求
+1. 提示词应该简洁明了，15-30字左右
+2. 提示词应该帮助用户从不同角度描述节点
+3. 考虑节点的功能、用途、特点等维度
+4. 提示词应该具有启发性和实用性
+5. 涵盖功能说明、使用场景、技术特点等不同方面
+
+请开始生成：`
+
+      const response = await this.callAI(aiPrompt)
+
+      // 解析响应
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
+      const jsonContent = jsonMatch ? jsonMatch[1] : response
+
+      const recommendations = JSON.parse(jsonContent)
+      if (!Array.isArray(recommendations)) {
+        throw new Error('期望数组格式')
       }
-      throw error
+
+      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
+    } catch (error) {
+      console.error('获取描述推荐失败:', error)
+      // 返回默认推荐
+      return [
+        '生成详细的功能说明',
+        '描述主要用途和价值',
+        '说明技术特点和优势',
+        '介绍使用场景和应用',
+        '解释核心概念和原理'
+      ]
+    }
+  }
+
+  // 获取生成属性的推荐提示词
+  async getPropertiesPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
+    const { node } = context
+
+    try {
+      const existingProperties = Object.keys(node.properties || {})
+      const existingPropertiesInfo = existingProperties.length > 0
+        ? existingProperties.map(key => `  - ${key}: ${node.properties?.[key]}`).join('\n')
+        : '  暂无属性'
+
+      const aiPrompt = `# 任务
+根据对象节点的信息，为用户推荐5个用于生成对象属性的提示词。
+
+# 节点信息
+- 节点名称: ${node.name}
+- 节点描述: ${node.description || '无'}
+- 子节点数量: ${node.children?.length || 0}
+
+## 已有属性
+${existingPropertiesInfo}
+
+# 输出格式
+请严格按照以下JSON格式输出，只包含提示词数组：
+\`\`\`json
+["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
+\`\`\`
+
+# 生成要求
+1. 提示词应该简洁明了，15-30字左右
+2. 提示词应该帮助用户生成有用的对象属性
+3. 考虑配置项、状态信息、元数据等不同类型的属性
+4. 避免与已有属性重复
+5. 提示词应该具有实用性和针对性
+
+请开始生成：`
+
+      const response = await this.callAI(aiPrompt)
+
+      // 解析响应
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
+      const jsonContent = jsonMatch ? jsonMatch[1] : response
+
+      const recommendations = JSON.parse(jsonContent)
+      if (!Array.isArray(recommendations)) {
+        throw new Error('期望数组格式')
+      }
+
+      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
+    } catch (error) {
+      console.error('获取属性推荐失败:', error)
+      // 返回默认推荐
+      return [
+        '添加基本配置参数',
+        '生成状态管理属性',
+        '创建元数据信息',
+        '添加验证规则属性',
+        '生成显示控制选项'
+      ]
     }
   }
 
@@ -348,10 +444,6 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
     node: ObjectNodeType,
     userPrompt?: string
   ): Promise<Record<string, any>> {
-    if (node.type !== 'object') {
-      throw new Error('只能为object类型的节点生成属性')
-    }
-
     const taskId = uuidv4()
 
     // 创建AI任务监控
@@ -362,7 +454,7 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
         type: 'object_generation',
         status: 'running',
         title: '生成对象属性',
-        description: `为节点 "${node.name}" 生成对象属性`,
+        description: `为节点 "${node.name}" 生成属性`,
         chatId: this.chatId,
         modelId: this.llmConfig.id,
         startTime: Date.now(),
@@ -382,44 +474,42 @@ ${userPrompt || '生成一个符合节点类型和用途的默认值'}
 
     try {
       const aiPrompt = `# 任务
-为指定的对象节点生成属性键值对。
+为指定的对象节点生成合适的属性。
 
 # 节点信息
-- 名称: ${node.name}
-- 类型: ${node.type}
-- 描述: ${node.description || '无'}
-- 当前属性: ${JSON.stringify(node.properties || {}, null, 2)}
+- 节点名称: ${node.name}
+- 节点描述: ${node.description || '无'}
+- 现有属性: ${Object.keys(node.properties || {}).length > 0 ? JSON.stringify(node.properties, null, 2) : '无'}
 
 # 用户需求
-${userPrompt || '生成一些符合对象用途的属性'}
+${userPrompt || '生成适合这个对象的属性'}
 
 # 输出格式
 请严格按照以下JSON格式输出：
 \`\`\`json
 {
   "属性名1": "属性值1",
-  "属性名2": 123,
-  "属性名3": true
+  "属性名2": "属性值2",
+  "属性名3": "属性值3"
 }
 \`\`\`
 
 # 生成要求
-1. 属性名应该符合编程规范（驼峰命名等）
-2. 属性值应该与属性名的含义匹配
-3. 避免与现有属性重复
-4. 建议生成3-8个属性
+1. 生成的属性应该符合对象的名称和描述
+2. 属性名应该简洁明了，使用驼峰命名法
+3. 属性值应该是合适的数据类型
+4. 避免与现有属性重复
+5. 建议生成3-8个属性
 
 请开始生成：`
 
       const response = await this.callAI(aiPrompt)
 
+      // 解析响应
       const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
       const jsonContent = jsonMatch ? jsonMatch[1] : response
 
       const properties = JSON.parse(jsonContent)
-      if (typeof properties !== 'object' || Array.isArray(properties)) {
-        throw new Error('期望对象格式')
-      }
 
       // 更新任务状态为完成
       if (this.dispatch && this.chatId) {
@@ -451,7 +541,7 @@ ${userPrompt || '生成一些符合对象用途的属性'}
           }
         })
       }
-      throw new Error('AI响应格式错误')
+      throw error
     }
   }
 
@@ -465,7 +555,7 @@ ${userPrompt || '生成一些符合对象用途的属性'}
     optimizedChildren?: ObjectNodeType[]
   }> {
     const childrenInfo = children
-      .map((child) => `- ${child.name} (${child.type}): ${child.description || '无描述'}`)
+      .map((child) => `- ${child.name}: ${child.description || '无描述'}`)
       .join('\n')
 
     const aiPrompt = `# 任务
@@ -473,7 +563,6 @@ ${userPrompt || '生成一些符合对象用途的属性'}
 
 # 节点信息
 - 名称: ${node.name}
-- 类型: ${node.type}
 - 描述: ${node.description || '无'}
 
 # 子节点信息

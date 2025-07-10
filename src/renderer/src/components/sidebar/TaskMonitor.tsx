@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { List, Card, Progress, Typography, Tag, Space, Button, Empty, Tooltip, Pagination, message, Modal, Descriptions } from 'antd'
+import { List, Card, Progress, Typography, Tag, Space, Button, Empty, Tooltip, Pagination, Descriptions, Modal, App } from 'antd'
 import {
   LoadingOutlined,
   CheckCircleOutlined,
@@ -137,6 +137,7 @@ interface TaskMonitorProps {
 
 export default function TaskMonitor() {
   const { state, dispatch } = useAppContext()
+  const { modal, message } = App.useApp()
 
   // 分页状态
   const [runningPage, setRunningPage] = useState(1)
@@ -228,7 +229,7 @@ export default function TaskMonitor() {
     }
 
     try {
-      message.loading('正在取消任务...', 0.5)
+      const hide = message.loading('正在取消任务...', 0)
       
       // 使用任务的requestId来停止AI服务
       await window.api.ai.stopStreaming(task.requestId)
@@ -245,6 +246,7 @@ export default function TaskMonitor() {
         }
       })
       
+      hide()
       message.success('任务已取消')
     } catch (error) {
       console.error('Failed to cancel AI task:', error)

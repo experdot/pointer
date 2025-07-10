@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react'
-import { Layout, message, Card, Space, Typography } from 'antd'
+import { Layout, Card, Space, Typography, App } from 'antd'
 import { ProjectOutlined } from '@ant-design/icons'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
@@ -24,6 +24,7 @@ interface ObjectPageProps {
 
 const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   const { state, dispatch } = useAppContext()
+  const { message } = App.useApp()
   const { settings } = useSettings()
   const [selectedModel, setSelectedModel] = useState<string | undefined>(
     state.settings.defaultLLMId
@@ -38,7 +39,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
   // 生成唯一ID
   const generateId = () => {
-    return `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return uuidv4()
   }
 
   // 获取LLM配置
@@ -149,9 +150,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
           const newNode: ObjectNodeType = {
             id: newNodeId,
             name: name,
-            type: 'custom', // 默认类型
             description: '', // 空描述，后续可以单独生成
-            value: null, // 空值，后续可以单独生成
             properties: {}, // 空属性，后续可以单独生成
             children: [],
             expanded: false,
@@ -210,7 +209,6 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
       const rootNode = {
         id: rootId,
         name: '根对象',
-        type: 'object' as const,
         description: '对象的根节点',
         children: [],
         expanded: true,

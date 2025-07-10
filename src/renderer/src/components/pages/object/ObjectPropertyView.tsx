@@ -41,22 +41,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     // 根据字段类型解析值
     try {
       switch (editingField) {
-        case 'value':
-          switch (selectedNode.type) {
-            case 'number':
-              parsedValue = Number(editValue)
-              break
-            case 'boolean':
-              parsedValue = editValue.toLowerCase() === 'true'
-              break
-            case 'object':
-            case 'array':
-              parsedValue = JSON.parse(editValue)
-              break
-            default:
-              parsedValue = editValue
-          }
-          break
         case 'properties':
           parsedValue = JSON.parse(editValue)
           break
@@ -103,21 +87,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     return new Date(timestamp).toLocaleString('zh-CN')
   }
 
-  // 获取节点类型显示名称
-  const getTypeDisplayName = (type: ObjectNodeType['type']): string => {
-    const typeNames = {
-      object: '对象',
-      array: '数组',
-      string: '字符串',
-      number: '数字',
-      boolean: '布尔值',
-      null: '空值',
-      function: '函数',
-      custom: '自定义'
-    }
-    return typeNames[type] || type
-  }
-
   // 渲染属性项
   const renderPropertyItem = (label: string, value: any, field?: string, isEditable = false) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
@@ -149,7 +118,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
             <Text
               style={{
                 fontSize: '12px',
-                fontFamily: field === 'value' || field === 'properties' ? 'monospace' : 'inherit',
+                fontFamily: field === 'properties' ? 'monospace' : 'inherit',
                 wordBreak: 'break-word'
               }}
             >
@@ -198,90 +167,56 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* 头部 */}
+    <div style={{ padding: '16px', height: '100%' }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
         <Title level={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           <InfoCircleOutlined />
-          {selectedNode.name} - 属性详情
+          属性详情
         </Title>
       </div>
 
-      {/* 内容 */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          {/* 基本信息 */}
-          <Card size="small" title="基本信息" style={{ width: '100%' }}>
+      <div style={{ padding: '16px' }}>
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <Title level={5} style={{ margin: '0 0 12px 0' }}>
+            基本信息
+          </Title>
+
+          <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
             {renderPropertyItem('名称', selectedNode.name, 'name', true)}
-            {renderPropertyItem('类型', getTypeDisplayName(selectedNode.type))}
-            {renderPropertyItem('ID', selectedNode.id)}
-            {selectedNode.parentId && renderPropertyItem('父节点', selectedNode.parentId)}
             {renderPropertyItem('描述', selectedNode.description, 'description', true)}
+            {renderPropertyItem('ID', selectedNode.id)}
+            {renderPropertyItem('父节点ID', selectedNode.parentId)}
+            {renderPropertyItem('子节点数量', selectedNode.children ? selectedNode.children.length : 0)}
+          </div>
+        </Card>
+
+        {/* 属性信息 */}
+        {selectedNode.properties && Object.keys(selectedNode.properties).length > 0 && (
+          <Card size="small" style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ margin: '0 0 12px 0' }}>
+              属性信息
+            </Title>
+            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
+              {renderPropertyItem('属性', selectedNode.properties, 'properties', true)}
+            </div>
           </Card>
+        )}
 
-          {/* 值信息 */}
-          {selectedNode.value !== undefined && (
-            <Card size="small" title="值" style={{ width: '100%' }}>
-              {renderPropertyItem('当前值', selectedNode.value, 'value', true)}
-            </Card>
-          )}
-
-          {/* 属性信息 */}
-          {selectedNode.properties && Object.keys(selectedNode.properties).length > 0 && (
-            <Card size="small" title="属性" style={{ width: '100%' }}>
-              {renderPropertyItem('对象属性', selectedNode.properties, 'properties', true)}
-            </Card>
-          )}
-
-          {/* 层级信息 */}
-          <Card size="small" title="层级信息" style={{ width: '100%' }}>
-            {renderPropertyItem('是否展开', selectedNode.expanded ? '是' : '否')}
-            {selectedNode.children &&
-              renderPropertyItem('子节点数量', selectedNode.children.length)}
-            {selectedNode.children && selectedNode.children.length > 0 && (
-              <div style={{ marginBottom: '8px' }}>
-                <Text
-                  type="secondary"
-                  style={{ fontSize: '12px', marginBottom: '4px', display: 'block' }}
-                >
-                  子节点ID:
-                </Text>
-                <div style={{ paddingLeft: '92px' }}>
-                  {selectedNode.children.map((id) => (
-                    <Text
-                      key={id}
-                      code
-                      style={{ display: 'block', fontSize: '11px', marginBottom: '2px' }}
-                    >
-                      {id}
-                    </Text>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* 元数据 */}
+        {selectedNode.metadata && (
+          <Card size="small">
+            <Title level={5} style={{ margin: '0 0 12px 0' }}>
+              元数据
+            </Title>
+            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
+              {renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
+              {renderPropertyItem('来源', selectedNode.metadata.source)}
+              {selectedNode.metadata.lastModified && (
+                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.lastModified))
+              )}
+            </div>
           </Card>
-
-          {/* 元数据 */}
-          {selectedNode.metadata && (
-            <Card size="small" title="元数据" style={{ width: '100%' }}>
-              {selectedNode.metadata.source &&
-                renderPropertyItem(
-                  '来源',
-                  selectedNode.metadata.source === 'ai' ? 'AI生成' : '用户创建'
-                )}
-              {selectedNode.metadata.createdAt &&
-                renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
-              {selectedNode.metadata.updatedAt &&
-                renderPropertyItem('更新时间', formatTime(selectedNode.metadata.updatedAt))}
-              {selectedNode.metadata.aiPrompt &&
-                renderPropertyItem('AI提示', selectedNode.metadata.aiPrompt)}
-              {selectedNode.metadata.tags &&
-                selectedNode.metadata.tags.length > 0 &&
-                renderPropertyItem('标签', selectedNode.metadata.tags.join(', '))}
-              {selectedNode.metadata.readonly && renderPropertyItem('只读', '是')}
-            </Card>
-          )}
-        </Space>
+        )}
       </div>
     </div>
   )

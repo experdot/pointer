@@ -162,7 +162,7 @@ export const createNewObjectChat = (
 
 // 生成唯一节点ID
 export const generateNodeId = (): string => {
-  return `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return uuidv4()
 }
 
 // 添加节点到对象数据

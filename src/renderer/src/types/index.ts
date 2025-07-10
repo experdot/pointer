@@ -137,8 +137,6 @@ export interface CrosstabChat extends Page {
 export interface ObjectNode {
   id: string
   name: string
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null' | 'function' | 'custom'
-  value?: any // 节点的值（对于基础类型）
   description?: string // 节点描述
   parentId?: string // 父节点ID
   children?: string[] // 子节点ID数组
@@ -147,12 +145,31 @@ export interface ObjectNode {
     // 元数据信息
     createdAt?: number
     updatedAt?: number
+    lastModified?: number
     source?: 'user' | 'ai' // 来源：用户创建或AI生成
     aiPrompt?: string // 如果是AI生成，记录使用的提示
     tags?: string[] // 标签
     readonly?: boolean // 是否只读
   }
   properties?: { [key: string]: any } // 对象属性（键值对）
+  aiRecommendations?: {
+    // AI推荐的提示词，按生成类型分类
+    children?: {
+      recommendations: string[]
+      timestamp: number
+      modelId?: string
+    }
+    description?: {
+      recommendations: string[]
+      timestamp: number
+      modelId?: string
+    }
+    properties?: {
+      recommendations: string[]
+      timestamp: number
+      modelId?: string
+    }
+  }
 }
 
 // 节点上下文信息，用于交叉分析

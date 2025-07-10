@@ -1,89 +1,14 @@
-import React from 'react'
-import { Button, Tag, Typography, Space, Tooltip } from 'antd'
+import React, { useState } from 'react'
+import { Button, Typography, Space, Tooltip, Input, App } from 'antd'
 import {
   RightOutlined,
   DeleteOutlined,
   StarOutlined,
-  FileTextOutlined,
-  UnorderedListOutlined,
-  FieldStringOutlined,
-  NumberOutlined,
-  CheckCircleOutlined,
-  FunctionOutlined,
-  CloseCircleOutlined,
-  SettingOutlined
+  FileTextOutlined
 } from '@ant-design/icons'
 import { ObjectNode as ObjectNodeType } from '../../../types'
 
 const { Text } = Typography
-
-// 根据节点类型获取图标
-const getNodeIcon = (type: ObjectNodeType['type']) => {
-  switch (type) {
-    case 'object':
-      return <FileTextOutlined />
-    case 'array':
-      return <UnorderedListOutlined />
-    case 'string':
-      return <FieldStringOutlined />
-    case 'number':
-      return <NumberOutlined />
-    case 'boolean':
-      return <CheckCircleOutlined />
-    case 'function':
-      return <FunctionOutlined />
-    case 'null':
-      return <CloseCircleOutlined />
-    default:
-      return <SettingOutlined />
-  }
-}
-
-// 根据节点类型获取标签颜色
-const getTypeColor = (type: ObjectNodeType['type']) => {
-  switch (type) {
-    case 'object':
-      return 'blue'
-    case 'array':
-      return 'cyan'
-    case 'string':
-      return 'green'
-    case 'number':
-      return 'orange'
-    case 'boolean':
-      return 'purple'
-    case 'function':
-      return 'volcano'
-    case 'null':
-      return 'default'
-    default:
-      return 'default'
-  }
-}
-
-// 格式化值显示
-const formatValue = (value: any, type: ObjectNodeType['type']): string => {
-  if (value === null || value === undefined) {
-    return 'null'
-  }
-
-  switch (type) {
-    case 'string':
-      return `"${value}"`
-    case 'number':
-      return String(value)
-    case 'boolean':
-      return value ? 'true' : 'false'
-    case 'array':
-      return `[${Array.isArray(value) ? value.length : 0}]`
-    case 'object':
-      return `{${Object.keys(value || {}).length}}`
-    case 'function':
-      return 'f()'
-    default:
-      return String(value)
-  }
-}
 
 interface ObjectNodeProps {
   node: ObjectNodeType
@@ -108,12 +33,45 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
   onDelete,
   onGenerateChildren
 }) => {
+  const { modal, message } = App.useApp()
+
   // 处理AI生成
   const handleAIGenerate = () => {
-    const prompt = window.prompt(`为 "${node.name}" 生成子对象。请描述您希望生成什么类型的子对象：`)
-    if (prompt && prompt.trim()) {
-      onGenerateChildren(prompt.trim())
-    }
+    let aiPrompt = ''
+    
+    modal.confirm({
+      title: `为 "${node.name}" 生成子对象`,
+      content: (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Typography.Text type="secondary">
+              请描述您希望生成什么类型的子对象：
+            </Typography.Text>
+          </div>
+          <Input.TextArea
+            placeholder="例如：生成3个员工节点，包含姓名、部门、职位信息"
+            rows={4}
+            maxLength={200}
+            showCount
+            onChange={(e) => {
+              aiPrompt = e.target.value
+            }}
+          />
+        </div>
+      ),
+      okText: '生成',
+      cancelText: '取消',
+      width: 500,
+      onOk: () => {
+        if (aiPrompt.trim()) {
+          onGenerateChildren(aiPrompt.trim())
+          message.success('AI生成请求已提交')
+        } else {
+          message.warning('请输入生成提示')
+          return Promise.reject()
+        }
+      }
+    })
   }
 
   const isGenerating = node.metadata?.source === 'ai' && !hasChildren
@@ -172,7 +130,7 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
 
       {/* 节点图标 */}
       <div style={{ fontSize: 14, color: '#1890ff', display: 'flex', alignItems: 'center' }}>
-        {getNodeIcon(node.type)}
+        <FileTextOutlined />
       </div>
 
       {/* 节点内容 */}
@@ -192,41 +150,11 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: '150px'
+            maxWidth: '200px'
           }}
         >
           {node.name}
         </Text>
-        <Tag
-          color={getTypeColor(node.type)}
-          style={{
-            fontSize: 10,
-            margin: 0,
-            whiteSpace: 'nowrap',
-            flexShrink: 0
-          }}
-        >
-          {node.type}
-        </Tag>
-
-        {/* 显示值（对于非容器类型） */}
-        {node.type !== 'object' && node.type !== 'array' && node.value !== undefined && (
-          <Text
-            type="secondary"
-            style={{
-              fontSize: 11,
-              fontFamily: 'monospace',
-              marginLeft: 'auto',
-              maxWidth: '120px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            {formatValue(node.value, node.type)}
-          </Text>
-        )}
       </Space>
 
       {/* 操作按钮 */}

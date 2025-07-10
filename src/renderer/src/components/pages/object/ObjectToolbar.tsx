@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Button, Space, Tooltip, Dropdown, Divider, Modal, Form, Input, Select, TreeSelect, message } from 'antd'
+import { Button, Space, Tooltip, Dropdown, Divider, Modal, Form, Input, Select, TreeSelect, App } from 'antd'
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -8,8 +8,10 @@ import {
   DeleteOutlined,
   MoreOutlined,
   FolderOpenOutlined,
-  FolderOutlined
+  FolderOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons'
+import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 
@@ -22,6 +24,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [form] = Form.useForm()
+  const { modal, message } = App.useApp()
 
   // 从状态中获取对象聊天数据
   const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
@@ -34,7 +37,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
   // 生成唯一ID
   const generateId = () => {
-    return `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return uuidv4()
   }
 
   // 构建树形数据结构用于TreeSelect
@@ -70,7 +73,6 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
     
     form.setFieldsValue({
       parentId: defaultParentId,
-      type: 'object',
       description: ''
     })
     
@@ -81,14 +83,13 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
-      const { name, type, description, parentId } = values
+      const { name, description, parentId } = values
 
-      console.log('创建新节点:', { name, type, description, parentId })
+      console.log('创建新节点:', { name, description, parentId })
 
       const newNode = {
         id: generateId(),
         name: name.trim(),
-        type: type,
         description: description || '',
         children: [],
         expanded: false,
@@ -97,19 +98,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
           createdAt: Date.now(),
           source: 'user' as const
         },
-        properties: type === 'object' ? {} : undefined,
-        value:
-          type === 'string'
-            ? ''
-            : type === 'number'
-              ? 0
-              : type === 'boolean'
-                ? false
-                : type === 'array'
-                  ? []
-                  : type === 'object'
-                    ? {}
-                    : undefined
+        properties: {}
       }
 
       console.log('新节点对象:', newNode)
@@ -171,9 +160,11 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      
+      message.success('导出成功！')
     } catch (error) {
       console.error('导出失败:', error)
-      alert('导出失败，请稍后重试')
+      message.error('导出失败，请稍后重试')
     }
   }
 
@@ -201,13 +192,13 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
               jsonData: jsonData.objectData
             }
           })
-          alert('导入成功！')
+          message.success('导入成功！')
         } else {
-          alert('无效的文件格式')
+          message.error('无效的文件格式')
         }
       } catch (error) {
         console.error('导入失败:', error)
-        alert('导入失败，请检查文件格式')
+        message.error('导入失败，请检查文件格式')
       }
     }
 
@@ -241,303 +232,309 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
   // 清空对象
   const handleClear = () => {
-    if (window.confirm('确定要清空所有对象数据吗？此操作不可撤销。')) {
-      // 创建新的根节点
-      const newRootNode = {
-        id: generateId(),
-        name: '根对象',
-        type: 'object' as const,
-        description: '对象的根节点',
-        children: [],
-        expanded: true,
-        metadata: {
-          createdAt: Date.now(),
-          source: 'user' as const
-        },
-        properties: {}
-      }
-
-      dispatch({
-        type: 'UPDATE_OBJECT_DATA',
-        payload: {
-          chatId: chat.id,
-          data: {
-            rootNodeId: newRootNode.id,
-            nodes: { [newRootNode.id]: newRootNode },
-            selectedNodeId: undefined,
-            expandedNodes: [newRootNode.id],
-            searchQuery: undefined,
-            filteredNodeIds: undefined,
-            generationHistory: []
-          }
-        }
-      })
-    }
-  }
-
-  // 重新生成示例数据
-  const handleGenerateExample = () => {
-    if (window.confirm('确定要生成示例对象数据吗？这将清空当前数据。')) {
-      // 生成示例数据，包含更多有子节点的对象用于交叉分析
-      const rootId = generateId()
-      const userTypesId = generateId()
-      const featuresId = generateId()
-      const platformsId = generateId()
-
-      // 用户类型子节点
-      const adminId = generateId()
-      const editorId = generateId()
-      const viewerId = generateId()
-
-      // 功能模块子节点
-      const authId = generateId()
-      const analyticsId = generateId()
-      const notificationId = generateId()
-
-      // 平台子节点
-      const webId = generateId()
-      const mobileId = generateId()
-      const desktopId = generateId()
-
-      const exampleNodes = {
-        [rootId]: {
-          id: rootId,
-          name: '系统架构',
-          type: 'object' as const,
-          description: '系统架构的根对象',
-          children: [userTypesId, featuresId, platformsId],
+    modal.confirm({
+      title: '确认清空',
+      icon: <ExclamationCircleOutlined />,
+      content: '确定要清空所有对象数据吗？此操作不可撤销。',
+      okText: '清空',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: () => {
+        // 创建新的根节点
+        const newRootNode = {
+          id: generateId(),
+          name: '根对象',
+          description: '对象的根节点',
+          children: [],
           expanded: true,
           metadata: {
             createdAt: Date.now(),
             source: 'user' as const
           },
-          properties: {
-            version: '2.0',
-            lastModified: new Date().toISOString()
-          }
-        },
-        // 用户类型分支
-        [userTypesId]: {
-          id: userTypesId,
-          name: '用户类型',
-          type: 'object' as const,
-          description: '不同类型的用户角色',
-          parentId: rootId,
-          children: [adminId, editorId, viewerId],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            totalTypes: 3
-          }
-        },
-        [adminId]: {
-          id: adminId,
-          name: '管理员',
-          type: 'object' as const,
-          description: '系统管理员用户',
-          parentId: userTypesId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            permissions: ['read', 'write', 'delete', 'manage'],
-            level: 'admin'
-          }
-        },
-        [editorId]: {
-          id: editorId,
-          name: '编辑者',
-          type: 'object' as const,
-          description: '内容编辑用户',
-          parentId: userTypesId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            permissions: ['read', 'write'],
-            level: 'editor'
-          }
-        },
-        [viewerId]: {
-          id: viewerId,
-          name: '访客',
-          type: 'object' as const,
-          description: '只读访问用户',
-          parentId: userTypesId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            permissions: ['read'],
-            level: 'viewer'
-          }
-        },
-        // 功能模块分支
-        [featuresId]: {
-          id: featuresId,
-          name: '功能模块',
-          type: 'object' as const,
-          description: '系统主要功能模块',
-          parentId: rootId,
-          children: [authId, analyticsId, notificationId],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            totalFeatures: 3
-          }
-        },
-        [authId]: {
-          id: authId,
-          name: '认证系统',
-          type: 'object' as const,
-          description: '用户认证和授权',
-          parentId: featuresId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            type: 'security',
-            priority: 'high'
-          }
-        },
-        [analyticsId]: {
-          id: analyticsId,
-          name: '数据分析',
-          type: 'object' as const,
-          description: '数据统计和分析功能',
-          parentId: featuresId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            type: 'analytics',
-            priority: 'medium'
-          }
-        },
-        [notificationId]: {
-          id: notificationId,
-          name: '通知系统',
-          type: 'object' as const,
-          description: '消息推送和通知',
-          parentId: featuresId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            type: 'communication',
-            priority: 'low'
-          }
-        },
-        // 平台分支
-        [platformsId]: {
-          id: platformsId,
-          name: '支持平台',
-          type: 'object' as const,
-          description: '系统支持的各种平台',
-          parentId: rootId,
-          children: [webId, mobileId, desktopId],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            totalPlatforms: 3
-          }
-        },
-        [webId]: {
-          id: webId,
-          name: 'Web平台',
-          type: 'object' as const,
-          description: '浏览器Web应用',
-          parentId: platformsId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            technology: 'React',
-            responsive: true
-          }
-        },
-        [mobileId]: {
-          id: mobileId,
-          name: '移动端',
-          type: 'object' as const,
-          description: '手机和平板应用',
-          parentId: platformsId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            technology: 'React Native',
-            os: ['iOS', 'Android']
-          }
-        },
-        [desktopId]: {
-          id: desktopId,
-          name: '桌面端',
-          type: 'object' as const,
-          description: '桌面应用程序',
-          parentId: platformsId,
-          children: [],
-          expanded: false,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {
-            technology: 'Electron',
-            os: ['Windows', 'macOS', 'Linux']
-          }
+          properties: {}
         }
-      }
 
-      dispatch({
-        type: 'UPDATE_OBJECT_DATA',
-        payload: {
-          chatId: chat.id,
-          data: {
-            rootNodeId: rootId,
-            nodes: exampleNodes,
-            selectedNodeId: undefined,
-            expandedNodes: [rootId],
-            searchQuery: undefined,
-            filteredNodeIds: undefined,
-            generationHistory: []
+        dispatch({
+          type: 'UPDATE_OBJECT_DATA',
+          payload: {
+            chatId: chat.id,
+            data: {
+              rootNodeId: newRootNode.id,
+              nodes: { [newRootNode.id]: newRootNode },
+              selectedNodeId: undefined,
+              expandedNodes: [newRootNode.id],
+              searchQuery: undefined,
+              filteredNodeIds: undefined,
+              generationHistory: []
+            }
+          }
+        })
+
+        message.success('已清空所有对象数据')
+      }
+    })
+  }
+
+  // 重新生成示例数据
+  const handleGenerateExample = () => {
+    modal.confirm({
+      title: '确认生成示例数据',
+      icon: <ExclamationCircleOutlined />,
+      content: '确定要生成示例对象数据吗？这将清空当前数据。',
+      okText: '生成',
+      cancelText: '取消',
+      okType: 'primary',
+      onOk: () => {
+        // 生成示例数据，包含更多有子节点的对象用于交叉分析
+        const rootId = generateId()
+        const userTypesId = generateId()
+        const featuresId = generateId()
+        const platformsId = generateId()
+
+        // 用户类型子节点
+        const adminId = generateId()
+        const editorId = generateId()
+        const viewerId = generateId()
+
+        // 功能模块子节点
+        const authId = generateId()
+        const analyticsId = generateId()
+        const notificationId = generateId()
+
+        // 平台子节点
+        const webId = generateId()
+        const mobileId = generateId()
+        const desktopId = generateId()
+
+        const exampleNodes = {
+          [rootId]: {
+            id: rootId,
+            name: '系统架构',
+            description: '系统架构的根对象',
+            children: [userTypesId, featuresId, platformsId],
+            expanded: true,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              version: '2.0',
+              lastModified: new Date().toISOString()
+            }
+          },
+          // 用户类型分支
+          [userTypesId]: {
+            id: userTypesId,
+            name: '用户类型',
+            description: '不同类型的用户角色',
+            parentId: rootId,
+            children: [adminId, editorId, viewerId],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              totalTypes: 3
+            }
+          },
+          [adminId]: {
+            id: adminId,
+            name: '管理员',
+            description: '系统管理员用户',
+            parentId: userTypesId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              permissions: ['read', 'write', 'delete', 'manage'],
+              level: 'admin'
+            }
+          },
+          [editorId]: {
+            id: editorId,
+            name: '编辑者',
+            description: '内容编辑用户',
+            parentId: userTypesId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              permissions: ['read', 'write'],
+              level: 'editor'
+            }
+          },
+          [viewerId]: {
+            id: viewerId,
+            name: '访客',
+            description: '只读访问用户',
+            parentId: userTypesId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              permissions: ['read'],
+              level: 'viewer'
+            }
+          },
+          // 功能模块分支
+          [featuresId]: {
+            id: featuresId,
+            name: '功能模块',
+            description: '系统主要功能模块',
+            parentId: rootId,
+            children: [authId, analyticsId, notificationId],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              totalFeatures: 3
+            }
+          },
+          [authId]: {
+            id: authId,
+            name: '认证系统',
+            description: '用户认证和授权',
+            parentId: featuresId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              type: 'security',
+              priority: 'high'
+            }
+          },
+          [analyticsId]: {
+            id: analyticsId,
+            name: '数据分析',
+            description: '数据统计和分析功能',
+            parentId: featuresId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              type: 'analytics',
+              priority: 'medium'
+            }
+          },
+          [notificationId]: {
+            id: notificationId,
+            name: '通知系统',
+            description: '消息推送和通知',
+            parentId: featuresId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              type: 'communication',
+              priority: 'low'
+            }
+          },
+          // 平台分支
+          [platformsId]: {
+            id: platformsId,
+            name: '支持平台',
+            description: '系统支持的各种平台',
+            parentId: rootId,
+            children: [webId, mobileId, desktopId],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              totalPlatforms: 3
+            }
+          },
+          [webId]: {
+            id: webId,
+            name: 'Web平台',
+            description: '浏览器Web应用',
+            parentId: platformsId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              technology: 'React',
+              responsive: true
+            }
+          },
+          [mobileId]: {
+            id: mobileId,
+            name: '移动端',
+            description: '手机和平板应用',
+            parentId: platformsId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              technology: 'React Native',
+              os: ['iOS', 'Android']
+            }
+          },
+          [desktopId]: {
+            id: desktopId,
+            name: '桌面端',
+            description: '桌面应用程序',
+            parentId: platformsId,
+            children: [],
+            expanded: false,
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              technology: 'Electron',
+              os: ['Windows', 'macOS', 'Linux']
+            }
           }
         }
-      })
-    }
+
+        dispatch({
+          type: 'UPDATE_OBJECT_DATA',
+          payload: {
+            chatId: chat.id,
+            data: {
+              rootNodeId: rootId,
+              nodes: exampleNodes,
+              selectedNodeId: undefined,
+              expandedNodes: [rootId],
+              searchQuery: undefined,
+              filteredNodeIds: undefined,
+              generationHistory: []
+            }
+          }
+        })
+
+        message.success('示例数据生成成功！')
+      }
+    })
   }
 
   // 更多操作菜单配置
@@ -683,7 +680,6 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
           form={form}
           layout="vertical"
           initialValues={{
-            type: 'object',
             description: ''
           }}
         >
@@ -715,22 +711,6 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             ]}
           >
             <Input placeholder="请输入节点名称" />
-          </Form.Item>
-
-          <Form.Item
-            label="节点类型"
-            name="type"
-            rules={[{ required: true, message: '请选择节点类型' }]}
-          >
-            <Select placeholder="请选择节点类型">
-              <Select.Option value="object">对象 (Object)</Select.Option>
-              <Select.Option value="array">数组 (Array)</Select.Option>
-              <Select.Option value="string">字符串 (String)</Select.Option>
-              <Select.Option value="number">数字 (Number)</Select.Option>
-              <Select.Option value="boolean">布尔值 (Boolean)</Select.Option>
-              <Select.Option value="function">函数 (Function)</Select.Option>
-              <Select.Option value="custom">自定义 (Custom)</Select.Option>
-            </Select>
           </Form.Item>
 
           <Form.Item

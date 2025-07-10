@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Card, TreeSelect, Space, Typography, Alert, message, Tooltip } from 'antd'
+import { Button, Card, TreeSelect, Space, Typography, Alert, Tooltip, App } from 'antd'
 import {
   TableOutlined,
   NodeIndexOutlined,
@@ -15,30 +15,9 @@ interface ObjectCrosstabAnalyzerProps {
   chatId: string
 }
 
-// 获取节点类型的图标
-const getNodeIcon = (type: ObjectNodeType['type']) => {
-  switch (type) {
-    case 'object':
-      return '📦'
-    case 'array':
-      return '📋'
-    case 'string':
-      return '📝'
-    case 'number':
-      return '🔢'
-    case 'boolean':
-      return '✅'
-    case 'function':
-      return '⚙️'
-    case 'custom':
-      return '🔧'
-    default:
-      return '📄'
-  }
-}
-
 const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId }) => {
   const { state, dispatch } = useAppContext()
+  const { message } = App.useApp()
   const [selectedHorizontalNode, setSelectedHorizontalNode] = useState<string | null>(null)
   const [selectedVerticalNode, setSelectedVerticalNode] = useState<string | null>(null)
 
@@ -65,7 +44,7 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       return {
         title: (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '12px' }}>{getNodeIcon(node.type)}</span>
+            <span style={{ fontSize: '12px' }}>📦</span>
             <span>{node.name}</span>
             {node.children && node.children.length > 0 && (
               <Text type="secondary" style={{ fontSize: '11px' }}>
@@ -199,104 +178,100 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TableOutlined />
-          <span>交叉分析</span>
-          <Tooltip title="选择两个对象进行交叉分析">
-            <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: '14px' }} />
-          </Tooltip>
+          <span>交叉分析器</span>
         </div>
       }
     >
-      {Object.keys(nodes).length === 0 ? (
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        {/* 说明 */}
         <Alert
-          message="暂无可用节点"
-          description="需要至少有对象数据才能进行交叉分析"
+          message="交叉分析"
+          description="选择两个对象节点作为横轴和纵轴，创建交叉分析表来探索它们之间的关系。"
           type="info"
           showIcon
-          style={{ fontSize: '12px' }}
+          icon={<InfoCircleOutlined />}
         />
-      ) : (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          {/* 横轴选择 */}
-          <div>
-            <Text strong style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
-              横轴节点：
-            </Text>
-            <TreeSelect
-              placeholder="选择横轴节点"
-              value={selectedHorizontalNode}
-              onChange={setSelectedHorizontalNode}
-              treeData={buildTreeSelectData}
-              style={{ width: '100%' }}
-              size="small"
-              showSearch
-              treeNodeFilterProp="title"
-              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-              allowClear
-            />
-            {horizontalNodeInfo && horizontalNodeInfo.children.length > 0 && (
-              <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
-                子节点：{horizontalNodeInfo.children.map((child) => child.name).join(', ')}
-              </div>
-            )}
-          </div>
 
-          {/* 纵轴选择 */}
-          <div>
-            <Text strong style={{ fontSize: '12px', marginBottom: '8px', display: 'block' }}>
-              纵轴节点：
-            </Text>
-            <TreeSelect
-              placeholder="选择纵轴节点"
-              value={selectedVerticalNode}
-              onChange={setSelectedVerticalNode}
-              treeData={buildTreeSelectData}
-              style={{ width: '100%' }}
-              size="small"
-              showSearch
-              treeNodeFilterProp="title"
-              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-              allowClear
-            />
-            {verticalNodeInfo && verticalNodeInfo.children.length > 0 && (
-              <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
-                子节点：{verticalNodeInfo.children.map((child) => child.name).join(', ')}
-              </div>
-            )}
-          </div>
-
-          {/* 预览信息 */}
-          {selectedHorizontalNode && selectedVerticalNode && (
-            <Alert
-              message={
-                <div style={{ fontSize: '11px' }}>
-                  <div>
-                    将创建基于 {nodes[selectedHorizontalNode].name} × {nodes[selectedVerticalNode].name} 的交叉分析表
-                  </div>
-                  <div style={{ marginTop: '4px', color: '#8c8c8c' }}>
-                    横轴：{nodes[selectedHorizontalNode].name}
-                    <ArrowRightOutlined style={{ margin: '0 8px' }} />
-                    纵轴：{nodes[selectedVerticalNode].name}
-                  </div>
-                </div>
-              }
-              type="success"
-              showIcon
-            />
-          )}
-
-          {/* 创建按钮 */}
-          <Button
-            type="primary"
-            icon={<TableOutlined />}
-            onClick={handleCreateCrosstab}
-            disabled={!canCreateCrosstab}
+        {/* 横轴选择 */}
+        <div>
+          <Text strong style={{ marginBottom: '8px', display: 'block' }}>
+            选择横轴节点：
+          </Text>
+          <TreeSelect
             style={{ width: '100%' }}
-            size="small"
-          >
-            创建交叉分析表
-          </Button>
-        </Space>
-      )}
+            value={selectedHorizontalNode}
+            onChange={setSelectedHorizontalNode}
+            treeData={buildTreeSelectData}
+            placeholder="请选择横轴节点"
+            allowClear
+            showSearch
+            treeDefaultExpandAll
+          />
+          {horizontalNodeInfo && (
+            <div style={{ marginTop: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                横轴：{horizontalNodeInfo.node.name} ({horizontalNodeInfo.count} 个子项)
+              </Text>
+            </div>
+          )}
+        </div>
+
+        {/* 纵轴选择 */}
+        <div>
+          <Text strong style={{ marginBottom: '8px', display: 'block' }}>
+            选择纵轴节点：
+          </Text>
+          <TreeSelect
+            style={{ width: '100%' }}
+            value={selectedVerticalNode}
+            onChange={setSelectedVerticalNode}
+            treeData={buildTreeSelectData}
+            placeholder="请选择纵轴节点"
+            allowClear
+            showSearch
+            treeDefaultExpandAll
+          />
+          {verticalNodeInfo && (
+            <div style={{ marginTop: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                纵轴：{verticalNodeInfo.node.name} ({verticalNodeInfo.count} 个子项)
+              </Text>
+            </div>
+          )}
+        </div>
+
+        {/* 预览 */}
+        {canCreateCrosstab && (
+          <div style={{ padding: '12px', background: '#f9f9f9', borderRadius: '4px' }}>
+            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+              交叉分析预览：
+            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Text strong style={{ fontSize: '13px' }}>
+                {horizontalNodeInfo?.node.name}
+              </Text>
+              <ArrowRightOutlined />
+              <Text strong style={{ fontSize: '13px' }}>
+                {verticalNodeInfo?.node.name}
+              </Text>
+            </div>
+            <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+              将创建 {horizontalNodeInfo?.count} × {verticalNodeInfo?.count} 的交叉分析表
+            </Text>
+          </div>
+        )}
+
+        {/* 创建按钮 */}
+        <Button
+          type="primary"
+          icon={<NodeIndexOutlined />}
+          onClick={handleCreateCrosstab}
+          disabled={!canCreateCrosstab}
+          block
+        >
+          创建交叉分析表
+        </Button>
+      </Space>
     </Card>
   )
 }
