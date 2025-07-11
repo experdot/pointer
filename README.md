@@ -10,6 +10,9 @@ An AI chat application built with Electron + React + TypeScript, supporting **mu
 
 基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。
 
+- 博客1：[AI 聊天应用的 10 条高级需求](https://www.cnblogs.com/experdot/p/18924253)
+- 博客2：[解决了AI聊天的 10 个痛点后，新的功能：交叉分析表](https://www.cnblogs.com/experdot/p/18974641)
+
 [查看中文 README 介绍](README.zh-CN.md) 
 
 ## Key Features
