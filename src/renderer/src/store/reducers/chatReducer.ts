@@ -306,9 +306,7 @@ ${cellContent}
             return childNode
               ? {
                   name: childNode.name,
-                  type: childNode.type,
                   description: childNode.description,
-                  value: childNode.value
                 }
               : { name: childName }
           }),
@@ -320,9 +318,7 @@ ${cellContent}
             return childNode
               ? {
                   name: childNode.name,
-                  type: childNode.type,
                   description: childNode.description,
-                  value: childNode.value
                 }
               : { name: childName }
           })
@@ -616,8 +612,7 @@ ${cellContent}
                   .filter(
                     (node) =>
                       node.name.toLowerCase().includes(query.toLowerCase()) ||
-                      node.description?.toLowerCase().includes(query.toLowerCase()) ||
-                      node.type.toLowerCase().includes(query.toLowerCase())
+                      node.description?.toLowerCase().includes(query.toLowerCase())
                   )
                   .map((node) => node.id)
               : undefined
