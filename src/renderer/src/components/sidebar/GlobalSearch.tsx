@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import { Input, List, Avatar, Typography, Empty, Spin, Card, Tag, Button } from 'antd'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { List, Avatar, Typography, Empty, Spin, Card, Tag, Button, Input } from 'antd'
+import type { InputRef } from 'antd'
 import { SearchOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../store/AppContext'
 import { searchMessages } from '../../store/reducers/searchReducer'
 import { SearchResult } from '../../types'
 import './search-styles.css'
 
-const { Search } = Input
 const { Text, Paragraph } = Typography
 
 interface GlobalSearchProps {
@@ -17,17 +17,20 @@ interface GlobalSearchProps {
 
 export default function GlobalSearch({ visible, onClose, embedded = false }: GlobalSearchProps) {
   const { state, dispatch } = useAppContext()
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
+  const inputRef = useRef<InputRef>(null)
+  const [inputValue, setInputValue] = useState('')
 
   // 执行搜索
   const performSearch = useCallback(
     (query: string) => {
       if (!query.trim()) {
-        dispatch({ type: 'CLEAR_SEARCH' })
+        setSearchResults([])
+        setIsSearching(false)
         return
       }
-
-      dispatch({ type: 'SET_IS_SEARCHING', payload: { isSearching: true } })
 
       // 防抖搜索
       if (searchTimeout) {
@@ -35,31 +38,43 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       }
 
       const timeout = setTimeout(() => {
+        setIsSearching(true)
+        
+        // 执行搜索
         const results = searchMessages(state.pages, query)
-        dispatch({ type: 'SET_SEARCH_RESULTS', payload: { results } })
+        setSearchResults(results)
+        setIsSearching(false)
       }, 300)
 
       setSearchTimeout(timeout)
     },
-    [state.pages, dispatch, searchTimeout]
+    [state.pages, searchTimeout]
   )
 
-  // 处理搜索输入变化
-  const handleSearchChange = useCallback(
+  // 处理输入变化
+  const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const query = e.target.value
-      dispatch({ type: 'SET_SEARCH_QUERY', payload: { query } })
-      performSearch(query)
+      const value = e.target.value
+      setInputValue(value)
+      
+      if (!value.trim()) {
+        setSearchResults([])
+        setIsSearching(false)
+        if (searchTimeout) {
+          clearTimeout(searchTimeout)
+        }
+        return
+      }
+      
+      performSearch(value)
     },
-    [dispatch, performSearch]
+    [performSearch, searchTimeout]
   )
 
   // 处理搜索结果点击
   const handleResultClick = useCallback(
     (result: SearchResult) => {
-      // 打开聊天标签页
       dispatch({ type: 'OPEN_TAB', payload: { chatId: result.chatId } })
-      // 如果不是内嵌模式，关闭搜索
       if (!embedded) {
         onClose()
       }
@@ -69,10 +84,38 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
 
   // 清除搜索
   const handleClearSearch = useCallback(() => {
-    dispatch({ type: 'CLEAR_SEARCH' })
-  }, [dispatch])
+    setInputValue('')
+    setSearchResults([])
+    setIsSearching(false)
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    // 重新聚焦
+    if (inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
+    }
+  }, [searchTimeout])
 
-  // 组件卸载时清理定时器
+  // 处理回车键搜索
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        const value = inputValue.trim()
+        if (value) {
+          // 立即执行搜索
+          setIsSearching(true)
+          const results = searchMessages(state.pages, value)
+          setSearchResults(results)
+          setIsSearching(false)
+        }
+      }
+    },
+    [inputValue, state.pages]
+  )
+
+  // 组件卸载时清理
   useEffect(() => {
     return () => {
       if (searchTimeout) {
@@ -80,6 +123,27 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       }
     }
   }, [searchTimeout])
+
+  // 当搜索面板变为可见时，自动聚焦
+  useEffect(() => {
+    if (visible && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+    }
+  }, [visible])
+
+  // 当组件隐藏时，清理状态
+  useEffect(() => {
+    if (!visible) {
+      setInputValue('')
+      setSearchResults([])
+      setIsSearching(false)
+      if (searchTimeout) {
+        clearTimeout(searchTimeout)
+      }
+    }
+  }, [visible, searchTimeout])
 
   // 渲染搜索结果项
   const renderSearchResult = useCallback(
@@ -143,47 +207,50 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
 
   const searchContent = (
     <div className="search-input-section">
-      <Search
-        placeholder="搜索聊天记录..."
-        value={state.searchQuery}
-        onChange={handleSearchChange}
-        onSearch={performSearch}
-        enterButton="搜索"
-        size={embedded ? "default" : "large"}
-        suffix={
-          state.searchQuery ? (
-            <Button
-              type="text"
-              icon={<CloseOutlined />}
-              onClick={handleClearSearch}
-              size="small"
-            />
-          ) : null
-        }
-      />
+      <div style={{ position: 'relative' }}>
+        <Input
+          ref={inputRef}
+          placeholder="搜索聊天记录..."
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          size={embedded ? "middle" : "large"}
+          prefix={<SearchOutlined />}
+          suffix={
+            inputValue ? (
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={handleClearSearch}
+                size="small"
+              />
+            ) : null
+          }
+        />
+      </div>
     </div>
   )
 
-  const searchResults = (
+  const searchResultsSection = (
     <div className="search-results-section">
-      {state.isSearching ? (
+      {isSearching ? (
         <div className="search-loading">
           <Spin size="large" />
           <Text type="secondary">搜索中...</Text>
         </div>
-      ) : state.searchQuery && state.searchResults.length === 0 ? (
+      ) : inputValue && searchResults.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到相关结果" />
-      ) : state.searchResults.length > 0 ? (
+      ) : searchResults.length > 0 ? (
         <>
           <div className="search-results-header">
-            <Text type="secondary">找到 {state.searchResults.length} 条结果</Text>
+            <Text type="secondary">找到 {searchResults.length} 条结果</Text>
           </div>
           <List
             className="search-results-list"
-            dataSource={state.searchResults}
+            dataSource={searchResults}
             renderItem={renderSearchResult}
             pagination={
-              state.searchResults.length > 10
+              searchResults.length > 10
                 ? {
                     pageSize: 10,
                     size: 'small',
@@ -206,7 +273,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
     return (
       <div className="global-search-embedded">
         {searchContent}
-        {searchResults}
+        {searchResultsSection}
       </div>
     )
   }
@@ -229,7 +296,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
         }
       >
         {searchContent}
-        {searchResults}
+        {searchResultsSection}
       </Card>
     </div>
   )

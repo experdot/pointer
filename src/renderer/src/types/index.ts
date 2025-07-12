@@ -66,7 +66,6 @@ export interface PageBase {
   order?: number // 添加排序字段
   pinned?: boolean // 是否固定标签页
 
-
   lineage?: PageLineage // 页面溯源信息
 
   data?: any
@@ -210,7 +209,7 @@ export interface ObjectChat extends PageBase {
 // 聊天类型 - 包含所有属性
 export interface Page extends PageBase {
   type: 'regular' | 'crosstab' | 'object'
-  
+
   // RegularChat 的属性
   messages?: ChatMessage[]
   messageMap?: { [messageId: string]: ChatMessage }
@@ -220,10 +219,10 @@ export interface Page extends PageBase {
     content: string
     timestamp: number
   }
-  
+
   // CrosstabChat 的属性
   crosstabData?: CrosstabData
-  
+
   // ObjectChat 的属性
   objectData?: ObjectData
 }
@@ -248,7 +247,13 @@ export interface SearchResult {
 export type AITaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 // AI任务类型
-export type AITaskType = 'chat' | 'crosstab_cell' | 'object_generation' | 'retry' | 'edit_resend' | 'model_change'
+export type AITaskType =
+  | 'chat'
+  | 'crosstab_cell'
+  | 'object_generation'
+  | 'retry'
+  | 'edit_resend'
+  | 'model_change'
 
 // AI任务信息
 export interface AITask {
@@ -258,26 +263,26 @@ export interface AITask {
   status: AITaskStatus
   title: string // 任务标题
   description?: string // 任务描述
-  
+
   // 关联信息
   chatId?: string // 关联的聊天ID
   messageId?: string // 关联的消息ID
   modelId?: string // 使用的模型ID
-  
+
   // 时间信息
   startTime: number
   endTime?: number
-  
+
   // 进度信息
   progress?: {
     current: number
     total: number
     message?: string
   }
-  
+
   // 错误信息
   error?: string
-  
+
   // 任务特定的数据
   context?: {
     // 普通聊天上下文
@@ -321,19 +326,24 @@ export interface AppState {
   selectedNodeId: string | null // 当前选中的节点ID
   selectedNodeType: 'folder' | 'chat' | null // 当前选中的节点类型
   checkedNodeIds: string[] // 选中的节点ID数组（支持ctrl+shift多选）
+
   settings: Settings
   sidebarCollapsed: boolean
   sidebarWidth: number // 侧边栏宽度
+
   // 搜索状态
   searchQuery: string
   searchResults: SearchResult[]
   isSearching: boolean
   showSearchResults: boolean
+
   // 消息折叠状态
   collapsedMessages: { [chatId: string]: string[] } // 每个聊天中折叠的消息ID列表
   allMessagesCollapsed: { [chatId: string]: boolean } // 每个聊天的全部折叠状态
+
   // 页面溯源显示折叠状态
   lineageDisplayCollapsed: { [pageId: string]: boolean } // 每个页面的溯源显示折叠状态
+
   // AI任务监控状态
   aiTasks: AITask[] // 所有AI任务列表
 }
