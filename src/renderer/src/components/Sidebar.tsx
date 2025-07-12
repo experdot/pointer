@@ -95,11 +95,6 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
     [dispatch]
   )
 
-  // 切换多选模式
-  const handleToggleMultiSelect = useCallback(() => {
-    dispatch({ type: 'TOGGLE_MULTI_SELECT_MODE' })
-  }, [dispatch])
-
   // 批量删除选中的聊天
   const handleBatchDelete = useCallback(() => {
     // 过滤出聊天ID（排除文件夹ID）
@@ -122,8 +117,8 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
           type: 'DELETE_MULTIPLE_PAGES',
           payload: { chatIds }
         })
-        // 删除后退出多选模式
-        dispatch({ type: 'TOGGLE_MULTI_SELECT_MODE' })
+        // 删除后清空选中状态
+        dispatch({ type: 'CLEAR_CHECKED_NODES' })
       }
     })
   }, [dispatch, modal, state.checkedNodeIds])
@@ -145,20 +140,18 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
               <h3>资源管理器</h3>
               <SidebarActions
                 collapsed={false}
-                multiSelectMode={state.multiSelectMode}
                 hasCheckedItems={hasCheckedItems}
                 onCreateChat={handleCreateChat}
                 onCreateCrosstabChat={handleCreateCrosstabChat}
                 onCreateObjectChat={handleCreateObjectChat}
                 onCreateFolder={handleCreateFolder}
-                onToggleMultiSelect={handleToggleMultiSelect}
                 onBatchDelete={handleBatchDelete}
               />
             </div>
             <div className="sidebar-content">
-              {state.multiSelectMode && (
+              {hasCheckedItems && (
                 <div className="multi-select-indicator">
-                  多选模式 ({state.checkedNodeIds.length} 项已选)
+                  已选中 {state.checkedNodeIds.length} 项
                 </div>
               )}
               <ChatHistoryTree onChatClick={handleChatClick} />

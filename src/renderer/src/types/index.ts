@@ -320,8 +320,7 @@ export interface AppState {
   activeTabId: string | null
   selectedNodeId: string | null // 当前选中的节点ID
   selectedNodeType: 'folder' | 'chat' | null // 当前选中的节点类型
-  multiSelectMode: boolean // 多选模式
-  checkedNodeIds: string[] // 多选状态下选中的节点ID数组
+  checkedNodeIds: string[] // 选中的节点ID数组（支持ctrl+shift多选）
   settings: Settings
   sidebarCollapsed: boolean
   sidebarWidth: number // 侧边栏宽度
@@ -490,7 +489,6 @@ export type AppAction =
       type: 'SET_SELECTED_NODE'
       payload: { nodeId: string | null; nodeType: 'folder' | 'chat' | null }
     }
-  | { type: 'TOGGLE_MULTI_SELECT_MODE' }
   | { type: 'SET_CHECKED_NODES'; payload: { nodeIds: string[] } }
   | { type: 'CLEAR_CHECKED_NODES' }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }

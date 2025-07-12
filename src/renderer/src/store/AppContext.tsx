@@ -13,7 +13,6 @@ const initialState: AppState = {
   activeTabId: null,
   selectedNodeId: null,
   selectedNodeType: null,
-  multiSelectMode: false,
   checkedNodeIds: [],
   sidebarCollapsed: false,
   sidebarWidth: 300,

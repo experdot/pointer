@@ -11,14 +11,6 @@ export const handleUIActions = (state: AppState, action: AppAction): AppState =>
       }
     }
 
-    case 'TOGGLE_MULTI_SELECT_MODE': {
-      return {
-        ...state,
-        multiSelectMode: !state.multiSelectMode,
-        checkedNodeIds: [] // 切换模式时清空选中项
-      }
-    }
-
     case 'SET_CHECKED_NODES': {
       return {
         ...state,

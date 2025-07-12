@@ -39,19 +39,16 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
   // 计算当前选中的节点键
   const selectedKeys = useMemo(() => {
-    if (!state.multiSelectMode && state.selectedNodeId && state.selectedNodeType) {
+    if (state.selectedNodeId && state.selectedNodeType) {
       return [`${state.selectedNodeType}-${state.selectedNodeId}`]
     }
     return []
-  }, [state.selectedNodeId, state.selectedNodeType, state.multiSelectMode])
+  }, [state.selectedNodeId, state.selectedNodeType])
 
-  // 计算多选模式下的选中节点键
+  // 计算多选状态下的选中节点键
   const checkedKeys = useMemo(() => {
-    if (state.multiSelectMode) {
-      return state.checkedNodeIds
-    }
-    return []
-  }, [state.multiSelectMode, state.checkedNodeIds])
+    return state.checkedNodeIds
+  }, [state.checkedNodeIds])
 
   const handleNodeEdit = useCallback((nodeId: string, nodeType: 'folder' | 'chat') => {
     // Handle inline editing - for now just trigger the node's own edit state
@@ -124,19 +121,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     [dispatch, modal]
   )
 
-  // 处理多选状态变化
-  const handleCheck = useCallback(
-    (checkedKeys: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }) => {
-      const nodeIds = Array.isArray(checkedKeys)
-        ? checkedKeys.map((key) => String(key))
-        : checkedKeys.checked.map((key) => String(key))
-      dispatch({
-        type: 'SET_CHECKED_NODES',
-        payload: { nodeIds }
-      })
-    },
-    [dispatch]
-  )
+
 
   // 处理拖拽放置事件
   const handleDrop = useCallback(
@@ -386,63 +371,107 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
   }, [buildFolderTree])
 
   const handleTreeSelect = useCallback(
-    (selectedKeys: React.Key[]) => {
-      // 在多选模式下，不处理选择事件
-      if (state.multiSelectMode) {
-        return
-      }
-
+    (selectedKeys: React.Key[], info: { selected: boolean; selectedNodes: any[]; node: any; event: 'select' }) => {
       const key = selectedKeys[0]
+      const event = info.event as any
+      
       if (key && typeof key === 'string') {
-        if (key.startsWith('chat-')) {
-          const chatId = key.replace('chat-', '')
-          // 更新选中的节点状态
+        // 处理 ctrl+shift 多选
+        if (event?.ctrlKey || event?.metaKey) {
+          // Ctrl+点击：切换选中状态
+          const currentChecked = state.checkedNodeIds.includes(key)
+          const newCheckedKeys = currentChecked
+            ? state.checkedNodeIds.filter(k => k !== key)
+            : [...state.checkedNodeIds, key]
+          
           dispatch({
-            type: 'SET_SELECTED_NODE',
-            payload: { nodeId: chatId, nodeType: 'chat' }
+            type: 'SET_CHECKED_NODES',
+            payload: { nodeIds: newCheckedKeys }
           })
-          onChatClick(chatId)
-        } else if (key.startsWith('folder-')) {
-          const folderId = key.replace('folder-', '')
-          // 更新选中的节点状态
-          dispatch({
-            type: 'SET_SELECTED_NODE',
-            payload: { nodeId: folderId, nodeType: 'folder' }
-          })
-          const folder = state.folders.find((f) => f.id === folderId)
-          if (folder) {
+        } else if (event?.shiftKey && state.selectedNodeId) {
+          // Shift+点击：范围选择
+          const treeData = buildTreeData()
+          const flattenNodes = (nodes: DataNode[], result: string[] = []): string[] => {
+            nodes.forEach(node => {
+              result.push(node.key as string)
+              if (node.children) {
+                flattenNodes(node.children, result)
+              }
+            })
+            return result
+          }
+          
+          const allKeys = flattenNodes(treeData)
+          const currentSelectedKey = `${state.selectedNodeType}-${state.selectedNodeId}`
+          const startIndex = allKeys.indexOf(currentSelectedKey)
+          const endIndex = allKeys.indexOf(key)
+          
+          if (startIndex !== -1 && endIndex !== -1) {
+            const rangeStart = Math.min(startIndex, endIndex)
+            const rangeEnd = Math.max(startIndex, endIndex)
+            const rangeKeys = allKeys.slice(rangeStart, rangeEnd + 1)
+            
             dispatch({
-              type: 'UPDATE_FOLDER',
-              payload: { id: folderId, updates: { expanded: !folder.expanded } }
+              type: 'SET_CHECKED_NODES',
+              payload: { nodeIds: rangeKeys }
             })
           }
+        } else {
+          // 普通点击：清空多选，设置单选
+          dispatch({
+            type: 'CLEAR_CHECKED_NODES'
+          })
+          
+          if (key.startsWith('chat-')) {
+            const chatId = key.replace('chat-', '')
+            dispatch({
+              type: 'SET_SELECTED_NODE',
+              payload: { nodeId: chatId, nodeType: 'chat' }
+            })
+            onChatClick(chatId)
+          } else if (key.startsWith('folder-')) {
+            const folderId = key.replace('folder-', '')
+            dispatch({
+              type: 'SET_SELECTED_NODE',
+              payload: { nodeId: folderId, nodeType: 'folder' }
+            })
+            const folder = state.folders.find((f) => f.id === folderId)
+            if (folder) {
+              dispatch({
+                type: 'UPDATE_FOLDER',
+                payload: { id: folderId, updates: { expanded: !folder.expanded } }
+              })
+            }
+          }
         }
-      } else {
+      } else if (selectedKeys.length === 0) {
         // 如果没有选中任何节点，清除选中状态
         dispatch({
           type: 'SET_SELECTED_NODE',
           payload: { nodeId: null, nodeType: null }
         })
+        dispatch({
+          type: 'CLEAR_CHECKED_NODES'
+        })
       }
     },
-    [onChatClick, state.folders, state.multiSelectMode, dispatch]
+    [onChatClick, state.folders, state.selectedNodeId, state.selectedNodeType, state.checkedNodeIds, dispatch, buildTreeData]
   )
 
   const expandedKeys = state.folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`)
 
   return (
     <Tree
-      className={`chat-history-tree ${state.multiSelectMode ? 'multi-select-mode' : ''}`}
+      className="chat-history-tree"
       showIcon
       blockNode
       draggable
-      checkable={state.multiSelectMode}
-      checkedKeys={checkedKeys}
+      checkable={false}
+      multiple
       expandedKeys={expandedKeys}
-      selectedKeys={selectedKeys}
+      selectedKeys={state.checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
       treeData={buildTreeData()}
       onSelect={handleTreeSelect}
-      onCheck={handleCheck}
       onDrop={handleDrop}
       allowDrop={({ dropNode, dragNode, dropPosition }) => {
         const dragNodeInfo = parseNodeKey(dragNode.key)
