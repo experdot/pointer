@@ -57,7 +57,7 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
         <Tooltip key={item.key} title={item.tooltip} placement="right">
           <div className="activity-bar-item">
             {item.badge !== undefined ? (
-              <Badge count={item.badge} size="small" offset={[10, -10]}>
+              <Badge count={item.badge} size="small" offset={[0, 0]}>
                 <Button
                   type="text"
                   icon={item.icon}
