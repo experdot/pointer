@@ -113,3 +113,83 @@
 .tabs-area .ant-tabs-tab-active {
   font-weight: 500;
 }
+
+/* 固定标签页区域分隔线 */
+.tabs-area .ant-tabs-nav-wrap {
+  position: relative;
+}
+
+.tabs-area .ant-tabs-nav-wrap::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(24, 144, 255, 0.2), transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 拖拽相关样式 */
+.tab-label-content {
+  cursor: move;
+}
+
+.tab-label-content.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.tab-label-content.drag-over {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-radius: 4px;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+.tab-label-content.drag-over-forbidden {
+  background-color: rgba(255, 77, 79, 0.1);
+  border-radius: 4px;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+}
+
+.tabs-area .ant-tabs-tab.dragging {
+  opacity: 0.6;
+  transform: scale(0.95);
+  z-index: 1000;
+}
+
+.tabs-area .ant-tabs-tab.drag-over {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+  border-color: rgba(24, 144, 255, 0.5) !important;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+/* 拖拽时的指示器 */
+.tabs-area .ant-tabs-tab.drag-over::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #1890ff;
+  border-radius: 2px;
+  animation: dragIndicator 0.3s ease;
+}
+
+@keyframes dragIndicator {
+  from {
+    opacity: 0;
+    transform: scaleY(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}

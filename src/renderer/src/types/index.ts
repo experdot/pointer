@@ -501,6 +501,7 @@ export type AppAction =
   | { type: 'PIN_TAB'; payload: { chatId: string } }
   | { type: 'UNPIN_TAB'; payload: { chatId: string } }
   | { type: 'SET_ACTIVE_TAB'; payload: { chatId: string } }
+  | { type: 'REORDER_TABS'; payload: { newOrder: string[] } }
   | {
       type: 'SET_SELECTED_NODE'
       payload: { nodeId: string | null; nodeType: 'folder' | 'chat' | null }
