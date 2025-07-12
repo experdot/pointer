@@ -5,19 +5,19 @@ import SidebarActions from './sidebar/SidebarActions'
 import Settings from './Settings'
 import GlobalSearch from './sidebar/GlobalSearch'
 import TaskMonitor from './sidebar/TaskMonitor'
-import { Modal, App, Tabs, Space } from 'antd'
-import { HistoryOutlined, MonitorOutlined } from '@ant-design/icons'
+import { Modal, App } from 'antd'
+import { ActivityBarTab } from './ActivityBar'
 
 interface SidebarProps {
   collapsed: boolean
+  activeTab: ActivityBarTab
+  onSearchOpen: () => void
+  onSettingsOpen: () => void
 }
 
-export default function Sidebar({ collapsed }: SidebarProps) {
+export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettingsOpen }: SidebarProps) {
   const { state, dispatch } = useAppContext()
   const { modal } = App.useApp()
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('history')
 
   const handleCreateChat = useCallback(() => {
     // 根据当前选中的节点决定新聊天的位置
@@ -128,130 +128,84 @@ export default function Sidebar({ collapsed }: SidebarProps) {
     })
   }, [dispatch, modal, state.checkedNodeIds])
 
-  // 打开全局搜索
-  const handleOpenSearch = useCallback(() => {
-    setSearchOpen(true)
-  }, [])
-
-  // 关闭全局搜索
-  const handleCloseSearch = useCallback(() => {
-    setSearchOpen(false)
-    // 清除搜索状态
-    dispatch({ type: 'CLEAR_SEARCH' })
-  }, [dispatch])
-
   // 检查是否有选中的项目
   const hasCheckedItems = state.checkedNodeIds.length > 0
 
-  // 计算活跃任务数量
-  const activeTaskCount = state.aiTasks.filter(task => 
-    task.status === 'running' || task.status === 'pending'
-  ).length
-
   if (collapsed) {
-    return (
-      <div className="sidebar-collapsed">
-        <SidebarActions
-          collapsed={true}
-          multiSelectMode={state.multiSelectMode}
-          hasCheckedItems={hasCheckedItems}
-          onCreateChat={handleCreateChat}
-          onCreateCrosstabChat={handleCreateCrosstabChat}
-          onCreateObjectChat={handleCreateObjectChat}
-          onCreateFolder={handleCreateFolder}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onToggleMultiSelect={handleToggleMultiSelect}
-          onBatchDelete={handleBatchDelete}
-          onOpenSearch={handleOpenSearch}
-        />
-        <GlobalSearch visible={searchOpen} onClose={handleCloseSearch} />
-      </div>
-    )
+    return null // 当折叠时不显示内容
+  }
+
+  // 根据activeTab渲染不同的内容
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'explore':
+        return (
+          <div className="sidebar-explore">
+            <div className="sidebar-header">
+              <h3>资源管理器</h3>
+              <SidebarActions
+                collapsed={false}
+                multiSelectMode={state.multiSelectMode}
+                hasCheckedItems={hasCheckedItems}
+                onCreateChat={handleCreateChat}
+                onCreateCrosstabChat={handleCreateCrosstabChat}
+                onCreateObjectChat={handleCreateObjectChat}
+                onCreateFolder={handleCreateFolder}
+                onToggleMultiSelect={handleToggleMultiSelect}
+                onBatchDelete={handleBatchDelete}
+              />
+            </div>
+            <div className="sidebar-content">
+              {state.multiSelectMode && (
+                <div className="multi-select-indicator">
+                  多选模式 ({state.checkedNodeIds.length} 项已选)
+                </div>
+              )}
+              <ChatHistoryTree onChatClick={handleChatClick} />
+            </div>
+          </div>
+        )
+      case 'search':
+        return (
+          <div className="sidebar-search">
+            <div className="sidebar-header">
+              <h3>搜索</h3>
+            </div>
+            <div className="sidebar-content">
+              <GlobalSearch visible={true} onClose={() => {}} embedded={true} />
+            </div>
+          </div>
+        )
+      case 'tasks':
+        return (
+          <div className="sidebar-tasks">
+            <div className="sidebar-header">
+              <h3>任务监控</h3>
+            </div>
+            <div className="sidebar-content">
+              <TaskMonitor />
+            </div>
+          </div>
+        )
+      case 'settings':
+        return (
+          <div className="sidebar-settings">
+            <div className="sidebar-header">
+              <h3>设置</h3>
+            </div>
+            <div className="sidebar-content">
+              <Settings open={true} onClose={() => {}} embedded={true} />
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
   }
 
   return (
     <div className="sidebar">
-      <div className="sidebar-header">
-        <SidebarActions
-          collapsed={false}
-          multiSelectMode={state.multiSelectMode}
-          hasCheckedItems={hasCheckedItems}
-          onCreateChat={handleCreateChat}
-          onCreateCrosstabChat={handleCreateCrosstabChat}
-          onCreateObjectChat={handleCreateObjectChat}
-          onCreateFolder={handleCreateFolder}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onToggleMultiSelect={handleToggleMultiSelect}
-          onBatchDelete={handleBatchDelete}
-          onOpenSearch={handleOpenSearch}
-        />
-      </div>
-
-      <div className="sidebar-content">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          size="small"
-          style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-          items={[
-            {
-              key: 'history',
-              label: (
-                <span>
-                  <Space>
-                    <HistoryOutlined />
-                    聊天历史
-                  </Space>
-                </span>
-              ),
-              children: (
-                <div style={{ height: '100%', overflow: 'auto' }}>
-                  {state.multiSelectMode && (
-                    <div className="multi-select-indicator">
-                      多选模式 ({state.checkedNodeIds.length} 项已选)
-                    </div>
-                  )}
-                  <ChatHistoryTree onChatClick={handleChatClick} />
-                </div>
-              )
-            },
-            {
-              key: 'tasks',
-              label: (
-                <span>
-                  <Space>
-                    <MonitorOutlined />
-                    任务监控
-                  </Space>
-                  {activeTaskCount > 0 && (
-                    <span 
-                      style={{ 
-                        marginLeft: 4,
-                        backgroundColor: '#ff4d4f',
-                        color: 'white',
-                        borderRadius: '10px',
-                        padding: '0 6px',
-                        fontSize: '11px',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      {activeTaskCount}
-                    </span>
-                  )}
-                </span>
-              ),
-              children: (
-                <div style={{ height: '100%' }}>
-                  <TaskMonitor />
-                </div>
-              )
-            }
-          ]}
-        />
-      </div>
-
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <GlobalSearch visible={searchOpen} onClose={handleCloseSearch} />
+      {renderContent()}
     </div>
   )
 }

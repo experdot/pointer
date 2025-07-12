@@ -12,9 +12,10 @@ const { Text, Paragraph } = Typography
 interface GlobalSearchProps {
   visible: boolean
   onClose: () => void
+  embedded?: boolean
 }
 
-export default function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
+export default function GlobalSearch({ visible, onClose, embedded = false }: GlobalSearchProps) {
   const { state, dispatch } = useAppContext()
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
 
@@ -58,10 +59,12 @@ export default function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
     (result: SearchResult) => {
       // 打开聊天标签页
       dispatch({ type: 'OPEN_TAB', payload: { chatId: result.chatId } })
-      // 关闭搜索
-      onClose()
+      // 如果不是内嵌模式，关闭搜索
+      if (!embedded) {
+        onClose()
+      }
     },
-    [dispatch, onClose]
+    [dispatch, onClose, embedded]
   )
 
   // 清除搜索
@@ -138,6 +141,76 @@ export default function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
 
   if (!visible) return null
 
+  const searchContent = (
+    <div className="search-input-section">
+      <Search
+        placeholder="搜索聊天记录..."
+        value={state.searchQuery}
+        onChange={handleSearchChange}
+        onSearch={performSearch}
+        enterButton="搜索"
+        size={embedded ? "default" : "large"}
+        suffix={
+          state.searchQuery ? (
+            <Button
+              type="text"
+              icon={<CloseOutlined />}
+              onClick={handleClearSearch}
+              size="small"
+            />
+          ) : null
+        }
+      />
+    </div>
+  )
+
+  const searchResults = (
+    <div className="search-results-section">
+      {state.isSearching ? (
+        <div className="search-loading">
+          <Spin size="large" />
+          <Text type="secondary">搜索中...</Text>
+        </div>
+      ) : state.searchQuery && state.searchResults.length === 0 ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到相关结果" />
+      ) : state.searchResults.length > 0 ? (
+        <>
+          <div className="search-results-header">
+            <Text type="secondary">找到 {state.searchResults.length} 条结果</Text>
+          </div>
+          <List
+            className="search-results-list"
+            dataSource={state.searchResults}
+            renderItem={renderSearchResult}
+            pagination={
+              state.searchResults.length > 10
+                ? {
+                    pageSize: 10,
+                    size: 'small',
+                    showSizeChanger: false
+                  }
+                : false
+            }
+          />
+        </>
+      ) : (
+        <div className="search-placeholder">
+          <SearchOutlined className="search-placeholder-icon" />
+          <Text type="secondary">输入关键词搜索所有聊天记录</Text>
+        </div>
+      )}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <div className="global-search-embedded">
+        {searchContent}
+        {searchResults}
+      </div>
+    )
+  }
+
   return (
     <div className="global-search-overlay">
       <Card
@@ -155,62 +228,8 @@ export default function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
           </div>
         }
       >
-        <div className="search-input-section">
-          <Search
-            placeholder="搜索聊天记录..."
-            value={state.searchQuery}
-            onChange={handleSearchChange}
-            onSearch={performSearch}
-            enterButton="搜索"
-            size="large"
-            suffix={
-              state.searchQuery ? (
-                <Button
-                  type="text"
-                  icon={<CloseOutlined />}
-                  onClick={handleClearSearch}
-                  size="small"
-                />
-              ) : null
-            }
-          />
-        </div>
-
-        <div className="search-results-section">
-          {state.isSearching ? (
-            <div className="search-loading">
-              <Spin size="large" />
-              <Text type="secondary">搜索中...</Text>
-            </div>
-          ) : state.searchQuery && state.searchResults.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到相关结果" />
-          ) : state.searchResults.length > 0 ? (
-            <>
-              <div className="search-results-header">
-                <Text type="secondary">找到 {state.searchResults.length} 条结果</Text>
-              </div>
-              <List
-                className="search-results-list"
-                dataSource={state.searchResults}
-                renderItem={renderSearchResult}
-                pagination={
-                  state.searchResults.length > 10
-                    ? {
-                        pageSize: 10,
-                        size: 'small',
-                        showSizeChanger: false
-                      }
-                    : false
-                }
-              />
-            </>
-          ) : (
-            <div className="search-placeholder">
-              <SearchOutlined className="search-placeholder-icon" />
-              <Text type="secondary">输入关键词搜索所有聊天记录</Text>
-            </div>
-          )}
-        </div>
+        {searchContent}
+        {searchResults}
       </Card>
     </div>
   )

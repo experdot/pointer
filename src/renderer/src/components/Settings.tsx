@@ -10,9 +10,10 @@ import SettingsDemo from './settings/SettingsDemo'
 interface SettingsProps {
   open: boolean
   onClose: () => void
+  embedded?: boolean
 }
 
-export default function Settings({ open, onClose }: SettingsProps) {
+export default function Settings({ open, onClose, embedded = false }: SettingsProps) {
   const { settings, updateSettings } = useSettings()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
@@ -30,7 +31,9 @@ export default function Settings({ open, onClose }: SettingsProps) {
 
       updateSettings(formSettings)
       message.success('设置已保存')
-      onClose()
+      if (!embedded) {
+        onClose()
+      }
     } catch (error) {
       message.error('保存失败，请检查输入')
     } finally {
@@ -67,6 +70,44 @@ export default function Settings({ open, onClose }: SettingsProps) {
     }
   ]
 
+  const settingsContent = (
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={{
+        fontSize: settings.fontSize
+      }}
+    >
+      <Tabs items={tabItems} />
+      {embedded && (
+        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+          <Button key="reset" onClick={handleReset} icon={<ReloadOutlined />}>
+            重置
+          </Button>
+          <Button
+            key="save"
+            type="primary"
+            loading={loading}
+            onClick={handleSave}
+            icon={<SaveOutlined />}
+          >
+            保存
+          </Button>
+        </div>
+      )}
+    </Form>
+  )
+
+  if (!open) return null
+
+  if (embedded) {
+    return (
+      <div className="settings-embedded">
+        {settingsContent}
+      </div>
+    )
+  }
+
   return (
     <Modal
       title={
@@ -96,15 +137,7 @@ export default function Settings({ open, onClose }: SettingsProps) {
         </Button>
       ]}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          fontSize: settings.fontSize
-        }}
-      >
-        <Tabs items={tabItems} />
-      </Form>
+      {settingsContent}
     </Modal>
   )
 }

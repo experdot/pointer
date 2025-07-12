@@ -3,11 +3,9 @@ import { Button, Space, Tooltip } from 'antd'
 import {
   PlusOutlined,
   FolderAddOutlined,
-  SettingOutlined,
   CheckSquareOutlined,
   DeleteOutlined,
   BorderOutlined,
-  SearchOutlined,
   TableOutlined,
   BlockOutlined
 } from '@ant-design/icons'
@@ -20,10 +18,8 @@ interface SidebarActionsProps {
   onCreateCrosstabChat: () => void
   onCreateObjectChat: () => void
   onCreateFolder: () => void
-  onOpenSettings: () => void
   onToggleMultiSelect?: () => void
   onBatchDelete?: () => void
-  onOpenSearch?: () => void
 }
 
 export default function SidebarActions({
@@ -34,17 +30,12 @@ export default function SidebarActions({
   onCreateCrosstabChat,
   onCreateObjectChat,
   onCreateFolder,
-  onOpenSettings,
   onToggleMultiSelect,
-  onBatchDelete,
-  onOpenSearch
+  onBatchDelete
 }: SidebarActionsProps) {
   if (collapsed) {
     return (
       <div className="sidebar-actions-collapsed">
-        <Tooltip title="全局搜索" placement="right">
-          <Button type="text" icon={<SearchOutlined />} onClick={onOpenSearch} />
-        </Tooltip>
         <Tooltip title="新建聊天" placement="right">
           <Button type="text" icon={<PlusOutlined />} onClick={onCreateChat} />
         </Tooltip>
@@ -75,9 +66,6 @@ export default function SidebarActions({
             />
           </Tooltip>
         )}
-        <Tooltip title="设置" placement="right">
-          <Button type="text" icon={<SettingOutlined />} onClick={onOpenSettings} />
-        </Tooltip>
       </div>
     )
   }
@@ -85,9 +73,6 @@ export default function SidebarActions({
   return (
     <div className="sidebar-actions">
       <Space>
-        <Tooltip title="全局搜索">
-          <Button type="text" icon={<SearchOutlined />} onClick={onOpenSearch} />
-        </Tooltip>
         <Tooltip title="新建聊天">
           <Button type="text" icon={<PlusOutlined />} onClick={onCreateChat} />
         </Tooltip>
@@ -118,9 +103,6 @@ export default function SidebarActions({
             />
           </Tooltip>
         )}
-        <Tooltip title="设置">
-          <Button type="text" icon={<SettingOutlined />} onClick={onOpenSettings} />
-        </Tooltip>
       </Space>
     </div>
   )
