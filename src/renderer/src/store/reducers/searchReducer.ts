@@ -1,4 +1,4 @@
-import { AppState, AppAction, SearchResult, ChatMessage } from '../../types'
+import { AppState, AppAction, SearchResult, ChatMessage, SearchOptions } from '../../types'
 
 export const handleSearchActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -47,22 +47,50 @@ export const handleSearchActions = (state: AppState, action: AppAction): AppStat
 }
 
 // 搜索工具函数
-export const searchMessages = (pages: any[], query: string): SearchResult[] => {
+export const searchMessages = (pages: any[], query: string, options: SearchOptions = { matchCase: false, matchWholeWord: false, useRegex: false }): SearchResult[] => {
   if (!query.trim()) return []
 
   const results: SearchResult[] = []
-  const searchTerm = query.toLowerCase().trim()
+  
+  // 根据选项处理搜索词
+  let searchPattern: RegExp
+  let searchTerm: string
+  
+  try {
+    if (options.useRegex) {
+      // 使用正则表达式
+      const flags = options.matchCase ? 'g' : 'gi'
+      searchPattern = new RegExp(query, flags)
+      searchTerm = query
+    } else {
+      // 非正则表达式模式
+      let escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      
+      if (options.matchWholeWord) {
+        // 匹配整个单词
+        escapedQuery = `\\b${escapedQuery}\\b`
+      }
+      
+      const flags = options.matchCase ? 'g' : 'gi'
+      searchPattern = new RegExp(escapedQuery, flags)
+      searchTerm = options.matchCase ? query : query.toLowerCase()
+    }
+  } catch (error) {
+    // 正则表达式错误，返回空结果
+    console.error('Invalid regex pattern:', error)
+    return []
+  }
 
   pages.forEach((chat) => {
     if (!chat.messages || chat.messages.length === 0) return
 
     chat.messages.forEach((message: ChatMessage) => {
-      const content = message.content.toLowerCase()
-      const reasoningContent = message.reasoning_content?.toLowerCase() || ''
+      const content = message.content
+      const reasoningContent = message.reasoning_content || ''
 
       // 搜索消息内容和推理内容
-      const contentMatch = content.includes(searchTerm)
-      const reasoningMatch = reasoningContent.includes(searchTerm)
+      const contentMatch = searchPattern.test(content)
+      const reasoningMatch = reasoningContent && searchPattern.test(reasoningContent)
 
       if (contentMatch || reasoningMatch) {
         // 创建搜索结果片段
@@ -72,32 +100,43 @@ export const searchMessages = (pages: any[], query: string): SearchResult[] => {
 
         if (contentMatch) {
           sourceContent = message.content
-          const index = content.indexOf(searchTerm)
-          const start = Math.max(0, index - 50)
-          const end = Math.min(message.content.length, index + searchTerm.length + 50)
-          snippet = message.content.substring(start, end)
+          
+          // 重新创建正则表达式以获得匹配位置
+          const matchPattern = new RegExp(searchPattern.source, searchPattern.flags)
+          const match = matchPattern.exec(content)
+          
+          if (match) {
+            const index = match.index
+            const matchLength = match[0].length
+            const start = Math.max(0, index - 50)
+            const end = Math.min(content.length, index + matchLength + 50)
+            snippet = content.substring(start, end)
 
-          // 计算高亮位置（相对于片段的位置）
-          const originalIndex = message.content.toLowerCase().indexOf(searchTerm)
-          const snippetStart = message.content.indexOf(snippet)
-          const highlightStart = originalIndex - snippetStart
-
-          if (highlightStart >= 0 && highlightStart < snippet.length) {
-            highlightIndices = [highlightStart, highlightStart + searchTerm.length]
+            // 计算高亮位置（相对于片段的位置）
+            const highlightStart = index - start
+            
+            if (highlightStart >= 0 && highlightStart < snippet.length) {
+              highlightIndices = [highlightStart, highlightStart + matchLength]
+            }
           }
         } else if (reasoningMatch && message.reasoning_content) {
           sourceContent = message.reasoning_content
-          const index = reasoningContent.indexOf(searchTerm)
-          const start = Math.max(0, index - 50)
-          const end = Math.min(message.reasoning_content.length, index + searchTerm.length + 50)
-          snippet = message.reasoning_content.substring(start, end)
+          
+          const matchPattern = new RegExp(searchPattern.source, searchPattern.flags)
+          const match = matchPattern.exec(reasoningContent)
+          
+          if (match) {
+            const index = match.index
+            const matchLength = match[0].length
+            const start = Math.max(0, index - 50)
+            const end = Math.min(reasoningContent.length, index + matchLength + 50)
+            snippet = reasoningContent.substring(start, end)
 
-          const originalIndex = message.reasoning_content.toLowerCase().indexOf(searchTerm)
-          const snippetStart = message.reasoning_content.indexOf(snippet)
-          const highlightStart = originalIndex - snippetStart
-
-          if (highlightStart >= 0 && highlightStart < snippet.length) {
-            highlightIndices = [highlightStart, highlightStart + searchTerm.length]
+            const highlightStart = index - start
+            
+            if (highlightStart >= 0 && highlightStart < snippet.length) {
+              highlightIndices = [highlightStart, highlightStart + matchLength]
+            }
           }
         }
 

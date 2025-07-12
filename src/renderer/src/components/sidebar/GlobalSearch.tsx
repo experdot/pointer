@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { List, Avatar, Typography, Empty, Spin, Card, Tag, Button, Input } from 'antd'
+import { List, Avatar, Typography, Empty, Spin, Card, Tag, Button, Input, Checkbox, Space, Tooltip } from 'antd'
 import type { InputRef } from 'antd'
-import { SearchOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons'
+import { SearchOutlined, UserOutlined, RobotOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../store/AppContext'
 import { searchMessages } from '../../store/reducers/searchReducer'
-import { SearchResult } from '../../types'
+import { SearchResult, SearchOptions } from '../../types'
 import './search-styles.css'
 
 const { Text, Paragraph } = Typography
@@ -22,6 +22,12 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
   const inputRef = useRef<InputRef>(null)
   const [inputValue, setInputValue] = useState('')
+  const [showOptions, setShowOptions] = useState(false)
+  const [searchOptions, setSearchOptions] = useState<SearchOptions>({
+    matchCase: false,
+    matchWholeWord: false,
+    useRegex: false
+  })
 
   // 执行搜索
   const performSearch = useCallback(
@@ -40,15 +46,21 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       const timeout = setTimeout(() => {
         setIsSearching(true)
         
-        // 执行搜索
-        const results = searchMessages(state.pages, query)
-        setSearchResults(results)
-        setIsSearching(false)
+        try {
+          // 执行搜索
+          const results = searchMessages(state.pages, query, searchOptions)
+          setSearchResults(results)
+          setIsSearching(false)
+        } catch (error) {
+          console.error('搜索失败:', error)
+          setSearchResults([])
+          setIsSearching(false)
+        }
       }, 300)
 
       setSearchTimeout(timeout)
     },
-    [state.pages, searchTimeout]
+    [state.pages, searchTimeout, searchOptions]
   )
 
   // 处理输入变化
@@ -106,13 +118,33 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
         if (value) {
           // 立即执行搜索
           setIsSearching(true)
-          const results = searchMessages(state.pages, value)
-          setSearchResults(results)
-          setIsSearching(false)
+          try {
+            const results = searchMessages(state.pages, value, searchOptions)
+            setSearchResults(results)
+            setIsSearching(false)
+          } catch (error) {
+            console.error('搜索失败:', error)
+            setSearchResults([])
+            setIsSearching(false)
+          }
         }
       }
     },
-    [inputValue, state.pages]
+    [inputValue, state.pages, searchOptions]
+  )
+
+  // 处理搜索选项变化
+  const handleSearchOptionChange = useCallback(
+    (option: keyof SearchOptions, value: boolean) => {
+      const newOptions = { ...searchOptions, [option]: value }
+      setSearchOptions(newOptions)
+      
+      // 如果有搜索内容，重新搜索
+      if (inputValue.trim()) {
+        performSearch(inputValue)
+      }
+    },
+    [searchOptions, inputValue, performSearch]
   )
 
   // 组件卸载时清理
@@ -217,17 +249,53 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
           size={embedded ? "middle" : "large"}
           prefix={<SearchOutlined />}
           suffix={
-            inputValue ? (
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={handleClearSearch}
-                size="small"
-              />
-            ) : null
+            <Space>
+              {inputValue && (
+                <Button
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={handleClearSearch}
+                  size="small"
+                />
+              )}
+              <Tooltip title="搜索选项">
+                <Button
+                  type="text"
+                  icon={<SettingOutlined />}
+                  onClick={() => setShowOptions(!showOptions)}
+                  size="small"
+                  style={{ color: showOptions ? '#1890ff' : undefined }}
+                />
+              </Tooltip>
+            </Space>
           }
         />
       </div>
+      
+      {showOptions && (
+        <div className="search-options">
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Checkbox
+              checked={searchOptions.matchCase}
+              onChange={(e) => handleSearchOptionChange('matchCase', e.target.checked)}
+            >
+              匹配大小写 (Match Case)
+            </Checkbox>
+            <Checkbox
+              checked={searchOptions.matchWholeWord}
+              onChange={(e) => handleSearchOptionChange('matchWholeWord', e.target.checked)}
+            >
+              匹配整个单词 (Match Whole Word)
+            </Checkbox>
+            <Checkbox
+              checked={searchOptions.useRegex}
+              onChange={(e) => handleSearchOptionChange('useRegex', e.target.checked)}
+            >
+              使用正则表达式 (Use Regex)
+            </Checkbox>
+          </Space>
+        </div>
+      )}
     </div>
   )
 

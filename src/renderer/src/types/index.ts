@@ -243,6 +243,12 @@ export interface SearchResult {
   highlightIndices: number[] // 高亮位置
 }
 
+export interface SearchOptions {
+  matchCase: boolean // 匹配大小写
+  matchWholeWord: boolean // 匹配整个单词
+  useRegex: boolean // 使用正则表达式
+}
+
 // AI任务状态
 export type AITaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
