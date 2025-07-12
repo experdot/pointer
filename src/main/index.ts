@@ -12,6 +12,8 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    frame: false, // 禁用默认边框，启用自定义标题栏
+    titleBarStyle: 'hidden', // 隐藏标题栏
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -56,6 +58,33 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // 窗口控制IPC处理程序
+  ipcMain.handle('window-minimize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) window.minimize()
+  })
+
+  ipcMain.handle('window-maximize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      if (window.isMaximized()) {
+        window.unmaximize()
+      } else {
+        window.maximize()
+      }
+    }
+  })
+
+  ipcMain.handle('window-close', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) window.close()
+  })
+
+  ipcMain.handle('window-is-maximized', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window ? window.isMaximized() : false
+  })
 
   // Handle save file
   ipcMain.handle('save-file', async (event, { content, defaultPath, filters }) => {

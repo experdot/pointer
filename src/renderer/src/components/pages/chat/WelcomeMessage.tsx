@@ -24,7 +24,7 @@ export default function WelcomeMessage({ onOpenSettings }: WelcomeMessageProps) 
         <div className="welcome-content">
           <RobotOutlined style={{ fontSize: 64, color: '#faad14', marginBottom: 24 }} />
           <Title level={3} style={{ color: '#262626', marginBottom: 16 }}>
-            欢迎使用AI聊天助手
+            欢迎使用 Pointer - AI 聊天助手
           </Title>
           <Text type="secondary" style={{ fontSize: 16, marginBottom: 24, display: 'block' }}>
             开始对话前，请先配置您的AI模型

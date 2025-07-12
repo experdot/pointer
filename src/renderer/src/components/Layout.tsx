@@ -8,8 +8,9 @@ import TabsArea from './TabsArea'
 import ResizeHandle from './ResizeHandle'
 import Settings from './Settings'
 import GlobalSearch from './sidebar/GlobalSearch'
+import TitleBar from './TitleBar'
 
-const { Sider, Content, Header } = AntLayout
+const { Sider, Content } = AntLayout
 
 export default function Layout() {
   const { state, dispatch } = useAppContext()
@@ -66,22 +67,15 @@ export default function Layout() {
   }
 
   return (
-    <AntLayout className="app-layout">
-      <Header className="app-header">
-        <div className="header-left">
-          <Tooltip title={state.sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}>
-            <Button
-              type="text"
-              icon={state.sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={toggleSidebar}
-            />
-          </Tooltip>
-          <h2 className="app-title">AI聊天助手</h2>
-        </div>
-        <div className="header-right">{/* 可以添加其他头部操作按钮 */}</div>
-      </Header>
+    <div className="app-layout">
+      {/* 自定义标题栏 */}
+      <TitleBar
+        title="Pointer - AI聊天助手"
+        sidebarCollapsed={state.sidebarCollapsed}
+        onToggleSidebar={toggleSidebar}
+      />
 
-      <AntLayout>
+      <AntLayout className="app-main-layout">
         {/* ActivityBar */}
         <Sider
           width={50}
@@ -121,6 +115,6 @@ export default function Layout() {
       {/* 全局模态框 */}
       <GlobalSearch visible={searchOpen} onClose={handleCloseSearch} />
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </AntLayout>
+    </div>
   )
 }

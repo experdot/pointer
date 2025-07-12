@@ -21,9 +21,15 @@ declare global {
       }
       saveFile: (options: {
         content: string
-        defaultPath: string
+        defaultPath?: string
         filters?: Array<{ name: string; extensions: string[] }>
       }) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
+    }
+    electronWindow: {
+      minimize: () => Promise<void>
+      maximize: () => Promise<void>
+      close: () => Promise<void>
+      isMaximized: () => Promise<boolean>
     }
   }
 }
