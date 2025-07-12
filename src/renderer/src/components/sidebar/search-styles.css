@@ -126,17 +126,3 @@
   border-radius: 2px;
   font-weight: 500;
 }
-
-/* 深色主题适配 */
-.dark .global-search-overlay {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.dark .search-result-item:hover {
-  background-color: #1f1f1f;
-}
-
-.dark .search-highlight {
-  background-color: #3c3526;
-  color: #ffc107;
-}

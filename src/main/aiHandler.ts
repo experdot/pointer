@@ -70,7 +70,7 @@ class AIHandler {
             temperature: 0.7,
             max_tokens: 2000
           }),
-          signal: abortController.signal // 添加中断信号
+          signal: abortController.signal
         }
       )
 

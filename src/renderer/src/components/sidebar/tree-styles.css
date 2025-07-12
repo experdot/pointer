@@ -220,33 +220,3 @@
   right: 0;
   z-index: 1;
 }
-
-/* 暗色主题的拖拽样式 */
-.dark .ant-tree-drag-over {
-  background-color: #2a2a2a !important;
-}
-
-.dark .ant-tree-drag-over-gap-top {
-  border-top-color: #40a9ff !important;
-}
-
-.dark .ant-tree-drag-over-gap-bottom {
-  border-bottom-color: #40a9ff !important;
-}
-
-.dark .ant-tree-draggable-icon {
-  color: #40a9ff;
-}
-
-.dark .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
-  background-color: #2a2a2a;
-}
-
-.dark .ant-tree-drag-ghost {
-  background-color: #2a2a2a;
-  border-color: #555;
-}
-
-.dark .ant-tree-drop-indicator {
-  background-color: #40a9ff;
-}
