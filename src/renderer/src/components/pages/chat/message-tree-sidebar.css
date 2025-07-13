@@ -169,6 +169,12 @@
   gap: 8px;
 }
 
+.tree-stats-collapsed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .tree-stats-collapsed .stat-item {
   flex-direction: column;
   gap: 2px;

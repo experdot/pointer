@@ -21,7 +21,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const { state, dispatch } = useAppContext()
   const [inputValue, setInputValue] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [messageTreeCollapsed, setMessageTreeCollapsed] = useState(false)
+  const [messageTreeCollapsed, setMessageTreeCollapsed] = useState(true)
   const [messageTreeWidth, setMessageTreeWidth] = useState(() => {
     const saved = localStorage.getItem('messageTreeWidth')
     return saved ? parseInt(saved, 10) : 300

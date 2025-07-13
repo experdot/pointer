@@ -178,7 +178,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
       onClick={handleToggleCollapse}
     >
       {isCollapsed ? <CaretRightOutlined /> : <CaretDownOutlined />}
-      <BranchesOutlined />
+      <LinkOutlined />
       <Text strong>页面溯源</Text>
     </div>
   )
