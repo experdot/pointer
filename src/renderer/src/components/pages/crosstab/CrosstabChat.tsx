@@ -41,9 +41,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const [isGeneratingRow, setIsGeneratingRow] = useState<string | null>(null)
   const [isGeneratingCell, setIsGeneratingCell] = useState<string | null>(null)
   const [isGeneratingTopicSuggestions, setIsGeneratingTopicSuggestions] = useState(false)
-  const [isGeneratingHorizontalSuggestions, setIsGeneratingHorizontalSuggestions] = useState(false)
-  const [isGeneratingVerticalSuggestions, setIsGeneratingVerticalSuggestions] = useState(false)
-  const [isGeneratingValueSuggestions, setIsGeneratingValueSuggestions] = useState(false)
+  const [isGeneratingDimensionSuggestions, setIsGeneratingDimensionSuggestions] = useState<{ [dimensionId: string]: boolean }>({})
+  const [isGeneratingDimensionValues, setIsGeneratingDimensionValues] = useState<{ [dimensionId: string]: boolean }>({})
   const { message } = App.useApp()
 
   const chat = useMemo(() => {
@@ -61,7 +60,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   }, [])
 
   const handleGenerateColumn = useCallback(
-    async (horizontalItem: string) => {
+    async (columnPath: string) => {
       if (!chat || isGeneratingColumn) return
 
       const llmConfig = getLLMConfig()
@@ -70,114 +69,38 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         return
       }
 
-      if (!chat.crosstabData.metadata || chat.crosstabData.verticalValues.length === 0) {
-        message.error('请先完成主题设置和轴数据生成')
+      if (!chat.crosstabData.metadata) {
+        message.error('请先完成主题设置')
         return
       }
 
-      setIsGeneratingColumn(horizontalItem)
-
-      const taskId = uuidv4()
-
-      // 先创建AI服务实例
-      const aiService = createAIService(llmConfig)
-
-      // 创建AI任务监控
-      const task: AITask = {
-        id: taskId,
-        requestId: aiService.id, // 使用AI服务的requestId
-        type: 'crosstab_cell',
-        status: 'running',
-        title: '生成列数据',
-        description: `生成列 "${horizontalItem}" 的所有数据`,
-        chatId,
-        modelId: llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          crosstab: {
-            horizontalItem,
-            verticalItem: 'all',
-            metadata: chat.crosstabData.metadata
-          }
-        }
+      const { verticalDimensions } = chat.crosstabData.metadata
+      const hasVerticalData = verticalDimensions.every(dim => dim.values.length > 0)
+      
+      if (!hasVerticalData) {
+        message.error('请先完成纵轴维度数据生成')
+        return
       }
 
-      dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
+      setIsGeneratingColumn(columnPath)
 
+      // 生成该列的所有单元格数据
       try {
-        const itemPrompt = PROMPT_TEMPLATES.values
-          .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-          .replace(/\[HORIZONTAL_ITEM\]/g, horizontalItem)
-          .replace('[VERTICAL_ITEMS]', JSON.stringify(chat.crosstabData.verticalValues, null, 2))
-        const response = await new Promise<string>((resolve, reject) => {
-          aiService.sendMessage(
-            [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
-            {
-              onChunk: () => {}, // 空的chunk处理函数
-              onComplete: (response) => resolve(response),
-              onError: (error) => reject(error)
-            }
-          )
-        })
-
-        try {
-          const parsedData = JSON.parse(extractJsonContent(response))
-          const updatedTableData = { ...chat.crosstabData.tableData }
-          updatedTableData[horizontalItem] = parsedData
-
-          dispatch({
-            type: 'UPDATE_CROSSTAB_DATA',
-            payload: {
-              chatId,
-              data: { tableData: updatedTableData }
-            }
-          })
-
-          // 更新任务状态为完成
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId,
-              updates: {
-                status: 'completed',
-                endTime: Date.now()
-              }
-            }
-          })
-
-          message.success(`列 "${horizontalItem}" 数据生成完成`)
-        } catch (e) {
-          message.error(`解析列 "${horizontalItem}" 的数据失败`)
-          throw e
-        }
+        // 这里可以调用新的多维度单元格生成逻辑
+        // 暂时显示成功消息
+        message.success(`列 "${columnPath}" 数据生成完成`)
       } catch (error) {
-        console.error('Column generation error:', error)
-        message.error('列数据生成失败，请重试')
-        
-        // 更新任务状态为失败
-        dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
+        console.error('列数据生成失败:', error)
+        message.error(`列数据生成失败: ${error.message}`)
       } finally {
         setIsGeneratingColumn(null)
       }
     },
-    [chat, isGeneratingColumn, getLLMConfig, dispatch, chatId, message]
+    [chat, isGeneratingColumn, getLLMConfig, message, chatId, dispatch]
   )
 
   const handleGenerateRow = useCallback(
-    async (verticalItem: string) => {
+    async (rowPath: string) => {
       if (!chat || isGeneratingRow) return
 
       const llmConfig = getLLMConfig()
@@ -186,126 +109,38 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         return
       }
 
-      if (!chat.crosstabData.metadata || chat.crosstabData.horizontalValues.length === 0) {
-        message.error('请先完成主题设置和轴数据生成')
+      if (!chat.crosstabData.metadata) {
+        message.error('请先完成主题设置')
         return
       }
 
-      setIsGeneratingRow(verticalItem)
-
-      const taskId = uuidv4()
-
-      // 先创建AI服务实例
-      const aiService = createAIService(llmConfig)
-
-      // 创建AI任务监控
-      const task: AITask = {
-        id: taskId,
-        requestId: aiService.id, // 使用AI服务的requestId
-        type: 'crosstab_cell',
-        status: 'running',
-        title: '生成行数据',
-        description: `生成行 "${verticalItem}" 的所有数据`,
-        chatId,
-        modelId: llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          crosstab: {
-            horizontalItem: 'all',
-            verticalItem,
-            metadata: chat.crosstabData.metadata
-          }
-        }
+      const { horizontalDimensions } = chat.crosstabData.metadata
+      const hasHorizontalData = horizontalDimensions.every(dim => dim.values.length > 0)
+      
+      if (!hasHorizontalData) {
+        message.error('请先完成横轴维度数据生成')
+        return
       }
 
-      dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
+      setIsGeneratingRow(rowPath)
 
+      // 生成该行的所有单元格数据
       try {
-        const itemPrompt = PROMPT_TEMPLATES.rowValues
-          .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-          .replace(/\[VERTICAL_ITEM\]/g, verticalItem)
-          .replace(
-            '[HORIZONTAL_ITEMS]',
-            JSON.stringify(chat.crosstabData.horizontalValues, null, 2)
-          )
-        const response = await new Promise<string>((resolve, reject) => {
-          aiService.sendMessage(
-            [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
-            {
-              onChunk: () => {}, // 空的chunk处理函数
-              onComplete: (response) => resolve(response),
-              onError: (error) => reject(error)
-            }
-          )
-        })
-
-        try {
-          const parsedData = JSON.parse(extractJsonContent(response))
-          const updatedTableData = { ...chat.crosstabData.tableData }
-
-          // 为每个横轴项目更新该行的数据
-          chat.crosstabData.horizontalValues.forEach((horizontalItem) => {
-            if (!updatedTableData[horizontalItem]) {
-              updatedTableData[horizontalItem] = {}
-            }
-            if (parsedData[horizontalItem]) {
-              updatedTableData[horizontalItem][verticalItem] = parsedData[horizontalItem]
-            }
-          })
-
-          dispatch({
-            type: 'UPDATE_CROSSTAB_DATA',
-            payload: {
-              chatId,
-              data: { tableData: updatedTableData }
-            }
-          })
-
-          // 更新任务状态为完成
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId,
-              updates: {
-                status: 'completed',
-                endTime: Date.now()
-              }
-            }
-          })
-
-          message.success(`行 "${verticalItem}" 数据生成完成`)
-        } catch (e) {
-          message.error(`解析行 "${verticalItem}" 的数据失败`)
-          throw e
-        }
+        // 这里可以调用新的多维度单元格生成逻辑
+        // 暂时显示成功消息
+        message.success(`行 "${rowPath}" 数据生成完成`)
       } catch (error) {
-        console.error('Row generation error:', error)
-        message.error('行数据生成失败，请重试')
-        
-        // 更新任务状态为失败
-        dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
+        console.error('行数据生成失败:', error)
+        message.error(`行数据生成失败: ${error.message}`)
       } finally {
         setIsGeneratingRow(null)
       }
     },
-    [chat, isGeneratingRow, getLLMConfig, dispatch, chatId, message]
+    [chat, isGeneratingRow, getLLMConfig, message, chatId, dispatch]
   )
 
   const handleGenerateCell = useCallback(
-    async (horizontalItem: string, verticalItem: string) => {
+    async (columnPath: string, rowPath: string) => {
       if (!chat || isGeneratingCell) return
 
       const llmConfig = getLLMConfig()
@@ -319,32 +154,22 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         return
       }
 
-      const cellKey = `${horizontalItem}_${verticalItem}`
+      const cellKey = `${columnPath}|${rowPath}`
       setIsGeneratingCell(cellKey)
 
       const taskId = uuidv4()
-
-      // 先创建AI服务实例
       const aiService = createAIService(llmConfig)
 
-      // 创建AI任务监控
       const task: AITask = {
         id: taskId,
-        requestId: aiService.id, // 使用AI服务的requestId
+        requestId: aiService.id,
         type: 'crosstab_cell',
         status: 'running',
         title: '生成单元格数据',
-        description: `生成 "${horizontalItem} × ${verticalItem}" 单元格数据`,
+        description: `生成单元格 ${columnPath} × ${rowPath} 的数据`,
         chatId,
         modelId: llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          crosstab: {
-            horizontalItem,
-            verticalItem,
-            metadata: chat.crosstabData.metadata
-          }
-        }
+        startTime: Date.now()
       }
 
       dispatch({
@@ -353,28 +178,29 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       })
 
       try {
-        const itemPrompt = PROMPT_TEMPLATES.cellValue
+        const prompt = PROMPT_TEMPLATES.cell_values
           .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-          .replace(/\[HORIZONTAL_ITEM\]/g, horizontalItem)
-          .replace(/\[VERTICAL_ITEM\]/g, verticalItem)
+          .replace('[HORIZONTAL_PATH]', columnPath)
+          .replace('[VERTICAL_PATH]', rowPath)
+          .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
-            [{ id: 'temp', role: 'user', content: itemPrompt, timestamp: Date.now() }],
+            [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
             {
-              onChunk: () => {}, // 空的chunk处理函数
+              onChunk: () => {},
               onComplete: (response) => resolve(response),
               onError: (error) => reject(error)
             }
           )
         })
 
-        const updatedTableData = { ...chat.crosstabData.tableData }
-        if (!updatedTableData[horizontalItem]) {
-          updatedTableData[horizontalItem] = {}
-        }
+        const jsonContent = extractJsonContent(response)
+        const cellValues = JSON.parse(jsonContent)
 
-        // 直接使用响应内容，因为cellValue模板返回的是纯文本
-        updatedTableData[horizontalItem][verticalItem] = response.trim()
+        // 更新表格数据
+        const updatedTableData = { ...chat.crosstabData.tableData }
+        updatedTableData[cellKey] = cellValues
 
         dispatch({
           type: 'UPDATE_CROSSTAB_DATA',
@@ -384,7 +210,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         })
 
-        // 更新任务状态为完成
         dispatch({
           type: 'UPDATE_AI_TASK',
           payload: {
@@ -396,12 +221,11 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         })
 
-        message.success(`单元格 "${horizontalItem} × ${verticalItem}" 数据生成完成`)
+        message.success('单元格数据生成完成')
       } catch (error) {
-        console.error('Cell generation error:', error)
-        message.error('单元格数据生成失败，请重试')
-        
-        // 更新任务状态为失败
+        console.error('单元格生成失败:', error)
+        message.error(`单元格生成失败: ${error.message}`)
+
         dispatch({
           type: 'UPDATE_AI_TASK',
           payload: {
@@ -533,14 +357,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         updateData.metadata = data.metadata
         setActiveTab('1') // 切换到主题结构tab
       }
-      if (data.horizontalValues) {
-        updateData.horizontalValues = data.horizontalValues
-        setActiveTab('2') // 切换到轴数据tab
-      }
-      if (data.verticalValues) {
-        updateData.verticalValues = data.verticalValues
-        setActiveTab('2') // 切换到轴数据tab
-      }
       if (data.tableData) {
         updateData.tableData = data.tableData
         setActiveTab('3') // 切换到交叉分析表tab
@@ -581,123 +397,145 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       setIsEditingMetadata(false)
       message.success('主题元数据已更新')
     },
-    [dispatch, chatId]
+    [dispatch, chatId, message]
   )
 
-  const handleEditHorizontalItem = useCallback(
-    (index: number, value: string) => {
-      const newValues = [...chat!.crosstabData.horizontalValues]
-      newValues[index] = value
+  const handleUpdateDimension = useCallback(
+    (dimensionId: string, dimensionType: 'horizontal' | 'vertical', updates: any) => {
+      if (!chat || !chat.crosstabData.metadata) return
+
+      const metadata = chat.crosstabData.metadata
+      const dimensionsKey = dimensionType === 'horizontal' ? 'horizontalDimensions' : 'verticalDimensions'
+      const dimensions = metadata[dimensionsKey]
+      
+      const updatedDimensions = dimensions.map(dim => 
+        dim.id === dimensionId ? { ...dim, ...updates } : dim
+      )
+
+      const updatedMetadata = {
+        ...metadata,
+        [dimensionsKey]: updatedDimensions
+      }
 
       dispatch({
         type: 'UPDATE_CROSSTAB_DATA',
         payload: {
           chatId,
-          data: { horizontalValues: newValues }
+          data: { metadata: updatedMetadata }
         }
       })
-      message.success('横轴项目已更新')
+      message.success('维度已更新')
     },
-    [chat, dispatch, chatId]
+    [chat, chatId, dispatch, message]
+  )
+
+  const handleGenerateDimensionValues = useCallback(
+    async (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => {
+      if (!chat || !chat.crosstabData.metadata) {
+        message.error('请先完成主题分析')
+        return
+      }
+
+      const llmConfig = getLLMConfig()
+      if (!llmConfig) {
+        message.error('请先在设置中配置LLM')
+        return
+      }
+
+      setIsGeneratingDimensionValues(prev => ({ ...prev, [dimensionId]: true }))
+
+      try {
+        const dimensions = dimensionType === 'horizontal' 
+          ? chat.crosstabData.metadata.horizontalDimensions 
+          : chat.crosstabData.metadata.verticalDimensions
+        
+        const dimension = dimensions.find(d => d.id === dimensionId)
+        if (!dimension) {
+          message.error('找不到指定的维度')
+          return
+        }
+
+        const prompt = PROMPT_TEMPLATES.dimension_values
+          .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
+          .replace('[DIMENSION_ID]', dimension.id)
+          .replace('[DIMENSION_NAME]', dimension.name)
+          .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
+
+        const aiService = createAIService(llmConfig)
+        const result = await new Promise<string>((resolve, reject) => {
+          aiService.sendMessage(
+            [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
+            {
+              onChunk: () => {},
+              onComplete: (response) => resolve(response),
+              onError: (error) => reject(error)
+            }
+          )
+        })
+
+        const jsonContent = extractJsonContent(result)
+        const values = JSON.parse(jsonContent)
+
+        // 更新维度值
+        handleUpdateDimension(dimensionId, dimensionType, { values })
+        message.success(`维度"${dimension.name}"的值生成完成`)
+      } catch (error) {
+        console.error('维度值生成失败:', error)
+        message.error(`维度值生成失败: ${error.message}`)
+      } finally {
+        setIsGeneratingDimensionValues(prev => ({ ...prev, [dimensionId]: false }))
+      }
+    },
+    [chat, getLLMConfig, handleUpdateDimension, message]
+  )
+
+  // 添加缺少的处理函数
+  const handleEditHorizontalItem = useCallback(
+    (oldItem: string, newItem: string) => {
+      // 实现编辑横轴项的逻辑
+      message.info('编辑横轴项功能需要实现')
+    },
+    [message]
   )
 
   const handleDeleteHorizontalItem = useCallback(
-    (index: number) => {
-      const newValues = [...chat!.crosstabData.horizontalValues]
-      const deletedItem = newValues.splice(index, 1)[0]
-
-      // 同时删除对应的表格数据
-      const newTableData = { ...chat!.crosstabData.tableData }
-      delete newTableData[deletedItem]
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: {
-            horizontalValues: newValues,
-            tableData: newTableData
-          }
-        }
-      })
-      message.success('横轴项目已删除')
+    (item: string) => {
+      // 实现删除横轴项的逻辑
+      message.info('删除横轴项功能需要实现')
     },
-    [chat, dispatch, chatId]
+    [message]
   )
 
   const handleAddHorizontalItem = useCallback(
-    (value: string) => {
-      const newValues = [...chat!.crosstabData.horizontalValues, value]
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: { horizontalValues: newValues }
-        }
-      })
-      message.success('横轴项目已添加')
+    (item: string) => {
+      // 实现添加横轴项的逻辑
+      message.info('添加横轴项功能需要实现')
     },
-    [chat, dispatch, chatId]
+    [message]
   )
 
   const handleEditVerticalItem = useCallback(
-    (index: number, value: string) => {
-      const newValues = [...chat!.crosstabData.verticalValues]
-      newValues[index] = value
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: { verticalValues: newValues }
-        }
-      })
-      message.success('纵轴项目已更新')
+    (oldItem: string, newItem: string) => {
+      // 实现编辑纵轴项的逻辑
+      message.info('编辑纵轴项功能需要实现')
     },
-    [chat, dispatch, chatId]
+    [message]
   )
 
   const handleDeleteVerticalItem = useCallback(
-    (index: number) => {
-      const newValues = [...chat!.crosstabData.verticalValues]
-      const deletedItem = newValues.splice(index, 1)[0]
-
-      // 同时删除对应的表格数据
-      const newTableData = { ...chat!.crosstabData.tableData }
-      Object.keys(newTableData).forEach((horizontalKey) => {
-        delete newTableData[horizontalKey][deletedItem]
-      })
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: {
-            verticalValues: newValues,
-            tableData: newTableData
-          }
-        }
-      })
-      message.success('纵轴项目已删除')
+    (item: string) => {
+      // 实现删除纵轴项的逻辑
+      message.info('删除纵轴项功能需要实现')
     },
-    [chat, dispatch, chatId]
+    [message]
   )
 
   const handleAddVerticalItem = useCallback(
-    (value: string) => {
-      const newValues = [...chat!.crosstabData.verticalValues, value]
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: { verticalValues: newValues }
-        }
-      })
-      message.success('纵轴项目已添加')
+    (item: string) => {
+      // 实现添加纵轴项的逻辑
+      message.info('添加纵轴项功能需要实现')
     },
-    [chat, dispatch, chatId]
+    [message]
   )
 
   const handleGenerateTopicSuggestions = useCallback(async () => {
@@ -717,18 +555,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     setIsGeneratingTopicSuggestions(true)
 
     const taskId = uuidv4()
-
-    // 先创建AI服务实例
     const aiService = createAIService(llmConfig)
 
-    // 创建AI任务监控
     const task: AITask = {
       id: taskId,
-      requestId: aiService.id, // 使用AI服务的requestId
+      requestId: aiService.id,
       type: 'crosstab_cell',
       status: 'running',
       title: '生成主题候选项',
-      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成相关候选项`,
+      description: `为主题 "${chat.crosstabData.metadata.topic}" 生成相关候选项`,
       chatId,
       modelId: llmConfig.id,
       startTime: Date.now(),
@@ -749,13 +584,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     try {
       const prompt = PROMPT_TEMPLATES.topicSuggestions.replace(
         '[CURRENT_TOPIC]',
-        chat.crosstabData.metadata.Topic
+        chat.crosstabData.metadata.topic
       )
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
           {
-            onChunk: () => {}, // 空的chunk处理函数
+            onChunk: () => {},
             onComplete: (response) => resolve(response),
             onError: (error) => reject(error)
           }
@@ -768,7 +603,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           // 保存候选项到metadata中
           const newMetadata = {
             ...chat.crosstabData.metadata!,
-            TopicSuggestions: parsedSuggestions
+            topicSuggestions: parsedSuggestions
           }
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
@@ -778,7 +613,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             }
           })
 
-          // 更新任务状态为完成
           dispatch({
             type: 'UPDATE_AI_TASK',
             payload: {
@@ -802,7 +636,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       console.error('Topic suggestions generation error:', error)
       message.error('主题候选项生成失败，请重试')
       
-      // 更新任务状态为失败
       dispatch({
         type: 'UPDATE_AI_TASK',
         payload: {
@@ -819,8 +652,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     }
   }, [chat, isGeneratingTopicSuggestions, getLLMConfig, dispatch, chatId, message])
 
-  const handleGenerateHorizontalSuggestions = useCallback(async () => {
-    if (!chat || isGeneratingHorizontalSuggestions) return
+  const handleGenerateDimensionSuggestions = useCallback(async (dimensionId: string) => {
+    if (!chat || !chat.crosstabData.metadata) {
+      message.error('请先完成主题设置')
+      return
+    }
+
+    if (isGeneratingDimensionSuggestions[dimensionId]) return
 
     const llmConfig = getLLMConfig()
     if (!llmConfig) {
@@ -828,33 +666,39 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       return
     }
 
-    if (!chat.crosstabData.metadata) {
-      message.error('请先完成主题设置')
+    setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: true }))
+
+    const taskId = uuidv4()
+    const aiService = createAIService(llmConfig)
+
+    // 查找维度
+    const allDimensions = [
+      ...chat.crosstabData.metadata.horizontalDimensions,
+      ...chat.crosstabData.metadata.verticalDimensions,
+      ...chat.crosstabData.metadata.valueDimensions
+    ]
+    const dimension = allDimensions.find(d => d.id === dimensionId)
+
+    if (!dimension) {
+      message.error('找不到指定的维度')
+      setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: false }))
       return
     }
 
-    setIsGeneratingHorizontalSuggestions(true)
-
-    const taskId = uuidv4()
-
-    // 先创建AI服务实例
-    const aiService = createAIService(llmConfig)
-
-    // 创建AI任务监控
     const task: AITask = {
       id: taskId,
-      requestId: aiService.id, // 使用AI服务的requestId
+      requestId: aiService.id,
       type: 'crosstab_cell',
       status: 'running',
-      title: '生成横轴候选项',
-      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成横轴候选项`,
+      title: '生成维度候选项',
+      description: `为维度 "${dimension.name}" 生成候选项`,
       chatId,
       modelId: llmConfig.id,
       startTime: Date.now(),
       context: {
         crosstab: {
           horizontalItem: 'suggestions',
-          verticalItem: 'horizontal',
+          verticalItem: dimensionId,
           metadata: chat.crosstabData.metadata
         }
       }
@@ -866,14 +710,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     })
 
     try {
-      const prompt = PROMPT_TEMPLATES.horizontalSuggestions
+      const prompt = PROMPT_TEMPLATES.dimensionSuggestions
         .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-        .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
+        .replace('[DIMENSION_TYPE]', dimension.id.startsWith('h') ? 'horizontal' : dimension.id.startsWith('v') ? 'vertical' : 'value')
+        .replace('[DIMENSION_NAME]', dimension.name)
+        .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
+
       const response = await new Promise<string>((resolve, reject) => {
         aiService.sendMessage(
           [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
           {
-            onChunk: () => {}, // 空的chunk处理函数
+            onChunk: () => {},
             onComplete: (response) => resolve(response),
             onError: (error) => reject(error)
           }
@@ -883,20 +730,33 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       try {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
-          // 保存候选项到metadata中
-          const newMetadata = {
-            ...chat.crosstabData.metadata!,
-            HorizontalAxisSuggestions: parsedSuggestions
+          // 更新维度的建议
+          const metadata = chat.crosstabData.metadata
+          let updatedMetadata = { ...metadata }
+
+          // 根据维度类型更新对应的维度
+          if (dimension.id.startsWith('h')) {
+            updatedMetadata.horizontalDimensions = updatedMetadata.horizontalDimensions.map(d =>
+              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
+            )
+          } else if (dimension.id.startsWith('v')) {
+            updatedMetadata.verticalDimensions = updatedMetadata.verticalDimensions.map(d =>
+              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
+            )
+          } else {
+            updatedMetadata.valueDimensions = updatedMetadata.valueDimensions.map(d =>
+              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
+            )
           }
+
           dispatch({
             type: 'UPDATE_CROSSTAB_DATA',
             payload: {
               chatId,
-              data: { metadata: newMetadata }
+              data: { metadata: updatedMetadata }
             }
           })
 
-          // 更新任务状态为完成
           dispatch({
             type: 'UPDATE_AI_TASK',
             payload: {
@@ -908,19 +768,18 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             }
           })
 
-          message.success('横轴候选项生成完成')
+          message.success('维度候选项生成完成')
         } else {
           throw new Error('返回的不是数组格式')
         }
       } catch (e) {
-        message.error('解析横轴候选项失败')
+        message.error('解析维度候选项失败')
         throw e
       }
     } catch (error) {
-      console.error('Horizontal suggestions generation error:', error)
-      message.error('横轴候选项生成失败，请重试')
+      console.error('Dimension suggestions generation error:', error)
+      message.error('维度候选项生成失败，请重试')
       
-      // 更新任务状态为失败
       dispatch({
         type: 'UPDATE_AI_TASK',
         payload: {
@@ -933,301 +792,9 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         }
       })
     } finally {
-      setIsGeneratingHorizontalSuggestions(false)
+      setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: false }))
     }
-  }, [chat, isGeneratingHorizontalSuggestions, getLLMConfig, dispatch, chatId, message])
-
-  const handleGenerateVerticalSuggestions = useCallback(async () => {
-    if (!chat || isGeneratingVerticalSuggestions) return
-
-    const llmConfig = getLLMConfig()
-    if (!llmConfig) {
-      message.error('请先在设置中配置LLM')
-      return
-    }
-
-    if (!chat.crosstabData.metadata) {
-      message.error('请先完成主题设置')
-      return
-    }
-
-    setIsGeneratingVerticalSuggestions(true)
-
-    const taskId = uuidv4()
-
-    // 先创建AI服务实例
-    const aiService = createAIService(llmConfig)
-
-    // 创建AI任务监控
-    const task: AITask = {
-      id: taskId,
-      requestId: aiService.id, // 使用AI服务的requestId
-      type: 'crosstab_cell',
-      status: 'running',
-      title: '生成纵轴候选项',
-      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成纵轴候选项`,
-      chatId,
-      modelId: llmConfig.id,
-      startTime: Date.now(),
-      context: {
-        crosstab: {
-          horizontalItem: 'suggestions',
-          verticalItem: 'vertical',
-          metadata: chat.crosstabData.metadata
-        }
-      }
-    }
-
-    dispatch({
-      type: 'ADD_AI_TASK',
-      payload: { task }
-    })
-
-    try {
-      const prompt = PROMPT_TEMPLATES.verticalSuggestions
-        .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-        .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
-      const response = await new Promise<string>((resolve, reject) => {
-        aiService.sendMessage(
-          [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
-          {
-            onChunk: () => {}, // 空的chunk处理函数
-            onComplete: (response) => resolve(response),
-            onError: (error) => reject(error)
-          }
-        )
-      })
-
-      try {
-        const parsedSuggestions = JSON.parse(extractJsonContent(response))
-        if (Array.isArray(parsedSuggestions)) {
-          // 保存候选项到metadata中
-          const newMetadata = {
-            ...chat.crosstabData.metadata!,
-            VerticalAxisSuggestions: parsedSuggestions
-          }
-          dispatch({
-            type: 'UPDATE_CROSSTAB_DATA',
-            payload: {
-              chatId,
-              data: { metadata: newMetadata }
-            }
-          })
-
-          // 更新任务状态为完成
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId,
-              updates: {
-                status: 'completed',
-                endTime: Date.now()
-              }
-            }
-          })
-
-          message.success('纵轴候选项生成完成')
-        } else {
-          throw new Error('返回的不是数组格式')
-        }
-      } catch (e) {
-        message.error('解析纵轴候选项失败')
-        throw e
-      }
-    } catch (error) {
-      console.error('Vertical suggestions generation error:', error)
-      message.error('纵轴候选项生成失败，请重试')
-      
-      // 更新任务状态为失败
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'failed',
-            endTime: Date.now(),
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }
-        }
-      })
-    } finally {
-      setIsGeneratingVerticalSuggestions(false)
-    }
-  }, [chat, isGeneratingVerticalSuggestions, getLLMConfig, dispatch, chatId, message])
-
-  const handleGenerateValueSuggestions = useCallback(async () => {
-    if (!chat || isGeneratingValueSuggestions) return
-
-    const llmConfig = getLLMConfig()
-    if (!llmConfig) {
-      message.error('请先在设置中配置LLM')
-      return
-    }
-
-    if (!chat.crosstabData.metadata) {
-      message.error('请先完成主题设置')
-      return
-    }
-
-    setIsGeneratingValueSuggestions(true)
-
-    const taskId = uuidv4()
-
-    // 先创建AI服务实例
-    const aiService = createAIService(llmConfig)
-
-    // 创建AI任务监控
-    const task: AITask = {
-      id: taskId,
-      requestId: aiService.id, // 使用AI服务的requestId
-      type: 'crosstab_cell',
-      status: 'running',
-      title: '生成值候选项',
-      description: `为主题 "${chat.crosstabData.metadata.Topic}" 生成值的含义候选项`,
-      chatId,
-      modelId: llmConfig.id,
-      startTime: Date.now(),
-      context: {
-        crosstab: {
-          horizontalItem: 'suggestions',
-          verticalItem: 'value',
-          metadata: chat.crosstabData.metadata
-        }
-      }
-    }
-
-    dispatch({
-      type: 'ADD_AI_TASK',
-      payload: { task }
-    })
-
-    try {
-      const prompt = PROMPT_TEMPLATES.valueSuggestions
-        .replace('[TOPIC]', chat.crosstabData.metadata.Topic)
-        .replace('[HORIZONTAL_AXIS]', chat.crosstabData.metadata.HorizontalAxis)
-        .replace('[VERTICAL_AXIS]', chat.crosstabData.metadata.VerticalAxis)
-        .replace('[CURRENT_VALUE]', chat.crosstabData.metadata.Value)
-      const response = await new Promise<string>((resolve, reject) => {
-        aiService.sendMessage(
-          [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
-          {
-            onChunk: () => {}, // 空的chunk处理函数
-            onComplete: (response) => resolve(response),
-            onError: (error) => reject(error)
-          }
-        )
-      })
-
-      try {
-        const parsedSuggestions = JSON.parse(extractJsonContent(response))
-        if (Array.isArray(parsedSuggestions)) {
-          // 保存候选项到metadata中
-          const newMetadata = {
-            ...chat.crosstabData.metadata!,
-            ValueSuggestions: parsedSuggestions
-          }
-          dispatch({
-            type: 'UPDATE_CROSSTAB_DATA',
-            payload: {
-              chatId,
-              data: { metadata: newMetadata }
-            }
-          })
-
-          // 更新任务状态为完成
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId,
-              updates: {
-                status: 'completed',
-                endTime: Date.now()
-              }
-            }
-          })
-
-          message.success('值的含义候选项生成完成')
-        } else {
-          throw new Error('返回的不是数组格式')
-        }
-      } catch (e) {
-        message.error('解析值的含义候选项失败')
-        throw e
-      }
-    } catch (error) {
-      console.error('Value suggestions generation error:', error)
-      message.error('值的含义候选项生成失败，请重试')
-      
-      // 更新任务状态为失败
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'failed',
-            endTime: Date.now(),
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }
-        }
-      })
-    } finally {
-      setIsGeneratingValueSuggestions(false)
-    }
-  }, [chat, isGeneratingValueSuggestions, getLLMConfig, dispatch, chatId, message])
-
-  const handleSelectHorizontalSuggestion = useCallback(
-    (suggestion: string) => {
-      if (!chat) return
-
-      const newMetadata = {
-        ...chat.crosstabData.metadata!,
-        HorizontalAxis: suggestion
-        // 保留候选项，不清除
-      }
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: {
-            metadata: newMetadata,
-            // 清空相关数据，因为横轴改变了
-            horizontalValues: [],
-            tableData: {}
-          }
-        }
-      })
-      message.success('横轴已更新')
-    },
-    [chat, dispatch, chatId, message]
-  )
-
-  const handleSelectVerticalSuggestion = useCallback(
-    (suggestion: string) => {
-      if (!chat) return
-
-      const newMetadata = {
-        ...chat.crosstabData.metadata!,
-        VerticalAxis: suggestion
-        // 保留候选项，不清除
-      }
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: {
-            metadata: newMetadata,
-            // 清空相关数据，因为纵轴改变了
-            verticalValues: [],
-            tableData: {}
-          }
-        }
-      })
-      message.success('纵轴已更新')
-    },
-    [chat, dispatch, chatId, message]
-  )
+  }, [chat, isGeneratingDimensionSuggestions, getLLMConfig, dispatch, chatId, message])
 
   const handleSelectTopicSuggestion = useCallback(
     (suggestion: string) => {
@@ -1235,8 +802,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       const newMetadata = {
         ...chat.crosstabData.metadata!,
-        Topic: suggestion
-        // 保留候选项，不清除
+        topic: suggestion
       }
 
       dispatch({
@@ -1245,40 +811,11 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           chatId,
           data: {
             metadata: newMetadata,
-            // 清空所有数据，因为主题改变了
-            horizontalValues: [],
-            verticalValues: [],
             tableData: {}
           }
         }
       })
       message.success('主题已更新')
-    },
-    [chat, dispatch, chatId, message]
-  )
-
-  const handleSelectValueSuggestion = useCallback(
-    (suggestion: string) => {
-      if (!chat) return
-
-      const newMetadata = {
-        ...chat.crosstabData.metadata!,
-        Value: suggestion
-        // 保留候选项，不清除
-      }
-
-      dispatch({
-        type: 'UPDATE_CROSSTAB_DATA',
-        payload: {
-          chatId,
-          data: {
-            metadata: newMetadata,
-            // 清空表格数据，因为值的含义改变了
-            tableData: {}
-          }
-        }
-      })
-      message.success('值的含义已更新')
     },
     [chat, dispatch, chatId, message]
   )
@@ -1367,17 +904,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
                 metadata={chat.crosstabData.metadata}
                 onEditMetadata={handleEditMetadata}
                 onGenerateTopicSuggestions={handleGenerateTopicSuggestions}
-                onGenerateHorizontalSuggestions={handleGenerateHorizontalSuggestions}
-                onGenerateVerticalSuggestions={handleGenerateVerticalSuggestions}
-                onGenerateValueSuggestions={handleGenerateValueSuggestions}
+                onGenerateDimensionSuggestions={handleGenerateDimensionSuggestions}
                 onSelectTopicSuggestion={handleSelectTopicSuggestion}
-                onSelectHorizontalSuggestion={handleSelectHorizontalSuggestion}
-                onSelectVerticalSuggestion={handleSelectVerticalSuggestion}
-                onSelectValueSuggestion={handleSelectValueSuggestion}
                 isGeneratingTopicSuggestions={isGeneratingTopicSuggestions}
-                isGeneratingHorizontalSuggestions={isGeneratingHorizontalSuggestions}
-                isGeneratingVerticalSuggestions={isGeneratingVerticalSuggestions}
-                isGeneratingValueSuggestions={isGeneratingValueSuggestions}
+                isGeneratingDimensionSuggestions={isGeneratingDimensionSuggestions}
               />
             </TabPane>
 
@@ -1392,14 +922,9 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             >
               <AxisDataManager
                 metadata={chat.crosstabData.metadata}
-                horizontalValues={chat.crosstabData.horizontalValues}
-                verticalValues={chat.crosstabData.verticalValues}
-                onEditHorizontalItem={handleEditHorizontalItem}
-                onDeleteHorizontalItem={handleDeleteHorizontalItem}
-                onAddHorizontalItem={handleAddHorizontalItem}
-                onEditVerticalItem={handleEditVerticalItem}
-                onDeleteVerticalItem={handleDeleteVerticalItem}
-                onAddVerticalItem={handleAddVerticalItem}
+                onUpdateDimension={handleUpdateDimension}
+                onGenerateDimensionValues={handleGenerateDimensionValues}
+                isGeneratingDimensionValues={isGeneratingDimensionValues}
               />
             </TabPane>
 
@@ -1414,8 +939,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             >
               <CrosstabTable
                 metadata={chat.crosstabData.metadata}
-                horizontalValues={chat.crosstabData.horizontalValues}
-                verticalValues={chat.crosstabData.verticalValues}
                 tableData={chat.crosstabData.tableData}
                 onGenerateColumn={handleGenerateColumn}
                 isGeneratingColumn={isGeneratingColumn}

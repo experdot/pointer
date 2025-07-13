@@ -11,219 +11,134 @@ import { CrosstabMetadata } from '../../../types'
 // 从idea.md中提取的提示词模板
 export const PROMPT_TEMPLATES = {
   metadata: `# 角色
-你是一位专业的交叉表（Crosstab）元数据设计师。你的核心任务是根据用户提供的主题，设计出最符合逻辑、最具洞察力的交叉表结构元数据。
+你是一位专业的多维度交叉表（Crosstab）元数据设计师。你的核心任务是根据用户提供的主题，设计出最符合逻辑、最具洞察力的多维度交叉表结构元数据。
 
 # 任务
-分析用户输入的主题 \`[USER_INPUT]\`，并生成一个描述交叉表结构的JSON对象。这个交叉表用于组织和展示关于该主题的**定性信息**。
+分析用户输入的主题 \`[USER_INPUT]\`，并生成一个描述多维度交叉表结构的JSON对象。这个交叉表用于组织和展示关于该主题的**定性信息**。
 
 # 核心原则
-1. **维度选择**：\`横轴\`和\`纵轴\`必须是该主题下两个相互正交、有意义的分类维度。
-2. **值的性质**：\`值\`代表在横轴和纵轴交叉点上呈现的具体内容。它**必须是定性的、描述性的文本**。
+1. **维度选择**：横轴和纵轴可以包含多个维度，每个维度都有明确的分类意义
+2. **维度层级**：多个维度之间存在父子嵌套关系，就像数据透视表一样
+3. **值的性质**：值维度代表在横轴和纵轴交叉点上呈现的具体内容类型，必须是定性的、描述性的
+4. **维度完整性**：每个轴至少要有1个维度，最多建议3个维度
 
 # 输出格式
 严格按照以下JSON格式输出：
 \`\`\`json
-{"Topic":"","HorizontalAxis":"","VerticalAxis":"","Value":""}
+{
+  "topic": "主题名称",
+  "horizontalDimensions": [
+    {
+      "id": "h1",
+      "name": "横轴维度1名称",
+      "description": "维度描述",
+      "order": 1
+    },
+    {
+      "id": "h2", 
+      "name": "横轴维度2名称",
+      "description": "维度描述",
+      "order": 2
+    }
+  ],
+  "verticalDimensions": [
+    {
+      "id": "v1",
+      "name": "纵轴维度1名称", 
+      "description": "维度描述",
+      "order": 1
+    },
+    {
+      "id": "v2",
+      "name": "纵轴维度2名称",
+      "description": "维度描述", 
+      "order": 2
+    }
+  ],
+  "valueDimensions": [
+    {
+      "id": "value1",
+      "name": "值维度1名称",
+      "description": "值的具体描述，说明这个维度展示什么类型的信息"
+    },
+    {
+      "id": "value2",
+      "name": "值维度2名称", 
+      "description": "值的具体描述，说明这个维度展示什么类型的信息"
+    }
+  ]
+}
 \`\`\`
 
-请为主题"[USER_INPUT]"生成交叉表结构。`,
+请为主题"[USER_INPUT]"生成多维度交叉表结构。`,
 
-  horizontal: `# 角色
-你是一位专业的数据分析师和内容策略师。你的任务是为交叉表的横轴生成代表性的值列表。
+  dimension_values: `# 角色
+你是一位专业的数据分析师和内容策略师。你的任务是为交叉表的指定维度生成代表性的值列表。
 
 # 任务
-根据交叉表元数据，为\`横轴\`生成一组具有代表性的、符合逻辑的示例值列表。
+根据交叉表元数据，为指定的维度生成一组具有代表性的、符合逻辑的示例值列表。
 
 # 交叉表元数据
 [METADATA_JSON]
+
+# 目标维度
+维度ID: [DIMENSION_ID]
+维度名称: [DIMENSION_NAME]
+维度描述: [DIMENSION_DESCRIPTION]
 
 # 输出格式
 严格遵守以下JSON数组格式：
 \`\`\`json
-["值1", "值2", "值3", "..."]
+["值1", "值2", "值3", "值4", "值5"]
 \`\`\`
 
-请为横轴"[HORIZONTAL_AXIS]"生成代表性的值列表。`,
+请为维度"[DIMENSION_NAME]"生成5-8个代表性的值。`,
 
-  vertical: `# 角色
-你是一位专业的数据分析师和内容策略师。你的任务是为交叉表的纵轴生成代表性的值列表。
+  cell_values: `# 角色
+你是一位资深的领域专家和内容创作者。你的任务是为多维度交叉表的特定单元格生成对应的值内容。
 
 # 任务
-根据交叉表元数据，为\`纵轴\`生成一组具有代表性的、符合逻辑的示例值列表。
+根据交叉表元数据和指定的横轴、纵轴维度组合，为每个值维度生成对应的内容。
 
 # 交叉表元数据
 [METADATA_JSON]
 
-# 输出格式
-严格遵守以下JSON数组格式：
-\`\`\`json
-["值1", "值2", "值3", "..."]
-\`\`\`
+# 当前单元格位置
+横轴维度组合: [HORIZONTAL_PATH]
+纵轴维度组合: [VERTICAL_PATH]
 
-请为纵轴"[VERTICAL_AXIS]"生成代表性的值列表。`,
-
-  values: `# 角色
-你是一位资深的领域专家和内容创作者。你的任务是为交叉表的一整列填充数据。
-
-# 任务
-根据交叉表元数据和指定的横轴项目，为每个纵轴项目生成对应的值。
-
-# 交叉表元数据
-[METADATA_JSON]
-
-# 当前横轴项目
-[HORIZONTAL_ITEM]
-
-# 纵轴项目列表
-[VERTICAL_ITEMS]
-
-# 对象结构背景信息
-如果元数据中包含ObjectContext，请充分利用以下背景信息：
-
-## 横轴节点背景
-- 层级结构：从根节点到当前节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-
-## 纵轴节点背景
-- 层级结构：从根节点到当前节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-
-## 子节点详细信息
-- 横轴子节点：每个子节点的类型、描述、值等详细信息
-- 纵轴子节点：每个子节点的类型、描述、值等详细信息
-
-# 分析要求
-1. 充分理解横轴项目"[HORIZONTAL_ITEM]"在整个对象结构中的含义和作用
-2. 结合其父节点、平级节点等上下文信息，深入分析该项目的特性
-3. 根据纵轴各项目的背景信息，分析它们与横轴项目的关系
-4. 生成的内容应该体现出对整个对象结构的深度理解
+# 值维度列表
+[VALUE_DIMENSIONS]
 
 # 输出格式
-生成一个JSON对象，键为纵轴项目，值为对应的描述性内容：
+严格遵守以下JSON格式：
 \`\`\`json
 {
-  "纵轴项目1": "描述性内容1",
-  "纵轴项目2": "描述性内容2",
-  "...": "..."
+  "value1": "针对值维度1的具体内容",
+  "value2": "针对值维度2的具体内容"
 }
 \`\`\`
 
-请为横轴项目"[HORIZONTAL_ITEM]"生成对应的数据。`,
+请为当前单元格位置生成所有值维度的内容。`,
 
-  rowValues: `# 角色
-你是一位资深的领域专家和内容创作者。你的任务是为交叉表的一整行填充数据。
+  // 维度建议生成模板
+  dimensionSuggestions: `# 角色
+你是一位专业的商业分析师和研究专家。你的任务是为给定的维度生成相关的候选项建议。
 
 # 任务
-根据交叉表元数据和指定的纵轴项目，为每个横轴项目生成对应的值。
+基于当前交叉表的元数据和指定的维度，生成5个不同但相关的候选项。这些候选项应该：
+1. 与主题和维度密切相关
+2. 具有分析价值和实际意义
+3. 适合用于交叉分析表的研究
+4. 覆盖不同角度和层面
 
 # 交叉表元数据
 [METADATA_JSON]
 
-# 当前纵轴项目
-[VERTICAL_ITEM]
-
-# 横轴项目列表
-[HORIZONTAL_ITEMS]
-
-# 对象结构背景信息
-如果元数据中包含ObjectContext，请充分利用以下背景信息：
-
-## 横轴节点背景
-- 层级结构：从根节点到当前节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-
-## 纵轴节点背景
-- 层级结构：从根节点到当前节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-
-## 子节点详细信息
-- 横轴子节点：每个子节点的类型、描述、值等详细信息
-- 纵轴子节点：每个子节点的类型、描述、值等详细信息
-
-# 分析要求
-1. 充分理解纵轴项目"[VERTICAL_ITEM]"在整个对象结构中的含义和作用
-2. 结合其父节点、平级节点等上下文信息，深入分析该项目的特性
-3. 根据横轴各项目的背景信息，分析它们与纵轴项目的关系
-4. 生成的内容应该体现出对整个对象结构的深度理解
-
-# 输出格式
-生成一个JSON对象，键为横轴项目，值为对应的描述性内容：
-\`\`\`json
-{
-  "横轴项目1": "描述性内容1",
-  "横轴项目2": "描述性内容2",
-  "...": "..."
-}
-\`\`\`
-
-请为纵轴项目"[VERTICAL_ITEM]"生成对应的数据。`,
-
-  cellValue: `# 角色
-你是一位资深的领域专家和内容创作者。你的任务是为交叉表的单个单元格生成精准的内容。
-
-# 任务
-根据交叉表元数据、指定的横轴项目和纵轴项目，生成对应交叉点的具体值。
-
-# 交叉表元数据
-[METADATA_JSON]
-
-# 横轴项目
-[HORIZONTAL_ITEM]
-
-# 纵轴项目
-[VERTICAL_ITEM]
-
-# 对象结构背景信息
-如果元数据中包含ObjectContext，请充分利用以下背景信息：
-
-## 整体对象结构
-- 根节点ID：了解整个对象结构的起点
-- 节点总数：了解对象结构的规模
-- 横轴和纵轴节点在整个结构中的位置关系
-
-## 横轴项目背景
-- 层级结构：从根节点到横轴节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-- 子节点详细信息：横轴项目"[HORIZONTAL_ITEM]"的具体信息
-
-## 纵轴项目背景
-- 层级结构：从根节点到纵轴节点的完整路径
-- 节点详细信息：包括类型、描述、值、属性等
-- 父级上下文：该节点在整个对象结构中的位置
-- 子节点详细信息：纵轴项目"[VERTICAL_ITEM]"的具体信息
-
-# 分析要求
-1. 深入理解横轴项目"[HORIZONTAL_ITEM]"在整个对象结构中的作用和特性
-2. 深入理解纵轴项目"[VERTICAL_ITEM]"在整个对象结构中的作用和特性
-3. 分析两个项目之间的关系，考虑它们的：
-   - 结构层级关系
-   - 功能特性关系
-   - 业务逻辑关系
-   - 数据类型关系
-4. 生成的内容应该体现出对整个对象结构的深度理解和分析
-
-# 输出格式
-直接输出该单元格的描述性内容，不需要JSON格式，只需要纯文本内容：
-
-请为横轴项目"[HORIZONTAL_ITEM]"和纵轴项目"[VERTICAL_ITEM]"的交叉点生成具体内容。`,
-
-  horizontalSuggestions: `# 角色
-你是一位专业的数据分析师和策略顾问。你的任务是为给定的主题生成横轴的候选项建议。
-
-# 任务
-基于主题和当前的横轴定义，生成5个不同的横轴候选项。这些候选项应该：
-1. 与主题密切相关
-2. 与当前横轴在逻辑上相关但有所不同
-3. 具有很好的分析价值
-4. 能够与纵轴形成有意义的交叉分析
-
-# 交叉表元数据
-[METADATA_JSON]
+# 目标维度
+维度类型: [DIMENSION_TYPE]
+维度名称: [DIMENSION_NAME]
+维度描述: [DIMENSION_DESCRIPTION]
 
 # 输出格式
 严格遵守以下JSON数组格式：
@@ -231,28 +146,7 @@ export const PROMPT_TEMPLATES = {
 ["候选项1", "候选项2", "候选项3", "候选项4", "候选项5"]
 \`\`\`
 
-请为主题"[TOPIC]"的横轴生成5个候选项建议。`,
-
-  verticalSuggestions: `# 角色
-你是一位专业的数据分析师和策略顾问。你的任务是为给定的主题生成纵轴的候选项建议。
-
-# 任务
-基于主题和当前的纵轴定义，生成5个不同的纵轴候选项。这些候选项应该：
-1. 与主题密切相关
-2. 与当前纵轴在逻辑上相关但有所不同
-3. 具有很好的分析价值
-4. 能够与横轴形成有意义的交叉分析
-
-# 交叉表元数据
-[METADATA_JSON]
-
-# 输出格式
-严格遵守以下JSON数组格式：
-\`\`\`json
-["候选项1", "候选项2", "候选项3", "候选项4", "候选项5"]
-\`\`\`
-
-请为主题"[TOPIC]"的纵轴生成5个候选项建议。`,
+请为维度"[DIMENSION_NAME]"生成5个相关的候选项建议。`,
 
   topicSuggestions: `# 角色
 你是一位专业的商业分析师和研究专家。你的任务是为给定的主题生成相关的主题候选项建议。
@@ -261,7 +155,7 @@ export const PROMPT_TEMPLATES = {
 基于当前主题，生成5个不同但相关的主题候选项。这些候选项应该：
 1. 与当前主题密切相关
 2. 具有分析价值和实际意义
-3. 适合用于交叉分析表的研究
+3. 适合用于多维度交叉分析表的研究
 4. 覆盖不同角度和层面
 
 # 当前主题
@@ -273,31 +167,7 @@ export const PROMPT_TEMPLATES = {
 ["主题候选项1", "主题候选项2", "主题候选项3", "主题候选项4", "主题候选项5"]
 \`\`\`
 
-请为当前主题"[CURRENT_TOPIC]"生成5个相关的主题候选项建议。`,
-
-  valueSuggestions: `# 角色
-你是一位专业的数据分析师和内容策略师。你的任务是为交叉分析表的"值"生成候选项建议。
-
-# 任务
-根据交叉表的主题、横轴和纵轴，生成5个不同的"值"候选项。这些候选项应该：
-1. 与主题、横轴、纵轴高度相关
-2. 描述在横轴和纵轴交叉点应该呈现什么内容
-3. 都是定性的、描述性的表述
-4. 具有实际分析价值
-
-# 交叉表信息
-- 主题：[TOPIC]
-- 横轴：[HORIZONTAL_AXIS]
-- 纵轴：[VERTICAL_AXIS]
-- 当前值定义：[CURRENT_VALUE]
-
-# 输出格式
-严格遵守以下JSON数组格式：
-\`\`\`json
-["值候选项1", "值候选项2", "值候选项3", "值候选项4", "值候选项5"]
-\`\`\`
-
-请为这个交叉分析表生成5个"值"的候选项建议。`
+请为当前主题"[CURRENT_TOPIC]"生成5个相关的主题候选项建议。`
 }
 
 /**
@@ -313,7 +183,52 @@ export function extractJsonContent(text: string): string {
 }
 
 /**
- * Generate table data from crosstab data
+ * 生成多维度路径的工具函数
+ */
+export function generateDimensionPath(values: string[]): string {
+  return values.join('/')
+}
+
+/**
+ * 解析多维度路径的工具函数
+ */
+export function parseDimensionPath(path: string): string[] {
+  return path.split('/')
+}
+
+/**
+ * 生成多维度轴的所有组合
+ */
+export function generateAxisCombinations(dimensions: any[]): string[][] {
+  if (dimensions.length === 0) return [[]]
+  
+  const [firstDimension, ...restDimensions] = dimensions
+  const restCombinations = generateAxisCombinations(restDimensions)
+  
+  const result: string[][] = []
+  for (const value of firstDimension.values) {
+    for (const restCombination of restCombinations) {
+      result.push([value, ...restCombination])
+    }
+  }
+  
+  return result
+}
+
+/**
+ * 获取维度显示名称的工具函数
+ */
+export function getDimensionDisplayName(metadata: CrosstabMetadata | null, axis: 'horizontal' | 'vertical'): string {
+  if (!metadata) return axis === 'horizontal' ? '横轴' : '纵轴'
+  
+  const dimensions = axis === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
+  if (dimensions.length === 0) return axis === 'horizontal' ? '横轴' : '纵轴'
+  
+  return dimensions.map(d => d.name).join(' - ')
+}
+
+/**
+ * Generate table data from crosstab data (temporary - will be replaced with multi-dimension version)
  */
 export function generateTableData(
   verticalValues: string[],
@@ -334,7 +249,7 @@ export function generateTableData(
 }
 
 /**
- * Generate table columns from crosstab data
+ * Generate table columns from crosstab data (temporary - will be replaced with multi-dimension version)
  */
 export function generateTableColumns(
   metadata: CrosstabMetadata | null,
@@ -358,7 +273,7 @@ export function generateTableColumns(
 ) {
   const columns: any[] = [
     {
-      title: metadata?.VerticalAxis || '纵轴',
+      title: getDimensionDisplayName(metadata, 'vertical'),
       dataIndex: 'label',
       key: 'label',
       width: 150,
@@ -458,44 +373,50 @@ export function generateTableColumns(
       width: 200,
       render: (text: string, record: any) => {
         const verticalItem = record.label
-        const cellKey = `${horizontalItem}_${verticalItem}`
-        const hasValue = Boolean(text)
+        const cellKey = `${horizontalItem}-${verticalItem}`
+        const isGenerating = isGeneratingCell === cellKey
 
         // 创建菜单项
         const menuItems: any[] = [
           {
             key: 'generate',
-            icon: React.createElement(
-              isGeneratingCell === cellKey ? LoadingOutlined : PlayCircleOutlined
-            ),
-            label: hasValue ? '重新生成此单元格' : '生成此单元格',
+            icon: React.createElement(isGenerating ? LoadingOutlined : PlayCircleOutlined),
+            label: text ? '重新生成' : '生成内容',
             onClick: () => onGenerateCell && onGenerateCell(horizontalItem, verticalItem),
             disabled: isGeneratingCell !== null
           }
         ]
 
-        if (hasValue && onClearCell) {
+        if (text && onClearCell) {
           menuItems.push({
             key: 'clear',
             icon: React.createElement(DeleteOutlined),
-            label: '清除此单元格',
+            label: '清除内容',
             onClick: () => onClearCell(horizontalItem, verticalItem)
           })
         }
 
-        // 如果有内容，添加创建聊天窗口的菜单项
-        if (hasValue && onCreateChatFromCell) {
+        if (text && onCreateChatFromCell) {
           menuItems.push({
             key: 'chat',
             icon: React.createElement(CommentOutlined),
-            label: '基于此内容创建聊天',
+            label: '创建对话',
             onClick: () => onCreateChatFromCell(horizontalItem, verticalItem, text, metadata)
           })
         }
 
-        return React.createElement('div', { className: 'cell-content' }, [
-          React.createElement('div', { className: 'cell-value', key: 'value' }, text || '-'),
-          (onGenerateCell || onClearCell || onCreateChatFromCell) &&
+        return React.createElement(
+          'div',
+          { className: 'cell-content' },
+          [
+            React.createElement(
+              'div',
+              {
+                className: `cell-text ${isGenerating ? 'generating' : ''} ${!text ? 'empty' : ''}`,
+                key: 'text'
+              },
+              isGenerating ? '生成中...' : text || '点击生成内容'
+            ),
             React.createElement(Dropdown, {
               key: 'dropdown',
               menu: { items: menuItems },
@@ -503,7 +424,8 @@ export function generateTableColumns(
               placement: 'bottomRight',
               children: React.createElement('div', { className: 'cell-menu-trigger' })
             })
-        ])
+          ]
+        )
       }
     })
   })
