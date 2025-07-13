@@ -69,18 +69,23 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
       const { folderId, horizontalItem, verticalItem, cellContent, metadata, sourcePageId } =
         action.payload
 
+      // 从metadata中提取维度信息
+      const horizontalDimensionNames = metadata?.horizontalDimensions?.map(d => d.name).join(' > ') || '未知'
+      const verticalDimensionNames = metadata?.verticalDimensions?.map(d => d.name).join(' > ') || '未知'
+      const valueDimensionNames = metadata?.valueDimensions?.map(d => d.name).join(', ') || '未知'
+
       // 构建用户提示词
       const prompt = `# 基于交叉分析表单元格的深度分析
 
 ## 背景信息
-- **主题**: ${metadata.Topic}
-- **横轴**: ${metadata.HorizontalAxis}
-- **纵轴**: ${metadata.VerticalAxis}
-- **值的含义**: ${metadata.Value}
+- **主题**: ${metadata?.topic || '未知'}
+- **横轴维度**: ${horizontalDimensionNames}
+- **纵轴维度**: ${verticalDimensionNames}
+- **值维度**: ${valueDimensionNames}
 
 ## 单元格位置
-- **横轴项目**: ${horizontalItem}
-- **纵轴项目**: ${verticalItem}
+- **横轴路径**: ${horizontalItem}
+- **纵轴路径**: ${verticalItem}
 
 ## 单元格内容
 ${cellContent}
@@ -264,14 +269,36 @@ ${cellContent}
         return details.join('\n')
       }
 
-      // 构建预填充的元数据，包含丰富的背景信息
+      // 构建预填充的元数据，使用新的多维度数据结构
       const metadata = {
-        Topic: `${horizontalNode.name} 与 ${verticalNode.name} 的交叉分析`,
-        HorizontalAxis: horizontalNode.name,
-        VerticalAxis: verticalNode.name,
-        Value: '分析各项目在两个维度交叉点的关系、特征或影响',
+        topic: `${horizontalNode.name} 与 ${verticalNode.name} 的交叉分析`,
+        horizontalDimensions: [
+          {
+            id: 'h1',
+            name: horizontalNode.name,
+            description: horizontalNode.description || `${horizontalNode.name} 相关的维度`,
+            values: horizontalValues,
+            order: 1
+          }
+        ],
+        verticalDimensions: [
+          {
+            id: 'v1',
+            name: verticalNode.name,
+            description: verticalNode.description || `${verticalNode.name} 相关的维度`,
+            values: verticalValues,
+            order: 1
+          }
+        ],
+        valueDimensions: [
+          {
+            id: 'value1',
+            name: '关系分析',
+            description: '分析各项目在两个维度交叉点的关系、特征或影响'
+          }
+        ],
         // 添加背景上下文信息
-        ObjectContext: {
+        objectContext: {
           // 整体对象结构信息
           rootNodeId: objectData.rootNodeId,
           totalNodes: Object.keys(objectData.nodes).length,
@@ -349,24 +376,10 @@ ${cellContent}
         crosstabData: {
           ...baseCrosstabChat.crosstabData,
           metadata,
-          horizontalValues,
-          verticalValues,
-          currentStep: 3, // 跳过前三步，直接到值生成步骤
+          currentStep: 1, // 跳过元数据生成步骤，直接到维度数据生成步骤
           steps: baseCrosstabChat.crosstabData.steps.map((step, index) => {
             if (index === 0) {
               return { ...step, isCompleted: true, response: JSON.stringify(metadata, null, 2) }
-            } else if (index === 1) {
-              return {
-                ...step,
-                isCompleted: true,
-                response: JSON.stringify(horizontalValues, null, 2)
-              }
-            } else if (index === 2) {
-              return {
-                ...step,
-                isCompleted: true,
-                response: JSON.stringify(verticalValues, null, 2)
-              }
             }
             return step
           })
@@ -794,7 +807,8 @@ ${cellContent}
               crosstabData: {
                 ...chat.crosstabData,
                 steps: updatedSteps,
-                currentStep: Math.min(stepIndex + 1, chat.crosstabData.steps.length - 1)
+                // 对于metadata步骤，完成后不自动推进，保持在当前步骤
+                currentStep: stepIndex === 0 ? 0 : Math.min(stepIndex + 1, chat.crosstabData.steps.length - 1)
               },
               updatedAt: Date.now()
             }

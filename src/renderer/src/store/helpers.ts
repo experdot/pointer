@@ -47,35 +47,8 @@ export const createNewCrosstabChat = (
     {
       id: uuidv4(),
       stepType: 'metadata',
-      stepName: '生成主题提示词',
-      description: '根据用户输入主题生成交叉表结构的JSON',
-      prompt: '',
-      isCompleted: false,
-      timestamp
-    },
-    {
-      id: uuidv4(),
-      stepType: 'horizontal',
-      stepName: '生成横轴提示词',
-      description: '为横轴生成代表性的值列表',
-      prompt: '',
-      isCompleted: false,
-      timestamp
-    },
-    {
-      id: uuidv4(),
-      stepType: 'vertical',
-      stepName: '生成纵轴提示词',
-      description: '为纵轴生成代表性的值列表',
-      prompt: '',
-      isCompleted: false,
-      timestamp
-    },
-    {
-      id: uuidv4(),
-      stepType: 'values',
-      stepName: '生成值提示词',
-      description: '遍历横轴项目生成对应的值',
+      stepName: '生成主题元数据',
+      description: '根据用户输入主题生成多维度交叉表结构的JSON',
       prompt: '',
       isCompleted: false,
       timestamp
@@ -84,8 +57,6 @@ export const createNewCrosstabChat = (
 
   const crosstabData: CrosstabData = {
     metadata: null,
-    horizontalValues: [],
-    verticalValues: [],
     tableData: {},
     currentStep: 0,
     steps: initialSteps

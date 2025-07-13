@@ -551,8 +551,6 @@
   max-height: none;
 }
 
-/* 滚动条样式 */
-
 /* 编辑元数据对话框样式 */
 .ant-modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

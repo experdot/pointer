@@ -96,15 +96,40 @@ export interface RegularChat extends PageBase {
   }
 }
 
+// 交叉表轴维度定义
+export interface CrosstabAxisDimension {
+  id: string
+  name: string
+  description?: string
+  values: string[]
+  order: number // 在轴中的顺序，决定父子关系（数字越小越是父级）
+  suggestions?: string[]
+}
+
+// 交叉表值维度定义
+export interface CrosstabValueDimension {
+  id: string
+  name: string
+  description: string
+  suggestions?: string[]
+}
+
+// 多维度交叉表元数据
 export interface CrosstabMetadata {
-  Topic: string
-  HorizontalAxis: string
-  VerticalAxis: string
-  Value: string
-  TopicSuggestions?: string[]
-  HorizontalAxisSuggestions?: string[]
-  VerticalAxisSuggestions?: string[]
-  ValueSuggestions?: string[]
+  topic: string
+  horizontalDimensions: CrosstabAxisDimension[]
+  verticalDimensions: CrosstabAxisDimension[]
+  valueDimensions: CrosstabValueDimension[]
+  topicSuggestions?: string[]
+}
+
+// 多维度数据存储结构
+export interface CrosstabMultiDimensionData {
+  // 使用嵌套结构存储多维度数据
+  // 键是维度路径（用"/"分隔），值是对应的内容
+  [dimensionPath: string]: {
+    [valueDimensionId: string]: string
+  }
 }
 
 export interface CrosstabStep {
@@ -120,9 +145,7 @@ export interface CrosstabStep {
 
 export interface CrosstabData {
   metadata: CrosstabMetadata | null
-  horizontalValues: string[]
-  verticalValues: string[]
-  tableData: { [key: string]: { [key: string]: string } }
+  tableData: CrosstabMultiDimensionData
   currentStep: number
   steps: CrosstabStep[]
 }
