@@ -69,18 +69,23 @@ export const handleChatActions = (state: AppState, action: AppAction): AppState 
       const { folderId, horizontalItem, verticalItem, cellContent, metadata, sourcePageId } =
         action.payload
 
+      // 从metadata中提取维度信息
+      const horizontalDimensionNames = metadata?.horizontalDimensions?.map(d => d.name).join(' > ') || '未知'
+      const verticalDimensionNames = metadata?.verticalDimensions?.map(d => d.name).join(' > ') || '未知'
+      const valueDimensionNames = metadata?.valueDimensions?.map(d => d.name).join(', ') || '未知'
+
       // 构建用户提示词
       const prompt = `# 基于交叉分析表单元格的深度分析
 
 ## 背景信息
-- **主题**: ${metadata.Topic}
-- **横轴**: ${metadata.HorizontalAxis}
-- **纵轴**: ${metadata.VerticalAxis}
-- **值的含义**: ${metadata.Value}
+- **主题**: ${metadata?.topic || '未知'}
+- **横轴维度**: ${horizontalDimensionNames}
+- **纵轴维度**: ${verticalDimensionNames}
+- **值维度**: ${valueDimensionNames}
 
 ## 单元格位置
-- **横轴项目**: ${horizontalItem}
-- **纵轴项目**: ${verticalItem}
+- **横轴路径**: ${horizontalItem}
+- **纵轴路径**: ${verticalItem}
 
 ## 单元格内容
 ${cellContent}

@@ -56,10 +56,20 @@ export default function CrosstabTable({
 
   // 初始化选中的值维度
   useEffect(() => {
-    if (metadata && metadata.valueDimensions.length > 0 && !selectedValueDimension) {
-      setSelectedValueDimension(metadata.valueDimensions[0].id)
+    if (metadata && metadata.valueDimensions.length > 0) {
+      // 如果没有选中的值维度，或者当前选中的值维度已经不存在，则设置为第一个
+      if (!selectedValueDimension || !metadata.valueDimensions.find(d => d.id === selectedValueDimension)) {
+        setSelectedValueDimension(metadata.valueDimensions[0].id)
+      }
     }
   }, [metadata, selectedValueDimension])
+
+  // 添加调试信息
+  useEffect(() => {
+    console.log('Current selectedValueDimension:', selectedValueDimension)
+    console.log('Available value dimensions:', metadata?.valueDimensions?.map(d => d.id))
+    console.log('Table data keys:', Object.keys(tableData))
+  }, [selectedValueDimension, metadata, tableData])
 
   // 生成多维度表格数据
   const { dataSource, columns } = useMemo(() => {
@@ -86,10 +96,31 @@ export default function CrosstabTable({
         const cellKey = `${hPath}|${vPath}`
         const cellData = tableData[cellKey]
         
+        // 添加调试信息
+        if (cellData) {
+          console.log(`Cell data for ${cellKey}:`, cellData)
+          console.log(`Selected value dimension: ${selectedValueDimension}`)
+          console.log(`Available dimensions in cell:`, Object.keys(cellData))
+        }
+        
         if (cellData && selectedValueDimension) {
           row[hPath] = cellData[selectedValueDimension] || ''
         } else {
           row[hPath] = ''
+        }
+        
+        // 如果没有选中的值维度但是有数据，尝试使用第一个可用的值维度
+        if (cellData && !selectedValueDimension && metadata.valueDimensions.length > 0) {
+          const firstValueDimension = metadata.valueDimensions[0].id
+          row[hPath] = cellData[firstValueDimension] || ''
+          console.log(`Using first value dimension ${firstValueDimension} for cell ${cellKey}`)
+        }
+        
+        // 如果仍然没有数据，但是cellData中有任何值，使用第一个值
+        if (!row[hPath] && cellData && Object.keys(cellData).length > 0) {
+          const firstAvailableKey = Object.keys(cellData)[0]
+          row[hPath] = cellData[firstAvailableKey] || ''
+          console.log(`Using first available key ${firstAvailableKey} for cell ${cellKey}`)
         }
       })
 
