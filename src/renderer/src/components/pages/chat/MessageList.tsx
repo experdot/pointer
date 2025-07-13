@@ -44,6 +44,7 @@ export default function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef<number>(0)
   const prevStreamingContent = useRef<string>('')
+  const prevCurrentPath = useRef<string[]>([])
   const isInitialRender = useRef<boolean>(true)
 
   // 使用传入的消息树（从父组件创建，避免重复创建）
@@ -71,15 +72,22 @@ export default function MessageList({
   useEffect(() => {
     const currentMessagesLength = messages.length
     const currentStreamingContent = streamingContent || ''
+    const currentPathString = JSON.stringify(currentPath)
+    const prevPathString = JSON.stringify(prevCurrentPath.current)
+
+    // 检查路径是否发生变化（排除初次渲染）
+    const pathChanged = !isInitialRender.current && currentPathString !== prevPathString
 
     // 只在以下情况下滚动到底部：
     // 1. 消息总数增加（有新消息）
     // 2. 流式内容发生变化（正在接收AI回复）
     // 3. 初次渲染且有消息
+    // 4. 当前路径发生变化（用户点击消息树切换分支）
     const shouldScroll =
       currentMessagesLength > prevMessagesLength.current ||
       currentStreamingContent !== prevStreamingContent.current ||
-      (isInitialRender.current && currentMessagesLength > 0)
+      (isInitialRender.current && currentMessagesLength > 0) ||
+      pathChanged
 
     if (shouldScroll) {
       // 初次渲染时直接跳转到底部，其他情况平滑滚动
@@ -95,7 +103,8 @@ export default function MessageList({
     // 更新引用值
     prevMessagesLength.current = currentMessagesLength
     prevStreamingContent.current = currentStreamingContent
-  }, [messages.length, streamingContent])
+    prevCurrentPath.current = [...currentPath]
+  }, [messages.length, streamingContent, currentPath])
 
   // 处理兄弟分支切换
   const handleSiblingBranchSwitch = (messageId: string, direction: 'previous' | 'next') => {

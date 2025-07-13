@@ -1,0 +1,564 @@
+/* 消息树侧边栏样式 */
+.message-tree-sidebar {
+  height: 100%;
+  background: #fafafa;
+  border-right: 1px solid #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.message-tree-sidebar-collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+}
+
+/* Resize Handle 样式 */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 40px;
+  background: #d9d9d9;
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resize-handle:hover::before {
+  opacity: 1;
+}
+
+.resize-handle:hover {
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.resize-handle:active {
+  background: rgba(9, 109, 217, 0.2);
+}
+
+.resize-handle:active::before {
+  background: #1890ff;
+}
+
+/* 拖拽时的全局样式 */
+.resizing * {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.resizing .resize-handle {
+  pointer-events: auto !important;
+}
+
+/* 侧边栏头部 */
+.tree-sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.tree-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tree-sidebar-title .anticon {
+  color: #1890ff;
+}
+
+/* 统计信息 */
+.tree-sidebar-stats {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-item .anticon {
+  font-size: 12px;
+  color: #666;
+}
+
+.stat-item .anticon-star {
+  color: #ffc107;
+}
+
+/* 收藏消息导航样式 */
+.stat-item-favorited {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.favorited-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.favorited-position {
+  font-size: 10px;
+  color: #999;
+}
+
+.favorited-navigation {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.favorited-navigation .nav-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.favorited-navigation .nav-btn:hover {
+  background-color: #f0f0f0;
+  color: #ffc107;
+}
+
+.favorited-navigation .nav-btn .anticon {
+  font-size: 10px;
+}
+
+/* 折叠状态下的统计信息 */
+.tree-sidebar-content-collapsed {
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tree-stats-collapsed .stat-item {
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.tree-stats-collapsed .stat-item .anticon {
+  font-size: 14px;
+}
+
+.tree-stats-collapsed .stat-item .anticon-star {
+  color: #ffc107;
+}
+
+.tree-stats-collapsed .stat-item .ant-typography {
+  font-size: 10px;
+}
+
+/* 折叠状态下的收藏导航 */
+.stat-item-favorited-collapsed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+  position: relative;
+}
+
+.favorited-navigation-collapsed {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.favorited-navigation-collapsed .nav-btn-collapsed {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.favorited-navigation-collapsed .nav-btn-collapsed:hover {
+  background-color: #f0f0f0;
+  color: #ffc107;
+}
+
+.favorited-navigation-collapsed .nav-btn-collapsed .anticon {
+  font-size: 8px;
+}
+
+/* 侧边栏内容 */
+.tree-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+.tree-empty {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+}
+
+/* 消息树样式 */
+.message-tree {
+  padding: 0 4px;
+}
+
+.message-tree .ant-tree {
+  background: transparent;
+}
+
+.message-tree .ant-tree-list {
+  width: 100%;
+}
+
+.message-tree .ant-tree-list-holder {
+  width: 100%;
+}
+
+.message-tree .ant-tree-list-holder-inner {
+  width: 100%;
+}
+
+.message-tree .ant-tree-node-content-wrapper {
+  padding: 2px 0;
+  border-radius: 4px;
+  transition: all 0.2s;
+  width: 100% !important;
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+}
+
+.message-tree .ant-tree-node-content-wrapper:hover {
+  background-color: #f0f0f0;
+}
+
+.message-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+}
+
+.message-tree .ant-tree-treenode {
+  padding: 2px 0;
+  width: 100%;
+}
+
+.message-tree .ant-tree-switcher {
+  width: 18px;
+  height: 20px;
+  line-height: 20px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.message-tree .ant-tree-switcher .ant-tree-switcher-icon {
+  font-size: 10px;
+}
+
+.message-tree .ant-tree-indent-unit {
+  width: 18px;
+}
+
+/* 树节点内容 */
+.message-tree .tree-node-content {
+  padding: 6px 8px;
+  border-radius: 4px;
+  min-height: 40px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0 4px;
+  gap: 4px;
+}
+
+.message-tree .tree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  width: 100%;
+  min-height: 18px;
+}
+
+.message-tree .tree-node-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.message-tree .tree-node-icon .anticon {
+  font-size: 10px;
+  color: #666;
+}
+
+.message-tree .tree-node-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.message-tree .tree-node-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.message-tree .tree-node-time {
+  font-size: 10px;
+  color: #999;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.message-tree .tree-node-preview {
+  margin-top: 6px;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.message-tree .tree-node-preview .ant-typography {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  display: block;
+  width: 100%;
+}
+
+.message-tree .tree-node-branch-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font-size: 10px;
+  z-index: 1;
+}
+
+/* 用户消息节点样式 */
+.message-tree .tree-node-content[data-role='user'] {
+  border-left: 3px solid #52c41a;
+  background: rgba(82, 196, 26, 0.02);
+}
+
+.message-tree .tree-node-content[data-role='user'] .tree-node-icon {
+  background: #52c41a;
+}
+
+.message-tree .tree-node-content[data-role='user'] .tree-node-icon .anticon {
+  color: #fff;
+}
+
+/* AI消息节点样式 */
+.message-tree .tree-node-content[data-role='assistant'] {
+  border-left: 3px solid #1890ff;
+  background: rgba(24, 144, 255, 0.02);
+}
+
+.message-tree .tree-node-content[data-role='assistant'] .tree-node-icon {
+  background: #1890ff;
+}
+
+.message-tree .tree-node-content[data-role='assistant'] .tree-node-icon .anticon {
+  color: #fff;
+}
+
+/* 当前路径高亮 */
+.message-tree .tree-node-content.current-path {
+  background: rgba(24, 144, 255, 0.1);
+  border-left-color: #1890ff;
+  border-left-width: 4px;
+}
+
+.message-tree .tree-node-content.current-path .tree-node-preview .ant-typography {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 收藏消息样式 */
+.message-tree .tree-node-content.favorited {
+  background: rgba(255, 193, 7, 0.08);
+  border-right: 3px solid #ffc107;
+  box-shadow: 0 1px 3px rgba(255, 193, 7, 0.2);
+}
+
+.message-tree .tree-node-content.favorited .tree-node-preview .ant-typography {
+  color: #d48806;
+  font-weight: 500;
+}
+
+.message-tree .tree-node-content.favorited:hover {
+  background: rgba(255, 193, 7, 0.12);
+  box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+}
+
+/* 收藏图标样式 */
+.message-tree .tree-node-role .favorite-icon {
+  color: #ffc107;
+  font-size: 10px;
+  margin-left: 2px;
+  animation: star-pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes star-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 收藏消息在当前路径中的样式 */
+.message-tree .tree-node-content.current-path.favorited {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+  border-left-color: #1890ff;
+  border-left-width: 4px;
+  border-right: 3px solid #ffc107;
+}
+
+.message-tree .tree-node-content.current-path.favorited .tree-node-preview .ant-typography {
+  background: linear-gradient(135deg, #1890ff 0%, #d48806 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+/* 聊天窗口布局 */
+.chat-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-window-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.chat-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .message-tree-sidebar {
+    max-width: 50vw;
+  }
+
+  .message-tree-sidebar-collapsed {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+  }
+
+  .resize-handle {
+    width: 6px;
+  }
+}
+
+/* 滚动条样式 */
+.tree-sidebar-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tree-sidebar-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.tree-sidebar-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.tree-sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 动画效果 */
+.message-tree-sidebar {
+  transition: width 0.3s ease;
+}
+
+.message-tree .tree-node-content {
+  transition: all 0.2s ease;
+}
+
+.message-tree .tree-node-content:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 空状态 */
+.message-tree .tree-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: #999;
+  font-size: 12px;
+}

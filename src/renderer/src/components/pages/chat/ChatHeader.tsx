@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { Button, Dropdown, Modal, Checkbox, Space, App } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined } from '@ant-design/icons'
+import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage } from '../../../types'
 import { MessageTree } from './messageTree'
@@ -14,6 +14,9 @@ interface ChatHeaderProps {
   allMessagesCollapsed?: boolean
   onCollapseAll?: () => void
   onExpandAll?: () => void
+  // 消息树相关
+  messageTreeCollapsed?: boolean
+  onToggleMessageTree?: () => void
 }
 
 export default function ChatHeader({
@@ -21,7 +24,9 @@ export default function ChatHeader({
   messages,
   currentPath = [],
   onCollapseAll,
-  onExpandAll
+  onExpandAll,
+  messageTreeCollapsed = false,
+  onToggleMessageTree
 }: ChatHeaderProps) {
   const [isExportModalVisible, setIsExportModalVisible] = useState(false)
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
@@ -160,6 +165,18 @@ export default function ChatHeader({
         </div>
         <div className="chat-header-right">
           <Space>
+            {/* 消息树切换按钮 */}
+            {onToggleMessageTree && (
+              <Button
+                type="text"
+                size="small"
+                icon={<BranchesOutlined />}
+                onClick={onToggleMessageTree}
+                title={messageTreeCollapsed ? '展开消息树' : '收起消息树'}
+              >
+                消息树
+              </Button>
+            )}
             {/* 消息折叠/展开按钮 */}
             {messages.length > 0 && (
               <>
