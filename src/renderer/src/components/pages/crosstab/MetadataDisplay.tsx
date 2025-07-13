@@ -22,16 +22,20 @@ interface MetadataDisplayProps {
   metadata: CrosstabMetadata | null
   onUpdateMetadata: (metadata: CrosstabMetadata) => void
   onGenerateTopicSuggestions?: () => void
+  onGenerateDimensionSuggestions?: (dimensionId: string) => void
   onSelectTopicSuggestion?: (suggestion: string) => void
   isGeneratingTopicSuggestions?: boolean
+  isGeneratingDimensionSuggestions?: { [dimensionId: string]: boolean }
 }
 
 export default function MetadataDisplay({
   metadata,
   onUpdateMetadata,
   onGenerateTopicSuggestions,
+  onGenerateDimensionSuggestions,
   onSelectTopicSuggestion,
-  isGeneratingTopicSuggestions
+  isGeneratingTopicSuggestions,
+  isGeneratingDimensionSuggestions
 }: MetadataDisplayProps) {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')

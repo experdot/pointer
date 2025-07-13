@@ -551,8 +551,6 @@
   max-height: none;
 }
 
-/* 滚动条样式 */
-
 /* 编辑元数据对话框样式 */
 .ant-modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -933,4 +931,345 @@
   transform: none;
   box-shadow: none;
   cursor: default;
+}
+
+/* 新的Grid布局样式 */
+.crosstab-grid {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  position: relative;
+  overflow: auto;
+  min-height: 400px;
+  max-height: 80vh;
+}
+
+/* 左上角空白区域 */
+.grid-corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 列头单元格 */
+.grid-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(to bottom, #fafafa, #f0f0f0);
+  border-bottom: 2px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+}
+
+.grid-column-header:hover {
+  background: linear-gradient(to bottom, #f0f0f0, #e8e8e8);
+}
+
+.grid-column-header:first-child {
+  border-top: 2px solid #d9d9d9;
+  font-weight: 600;
+}
+
+/* 行头单元格 */
+.grid-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(to right, #fafafa, #f0f0f0);
+  border-right: 2px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+}
+
+.grid-row-header:hover {
+  background: linear-gradient(to right, #f0f0f0, #e8e8e8);
+}
+
+.grid-row-header:first-child {
+  border-left: 2px solid #d9d9d9;
+  font-weight: 600;
+}
+
+/* 数据单元格 */
+.grid-data-cell {
+  position: relative;
+  background: white;
+  transition: all 0.2s ease;
+  border: 1px solid #e8e8e8;
+  overflow: hidden;
+}
+
+.grid-data-cell:hover {
+  background: #f8f9fa;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.2);
+  z-index: 1;
+}
+
+/* 数据单元格内容 */
+.grid-data-cell .cell-content {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+}
+
+.grid-data-cell .cell-text {
+  flex: 1;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.4;
+  padding: 2px 4px;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.grid-data-cell .cell-text.empty {
+  color: #bfbfbf;
+  font-style: italic;
+}
+
+.grid-data-cell .cell-text.generating {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 单元格菜单触发器 */
+.cell-menu-trigger {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.cell-menu-trigger::before {
+  content: '⋮';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #666;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.grid-column-header .cell-menu-trigger,
+.grid-row-header .cell-menu-trigger,
+.grid-data-cell .cell-menu-trigger {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.grid-column-header:hover .cell-menu-trigger,
+.grid-row-header:hover .cell-menu-trigger,
+.grid-data-cell:hover .cell-menu-trigger {
+  opacity: 1;
+}
+
+.cell-menu-trigger:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .crosstab-grid {
+    font-size: 11px;
+  }
+  
+  .grid-column-header,
+  .grid-row-header {
+    padding: 6px;
+  }
+  
+  .grid-data-cell {
+    padding: 6px;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .crosstab-grid {
+    font-size: 10px;
+    min-height: 300px;
+  }
+  
+  .grid-column-header,
+  .grid-row-header {
+    padding: 4px;
+  }
+  
+  .grid-data-cell {
+    padding: 4px;
+    min-height: 32px;
+  }
+}
+
+/* 全屏模式下的网格样式 */
+.fullscreen-card .crosstab-grid {
+  max-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);
+}
+
+.fullscreen-card .grid-column-header,
+.fullscreen-card .grid-row-header {
+  padding: 12px;
+}
+
+.fullscreen-card .grid-data-cell {
+  padding: 12px;
+  min-height: 60px;
+}
+
+/* 滚动条样式 */
+.crosstab-grid::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.crosstab-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.crosstab-grid::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.crosstab-grid::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 加载动画 */
+.grid-data-cell.generating {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-color: #f0f0f0;
+  }
+  50% {
+    background-color: #e6f7ff;
+  }
+  100% {
+    background-color: #f0f0f0;
+  }
+}
+
+/* 维度标签样式 */
+.dimension-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  color: #999;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 网格线加强 */
+.crosstab-grid > div {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.grid-column-header:not(:last-child) {
+  border-right: 1px solid #d9d9d9;
+}
+
+.grid-row-header:not(:last-child) {
+  border-bottom: 1px solid #d9d9d9;
+}
+
+/* 选中状态样式 */
+.grid-data-cell.selected {
+  background: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.grid-column-header.selected {
+  background: linear-gradient(to bottom, #e6f7ff, #bae7ff);
+  border-color: #1890ff;
+}
+
+.grid-row-header.selected {
+  background: linear-gradient(to right, #e6f7ff, #bae7ff);
+  border-color: #1890ff;
+}
+
+/* 网格布局优化 */
+.crosstab-grid {
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-areas: none;
+  align-items: stretch;
+  justify-items: stretch;
+}
+
+.crosstab-grid > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 文本溢出处理 */
+.grid-column-header,
+.grid-row-header,
+.grid-data-cell {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.grid-data-cell {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* 拖拽功能准备 */
+.grid-column-header,
+.grid-row-header {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.grid-data-cell {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }

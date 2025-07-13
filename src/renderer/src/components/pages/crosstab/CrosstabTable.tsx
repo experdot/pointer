@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { Card, Table, Typography, Button, Tooltip, Space, Tag, Dropdown } from 'antd'
+import { Card, Typography, Button, Tooltip, Space, Tag, Dropdown } from 'antd'
 import { 
   TableOutlined, 
   FullscreenOutlined, 
@@ -57,321 +57,47 @@ export default function CrosstabTable({
   // 初始化选中的值维度
   useEffect(() => {
     if (metadata && metadata.valueDimensions.length > 0) {
-      // 如果没有选中的值维度，或者当前选中的值维度已经不存在，则设置为第一个
       if (!selectedValueDimension || !metadata.valueDimensions.find(d => d.id === selectedValueDimension)) {
         setSelectedValueDimension(metadata.valueDimensions[0].id)
       }
     }
   }, [metadata, selectedValueDimension])
 
-  // 添加调试信息
-  useEffect(() => {
-    console.log('Current selectedValueDimension:', selectedValueDimension)
-    console.log('Available value dimensions:', metadata?.valueDimensions?.map(d => d.id))
-    console.log('Table data keys:', Object.keys(tableData))
-  }, [selectedValueDimension, metadata, tableData])
-
-  // 生成多维度表格数据
-  const { dataSource, columns } = useMemo(() => {
+  // 生成多维度网格数据
+  const { horizontalCombinations, verticalCombinations, gridData } = useMemo(() => {
     if (!metadata || !metadata.horizontalDimensions.length || !metadata.verticalDimensions.length) {
-      return { dataSource: [], columns: [] }
+      return { horizontalCombinations: [], verticalCombinations: [], gridData: {} }
     }
 
-    // 生成所有横轴和纵轴的组合
     const horizontalCombinations = generateAxisCombinations(metadata.horizontalDimensions)
     const verticalCombinations = generateAxisCombinations(metadata.verticalDimensions)
 
-    // 生成数据源
-    const dataSource = verticalCombinations.map((vCombination, index) => {
+    // 生成网格数据
+    const gridData: { [key: string]: string } = {}
+    
+    verticalCombinations.forEach((vCombination) => {
       const vPath = generateDimensionPath(vCombination)
-      const row: any = {
-        key: vPath,
-        rowPath: vPath,
-        rowLabels: vCombination
-      }
-
-      // 为每个横轴组合添加数据
       horizontalCombinations.forEach((hCombination) => {
         const hPath = generateDimensionPath(hCombination)
         const cellKey = `${hPath}|${vPath}`
         const cellData = tableData[cellKey]
         
-        // 添加调试信息
-        if (cellData) {
-          console.log(`Cell data for ${cellKey}:`, cellData)
-          console.log(`Selected value dimension: ${selectedValueDimension}`)
-          console.log(`Available dimensions in cell:`, Object.keys(cellData))
-        }
-        
         if (cellData && selectedValueDimension) {
-          row[hPath] = cellData[selectedValueDimension] || ''
-        } else {
-          row[hPath] = ''
-        }
-        
-        // 如果没有选中的值维度但是有数据，尝试使用第一个可用的值维度
-        if (cellData && !selectedValueDimension && metadata.valueDimensions.length > 0) {
+          gridData[cellKey] = cellData[selectedValueDimension] || ''
+        } else if (cellData && !selectedValueDimension && metadata.valueDimensions.length > 0) {
           const firstValueDimension = metadata.valueDimensions[0].id
-          row[hPath] = cellData[firstValueDimension] || ''
-          console.log(`Using first value dimension ${firstValueDimension} for cell ${cellKey}`)
-        }
-        
-        // 如果仍然没有数据，但是cellData中有任何值，使用第一个值
-        if (!row[hPath] && cellData && Object.keys(cellData).length > 0) {
+          gridData[cellKey] = cellData[firstValueDimension] || ''
+        } else if (!gridData[cellKey] && cellData && Object.keys(cellData).length > 0) {
           const firstAvailableKey = Object.keys(cellData)[0]
-          row[hPath] = cellData[firstAvailableKey] || ''
-          console.log(`Using first available key ${firstAvailableKey} for cell ${cellKey}`)
-        }
-      })
-
-      return row
-    })
-
-    // 生成表格列
-    const columns: any[] = []
-
-    // 添加行标题列（纵轴）
-    metadata.verticalDimensions.forEach((dimension, dimIndex) => {
-      columns.push({
-        title: () => {
-          // 检查所有行是否有数据
-          const hasRowData = Object.keys(tableData).some(cellKey => cellKey.includes('|'))
-          
-          // 创建行菜单项
-          const rowMenuItems: any[] = [
-            {
-              key: 'generate-all-rows',
-              icon: React.createElement(
-                isGeneratingRow ? LoadingOutlined : PlayCircleOutlined
-              ),
-              label: hasRowData ? '重新生成所有行' : '生成所有行',
-              onClick: () => {
-                verticalCombinations.forEach((vCombination) => {
-                  const vPath = generateDimensionPath(vCombination)
-                  if (onGenerateRow) {
-                    onGenerateRow(vPath)
-                  }
-                })
-              },
-              disabled: isGeneratingRow !== null
-            }
-          ]
-
-          if (hasRowData && onClearRow) {
-            rowMenuItems.push({
-              key: 'clear-all-rows',
-              icon: React.createElement(DeleteOutlined),
-              label: '清除所有行',
-              onClick: () => {
-                verticalCombinations.forEach((vCombination) => {
-                  const vPath = generateDimensionPath(vCombination)
-                  if (onClearRow) {
-                    onClearRow(vPath)
-                  }
-                })
-              }
-            })
-          }
-
-          return (
-            <div className="row-header">
-              <div className="row-title">{dimension.name}</div>
-              {(onGenerateRow || onClearRow) && (
-                <Dropdown
-                  menu={{ items: rowMenuItems }}
-                  trigger={['hover']}
-                  placement="bottomRight"
-                >
-                  <div className="cell-menu-trigger" />
-                </Dropdown>
-              )}
-            </div>
-          )
-        },
-        dataIndex: ['rowLabels', dimIndex],
-        key: `row-${dimension.id}`,
-        width: 120,
-        fixed: 'left',
-        render: (text: string, record: any, index: number) => {
-          // 检查该行是否已有数据
-          const hasData = horizontalCombinations.some((hCombination) => {
-            const hPath = generateDimensionPath(hCombination)
-            const cellKey = `${hPath}|${record.rowPath}`
-            return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
-          })
-
-          // 创建菜单项
-          const menuItems: any[] = [
-            {
-              key: 'generate',
-              icon: React.createElement(
-                isGeneratingRow === record.rowPath ? LoadingOutlined : PlayCircleOutlined
-              ),
-              label: hasData ? '重新生成此行' : '生成此行',
-              onClick: () => onGenerateRow && onGenerateRow(record.rowPath),
-              disabled: isGeneratingRow !== null
-            }
-          ]
-
-          if (hasData && onClearRow) {
-            menuItems.push({
-              key: 'clear',
-              icon: React.createElement(DeleteOutlined),
-              label: '清除此行',
-              onClick: () => onClearRow(record.rowPath)
-            })
-          }
-
-          return (
-            <div className="row-header">
-              <div className="row-title">{text}</div>
-              {(onGenerateRow || onClearRow) && (
-                <Dropdown
-                  menu={{ items: menuItems }}
-                  trigger={['hover']}
-                  placement="bottomRight"
-                >
-                  <div className="cell-menu-trigger" />
-                </Dropdown>
-              )}
-            </div>
-          )
+          gridData[cellKey] = cellData[firstAvailableKey] || ''
+        } else {
+          gridData[cellKey] = ''
         }
       })
     })
 
-    // 添加横轴数据列
-    horizontalCombinations.forEach((hCombination) => {
-      const hPath = generateDimensionPath(hCombination)
-      
-      // 检查该列是否已有数据
-      const hasColumnData = Object.keys(tableData).some(cellKey => 
-        cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
-      )
-      
-      columns.push({
-        title: () => {
-          // 创建菜单项
-          const menuItems: any[] = [
-            {
-              key: 'generate',
-              icon: React.createElement(
-                isGeneratingColumn === hPath ? LoadingOutlined : PlayCircleOutlined
-              ),
-              label: hasColumnData ? '重新生成此列' : '生成此列',
-              onClick: () => onGenerateColumn && onGenerateColumn(hPath),
-              disabled: isGeneratingColumn !== null
-            }
-          ]
-
-          if (hasColumnData && onClearColumn) {
-            menuItems.push({
-              key: 'clear',
-              icon: React.createElement(DeleteOutlined),
-              label: '清除此列',
-              onClick: () => onClearColumn(hPath)
-            })
-          }
-
-          return (
-            <div className="column-header">
-              <div className="column-title" style={{ textAlign: 'center' }}>
-                {hCombination.map((value, index) => (
-                  <div key={index} style={{ fontSize: index === 0 ? '12px' : '11px', fontWeight: index === 0 ? 'bold' : 'normal' }}>
-                    {value}
-                  </div>
-                ))}
-              </div>
-              {(onGenerateColumn || onClearColumn) && (
-                <Dropdown
-                  menu={{ items: menuItems }}
-                  trigger={['hover']}
-                  placement="bottomRight"
-                >
-                  <div className="cell-menu-trigger" />
-                </Dropdown>
-              )}
-            </div>
-          )
-        },
-        dataIndex: hPath,
-        key: hPath,
-        width: 200,
-        render: (text: string, record: any) => {
-          const cellKey = `${hPath}|${record.rowPath}`
-          const isGenerating = isGeneratingCell === cellKey
-
-          // 创建菜单项
-          const menuItems: any[] = [
-            {
-              key: 'generate',
-              icon: React.createElement(isGenerating ? LoadingOutlined : PlayCircleOutlined),
-              label: text ? '重新生成' : '生成内容',
-              onClick: () => onGenerateCell && onGenerateCell(hPath, record.rowPath),
-              disabled: isGeneratingCell !== null
-            }
-          ]
-
-          if (text && onClearCell) {
-            menuItems.push({
-              key: 'clear',
-              icon: React.createElement(DeleteOutlined),
-              label: '清除内容',
-              onClick: () => onClearCell(hPath, record.rowPath)
-            })
-          }
-
-          if (text && onCreateChatFromCell) {
-            menuItems.push({
-              key: 'chat',
-              icon: React.createElement(CommentOutlined),
-              label: '创建对话',
-              onClick: () => onCreateChatFromCell(hPath, record.rowPath, text, metadata)
-            })
-          }
-
-          return (
-            <div className="cell-content">
-              <div 
-                className={`cell-text ${isGenerating ? 'generating' : ''} ${!text ? 'empty' : ''}`}
-                style={{ 
-                  minHeight: '24px', 
-                  padding: '4px',
-                  backgroundColor: isGenerating ? '#f0f0f0' : 'transparent',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-                onClick={() => {
-                  if (!isGenerating && onGenerateCell) {
-                    onGenerateCell(hPath, record.rowPath)
-                  }
-                }}
-              >
-                {isGenerating ? (
-                  <Text type="secondary">生成中...</Text>
-                ) : text ? (
-                  <Text style={{ fontSize: '12px' }}>{text}</Text>
-                ) : (
-                  <Text type="secondary" style={{ fontSize: '12px' }}>点击生成</Text>
-                )}
-              </div>
-              <Dropdown
-                menu={{ items: menuItems }}
-                trigger={['hover']}
-                placement="bottomRight"
-              >
-                <div className="cell-menu-trigger" />
-              </Dropdown>
-            </div>
-          )
-        }
-      })
-    })
-
-    return { dataSource, columns }
-  }, [metadata, tableData, selectedValueDimension, isGeneratingCell, isGeneratingColumn, isGeneratingRow, onGenerateCell, onGenerateColumn, onGenerateRow, onClearColumn, onClearRow, onClearCell, onCreateChatFromCell])
+    return { horizontalCombinations, verticalCombinations, gridData }
+  }, [metadata, tableData, selectedValueDimension])
 
   // 处理全屏切换
   const toggleFullscreen = () => {
@@ -394,7 +120,7 @@ export default function CrosstabTable({
     }
   }, [isFullscreen])
 
-  if (!metadata || dataSource.length === 0) {
+  if (!metadata || horizontalCombinations.length === 0 || verticalCombinations.length === 0) {
     return (
       <Card className="tab-card">
         <div className="empty-state">
@@ -407,6 +133,94 @@ export default function CrosstabTable({
         </div>
       </Card>
     )
+  }
+
+  // 创建列头菜单
+  const createColumnMenu = (hPath: string, hasColumnData: boolean) => {
+    const menuItems: any[] = [
+      {
+        key: 'generate',
+        icon: React.createElement(
+          isGeneratingColumn === hPath ? LoadingOutlined : PlayCircleOutlined
+        ),
+        label: hasColumnData ? '重新生成此列' : '生成此列',
+        onClick: () => onGenerateColumn && onGenerateColumn(hPath),
+        disabled: isGeneratingColumn !== null
+      }
+    ]
+
+    if (hasColumnData && onClearColumn) {
+      menuItems.push({
+        key: 'clear',
+        icon: React.createElement(DeleteOutlined),
+        label: '清除此列',
+        onClick: () => onClearColumn(hPath)
+      })
+    }
+
+    return menuItems
+  }
+
+  // 创建行头菜单
+  const createRowMenu = (vPath: string, hasRowData: boolean) => {
+    const menuItems: any[] = [
+      {
+        key: 'generate',
+        icon: React.createElement(
+          isGeneratingRow === vPath ? LoadingOutlined : PlayCircleOutlined
+        ),
+        label: hasRowData ? '重新生成此行' : '生成此行',
+        onClick: () => onGenerateRow && onGenerateRow(vPath),
+        disabled: isGeneratingRow !== null
+      }
+    ]
+
+    if (hasRowData && onClearRow) {
+      menuItems.push({
+        key: 'clear',
+        icon: React.createElement(DeleteOutlined),
+        label: '清除此行',
+        onClick: () => onClearRow(vPath)
+      })
+    }
+
+    return menuItems
+  }
+
+  // 创建单元格菜单
+  const createCellMenu = (hPath: string, vPath: string, cellContent: string) => {
+    const cellKey = `${hPath}|${vPath}`
+    const isGenerating = isGeneratingCell === cellKey
+
+    const menuItems: any[] = [
+      {
+        key: 'generate',
+        icon: React.createElement(isGenerating ? LoadingOutlined : PlayCircleOutlined),
+        label: cellContent ? '重新生成' : '生成内容',
+        onClick: () => onGenerateCell && onGenerateCell(hPath, vPath),
+        disabled: isGeneratingCell !== null
+      }
+    ]
+
+    if (cellContent && onClearCell) {
+      menuItems.push({
+        key: 'clear',
+        icon: React.createElement(DeleteOutlined),
+        label: '清除内容',
+        onClick: () => onClearCell(hPath, vPath)
+      })
+    }
+
+    if (cellContent && onCreateChatFromCell) {
+      menuItems.push({
+        key: 'chat',
+        icon: React.createElement(CommentOutlined),
+        label: '创建对话',
+        onClick: () => onCreateChatFromCell(hPath, vPath, cellContent, metadata)
+      })
+    }
+
+    return menuItems
   }
 
   // 创建extra内容（值维度选择器和全屏按钮）
@@ -443,20 +257,199 @@ export default function CrosstabTable({
     </Space>
   )
 
+  // 计算网格布局参数
+  const rowDimensions = metadata.verticalDimensions.length
+  const colDimensions = metadata.horizontalDimensions.length
+  const gridCols = colDimensions + horizontalCombinations.length
+  const gridRows = rowDimensions + verticalCombinations.length
+  
+  // 调试信息
+  console.log('Grid layout params:', {
+    rowDimensions,
+    colDimensions,
+    gridCols,
+    gridRows,
+    horizontalCombinations: horizontalCombinations.length,
+    verticalCombinations: verticalCombinations.length
+  })
+
   return (
     <Card
       title="多维度交叉分析表"
       extra={extraContent}
       className={`tab-card table-card ${isFullscreen ? 'fullscreen-card' : ''}`}
     >
-      <Table 
-        columns={columns} 
-        dataSource={dataSource} 
-        pagination={false} 
-        bordered 
-        size="small"
-        scroll={{ x: 'max-content' }}
-      />
+      <div 
+        className="crosstab-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${colDimensions}, 120px) repeat(${horizontalCombinations.length}, 200px)`,
+          gridTemplateRows: `repeat(${rowDimensions}, 40px) repeat(${verticalCombinations.length}, 60px)`,
+          gap: '1px',
+          backgroundColor: '#f0f0f0',
+          border: '1px solid #d9d9d9',
+          borderRadius: '4px',
+          overflow: 'auto'
+        }}
+      >
+        {/* 左上角空白区域 - 行头和列头的分隔区域 */}
+        <div
+          className="grid-corner"
+          style={{
+            gridColumn: `1 / ${colDimensions + 1}`,
+            gridRow: `1 / ${rowDimensions + 1}`,
+            backgroundColor: '#fafafa',
+            border: '1px solid #d9d9d9',
+            borderRadius: '4px 0 0 0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <span style={{ fontSize: '10px', color: '#999', transform: 'rotate(-45deg)' }}>
+            维度
+          </span>
+        </div>
+
+        {/* 列头区域 */}
+        {horizontalCombinations.map((hCombination, colIndex) => {
+          const hPath = generateDimensionPath(hCombination)
+          const hasColumnData = Object.keys(tableData).some(cellKey => 
+            cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
+          )
+
+          return hCombination.map((value, dimIndex) => (
+            <div
+              key={`col-${colIndex}-${dimIndex}`}
+              className="grid-column-header"
+              style={{
+                gridColumn: colDimensions + colIndex + 1,
+                gridRow: dimIndex + 1,
+                backgroundColor: 'white',
+                border: '1px solid #d9d9d9',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                fontSize: dimIndex === 0 ? '12px' : '11px',
+                fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+              }}
+            >
+              {value}
+              {/* 只在最后一个维度显示菜单 */}
+              {dimIndex === hCombination.length - 1 && (onGenerateColumn || onClearColumn) && (
+                <Dropdown
+                  menu={{ items: createColumnMenu(hPath, hasColumnData) }}
+                  trigger={['hover']}
+                  placement="bottomRight"
+                >
+                  <div className="cell-menu-trigger" />
+                </Dropdown>
+              )}
+            </div>
+          ))
+        })}
+
+        {/* 行头区域 */}
+        {verticalCombinations.map((vCombination, rowIndex) => {
+          const vPath = generateDimensionPath(vCombination)
+          const hasRowData = horizontalCombinations.some((hCombination) => {
+            const hPath = generateDimensionPath(hCombination)
+            const cellKey = `${hPath}|${vPath}`
+            return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
+          })
+
+          return vCombination.map((value, dimIndex) => (
+            <div
+              key={`row-${rowIndex}-${dimIndex}`}
+              className="grid-row-header"
+              style={{
+                gridColumn: dimIndex + 1,
+                gridRow: rowDimensions + rowIndex + 1,
+                backgroundColor: 'white',
+                border: '1px solid #d9d9d9',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                fontSize: '12px',
+                fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+              }}
+            >
+              {value}
+              {/* 只在最后一个维度显示菜单 */}
+              {dimIndex === vCombination.length - 1 && (onGenerateRow || onClearRow) && (
+                <Dropdown
+                  menu={{ items: createRowMenu(vPath, hasRowData) }}
+                  trigger={['hover']}
+                  placement="bottomRight"
+                >
+                  <div className="cell-menu-trigger" />
+                </Dropdown>
+              )}
+            </div>
+          ))
+        })}
+
+        {/* 数据单元格区域 */}
+        {verticalCombinations.map((vCombination, rowIndex) => {
+          const vPath = generateDimensionPath(vCombination)
+          
+          return horizontalCombinations.map((hCombination, colIndex) => {
+            const hPath = generateDimensionPath(hCombination)
+            const cellKey = `${hPath}|${vPath}`
+            const cellContent = gridData[cellKey] || ''
+            const isGenerating = isGeneratingCell === cellKey
+
+            return (
+              <div
+                key={cellKey}
+                className="grid-data-cell"
+                style={{
+                  gridColumn: colDimensions + colIndex + 1,
+                  gridRow: rowDimensions + rowIndex + 1,
+                  backgroundColor: isGenerating ? '#f0f0f0' : 'white',
+                  border: '1px solid #d9d9d9',
+                  padding: '8px',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  minHeight: '44px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                onClick={() => {
+                  if (!isGenerating && onGenerateCell) {
+                    onGenerateCell(hPath, vPath)
+                  }
+                }}
+              >
+                <div style={{ 
+                  fontSize: '12px', 
+                  wordBreak: 'break-word',
+                  width: '100%'
+                }}>
+                  {isGenerating ? (
+                    <Text type="secondary">生成中...</Text>
+                  ) : cellContent ? (
+                    <Text>{cellContent}</Text>
+                  ) : (
+                    <Text type="secondary">点击生成</Text>
+                  )}
+                </div>
+                <Dropdown
+                  menu={{ items: createCellMenu(hPath, vPath, cellContent) }}
+                  trigger={['hover']}
+                  placement="bottomRight"
+                >
+                  <div className="cell-menu-trigger" />
+                </Dropdown>
+              </div>
+            )
+          })
+        })}
+      </div>
     </Card>
   )
 }
