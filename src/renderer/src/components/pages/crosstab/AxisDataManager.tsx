@@ -1,19 +1,13 @@
 import React, { useState } from 'react'
-import { Card, Button, Input, Space, Tooltip, Popconfirm, Typography, Collapse, Tag, Divider } from 'antd'
+import { Card, Button, Input, Space, Popconfirm, Typography, Collapse, Tag } from 'antd'
 import {
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
-  SaveOutlined,
-  UndoOutlined,
   ColumnWidthOutlined,
-  DownOutlined,
-  UpOutlined
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension } from '../../../types'
 
-const { Text, Title } = Typography
-const { Panel } = Collapse
+const { Text } = Typography
 
 interface AxisDataManagerProps {
   metadata: CrosstabMetadata | null
@@ -28,7 +22,6 @@ export default function AxisDataManager({
   onGenerateDimensionValues,
   isGeneratingDimensionValues
 }: AxisDataManagerProps) {
-  const [editingDimensionId, setEditingDimensionId] = useState<string | null>(null)
   const [editingValueIndex, setEditingValueIndex] = useState<{ dimensionId: string; valueIndex: number } | null>(null)
   const [newValueInputs, setNewValueInputs] = useState<{ [dimensionId: string]: string }>({})
 

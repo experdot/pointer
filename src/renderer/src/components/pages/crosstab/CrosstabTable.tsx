@@ -13,8 +13,6 @@ import { CrosstabMetadata, CrosstabMultiDimensionData } from '../../../types'
 import { 
   generateAxisCombinations, 
   generateDimensionPath, 
-  parseDimensionPath,
-  getDimensionDisplayName 
 } from './CrosstabUtils'
 
 const { Text } = Typography

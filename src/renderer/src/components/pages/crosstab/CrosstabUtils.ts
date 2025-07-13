@@ -20,7 +20,7 @@ export const PROMPT_TEMPLATES = {
 1. **维度选择**：横轴和纵轴可以包含多个维度，每个维度都有明确的分类意义
 2. **维度层级**：多个维度之间存在父子嵌套关系，就像数据透视表一样
 3. **值的性质**：值维度代表在横轴和纵轴交叉点上呈现的具体内容类型，必须是定性的、描述性的
-4. **维度完整性**：每个轴至少要有1个维度，最多建议3个维度
+4. **维度完整性**：若用户无特别说明，每个轴至少要有1个维度，最多建议3个维度
 
 # 输出格式
 严格按照以下JSON格式输出：
@@ -29,13 +29,11 @@ export const PROMPT_TEMPLATES = {
   "topic": "主题名称",
   "horizontalDimensions": [
     {
-      "id": "h1",
       "name": "横轴维度1名称",
       "description": "维度描述",
       "order": 1
     },
     {
-      "id": "h2", 
       "name": "横轴维度2名称",
       "description": "维度描述",
       "order": 2
@@ -43,13 +41,11 @@ export const PROMPT_TEMPLATES = {
   ],
   "verticalDimensions": [
     {
-      "id": "v1",
       "name": "纵轴维度1名称", 
       "description": "维度描述",
       "order": 1
     },
     {
-      "id": "v2",
       "name": "纵轴维度2名称",
       "description": "维度描述", 
       "order": 2
@@ -57,12 +53,10 @@ export const PROMPT_TEMPLATES = {
   ],
   "valueDimensions": [
     {
-      "id": "value1",
       "name": "值维度1名称",
       "description": "值的具体描述，说明这个维度展示什么类型的信息"
     },
     {
-      "id": "value2",
       "name": "值维度2名称", 
       "description": "值的具体描述，说明这个维度展示什么类型的信息"
     }
@@ -92,7 +86,7 @@ export const PROMPT_TEMPLATES = {
 ["值1", "值2", "值3", "值4", "值5"]
 \`\`\`
 
-请为维度"[DIMENSION_NAME]"生成5-8个代表性的值。`,
+请为维度"[DIMENSION_NAME]"生成若干个代表性的值。`,
 
   cell_values: `# 角色
 你是一位资深的领域专家和内容创作者。你的任务是为多维度交叉表的特定单元格生成对应的值内容。

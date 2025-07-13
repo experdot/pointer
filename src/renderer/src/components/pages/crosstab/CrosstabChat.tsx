@@ -489,55 +489,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     [chat, getLLMConfig, handleUpdateDimension, message]
   )
 
-  // 添加缺少的处理函数
-  const handleEditHorizontalItem = useCallback(
-    (oldItem: string, newItem: string) => {
-      // 实现编辑横轴项的逻辑
-      message.info('编辑横轴项功能需要实现')
-    },
-    [message]
-  )
-
-  const handleDeleteHorizontalItem = useCallback(
-    (item: string) => {
-      // 实现删除横轴项的逻辑
-      message.info('删除横轴项功能需要实现')
-    },
-    [message]
-  )
-
-  const handleAddHorizontalItem = useCallback(
-    (item: string) => {
-      // 实现添加横轴项的逻辑
-      message.info('添加横轴项功能需要实现')
-    },
-    [message]
-  )
-
-  const handleEditVerticalItem = useCallback(
-    (oldItem: string, newItem: string) => {
-      // 实现编辑纵轴项的逻辑
-      message.info('编辑纵轴项功能需要实现')
-    },
-    [message]
-  )
-
-  const handleDeleteVerticalItem = useCallback(
-    (item: string) => {
-      // 实现删除纵轴项的逻辑
-      message.info('删除纵轴项功能需要实现')
-    },
-    [message]
-  )
-
-  const handleAddVerticalItem = useCallback(
-    (item: string) => {
-      // 实现添加纵轴项的逻辑
-      message.info('添加纵轴项功能需要实现')
-    },
-    [message]
-  )
-
   const handleGenerateTopicSuggestions = useCallback(async () => {
     if (!chat || isGeneratingTopicSuggestions) return
 

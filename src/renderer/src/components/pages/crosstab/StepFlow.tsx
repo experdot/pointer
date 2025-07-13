@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { Steps, Button, Spin, App, Card, Space, Typography, Tag } from 'antd'
+import { Steps, Button, App, Card, Space, Typography, Tag } from 'antd'
 import { PlayCircleOutlined, CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons'
 import { CrosstabChat as CrosstabChatType, AITask } from '../../../types'
 import { createAIService } from '../../../services/aiService'

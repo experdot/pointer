@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Modal, Form, Input, Button, Card, Space, Select, InputNumber, Popconfirm } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { Modal, Form, Input, Button, Card, Space, Popconfirm } from 'antd'
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension, CrosstabValueDimension } from '../../../types'
 import { v4 as uuidv4 } from 'uuid'
 

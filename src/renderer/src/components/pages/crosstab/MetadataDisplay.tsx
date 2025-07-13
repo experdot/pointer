@@ -7,12 +7,10 @@ import {
   LoadingOutlined,
   UpOutlined,
   DownOutlined,
-  PlusOutlined
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension, CrosstabValueDimension } from '../../../types'
 
 const { Text, Title } = Typography
-const { Panel } = Collapse
 
 interface MetadataDisplayProps {
   metadata: CrosstabMetadata | null
