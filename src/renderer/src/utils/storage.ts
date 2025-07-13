@@ -1,10 +1,13 @@
 import { AppState, Settings, Page, PageFolder } from '../types'
 
+// 应用版本号，用于存储键的版本控制
+const APP_VERSION = '1.0.0-preview.2'
+
 const STORAGE_KEYS = {
-  APP_STATE: 'ai-chat-app-state',
-  SETTINGS: 'ai-chat-app-settings',
-  PAGES: 'ai-chat-app-pages',
-  FOLDERS: 'ai-chat-app-folders'
+  APP_STATE: `ai-chat-app-state-v${APP_VERSION}`,
+  SETTINGS: `ai-chat-app-settings-v${APP_VERSION}`,
+  PAGES: `ai-chat-app-pages-v${APP_VERSION}`,
+  FOLDERS: `ai-chat-app-folders-v${APP_VERSION}`
 } as const
 
 export class StorageService {
