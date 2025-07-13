@@ -283,13 +283,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   )
 
   const handleClearColumn = useCallback(
-    (horizontalItem: string) => {
+    (columnPath: string) => {
       if (!chat) return
 
       const updatedTableData = { ...chat.crosstabData.tableData }
-      if (updatedTableData[horizontalItem]) {
-        delete updatedTableData[horizontalItem]
-      }
+      
+      // 删除所有以该列路径开头的单元格数据
+      Object.keys(updatedTableData).forEach(cellKey => {
+        if (cellKey.startsWith(columnPath + '|')) {
+          delete updatedTableData[cellKey]
+        }
+      })
 
       dispatch({
         type: 'UPDATE_CROSSTAB_DATA',
@@ -299,21 +303,21 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         }
       })
 
-      message.success(`列 "${horizontalItem}" 数据已清除`)
+      message.success(`列 "${columnPath}" 数据已清除`)
     },
     [chat, dispatch, chatId, message]
   )
 
   const handleClearRow = useCallback(
-    (verticalItem: string) => {
+    (rowPath: string) => {
       if (!chat) return
 
       const updatedTableData = { ...chat.crosstabData.tableData }
 
-      // 删除所有列中该行的数据
-      Object.keys(updatedTableData).forEach((horizontalItem) => {
-        if (updatedTableData[horizontalItem][verticalItem]) {
-          delete updatedTableData[horizontalItem][verticalItem]
+      // 删除所有以该行路径结尾的单元格数据
+      Object.keys(updatedTableData).forEach(cellKey => {
+        if (cellKey.endsWith('|' + rowPath)) {
+          delete updatedTableData[cellKey]
         }
       })
 
@@ -325,19 +329,20 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         }
       })
 
-      message.success(`行 "${verticalItem}" 数据已清除`)
+      message.success(`行 "${rowPath}" 数据已清除`)
     },
     [chat, dispatch, chatId, message]
   )
 
   const handleClearCell = useCallback(
-    (horizontalItem: string, verticalItem: string) => {
+    (columnPath: string, rowPath: string) => {
       if (!chat) return
 
       const updatedTableData = { ...chat.crosstabData.tableData }
+      const cellKey = `${columnPath}|${rowPath}`
 
-      if (updatedTableData[horizontalItem] && updatedTableData[horizontalItem][verticalItem]) {
-        delete updatedTableData[horizontalItem][verticalItem]
+      if (updatedTableData[cellKey]) {
+        delete updatedTableData[cellKey]
       }
 
       dispatch({
@@ -348,13 +353,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         }
       })
 
-      message.success(`单元格 "${horizontalItem} × ${verticalItem}" 数据已清除`)
+      message.success(`单元格 "${columnPath} × ${rowPath}" 数据已清除`)
     },
     [chat, dispatch, chatId, message]
   )
 
   const handleCreateChatFromCell = useCallback(
-    (horizontalItem: string, verticalItem: string, cellContent: string, metadata: any) => {
+    (columnPath: string, rowPath: string, cellContent: string, metadata: any) => {
       if (!chat || !metadata) return
 
       // 直接dispatch，将所有参数传递给reducer处理
@@ -362,15 +367,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         type: 'CREATE_CHAT_FROM_CELL',
         payload: {
           folderId: chat.folderId,
-          horizontalItem,
-          verticalItem,
+          horizontalItem: columnPath,
+          verticalItem: rowPath,
           cellContent,
           metadata,
           sourcePageId: chatId
         }
       })
 
-      message.success(`已创建新聊天窗口分析 "${horizontalItem} × ${verticalItem}"`)
+      message.success(`已创建新聊天窗口分析 "${columnPath} × ${rowPath}"`)
     },
     [chat, dispatch, message, chatId]
   )

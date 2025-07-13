@@ -328,21 +328,35 @@ export default function CrosstabTable({
               horizontalCombinations.forEach((hCombination, colIndex) => {
                 const value = hCombination[dimIndex]
                 const headerKey = `${dimIndex}-${colIndex}-${value}`
+                const hPath = generateDimensionPath(hCombination)
+                const hasColumnData = Object.keys(tableData).some(cellKey => 
+                  cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
+                )
                 
                 headerElements.push(
-                                  <div
-                  key={headerKey}
-                  className="grid-column-header"
-                  style={{
-                    gridColumn: colDimensions + colIndex + 1,
-                    gridRow: dimIndex + 1,
-                    backgroundColor: 'white',
-                    border: '1px solid #d9d9d9',
-                    fontSize: dimIndex === 0 ? '12px' : '11px',
-                    fontWeight: dimIndex === 0 ? 'bold' : 'normal'
-                  }}
-                >
+                  <div
+                    key={headerKey}
+                    className="grid-column-header"
+                    style={{
+                      gridColumn: colDimensions + colIndex + 1,
+                      gridRow: dimIndex + 1,
+                      backgroundColor: 'white',
+                      border: '1px solid #d9d9d9',
+                      fontSize: dimIndex === 0 ? '12px' : '11px',
+                      fontWeight: dimIndex === 0 ? 'bold' : 'normal',
+                      position: 'relative'
+                    }}
+                  >
                     {value}
+                    {(onGenerateColumn || onClearColumn) && (
+                      <Dropdown
+                        menu={{ items: createColumnMenu(hPath, hasColumnData) }}
+                        trigger={['hover']}
+                        placement="bottomRight"
+                      >
+                        <div className="cell-menu-trigger" />
+                      </Dropdown>
+                    )}
                   </div>
                 )
               })
@@ -380,49 +394,7 @@ export default function CrosstabTable({
             }
           }
           
-          // 为最后一个维度的每个组合添加菜单
-          if (onGenerateColumn || onClearColumn) {
-            horizontalCombinations.forEach((hCombination, colIndex) => {
-              const hPath = generateDimensionPath(hCombination)
-              const hasColumnData = Object.keys(tableData).some(cellKey => 
-                cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
-              )
-              
-              headerElements.push(
-                <div
-                  key={`menu-${colIndex}`}
-                  className="grid-column-menu"
-                  style={{
-                    gridColumn: colDimensions + colIndex + 1,
-                    gridRow: metadata.horizontalDimensions.length,
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    padding: '0',
-                    position: 'relative',
-                    height: '100%',
-                    width: '100%',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <Dropdown
-                    menu={{ items: createColumnMenu(hPath, hasColumnData) }}
-                    trigger={['hover']}
-                    placement="bottomRight"
-                  >
-                    <div 
-                      className="cell-menu-trigger" 
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        pointerEvents: 'auto'
-                      }}
-                    />
-                  </Dropdown>
-                </div>
-              )
-            })
-          }
+
           
           return headerElements
         })()}
@@ -443,21 +415,37 @@ export default function CrosstabTable({
               verticalCombinations.forEach((vCombination, rowIndex) => {
                 const value = vCombination[dimIndex]
                 const headerKey = `${dimIndex}-${rowIndex}-${value}`
+                const vPath = generateDimensionPath(vCombination)
+                const hasRowData = horizontalCombinations.some((hCombination) => {
+                  const hPath = generateDimensionPath(hCombination)
+                  const cellKey = `${hPath}|${vPath}`
+                  return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
+                })
                 
                 headerElements.push(
-                                  <div
-                  key={headerKey}
-                  className="grid-row-header"
-                  style={{
-                    gridColumn: dimIndex + 1,
-                    gridRow: rowDimensions + rowIndex + 1,
-                    backgroundColor: 'white',
-                    border: '1px solid #d9d9d9',
-                    fontSize: '12px',
-                    fontWeight: dimIndex === 0 ? 'bold' : 'normal'
-                  }}
-                >
+                  <div
+                    key={headerKey}
+                    className="grid-row-header"
+                    style={{
+                      gridColumn: dimIndex + 1,
+                      gridRow: rowDimensions + rowIndex + 1,
+                      backgroundColor: 'white',
+                      border: '1px solid #d9d9d9',
+                      fontSize: '12px',
+                      fontWeight: dimIndex === 0 ? 'bold' : 'normal',
+                      position: 'relative'
+                    }}
+                  >
                     {value}
+                    {(onGenerateRow || onClearRow) && (
+                      <Dropdown
+                        menu={{ items: createRowMenu(vPath, hasRowData) }}
+                        trigger={['hover']}
+                        placement="bottomRight"
+                      >
+                        <div className="cell-menu-trigger" />
+                      </Dropdown>
+                    )}
                   </div>
                 )
               })
@@ -495,51 +483,7 @@ export default function CrosstabTable({
             }
           }
           
-          // 为最后一个维度的每个组合添加菜单
-          if (onGenerateRow || onClearRow) {
-            verticalCombinations.forEach((vCombination, rowIndex) => {
-              const vPath = generateDimensionPath(vCombination)
-              const hasRowData = horizontalCombinations.some((hCombination) => {
-                const hPath = generateDimensionPath(hCombination)
-                const cellKey = `${hPath}|${vPath}`
-                return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
-              })
-              
-              headerElements.push(
-                <div
-                  key={`menu-${rowIndex}`}
-                  className="grid-row-menu"
-                  style={{
-                    gridColumn: metadata.verticalDimensions.length,
-                    gridRow: rowDimensions + rowIndex + 1,
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    padding: '0',
-                    position: 'relative',
-                    height: '100%',
-                    width: '100%',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <Dropdown
-                    menu={{ items: createRowMenu(vPath, hasRowData) }}
-                    trigger={['hover']}
-                    placement="bottomRight"
-                  >
-                    <div 
-                      className="cell-menu-trigger" 
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        pointerEvents: 'auto'
-                      }}
-                    />
-                  </Dropdown>
-                </div>
-              )
-            })
-          }
+
           
           return headerElements
         })()}
@@ -562,13 +506,7 @@ export default function CrosstabTable({
                   gridColumn: colDimensions + colIndex + 1,
                   gridRow: rowDimensions + rowIndex + 1,
                   backgroundColor: isGenerating ? '#f0f0f0' : 'white',
-                  border: '1px solid #d9d9d9',
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  if (!isGenerating && onGenerateCell) {
-                    onGenerateCell(hPath, vPath)
-                  }
+                  border: '1px solid #d9d9d9'
                 }}
               >
                 <div className="cell-content">
@@ -578,7 +516,7 @@ export default function CrosstabTable({
                     ) : cellContent ? (
                       <Text>{cellContent}</Text>
                     ) : (
-                      <Text type="secondary">点击生成</Text>
+                      <Text type="secondary">-</Text>
                     )}
                   </div>
                 </div>

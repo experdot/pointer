@@ -146,7 +146,6 @@
 }
 
 .cell-menu-trigger::before {
-  content: '⋮';
   position: absolute;
   top: -3px;
   left: 50%;
@@ -166,9 +165,7 @@
 
 .grid-column-header:hover .cell-menu-trigger,
 .grid-row-header:hover .cell-menu-trigger,
-.grid-data-cell:hover .cell-menu-trigger,
-.grid-column-menu:hover .cell-menu-trigger,
-.grid-row-menu:hover .cell-menu-trigger {
+.grid-data-cell:hover .cell-menu-trigger {
   opacity: 1;
 }
 
@@ -176,16 +173,7 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
-/* 菜单区域样式 */
-.grid-column-menu,
-.grid-row-menu {
-  pointer-events: none;
-}
 
-.grid-column-menu .cell-menu-trigger,
-.grid-row-menu .cell-menu-trigger {
-  pointer-events: auto;
-}
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
