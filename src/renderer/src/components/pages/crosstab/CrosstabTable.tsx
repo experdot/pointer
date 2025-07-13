@@ -14,6 +14,7 @@ import {
   generateAxisCombinations, 
   generateDimensionPath, 
 } from './CrosstabUtils'
+import './crosstab-table.css'
 
 const { Text } = Typography
 
@@ -284,7 +285,7 @@ export default function CrosstabTable({
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${colDimensions}, 120px) repeat(${horizontalCombinations.length}, 200px)`,
-          gridTemplateRows: `repeat(${rowDimensions}, 40px) repeat(${verticalCombinations.length}, 60px)`,
+          gridTemplateRows: `repeat(${rowDimensions}, auto) repeat(${verticalCombinations.length}, auto)`,
           gap: '1px',
           backgroundColor: '#f0f0f0',
           border: '1px solid #d9d9d9',
@@ -311,87 +312,237 @@ export default function CrosstabTable({
           </span>
         </div>
 
-        {/* 列头区域 */}
-        {horizontalCombinations.map((hCombination, colIndex) => {
-          const hPath = generateDimensionPath(hCombination)
-          const hasColumnData = Object.keys(tableData).some(cellKey => 
-            cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
-          )
-
-          return hCombination.map((value, dimIndex) => (
-            <div
-              key={`col-${colIndex}-${dimIndex}`}
-              className="grid-column-header"
-              style={{
-                gridColumn: colDimensions + colIndex + 1,
-                gridRow: dimIndex + 1,
-                backgroundColor: 'white',
-                border: '1px solid #d9d9d9',
-                padding: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                fontSize: dimIndex === 0 ? '12px' : '11px',
-                fontWeight: dimIndex === 0 ? 'bold' : 'normal'
-              }}
-            >
-              {value}
-              {/* 只在最后一个维度显示菜单 */}
-              {dimIndex === hCombination.length - 1 && (onGenerateColumn || onClearColumn) && (
-                <Dropdown
-                  menu={{ items: createColumnMenu(hPath, hasColumnData) }}
-                  trigger={['hover']}
-                  placement="bottomRight"
+                {/* 列头区域 */}
+        {(() => {
+          const renderedHeaders = new Set<string>()
+          const headerElements: React.ReactNode[] = []
+          
+          // 为每个维度层级生成表头
+          for (let dimIndex = 0; dimIndex < metadata.horizontalDimensions.length; dimIndex++) {
+            const dimension = metadata.horizontalDimensions[dimIndex]
+            const remainingDimensions = metadata.horizontalDimensions.slice(dimIndex + 1)
+            const isLastDimension = dimIndex === metadata.horizontalDimensions.length - 1
+            
+            if (isLastDimension) {
+              // 叶子节点：为每个具体的组合生成表头
+              horizontalCombinations.forEach((hCombination, colIndex) => {
+                const value = hCombination[dimIndex]
+                const headerKey = `${dimIndex}-${colIndex}-${value}`
+                
+                headerElements.push(
+                                  <div
+                  key={headerKey}
+                  className="grid-column-header"
+                  style={{
+                    gridColumn: colDimensions + colIndex + 1,
+                    gridRow: dimIndex + 1,
+                    backgroundColor: 'white',
+                    border: '1px solid #d9d9d9',
+                    fontSize: dimIndex === 0 ? '12px' : '11px',
+                    fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+                  }}
                 >
-                  <div className="cell-menu-trigger" />
-                </Dropdown>
-              )}
-            </div>
-          ))
-        })}
+                    {value}
+                  </div>
+                )
+              })
+            } else {
+              // 非叶子节点：为每个维度值生成合并的表头
+              const spanCount = remainingDimensions.reduce((acc, dim) => acc * dim.values.length, 1)
+              
+              dimension.values.forEach((value, valueIndex) => {
+                const headerKey = `${dimIndex}-${value}`
+                
+                if (!renderedHeaders.has(headerKey)) {
+                  renderedHeaders.add(headerKey)
+                  
+                  // 计算起始列位置
+                  const startCol = colDimensions + 1 + valueIndex * spanCount
+                  
+                  headerElements.push(
+                    <div
+                      key={headerKey}
+                      className="grid-column-header"
+                      style={{
+                        gridColumn: `${startCol} / ${startCol + spanCount}`,
+                        gridRow: dimIndex + 1,
+                        backgroundColor: 'white',
+                        border: '1px solid #d9d9d9',
+                        fontSize: dimIndex === 0 ? '12px' : '11px',
+                        fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+                      }}
+                    >
+                      {value}
+                    </div>
+                  )
+                }
+              })
+            }
+          }
+          
+          // 为最后一个维度的每个组合添加菜单
+          if (onGenerateColumn || onClearColumn) {
+            horizontalCombinations.forEach((hCombination, colIndex) => {
+              const hPath = generateDimensionPath(hCombination)
+              const hasColumnData = Object.keys(tableData).some(cellKey => 
+                cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
+              )
+              
+              headerElements.push(
+                <div
+                  key={`menu-${colIndex}`}
+                  className="grid-column-menu"
+                  style={{
+                    gridColumn: colDimensions + colIndex + 1,
+                    gridRow: metadata.horizontalDimensions.length,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    padding: '0',
+                    position: 'relative',
+                    height: '100%',
+                    width: '100%',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <Dropdown
+                    menu={{ items: createColumnMenu(hPath, hasColumnData) }}
+                    trigger={['hover']}
+                    placement="bottomRight"
+                  >
+                    <div 
+                      className="cell-menu-trigger" 
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        pointerEvents: 'auto'
+                      }}
+                    />
+                  </Dropdown>
+                </div>
+              )
+            })
+          }
+          
+          return headerElements
+        })()}
 
         {/* 行头区域 */}
-        {verticalCombinations.map((vCombination, rowIndex) => {
-          const vPath = generateDimensionPath(vCombination)
-          const hasRowData = horizontalCombinations.some((hCombination) => {
-            const hPath = generateDimensionPath(hCombination)
-            const cellKey = `${hPath}|${vPath}`
-            return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
-          })
-
-          return vCombination.map((value, dimIndex) => (
-            <div
-              key={`row-${rowIndex}-${dimIndex}`}
-              className="grid-row-header"
-              style={{
-                gridColumn: dimIndex + 1,
-                gridRow: rowDimensions + rowIndex + 1,
-                backgroundColor: 'white',
-                border: '1px solid #d9d9d9',
-                padding: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                fontSize: '12px',
-                fontWeight: dimIndex === 0 ? 'bold' : 'normal'
-              }}
-            >
-              {value}
-              {/* 只在最后一个维度显示菜单 */}
-              {dimIndex === vCombination.length - 1 && (onGenerateRow || onClearRow) && (
-                <Dropdown
-                  menu={{ items: createRowMenu(vPath, hasRowData) }}
-                  trigger={['hover']}
-                  placement="bottomRight"
+        {(() => {
+          const renderedHeaders = new Set<string>()
+          const headerElements: React.ReactNode[] = []
+          
+          // 为每个维度层级生成表头
+          for (let dimIndex = 0; dimIndex < metadata.verticalDimensions.length; dimIndex++) {
+            const dimension = metadata.verticalDimensions[dimIndex]
+            const remainingDimensions = metadata.verticalDimensions.slice(dimIndex + 1)
+            const isLastDimension = dimIndex === metadata.verticalDimensions.length - 1
+            
+            if (isLastDimension) {
+              // 叶子节点：为每个具体的组合生成表头
+              verticalCombinations.forEach((vCombination, rowIndex) => {
+                const value = vCombination[dimIndex]
+                const headerKey = `${dimIndex}-${rowIndex}-${value}`
+                
+                headerElements.push(
+                                  <div
+                  key={headerKey}
+                  className="grid-row-header"
+                  style={{
+                    gridColumn: dimIndex + 1,
+                    gridRow: rowDimensions + rowIndex + 1,
+                    backgroundColor: 'white',
+                    border: '1px solid #d9d9d9',
+                    fontSize: '12px',
+                    fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+                  }}
                 >
-                  <div className="cell-menu-trigger" />
-                </Dropdown>
-              )}
-            </div>
-          ))
-        })}
+                    {value}
+                  </div>
+                )
+              })
+            } else {
+              // 非叶子节点：为每个维度值生成合并的表头
+              const spanCount = remainingDimensions.reduce((acc, dim) => acc * dim.values.length, 1)
+              
+              dimension.values.forEach((value, valueIndex) => {
+                const headerKey = `${dimIndex}-${value}`
+                
+                if (!renderedHeaders.has(headerKey)) {
+                  renderedHeaders.add(headerKey)
+                  
+                  // 计算起始行位置
+                  const startRow = rowDimensions + 1 + valueIndex * spanCount
+                  
+                  headerElements.push(
+                    <div
+                      key={headerKey}
+                      className="grid-row-header"
+                      style={{
+                        gridColumn: dimIndex + 1,
+                        gridRow: `${startRow} / ${startRow + spanCount}`,
+                        backgroundColor: 'white',
+                        border: '1px solid #d9d9d9',
+                        fontSize: '12px',
+                        fontWeight: dimIndex === 0 ? 'bold' : 'normal'
+                      }}
+                    >
+                      {value}
+                    </div>
+                  )
+                }
+              })
+            }
+          }
+          
+          // 为最后一个维度的每个组合添加菜单
+          if (onGenerateRow || onClearRow) {
+            verticalCombinations.forEach((vCombination, rowIndex) => {
+              const vPath = generateDimensionPath(vCombination)
+              const hasRowData = horizontalCombinations.some((hCombination) => {
+                const hPath = generateDimensionPath(hCombination)
+                const cellKey = `${hPath}|${vPath}`
+                return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
+              })
+              
+              headerElements.push(
+                <div
+                  key={`menu-${rowIndex}`}
+                  className="grid-row-menu"
+                  style={{
+                    gridColumn: metadata.verticalDimensions.length,
+                    gridRow: rowDimensions + rowIndex + 1,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    padding: '0',
+                    position: 'relative',
+                    height: '100%',
+                    width: '100%',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <Dropdown
+                    menu={{ items: createRowMenu(vPath, hasRowData) }}
+                    trigger={['hover']}
+                    placement="bottomRight"
+                  >
+                    <div 
+                      className="cell-menu-trigger" 
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        pointerEvents: 'auto'
+                      }}
+                    />
+                  </Dropdown>
+                </div>
+              )
+            })
+          }
+          
+          return headerElements
+        })()}
 
         {/* 数据单元格区域 */}
         {verticalCombinations.map((vCombination, rowIndex) => {
@@ -412,12 +563,7 @@ export default function CrosstabTable({
                   gridRow: rowDimensions + rowIndex + 1,
                   backgroundColor: isGenerating ? '#f0f0f0' : 'white',
                   border: '1px solid #d9d9d9',
-                  padding: '8px',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  display: 'flex',
-                  alignItems: 'center'
+                  cursor: 'pointer'
                 }}
                 onClick={() => {
                   if (!isGenerating && onGenerateCell) {
@@ -425,18 +571,16 @@ export default function CrosstabTable({
                   }
                 }}
               >
-                <div style={{ 
-                  fontSize: '12px', 
-                  wordBreak: 'break-word',
-                  width: '100%'
-                }}>
-                  {isGenerating ? (
-                    <Text type="secondary">生成中...</Text>
-                  ) : cellContent ? (
-                    <Text>{cellContent}</Text>
-                  ) : (
-                    <Text type="secondary">点击生成</Text>
-                  )}
+                <div className="cell-content">
+                  <div className="cell-text" style={{ fontSize: '12px' }}>
+                    {isGenerating ? (
+                      <Text type="secondary">生成中...</Text>
+                    ) : cellContent ? (
+                      <Text>{cellContent}</Text>
+                    ) : (
+                      <Text type="secondary">点击生成</Text>
+                    )}
+                  </div>
                 </div>
                 <Dropdown
                   menu={{ items: createCellMenu(hPath, vPath, cellContent) }}
