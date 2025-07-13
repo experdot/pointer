@@ -22,27 +22,20 @@ interface MetadataDisplayProps {
   metadata: CrosstabMetadata | null
   onUpdateMetadata: (metadata: CrosstabMetadata) => void
   onGenerateTopicSuggestions?: () => void
-  onGenerateDimensionSuggestions?: (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => void
   onSelectTopicSuggestion?: (suggestion: string) => void
-  onSelectDimensionSuggestion?: (dimensionId: string, suggestion: string) => void
   isGeneratingTopicSuggestions?: boolean
-  isGeneratingDimensionSuggestions?: { [dimensionId: string]: boolean }
 }
 
 export default function MetadataDisplay({
   metadata,
   onUpdateMetadata,
   onGenerateTopicSuggestions,
-  onGenerateDimensionSuggestions,
   onSelectTopicSuggestion,
-  onSelectDimensionSuggestion,
-  isGeneratingTopicSuggestions,
-  isGeneratingDimensionSuggestions
+  isGeneratingTopicSuggestions
 }: MetadataDisplayProps) {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [topicSuggestionsCollapsed, setTopicSuggestionsCollapsed] = useState(false)
-  const [dimensionSuggestionsCollapsed, setDimensionSuggestionsCollapsed] = useState<{[key: string]: boolean}>({})
 
   if (!metadata) {
     return (
@@ -202,64 +195,6 @@ export default function MetadataDisplay({
      )
   }
 
-  const renderDimensionSuggestions = (
-    dimension: CrosstabAxisDimension,
-    dimensionType: 'horizontal' | 'vertical'
-  ) => {
-    const isGenerating = isGeneratingDimensionSuggestions?.[dimension.id] || false
-    const suggestions = dimension.suggestions || []
-    const isCollapsed = dimensionSuggestionsCollapsed[dimension.id] || false
-
-    if (suggestions.length === 0 && !isGenerating) {
-      return null
-    }
-
-    return (
-      <div className="suggestions-container" style={{ marginTop: 8 }}>
-        <div className="suggestions-header">
-          <div className="suggestions-header-content">
-            <Button
-              type="link"
-              size="small"
-              icon={isCollapsed ? <DownOutlined /> : <UpOutlined />}
-              onClick={() => setDimensionSuggestionsCollapsed(prev => ({ ...prev, [dimension.id]: !prev[dimension.id] }))}
-            >
-              {isCollapsed ? '展开' : '收起'}候选项
-            </Button>
-            <span className="suggestions-count">
-              {isGenerating ? '生成中...' : `${suggestions.length} 个候选项`}
-            </span>
-          </div>
-        </div>
-        
-        {!isCollapsed && (
-          <div className="suggestions-content">
-            {isGenerating && (
-              <div className="suggestion-loading">
-                <Spin size="small" />
-                <Text type="secondary">正在生成候选项...</Text>
-              </div>
-            )}
-            
-            {suggestions.length > 0 && (
-              <div className="suggestions-list">
-                {suggestions.map((suggestion, index) => (
-                  <Tag
-                    key={index}
-                    className="suggestion-tag"
-                    onClick={() => onSelectDimensionSuggestion?.(dimension.id, suggestion)}
-                  >
-                    {suggestion}
-                  </Tag>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   const renderAxisDimensions = (
     dimensions: CrosstabAxisDimension[],
     axisName: string,
@@ -276,25 +211,14 @@ export default function MetadataDisplay({
             size="small"
             title={`${axisName}维度 ${index + 1}`}
             extra={
-              <Space>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={isGeneratingDimensionSuggestions?.[dimension.id] ? <LoadingOutlined /> : <BulbOutlined />}
-                  onClick={() => onGenerateDimensionSuggestions?.(dimension.id, dimensionType)}
-                  disabled={isGeneratingDimensionSuggestions?.[dimension.id]}
-                >
-                  {isGeneratingDimensionSuggestions?.[dimension.id] ? '生成中...' : '启发'}
-                </Button>
-                <Popconfirm
-                  title="确定要删除这个维度吗？"
-                  onConfirm={() => deleteFunction(dimension.id)}
-                  okText="确定"
-                  cancelText="取消"
-                >
-                  <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                </Popconfirm>
-              </Space>
+              <Popconfirm
+                title="确定要删除这个维度吗？"
+                onConfirm={() => deleteFunction(dimension.id)}
+                okText="确定"
+                cancelText="取消"
+              >
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              </Popconfirm>
             }
             style={{ marginBottom: 12 }}
           >
@@ -334,8 +258,6 @@ export default function MetadataDisplay({
                   </div>
                 </div>
               )}
-              
-              {renderDimensionSuggestions(dimension, dimensionType)}
             </Space>
           </Card>
         ))}

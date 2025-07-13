@@ -1,11 +1,29 @@
 import React, { useState } from 'react'
-import { Card, Button, Input, Space, Popconfirm, Typography, Collapse, Tag } from 'antd'
+import { 
+  Card, 
+  Button, 
+  Input, 
+  Space, 
+  Popconfirm, 
+  Typography, 
+  List, 
+  Tooltip,
+  message
+} from 'antd'
 import {
   PlusOutlined,
   DeleteOutlined,
   ColumnWidthOutlined,
+  EditOutlined,
+  HolderOutlined,
+  SaveOutlined,
+  CloseOutlined
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension } from '../../../types'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const { Text } = Typography
 
@@ -16,23 +34,182 @@ interface AxisDataManagerProps {
   isGeneratingDimensionValues?: { [dimensionId: string]: boolean }
 }
 
+interface SortableItemProps {
+  id: string
+  value: string
+  index: number
+  isEditing: boolean
+  onEdit: () => void
+  onSave: (newValue: string) => void
+  onCancel: () => void
+  onDelete: () => void
+  editingValue: string
+  setEditingValue: (value: string) => void
+}
+
+const SortableItem: React.FC<SortableItemProps> = ({
+  id,
+  value,
+  index,
+  isEditing,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
+  editingValue,
+  setEditingValue
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <List.Item
+        actions={[
+          <Tooltip title="拖动排序">
+            <Button
+              type="text"
+              size="small"
+              icon={<HolderOutlined />}
+              {...attributes}
+              {...listeners}
+              style={{ cursor: 'grab' }}
+            />
+          </Tooltip>,
+          isEditing ? (
+            <Space>
+              <Button
+                type="text"
+                size="small"
+                icon={<SaveOutlined />}
+                onClick={() => onSave(editingValue)}
+                style={{ color: '#52c41a' }}
+              />
+              <Button
+                type="text"
+                size="small"
+                icon={<CloseOutlined />}
+                onClick={onCancel}
+                style={{ color: '#ff4d4f' }}
+              />
+            </Space>
+          ) : (
+            <Space>
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={onEdit}
+              />
+              <Popconfirm
+                title="确定要删除这个值吗？"
+                onConfirm={onDelete}
+                okText="确定"
+                cancelText="取消"
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  style={{ color: '#ff4d4f' }}
+                />
+              </Popconfirm>
+            </Space>
+          )
+        ]}
+      >
+        <List.Item.Meta
+          title={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: 8, color: '#666', fontSize: '12px' }}>
+                {index + 1}.
+              </span>
+              {isEditing ? (
+                <Input
+                  size="small"
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onPressEnter={() => onSave(editingValue)}
+                  style={{ width: '200px' }}
+                  autoFocus
+                />
+              ) : (
+                <Text>{value}</Text>
+              )}
+            </div>
+          }
+        />
+      </List.Item>
+    </div>
+  )
+}
+
 export default function AxisDataManager({
   metadata,
   onUpdateDimension,
   onGenerateDimensionValues,
   isGeneratingDimensionValues
 }: AxisDataManagerProps) {
-  const [editingValueIndex, setEditingValueIndex] = useState<{ dimensionId: string; valueIndex: number } | null>(null)
+  const [editingItem, setEditingItem] = useState<{ dimensionId: string; valueIndex: number } | null>(null)
+  const [editingValue, setEditingValue] = useState('')
   const [newValueInputs, setNewValueInputs] = useState<{ [dimensionId: string]: string }>({})
 
-  const handleEditDimensionValue = (dimensionId: string, dimensionType: 'horizontal' | 'vertical', valueIndex: number, newValue: string) => {
-    const currentDimension = getDimensionById(dimensionId, dimensionType)
-    if (currentDimension && newValue.trim()) {
-      const newValues = [...currentDimension.values]
-      newValues[valueIndex] = newValue.trim()
-      onUpdateDimension(dimensionId, dimensionType, { values: newValues })
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
+
+  const handleDragEnd = (event: any, dimensionId: string, dimensionType: 'horizontal' | 'vertical') => {
+    const { active, over } = event
+
+    if (active.id !== over.id) {
+      const currentDimension = getDimensionById(dimensionId, dimensionType)
+      if (currentDimension) {
+        const oldIndex = currentDimension.values.findIndex((_, index) => `${dimensionId}-${index}` === active.id)
+        const newIndex = currentDimension.values.findIndex((_, index) => `${dimensionId}-${index}` === over.id)
+        
+        const newValues = arrayMove(currentDimension.values, oldIndex, newIndex)
+        onUpdateDimension(dimensionId, dimensionType, { values: newValues })
+      }
     }
-    setEditingValueIndex(null)
+  }
+
+  const handleEditStart = (dimensionId: string, valueIndex: number, currentValue: string) => {
+    setEditingItem({ dimensionId, valueIndex })
+    setEditingValue(currentValue)
+  }
+
+  const handleEditSave = (dimensionId: string, dimensionType: 'horizontal' | 'vertical', valueIndex: number) => {
+    if (editingValue.trim()) {
+      const currentDimension = getDimensionById(dimensionId, dimensionType)
+      if (currentDimension) {
+        const newValues = [...currentDimension.values]
+        newValues[valueIndex] = editingValue.trim()
+        onUpdateDimension(dimensionId, dimensionType, { values: newValues })
+        message.success('修改成功')
+      }
+    }
+    setEditingItem(null)
+    setEditingValue('')
+  }
+
+  const handleEditCancel = () => {
+    setEditingItem(null)
+    setEditingValue('')
   }
 
   const handleDeleteDimensionValue = (dimensionId: string, dimensionType: 'horizontal' | 'vertical', valueIndex: number) => {
@@ -40,6 +217,7 @@ export default function AxisDataManager({
     if (currentDimension) {
       const newValues = currentDimension.values.filter((_, index) => index !== valueIndex)
       onUpdateDimension(dimensionId, dimensionType, { values: newValues })
+      message.success('删除成功')
     }
   }
 
@@ -51,6 +229,7 @@ export default function AxisDataManager({
         const newValues = [...currentDimension.values, newValue.trim()]
         onUpdateDimension(dimensionId, dimensionType, { values: newValues })
         setNewValueInputs(prev => ({ ...prev, [dimensionId]: '' }))
+        message.success('添加成功')
       }
     }
   }
@@ -64,65 +243,51 @@ export default function AxisDataManager({
   const renderDimensionValues = (dimension: CrosstabAxisDimension, dimensionType: 'horizontal' | 'vertical') => {
     const isGenerating = isGeneratingDimensionValues?.[dimension.id] || false
 
-    if (dimension.values.length === 0 && !isGenerating) {
-      return (
-        <div style={{ textAlign: 'center', padding: '16px' }}>
-          <Text type="secondary">暂无数据</Text>
-          <br />
-          <Button
-            type="primary"
-            size="small"
-            style={{ marginTop: 8 }}
-            onClick={() => onGenerateDimensionValues(dimension.id, dimensionType)}
-            loading={isGenerating}
-          >
-            生成数据
-          </Button>
-        </div>
-      )
-    }
-
     return (
       <div>
-        {/* 现有值列表 */}
-        <div style={{ marginBottom: 16 }}>
-          <Space wrap>
-            {dimension.values.map((value, index) => (
-              <div key={index} style={{ position: 'relative' }}>
-                {editingValueIndex?.dimensionId === dimension.id && editingValueIndex?.valueIndex === index ? (
-                  <Input
-                    size="small"
-                    defaultValue={value}
-                    onPressEnter={(e) => handleEditDimensionValue(dimension.id, dimensionType, index, e.currentTarget.value)}
-                    onBlur={(e) => handleEditDimensionValue(dimension.id, dimensionType, index, e.currentTarget.value)}
-                    autoFocus
-                  />
-                ) : (
-                  <Tag
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setEditingValueIndex({ dimensionId: dimension.id, valueIndex: index })}
-                  >
-                    {value}
-                    <Popconfirm
-                      title="确定要删除这个值吗？"
-                      onConfirm={() => handleDeleteDimensionValue(dimension.id, dimensionType, index)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <DeleteOutlined 
-                        style={{ marginLeft: 4, color: '#ff4d4f' }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </Popconfirm>
-                  </Tag>
-                )}
-              </div>
-            ))}
-          </Space>
-        </div>
+        {/* 值列表 */}
+        {dimension.values.length > 0 ? (
+          <div style={{ marginBottom: 16 }}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => handleDragEnd(event, dimension.id, dimensionType)}
+            >
+              <SortableContext
+                items={dimension.values.map((_, index) => `${dimension.id}-${index}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <List
+                  size="small"
+                  bordered
+                  dataSource={dimension.values}
+                  renderItem={(value, index) => (
+                    <SortableItem
+                      key={`${dimension.id}-${index}`}
+                      id={`${dimension.id}-${index}`}
+                      value={value}
+                      index={index}
+                      isEditing={editingItem?.dimensionId === dimension.id && editingItem?.valueIndex === index}
+                      onEdit={() => handleEditStart(dimension.id, index, value)}
+                      onSave={() => handleEditSave(dimension.id, dimensionType, index)}
+                      onCancel={handleEditCancel}
+                      onDelete={() => handleDeleteDimensionValue(dimension.id, dimensionType, index)}
+                      editingValue={editingValue}
+                      setEditingValue={setEditingValue}
+                    />
+                  )}
+                />
+              </SortableContext>
+            </DndContext>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '16px', marginBottom: 16 }}>
+            <Text type="secondary">暂无数据，请添加或生成数据</Text>
+          </div>
+        )}
 
         {/* 添加新值 */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <Input
             size="small"
             placeholder="添加新值"
@@ -141,7 +306,7 @@ export default function AxisDataManager({
         </div>
 
         {/* 生成按钮 */}
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
           <Button
             type="dashed"
             size="small"
@@ -218,25 +383,6 @@ export default function AxisDataManager({
             <Text type="secondary">尚未生成多维度轴数据</Text>
             <br />
             <Text type="secondary">请先完成主题分析，然后生成各维度的数据</Text>
-          </div>
-        </div>
-      </Card>
-    )
-  }
-
-  const hasAnyDimensionData = 
-    metadata.horizontalDimensions.some(dim => dim.values.length > 0) ||
-    metadata.verticalDimensions.some(dim => dim.values.length > 0)
-
-  if (!hasAnyDimensionData) {
-    return (
-      <Card className="tab-card">
-        <div className="empty-state">
-          <ColumnWidthOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-          <div>
-            <Text type="secondary">尚未生成轴数据</Text>
-            <br />
-            <Text type="secondary">请使用各维度卡片中的"生成数据"按钮来生成轴数据</Text>
           </div>
         </div>
       </Card>
