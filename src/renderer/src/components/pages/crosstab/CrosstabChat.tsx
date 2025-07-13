@@ -9,7 +9,7 @@ import {
 
 import { useAppContext } from '../../../store/AppContext'
 import { createAIService } from '../../../services/aiService'
-import { PROMPT_TEMPLATES, extractJsonContent } from './CrosstabUtils'
+import { PROMPT_TEMPLATES, extractJsonContent, generateAxisCombinations, generateDimensionPath } from './CrosstabUtils'
 import { AITask } from '../../../types'
 import { v4 as uuidv4 } from 'uuid'
 import StepFlow from './StepFlow'
@@ -84,8 +84,123 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       // 生成该列的所有单元格数据
       try {
-        // 这里可以调用新的多维度单元格生成逻辑
-        // 暂时显示成功消息
+        // 使用已经导入的函数
+        const verticalCombinations = generateAxisCombinations(chat.crosstabData.metadata.verticalDimensions)
+        const aiService = createAIService(llmConfig)
+        
+        const updatedTableData = { ...chat.crosstabData.tableData }
+        
+        // 为该列的每个单元格生成数据
+        for (const vCombination of verticalCombinations) {
+          const rowPath = generateDimensionPath(vCombination)
+          const cellKey = `${columnPath}|${rowPath}`
+          
+          const taskId = uuidv4()
+          const task: AITask = {
+            id: taskId,
+            requestId: aiService.id,
+            type: 'crosstab_cell',
+            status: 'running',
+            title: '生成单元格数据',
+            description: `生成单元格 ${columnPath} × ${rowPath} 的数据`,
+            chatId,
+            modelId: llmConfig.id,
+            startTime: Date.now()
+          }
+
+          dispatch({
+            type: 'ADD_AI_TASK',
+            payload: { task }
+          })
+
+          try {
+            const prompt = PROMPT_TEMPLATES.cell_values
+              .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
+              .replace('[HORIZONTAL_PATH]', columnPath)
+              .replace('[VERTICAL_PATH]', rowPath)
+              .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+
+            const response = await new Promise<string>((resolve, reject) => {
+              aiService.sendMessage(
+                [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
+                {
+                  onChunk: () => {},
+                  onComplete: (response) => resolve(response),
+                  onError: (error) => reject(error)
+                }
+              )
+            })
+
+            const jsonContent = extractJsonContent(response)
+            const cellValues = JSON.parse(jsonContent)
+
+            // 处理AI生成的数据格式
+            const processedCellValues: { [key: string]: string } = {}
+            if (chat.crosstabData.metadata.valueDimensions.length > 0) {
+              const valueDimensions = chat.crosstabData.metadata.valueDimensions
+              
+              const keys = Object.keys(cellValues)
+              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
+              
+              if (hasGenericKeys) {
+                valueDimensions.forEach((dimension, index) => {
+                  const genericKey = `value${index + 1}`
+                  if (cellValues[genericKey]) {
+                    processedCellValues[dimension.id] = cellValues[genericKey]
+                  }
+                })
+              } else {
+                valueDimensions.forEach(dimension => {
+                  if (cellValues[dimension.id]) {
+                    processedCellValues[dimension.id] = cellValues[dimension.id]
+                  }
+                })
+              }
+              
+              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+                const firstDimension = valueDimensions[0]
+                const firstValue = Object.values(cellValues)[0]
+                processedCellValues[firstDimension.id] = firstValue as string
+              }
+            }
+
+            updatedTableData[cellKey] = processedCellValues
+
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId,
+                updates: {
+                  status: 'completed',
+                  endTime: Date.now()
+                }
+              }
+            })
+          } catch (error) {
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId,
+                updates: {
+                  status: 'failed',
+                  endTime: Date.now(),
+                  error: error instanceof Error ? error.message : 'Unknown error'
+                }
+              }
+            })
+            console.error(`单元格 ${cellKey} 生成失败:`, error)
+          }
+        }
+
+        // 批量更新表格数据
+        dispatch({
+          type: 'UPDATE_CROSSTAB_DATA',
+          payload: {
+            chatId,
+            data: { tableData: updatedTableData }
+          }
+        })
+
         message.success(`列 "${columnPath}" 数据生成完成`)
       } catch (error) {
         console.error('列数据生成失败:', error)
@@ -124,8 +239,123 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       // 生成该行的所有单元格数据
       try {
-        // 这里可以调用新的多维度单元格生成逻辑
-        // 暂时显示成功消息
+        // 使用已经导入的函数
+        const horizontalCombinations = generateAxisCombinations(chat.crosstabData.metadata.horizontalDimensions)
+        const aiService = createAIService(llmConfig)
+        
+        const updatedTableData = { ...chat.crosstabData.tableData }
+        
+        // 为该行的每个单元格生成数据
+        for (const hCombination of horizontalCombinations) {
+          const columnPath = generateDimensionPath(hCombination)
+          const cellKey = `${columnPath}|${rowPath}`
+          
+          const taskId = uuidv4()
+          const task: AITask = {
+            id: taskId,
+            requestId: aiService.id,
+            type: 'crosstab_cell',
+            status: 'running',
+            title: '生成单元格数据',
+            description: `生成单元格 ${columnPath} × ${rowPath} 的数据`,
+            chatId,
+            modelId: llmConfig.id,
+            startTime: Date.now()
+          }
+
+          dispatch({
+            type: 'ADD_AI_TASK',
+            payload: { task }
+          })
+
+          try {
+            const prompt = PROMPT_TEMPLATES.cell_values
+              .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
+              .replace('[HORIZONTAL_PATH]', columnPath)
+              .replace('[VERTICAL_PATH]', rowPath)
+              .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+
+            const response = await new Promise<string>((resolve, reject) => {
+              aiService.sendMessage(
+                [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
+                {
+                  onChunk: () => {},
+                  onComplete: (response) => resolve(response),
+                  onError: (error) => reject(error)
+                }
+              )
+            })
+
+            const jsonContent = extractJsonContent(response)
+            const cellValues = JSON.parse(jsonContent)
+
+            // 处理AI生成的数据格式
+            const processedCellValues: { [key: string]: string } = {}
+            if (chat.crosstabData.metadata.valueDimensions.length > 0) {
+              const valueDimensions = chat.crosstabData.metadata.valueDimensions
+              
+              const keys = Object.keys(cellValues)
+              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
+              
+              if (hasGenericKeys) {
+                valueDimensions.forEach((dimension, index) => {
+                  const genericKey = `value${index + 1}`
+                  if (cellValues[genericKey]) {
+                    processedCellValues[dimension.id] = cellValues[genericKey]
+                  }
+                })
+              } else {
+                valueDimensions.forEach(dimension => {
+                  if (cellValues[dimension.id]) {
+                    processedCellValues[dimension.id] = cellValues[dimension.id]
+                  }
+                })
+              }
+              
+              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+                const firstDimension = valueDimensions[0]
+                const firstValue = Object.values(cellValues)[0]
+                processedCellValues[firstDimension.id] = firstValue as string
+              }
+            }
+
+            updatedTableData[cellKey] = processedCellValues
+
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId,
+                updates: {
+                  status: 'completed',
+                  endTime: Date.now()
+                }
+              }
+            })
+          } catch (error) {
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId,
+                updates: {
+                  status: 'failed',
+                  endTime: Date.now(),
+                  error: error instanceof Error ? error.message : 'Unknown error'
+                }
+              }
+            })
+            console.error(`单元格 ${cellKey} 生成失败:`, error)
+          }
+        }
+
+        // 批量更新表格数据
+        dispatch({
+          type: 'UPDATE_CROSSTAB_DATA',
+          payload: {
+            chatId,
+            data: { tableData: updatedTableData }
+          }
+        })
+
         message.success(`行 "${rowPath}" 数据生成完成`)
       } catch (error) {
         console.error('行数据生成失败:', error)
