@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Button, Typography, Tag, Space, Spin, Divider, Collapse } from 'antd'
+import { Card, Button, Typography, Tag, Space, Spin, Divider, Input, Popconfirm, Tooltip } from 'antd'
 import {
   EditOutlined,
   BorderOutlined,
@@ -7,14 +7,20 @@ import {
   LoadingOutlined,
   UpOutlined,
   DownOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension, CrosstabValueDimension } from '../../../types'
+import { v4 as uuidv4 } from 'uuid'
 
 const { Text, Title } = Typography
+const { TextArea } = Input
 
 interface MetadataDisplayProps {
   metadata: CrosstabMetadata | null
-  onEditMetadata: () => void
+  onUpdateMetadata: (metadata: CrosstabMetadata) => void
   onGenerateTopicSuggestions?: () => void
   onGenerateDimensionSuggestions?: (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => void
   onSelectTopicSuggestion?: (suggestion: string) => void
@@ -25,7 +31,7 @@ interface MetadataDisplayProps {
 
 export default function MetadataDisplay({
   metadata,
-  onEditMetadata,
+  onUpdateMetadata,
   onGenerateTopicSuggestions,
   onGenerateDimensionSuggestions,
   onSelectTopicSuggestion,
@@ -33,6 +39,8 @@ export default function MetadataDisplay({
   isGeneratingTopicSuggestions,
   isGeneratingDimensionSuggestions
 }: MetadataDisplayProps) {
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState<string>('')
   const [topicSuggestionsCollapsed, setTopicSuggestionsCollapsed] = useState(false)
   const [dimensionSuggestionsCollapsed, setDimensionSuggestionsCollapsed] = useState<{[key: string]: boolean}>({})
 
@@ -49,6 +57,149 @@ export default function MetadataDisplay({
         </div>
       </Card>
     )
+  }
+
+  const updateMetadata = (updates: Partial<CrosstabMetadata>) => {
+    onUpdateMetadata({ ...metadata, ...updates })
+  }
+
+  const startEdit = (field: string, value: string) => {
+    setEditingField(field)
+    setEditValue(value)
+  }
+
+  const saveEdit = () => {
+    if (!editingField) return
+
+    if (editingField === 'topic') {
+      updateMetadata({ topic: editValue })
+    } else if (editingField.startsWith('horizontal_')) {
+      const [, dimensionId, fieldType] = editingField.split('_')
+      const dimensions = metadata.horizontalDimensions.map(dim => 
+        dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
+      )
+      updateMetadata({ horizontalDimensions: dimensions })
+    } else if (editingField.startsWith('vertical_')) {
+      const [, dimensionId, fieldType] = editingField.split('_')
+      const dimensions = metadata.verticalDimensions.map(dim => 
+        dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
+      )
+      updateMetadata({ verticalDimensions: dimensions })
+    } else if (editingField.startsWith('value_')) {
+      const [, dimensionId, fieldType] = editingField.split('_')
+      const dimensions = metadata.valueDimensions.map(dim => 
+        dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
+      )
+      updateMetadata({ valueDimensions: dimensions })
+    }
+
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  const cancelEdit = () => {
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  const addHorizontalDimension = () => {
+    const newDimension: CrosstabAxisDimension = {
+      id: uuidv4(),
+      name: '新横轴维度',
+      description: '',
+      values: [],
+      order: metadata.horizontalDimensions.length + 1
+    }
+    updateMetadata({
+      horizontalDimensions: [...metadata.horizontalDimensions, newDimension]
+    })
+  }
+
+  const addVerticalDimension = () => {
+    const newDimension: CrosstabAxisDimension = {
+      id: uuidv4(),
+      name: '新纵轴维度',
+      description: '',
+      values: [],
+      order: metadata.verticalDimensions.length + 1
+    }
+    updateMetadata({
+      verticalDimensions: [...metadata.verticalDimensions, newDimension]
+    })
+  }
+
+  const addValueDimension = () => {
+    const newDimension: CrosstabValueDimension = {
+      id: uuidv4(),
+      name: '新值维度',
+      description: ''
+    }
+    updateMetadata({
+      valueDimensions: [...metadata.valueDimensions, newDimension]
+    })
+  }
+
+  const deleteHorizontalDimension = (dimensionId: string) => {
+    const dimensions = metadata.horizontalDimensions.filter(dim => dim.id !== dimensionId)
+    updateMetadata({ horizontalDimensions: dimensions })
+  }
+
+  const deleteVerticalDimension = (dimensionId: string) => {
+    const dimensions = metadata.verticalDimensions.filter(dim => dim.id !== dimensionId)
+    updateMetadata({ verticalDimensions: dimensions })
+  }
+
+  const deleteValueDimension = (dimensionId: string) => {
+    const dimensions = metadata.valueDimensions.filter(dim => dim.id !== dimensionId)
+    updateMetadata({ valueDimensions: dimensions })
+  }
+
+  const renderEditableField = (
+    value: string,
+    field: string,
+    placeholder: string,
+    isTextArea: boolean = false
+  ) => {
+    const isEditing = editingField === field
+
+    if (isEditing) {
+      return (
+        <Space.Compact style={{ width: '100%' }}>
+          {isTextArea ? (
+            <TextArea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder={placeholder}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              style={{ flex: 1 }}
+            />
+          ) : (
+            <Input
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder={placeholder}
+              style={{ flex: 1 }}
+            />
+          )}
+          <Button type="primary" size="small" icon={<SaveOutlined />} onClick={saveEdit} />
+          <Button size="small" icon={<CloseOutlined />} onClick={cancelEdit} />
+        </Space.Compact>
+      )
+    }
+
+         return (
+       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+         <Text style={{ wordBreak: 'break-word', flex: 1 }}>{value || placeholder}</Text>
+         <Tooltip title="编辑">
+           <Button
+             type="text"
+             size="small"
+             icon={<EditOutlined />}
+             onClick={() => startEdit(field, value)}
+           />
+         </Tooltip>
+       </div>
+     )
   }
 
   const renderDimensionSuggestions = (
@@ -114,13 +265,8 @@ export default function MetadataDisplay({
     axisName: string,
     dimensionType: 'horizontal' | 'vertical'
   ) => {
-    if (dimensions.length === 0) {
-      return (
-        <div className="metadata-item">
-          <Text type="secondary">暂无{axisName}维度</Text>
-        </div>
-      )
-    }
+    const deleteFunction = dimensionType === 'horizontal' ? deleteHorizontalDimension : deleteVerticalDimension
+    const addFunction = dimensionType === 'horizontal' ? addHorizontalDimension : addVerticalDimension
 
     return (
       <div className="dimensions-container">
@@ -128,29 +274,58 @@ export default function MetadataDisplay({
           <Card
             key={dimension.id}
             size="small"
-            title={`${axisName}维度 ${index + 1}: ${dimension.name}`}
+            title={`${axisName}维度 ${index + 1}`}
             extra={
-              <Button
-                type="link"
-                size="small"
-                icon={isGeneratingDimensionSuggestions?.[dimension.id] ? <LoadingOutlined /> : <BulbOutlined />}
-                onClick={() => onGenerateDimensionSuggestions?.(dimension.id, dimensionType)}
-                disabled={isGeneratingDimensionSuggestions?.[dimension.id]}
-              >
-                {isGeneratingDimensionSuggestions?.[dimension.id] ? '生成中...' : '启发'}
-              </Button>
+              <Space>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={isGeneratingDimensionSuggestions?.[dimension.id] ? <LoadingOutlined /> : <BulbOutlined />}
+                  onClick={() => onGenerateDimensionSuggestions?.(dimension.id, dimensionType)}
+                  disabled={isGeneratingDimensionSuggestions?.[dimension.id]}
+                >
+                  {isGeneratingDimensionSuggestions?.[dimension.id] ? '生成中...' : '启发'}
+                </Button>
+                <Popconfirm
+                  title="确定要删除这个维度吗？"
+                  onConfirm={() => deleteFunction(dimension.id)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                </Popconfirm>
+              </Space>
             }
             style={{ marginBottom: 12 }}
           >
             <Space direction="vertical" style={{ width: '100%' }}>
-              {dimension.description && (
-                <Text type="secondary">{dimension.description}</Text>
-              )}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>名称：</Text>
+                <div style={{ flex: 1 }}>
+                  {renderEditableField(
+                    dimension.name,
+                    `${dimensionType}_${dimension.id}_name`,
+                    '请输入维度名称'
+                  )}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>描述：</Text>
+                <div style={{ flex: 1 }}>
+                  {renderEditableField(
+                    dimension.description || '',
+                    `${dimensionType}_${dimension.id}_description`,
+                    '请输入维度描述',
+                    true
+                  )}
+                </div>
+              </div>
               
               {dimension.values.length > 0 && (
-                <div>
-                  <Text strong>当前值：</Text>
-                  <div style={{ marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <Text strong style={{ fontSize: '12px', minWidth: '40px' }}>当前值：</Text>
+                  <div style={{ flex: 1 }}>
                     {dimension.values.map((value, idx) => (
                       <Tag key={idx} style={{ marginBottom: 4 }}>
                         {value}
@@ -164,31 +339,86 @@ export default function MetadataDisplay({
             </Space>
           </Card>
         ))}
+        
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={addFunction}
+          style={{ width: '100%', marginTop: 8 }}
+        >
+          添加{axisName}维度
+        </Button>
+        
+        {dimensions.length === 0 && (
+          <div className="metadata-item">
+            <Text type="secondary">暂无{axisName}维度</Text>
+          </div>
+        )}
       </div>
     )
   }
 
   const renderValueDimensions = (dimensions: CrosstabValueDimension[]) => {
-    if (dimensions.length === 0) {
-      return (
-        <div className="metadata-item">
-          <Text type="secondary">暂无值维度</Text>
-        </div>
-      )
-    }
-
     return (
       <div className="dimensions-container">
         {dimensions.map((dimension, index) => (
           <Card
             key={dimension.id}
             size="small"
-            title={`值维度 ${index + 1}: ${dimension.name}`}
+            title={`值维度 ${index + 1}`}
+            extra={
+              <Popconfirm
+                title="确定要删除这个值维度吗？"
+                onConfirm={() => deleteValueDimension(dimension.id)}
+                okText="确定"
+                cancelText="取消"
+              >
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              </Popconfirm>
+            }
             style={{ marginBottom: 12 }}
           >
-            <Text type="secondary">{dimension.description}</Text>
+                         <Space direction="vertical" style={{ width: '100%' }}>
+               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                 <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>名称：</Text>
+                 <div style={{ flex: 1 }}>
+                   {renderEditableField(
+                     dimension.name,
+                     `value_${dimension.id}_name`,
+                     '请输入值维度名称'
+                   )}
+                 </div>
+               </div>
+               
+               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                 <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>描述：</Text>
+                 <div style={{ flex: 1 }}>
+                   {renderEditableField(
+                     dimension.description,
+                     `value_${dimension.id}_description`,
+                     '请输入值维度描述',
+                     true
+                   )}
+                 </div>
+               </div>
+             </Space>
           </Card>
         ))}
+        
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={addValueDimension}
+          style={{ width: '100%', marginTop: 8 }}
+        >
+          添加值维度
+        </Button>
+        
+        {dimensions.length === 0 && (
+          <div className="metadata-item">
+            <Text type="secondary">暂无值维度</Text>
+          </div>
+        )}
       </div>
     )
   }
@@ -197,29 +427,26 @@ export default function MetadataDisplay({
     <Card
       title="多维度主题结构分析"
       className="tab-card"
-      extra={
-        <Button type="text" icon={<EditOutlined />} onClick={onEditMetadata} size="small">
-          编辑
-        </Button>
-      }
     >
       <div className="metadata-display">
         {/* 主题部分 */}
         <div className="metadata-item">
-          <div className="metadata-item-content">
-            <Title level={5}>主题</Title>
-            <Text>{metadata.topic}</Text>
-          </div>
-          <div className="metadata-item-actions">
-            <Button
-              type="link"
-              size="small"
-              icon={isGeneratingTopicSuggestions ? <LoadingOutlined /> : <BulbOutlined />}
-              onClick={onGenerateTopicSuggestions}
-              disabled={isGeneratingTopicSuggestions}
-            >
-              {isGeneratingTopicSuggestions ? '生成中...' : '启发'}
-            </Button>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
+            <Title level={5} style={{ margin: 0, minWidth: '60px' }}>主题</Title>
+            <div style={{ flex: 1 }}>
+              {renderEditableField(metadata.topic, 'topic', '请输入主题')}
+            </div>
+            <div>
+              <Button
+                type="link"
+                size="small"
+                icon={isGeneratingTopicSuggestions ? <LoadingOutlined /> : <BulbOutlined />}
+                onClick={onGenerateTopicSuggestions}
+                disabled={isGeneratingTopicSuggestions}
+              >
+                {isGeneratingTopicSuggestions ? '生成中...' : '启发'}
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -15,7 +15,6 @@ import { v4 as uuidv4 } from 'uuid'
 import StepFlow from './StepFlow'
 import TopicInput from './TopicInput'
 import MetadataDisplay from './MetadataDisplay'
-import MetadataEditor from './MetadataEditor'
 import AxisDataManager from './AxisDataManager'
 import CrosstabTable from './CrosstabTable'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
@@ -33,7 +32,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const { state, dispatch } = useAppContext()
   const [userInput, setUserInput] = useState('')
   const [activeTab, setActiveTab] = useState('0')
-  const [isEditingMetadata, setIsEditingMetadata] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string | undefined>(
     state.settings.defaultLLMId
   )
@@ -381,23 +379,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     [dispatch, chatId]
   )
 
-  const handleEditMetadata = useCallback(() => {
-    setIsEditingMetadata(true)
-  }, [])
-
-  const handleSaveMetadata = useCallback(
-    (values: any) => {
+  const handleUpdateMetadata = useCallback(
+    (metadata: any) => {
       dispatch({
         type: 'UPDATE_CROSSTAB_DATA',
         payload: {
           chatId,
-          data: { metadata: values }
+          data: { metadata }
         }
       })
-      setIsEditingMetadata(false)
-      message.success('主题元数据已更新')
     },
-    [dispatch, chatId, message]
+    [dispatch, chatId]
   )
 
   const handleUpdateDimension = useCallback(
@@ -853,7 +845,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             >
               <MetadataDisplay
                 metadata={chat.crosstabData.metadata}
-                onEditMetadata={handleEditMetadata}
+                onUpdateMetadata={handleUpdateMetadata}
                 onGenerateTopicSuggestions={handleGenerateTopicSuggestions}
                 onGenerateDimensionSuggestions={handleGenerateDimensionSuggestions}
                 onSelectTopicSuggestion={handleSelectTopicSuggestion}
@@ -906,13 +898,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           </Tabs>
         </div>
       </div>
-
-      <MetadataEditor
-        isOpen={isEditingMetadata}
-        metadata={chat.crosstabData.metadata}
-        onSave={handleSaveMetadata}
-        onCancel={() => setIsEditingMetadata(false)}
-      />
     </div>
   )
 }
