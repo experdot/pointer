@@ -222,6 +222,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                 dim.id = uuidv4()
                 dim.values = []
               }
+              for (const dim of metadata.valueDimensions) {
+                dim.id = uuidv4()
+              }
 
               onStepComplete(stepIndex, { metadata })
             } catch (error) {
