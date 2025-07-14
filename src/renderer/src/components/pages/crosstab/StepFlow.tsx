@@ -480,22 +480,61 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               }
             })
 
-            const jsonContent = extractJsonContent(result)
+                                const jsonContent = extractJsonContent(result)
             const cellValues = JSON.parse(jsonContent)
 
-            // 更新本地tableData状态
-            currentTableData[cellKey] = cellValues
-
-            // 立即更新当前单元格数据到UI
-            dispatch({
-              type: 'UPDATE_CROSSTAB_DATA',
-              payload: {
-                chatId: chat.id,
-                data: { 
-                  tableData: { ...currentTableData }
-                }
+            // 处理AI生成的数据格式，确保键是实际的值维度ID
+            const processedCellValues: { [key: string]: string } = {}
+            
+            if (valueDimensions.length > 0) {
+              // 检查是否使用了通用键格式
+              const keys = Object.keys(cellValues)
+              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
+              
+              if (hasGenericKeys) {
+                // 映射通用键到实际的值维度ID
+                valueDimensions.forEach((dimension, index) => {
+                  const genericKey = `value${index + 1}`
+                  if (cellValues[genericKey]) {
+                    processedCellValues[dimension.id] = cellValues[genericKey]
+                  }
+                })
+              } else {
+                // 检查是否直接使用了值维度ID
+                valueDimensions.forEach(dimension => {
+                  if (cellValues[dimension.id]) {
+                    processedCellValues[dimension.id] = cellValues[dimension.id]
+                  }
+                })
               }
+              
+              // 如果没有找到匹配的键，尝试使用第一个可用的值作为第一个维度的值
+              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+                const firstDimension = valueDimensions[0]
+                const firstValue = Object.values(cellValues)[0]
+                processedCellValues[firstDimension.id] = firstValue as string
+              }
+            }
+
+            // 确保所有维度都有值
+            const validatedCellValues: { [key: string]: string } = {}
+            valueDimensions.forEach(dim => {
+              validatedCellValues[dim.id] = processedCellValues[dim.id] || ''
             })
+
+        // 更新本地tableData状态
+        currentTableData[cellKey] = validatedCellValues
+
+        // 立即更新当前单元格数据到UI
+        dispatch({
+          type: 'UPDATE_CROSSTAB_DATA',
+          payload: {
+            chatId: chat.id,
+            data: { 
+              tableData: { ...currentTableData }
+            }
+          }
+        })
 
             completedCells++
           } catch (error) {

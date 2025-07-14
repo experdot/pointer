@@ -83,6 +83,8 @@ export default function CrosstabTable({
         const cellKey = `${hPath}|${vPath}`
         const cellData = tableData[cellKey]
         
+        // 数据处理逻辑
+        
         if (cellData && selectedValueDimension) {
           gridData[cellKey] = cellData[selectedValueDimension] || ''
         } else if (cellData && !selectedValueDimension && metadata.valueDimensions.length > 0) {
