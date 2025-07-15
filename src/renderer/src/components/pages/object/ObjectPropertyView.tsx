@@ -4,6 +4,7 @@ import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 import PropertyTableEditor from './PropertyTableEditor'
+import ReferenceEditor from './ReferenceEditor'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -75,7 +76,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   // 保存属性
   const handlePropertiesSave = (properties: { [key: string]: any }) => {
     if (!selectedNode) return
-    
+
     dispatch({
       type: 'UPDATE_OBJECT_NODE',
       payload: {
@@ -84,6 +85,30 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
         updates: { properties }
       }
     })
+  }
+
+  // 保存引用
+  const handleReferencesSave = (references: any[]) => {
+    if (!selectedNode) return
+
+    dispatch({
+      type: 'UPDATE_OBJECT_NODE',
+      payload: {
+        chatId: chat.id,
+        nodeId: selectedNode.id,
+        updates: { references }
+      }
+    })
+  }
+
+  // AI生成引用关系
+  const handleGenerateReferences = async () => {
+    if (!selectedNode) return
+
+    // 这里可以调用AI生成引用关系的逻辑
+    // 为了简化，这里先跳转到AI生成器的references选项卡
+    // 用户可以在AI生成器中进行生成
+    console.log('AI生成引用关系功能需要在AI生成器中实现')
   }
 
   // 格式化显示值
@@ -211,6 +236,17 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           <PropertyTableEditor
             properties={selectedNode.properties || {}}
             onSave={handlePropertiesSave}
+          />
+        </Card>
+
+        {/* 引用关系 */}
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <ReferenceEditor
+            references={selectedNode.references || []}
+            allNodes={nodes}
+            currentNodeId={selectedNode.id}
+            onSave={handleReferencesSave}
+            onGenerateAI={handleGenerateReferences}
           />
         </Card>
 

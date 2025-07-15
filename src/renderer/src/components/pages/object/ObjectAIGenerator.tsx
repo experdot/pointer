@@ -1,18 +1,18 @@
 import React, { useState, useRef } from 'react'
-import { 
-  Button, 
-  Input, 
-  Space, 
-  Typography, 
-  Card, 
-  Empty, 
-  Tabs, 
+import {
+  Button,
+  Input,
+  Space,
+  Typography,
+  Card,
+  Empty,
+  Tabs,
   Tag,
   message,
   Tooltip,
   Spin
 } from 'antd'
-import { 
+import {
   StarOutlined,
   SendOutlined,
   HistoryOutlined,
@@ -66,21 +66,26 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   }
 
   const { nodes, selectedNodeId: currentSelectedNodeId } = chat.objectData
-  const selectedNode = (selectedNodeId || currentSelectedNodeId) ? nodes[selectedNodeId || currentSelectedNodeId || ''] : null
+  const selectedNode =
+    selectedNodeId || currentSelectedNodeId
+      ? nodes[selectedNodeId || currentSelectedNodeId || '']
+      : null
 
   // 获取当前功能类型的推荐记录
   const getCurrentRecommendations = (): string[] => {
     if (!selectedNode?.aiRecommendations) return []
-    
-    const recommendations = selectedNode.aiRecommendations[activeTab as keyof typeof selectedNode.aiRecommendations]
+
+    const recommendations =
+      selectedNode.aiRecommendations[activeTab as keyof typeof selectedNode.aiRecommendations]
     return recommendations?.recommendations || []
   }
 
   // 获取当前功能类型的推荐时间戳
   const getCurrentRecommendationTimestamp = (): number | null => {
     if (!selectedNode?.aiRecommendations) return null
-    
-    const recommendations = selectedNode.aiRecommendations[activeTab as keyof typeof selectedNode.aiRecommendations]
+
+    const recommendations =
+      selectedNode.aiRecommendations[activeTab as keyof typeof selectedNode.aiRecommendations]
     return recommendations?.timestamp || null
   }
 
@@ -103,7 +108,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   const generationHistory = chat.objectData.generationHistory || []
   const recentPrompts = generationHistory
     .slice(-5)
-    .map(record => record.prompt)
+    .map((record) => record.prompt)
     .filter((prompt, index, self) => self.indexOf(prompt) === index)
 
   // 获取AI推荐的提示词
@@ -131,7 +136,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       let recommendations: string[] = []
-      
+
       switch (activeTab) {
         case 'children':
           recommendations = await objectAIService.getChildrenPromptRecommendations(context)
@@ -141,6 +146,9 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           break
         case 'properties':
           recommendations = await objectAIService.getPropertiesPromptRecommendations(context)
+          break
+        case 'references':
+          recommendations = await objectAIService.getReferencesPromptRecommendations(context)
           break
         default:
           recommendations = []
@@ -184,6 +192,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
+      case 'references':
+        return '生成引用关系'
       default:
         return '生成'
     }
@@ -199,39 +209,132 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   const getGenerationContext = (currentNode: ObjectNodeType) => {
     if (!currentNode) return null
 
-    // 获取祖先链
-    const getAncestorChain = (currentNode: any): any[] => {
-      const chain = [currentNode]
-      let current = currentNode
-      while (current.parentId && nodes[current.parentId]) {
-        current = nodes[current.parentId]
-        chain.unshift(current)
+    // 获取节点完整信息（参考C#代码的GetInformation方法）
+    const getNodeInformation = (node: ObjectNodeType): string => {
+      let information = `# 节点 - [${node.name}]\n${node.description || ''}`
+
+      // 添加属性信息
+      if (node.properties && Object.keys(node.properties).length > 0) {
+        const properties = Object.entries(node.properties).map(([key, value]) => ({
+          Name: key,
+          Value: value
+        }))
+        information += `\n## 属性列表\n${JSON.stringify(properties, null, 2)}`
       }
+
+      // 添加子节点信息
+      if (node.children && node.children.length > 0) {
+        const children = node.children
+          .map((childId) => {
+            const childNode = nodes[childId]
+            return childNode
+              ? childNode.description
+                ? {
+                    Name: childNode.name,
+                    Description: childNode.description
+                  }
+                : {
+                    Name: childNode.name
+                  }
+              : null
+          })
+          .filter(Boolean)
+
+        if (children.length > 0) {
+          information += `\n## 子节点列表\n${JSON.stringify(children, null, 2)}`
+        }
+      }
+
+      return information
+    }
+
+    // 从当前节点向上追踪到根节点，构建完整链路
+    const buildAncestorChain = (node: ObjectNodeType): ObjectNodeType[] => {
+      const chain: ObjectNodeType[] = []
+      let current = node
+
+      // 向上追踪到根节点
+      while (current) {
+        chain.unshift(current)
+        if (current.parentId && nodes[current.parentId]) {
+          current = nodes[current.parentId]
+        } else {
+          break
+        }
+      }
+
       return chain
     }
 
     // 获取同级节点
-    const getSiblings = (currentNode: any): any[] => {
-      if (!currentNode.parentId) return []
-      const parent = nodes[currentNode.parentId]
+    const getSiblings = (node: ObjectNodeType): ObjectNodeType[] => {
+      if (!node.parentId) return []
+      const parent = nodes[node.parentId]
       if (!parent || !parent.children) return []
       return parent.children
-        .filter(id => id !== currentNode.id)
-        .map(id => nodes[id])
+        .filter((id) => id !== node.id)
+        .map((id) => nodes[id])
         .filter(Boolean)
     }
 
     // 获取现有子节点
-    const getExistingChildren = (currentNode: any): any[] => {
-      if (!currentNode.children) return []
-      return currentNode.children.map(id => nodes[id]).filter(Boolean)
+    const getExistingChildren = (node: ObjectNodeType): ObjectNodeType[] => {
+      if (!node.children) return []
+      return node.children.map((id) => nodes[id]).filter(Boolean)
+    }
+
+    const ancestorChain = buildAncestorChain(currentNode)
+    const siblings = getSiblings(currentNode)
+    const existingChildren = getExistingChildren(currentNode)
+
+    // 构建完整的上下文信息
+    const getFullContextInformation = (): string => {
+      let contextInfo = '# 完整上下文信息\n\n'
+
+      // 添加层级结构信息
+      contextInfo += '## 节点层级结构\n'
+      contextInfo += '从根节点到当前节点的完整路径：\n'
+      ancestorChain.forEach((ancestor, index) => {
+        const indent = '  '.repeat(index)
+        contextInfo += `${indent}- ${ancestor.name}`
+        if (ancestor.description) {
+          contextInfo += ` (${ancestor.description})`
+        }
+        contextInfo += '\n'
+      })
+
+      // 添加每个层级节点的详细信息
+      contextInfo += '\n## 路径节点详细信息\n'
+      ancestorChain.forEach((ancestor, index) => {
+        contextInfo += `\n### 第${index + 1}层节点\n`
+        contextInfo += getNodeInformation(ancestor)
+        contextInfo += '\n'
+      })
+
+      // 添加同级节点信息
+      if (siblings.length > 0) {
+        contextInfo += '\n## 同级节点信息\n'
+        siblings.forEach((sibling) => {
+          contextInfo += `\n### 同级节点 - ${sibling.name}\n`
+          contextInfo += getNodeInformation(sibling)
+          contextInfo += '\n'
+        })
+      } else {
+        contextInfo += '\n## 同级节点信息\n无同级节点\n'
+      }
+
+      return contextInfo
     }
 
     return {
       node: currentNode,
-      ancestorChain: getAncestorChain(currentNode),
-      siblings: getSiblings(currentNode),
-      existingChildren: getExistingChildren(currentNode)
+      ancestorChain,
+      siblings,
+      existingChildren,
+      // 新增：获取完整的上下文信息
+      getFullContextInformation,
+      // 新增：获取单个节点的完整信息
+      getNodeInformation: (node: ObjectNodeType) => getNodeInformation(node)
     }
   }
 
@@ -260,7 +363,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       const childrenNames = await objectAIService.generateChildrenNames(context, effectivePrompt)
 
       // 为每个子节点名称创建节点
-      const newNodes = childrenNames.map(name => ({
+      const newNodes = childrenNames.map((name) => ({
         id: uuidv4(),
         name,
         description: '',
@@ -276,7 +379,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }))
 
       // 批量添加节点
-      newNodes.forEach(node => {
+      newNodes.forEach((node) => {
         dispatch({
           type: 'ADD_OBJECT_NODE',
           payload: {
@@ -319,10 +422,16 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     const effectivePrompt = getEffectivePrompt()
     setIsGenerating(true)
     try {
+      const context = getGenerationContext(selectedNode)
+      if (!context) {
+        message.error('无法获取节点上下文')
+        return
+      }
+
       const aiService = createAIService(llmConfig)
       const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
-      const description = await objectAIService.generateNodeDescription(selectedNode, effectivePrompt)
+      const description = await objectAIService.generateNodeDescription(context, effectivePrompt)
 
       // 更新节点描述
       dispatch({
@@ -357,10 +466,16 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     const effectivePrompt = getEffectivePrompt()
     setIsGenerating(true)
     try {
+      const context = getGenerationContext(selectedNode)
+      if (!context) {
+        message.error('无法获取节点上下文')
+        return
+      }
+
       const aiService = createAIService(llmConfig)
       const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
 
-      const properties = await objectAIService.generateObjectProperties(selectedNode, effectivePrompt)
+      const properties = await objectAIService.generateObjectProperties(context, effectivePrompt)
 
       // 合并新属性到现有属性
       const updatedProperties = { ...selectedNode.properties, ...properties }
@@ -380,6 +495,58 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     } catch (error) {
       console.error('生成属性失败:', error)
       message.error('生成属性失败，请稍后重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 生成引用关系
+  const handleGenerateReferences = async () => {
+    if (!selectedNode) return
+
+    const llmConfig = getLLMConfig()
+    if (!llmConfig) {
+      message.error('请先在设置中配置LLM')
+      return
+    }
+
+    const effectivePrompt = getEffectivePrompt()
+    setIsGenerating(true)
+    try {
+      const context = getGenerationContext(selectedNode)
+      if (!context) {
+        message.error('无法获取节点上下文')
+        return
+      }
+
+      const aiService = createAIService(llmConfig)
+      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+
+      const references = await objectAIService.generateObjectReferences(
+        context,
+        effectivePrompt,
+        nodes
+      )
+
+      // 合并新引用到现有引用
+      const existingReferences = selectedNode.references || []
+      const updatedReferences = [...existingReferences, ...references]
+
+      // 更新节点引用
+      dispatch({
+        type: 'UPDATE_OBJECT_NODE',
+        payload: {
+          chatId: chat.id,
+          nodeId: selectedNode.id,
+          updates: { references: updatedReferences }
+        }
+      })
+
+      message.success(`成功生成了 ${references.length} 个引用关系`)
+      setPrompt('')
+    } catch (error) {
+      console.error('生成引用关系失败:', error)
+      message.error('生成引用关系失败，请稍后重试')
     } finally {
       setIsGenerating(false)
     }
@@ -415,6 +582,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return handleGenerateDescription
       case 'properties':
         return handleGenerateProperties
+      case 'references':
+        return handleGenerateReferences
       default:
         return handleGenerate
     }
@@ -438,6 +607,11 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
 提示：可以直接点击"生成属性"按钮，使用默认提示词
 按 Ctrl+Enter 快速生成`
+      case 'references':
+        return `描述您希望生成的引用关系...
+
+提示：可以直接点击"生成引用关系"按钮，使用默认提示词
+按 Ctrl+Enter 快速生成`
       default:
         return ''
     }
@@ -454,6 +628,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
+      case 'references':
+        return '生成引用关系'
       default:
         return '生成'
     }
@@ -495,23 +671,32 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           </Card>
 
           {/* 功能选项卡 */}
-          <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
-            {
-              key: 'children',
-              label: '生成子对象',
-              children: null
-            },
-            {
-              key: 'description',
-              label: '生成描述',
-              children: null
-            },
-            {
-              key: 'properties',
-              label: '生成属性',
-              children: null
-            }
-          ]} />
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={[
+              {
+                key: 'children',
+                label: '生成子对象',
+                children: null
+              },
+              {
+                key: 'description',
+                label: '生成描述',
+                children: null
+              },
+              {
+                key: 'properties',
+                label: '生成属性',
+                children: null
+              },
+              {
+                key: 'references',
+                label: '生成引用关系',
+                children: null
+              }
+            ]}
+          />
 
           {/* 输入区域 */}
           <div>
@@ -525,7 +710,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
               onKeyDown={handleKeyDown}
               style={{ marginBottom: '12px' }}
             />
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 {prompt.length}/2000 字符
@@ -547,10 +732,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           </div>
 
           {/* AI推荐区域 */}
-          <Card 
-            size="small" 
+          <Card
+            size="small"
             title={
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
                 <span>
                   <BulbOutlined style={{ marginRight: 4 }} />
                   AI 推荐提示词
@@ -608,7 +795,15 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
           {/* 历史记录 */}
           {recentPrompts.length > 0 && (
-            <Card size="small" title={<><HistoryOutlined style={{ marginRight: 4 }} />最近使用</>}>
+            <Card
+              size="small"
+              title={
+                <>
+                  <HistoryOutlined style={{ marginRight: 4 }} />
+                  最近使用
+                </>
+              }
+            >
               <Space direction="vertical" size={4} style={{ width: '100%' }}>
                 {recentPrompts.map((historyPrompt, index) => (
                   <div
@@ -622,9 +817,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                     }}
                     onClick={() => useHistoryPrompt(historyPrompt)}
                   >
-                    <Text ellipsis={{ tooltip: historyPrompt }}>
-                      {historyPrompt}
-                    </Text>
+                    <Text ellipsis={{ tooltip: historyPrompt }}>{historyPrompt}</Text>
                   </div>
                 ))}
               </Space>

@@ -155,6 +155,23 @@ export interface CrosstabChat extends Page {
   crosstabData: CrosstabData
 }
 
+// 对象节点引用接口
+export interface ObjectNodeReference {
+  id: string // 引用的节点ID
+  name: string // 引用的节点名称（冗余存储，便于显示和搜索）
+  description?: string // 引用关系的描述
+  type: 'dependency' | 'related' | 'inspiration' | 'conflict' | 'custom' // 引用类型
+  strength: 'weak' | 'medium' | 'strong' // 引用强度
+  metadata?: {
+    createdAt?: number
+    updatedAt?: number
+    source?: 'user' | 'ai' // 来源：用户手动添加或AI生成
+    aiPrompt?: string // 如果是AI生成，记录使用的提示
+    bidirectional?: boolean // 是否双向引用
+    tags?: string[] // 引用标签
+  }
+}
+
 // 对象节点接口
 export interface ObjectNode {
   id: string
@@ -174,6 +191,7 @@ export interface ObjectNode {
     readonly?: boolean // 是否只读
   }
   properties?: { [key: string]: any } // 对象属性（键值对）
+  references?: ObjectNodeReference[] // 引用/依赖的其他节点
   aiRecommendations?: {
     // AI推荐的提示词，按生成类型分类
     children?: {
@@ -187,6 +205,11 @@ export interface ObjectNode {
       modelId?: string
     }
     properties?: {
+      recommendations: string[]
+      timestamp: number
+      modelId?: string
+    }
+    references?: {
       recommendations: string[]
       timestamp: number
       modelId?: string
