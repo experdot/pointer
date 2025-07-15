@@ -15,6 +15,10 @@ An AI chat application built with Electron + React + TypeScript, supporting **mu
 
 [查看中文 README 介绍](README.zh-CN.md) 
 
+> 示例：渐进式交互，生成小说设定
+
+![Example](./Screenshot-0.png)
+
 ## Key Features
 
 ### AI Conversation System

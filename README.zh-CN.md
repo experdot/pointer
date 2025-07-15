@@ -11,6 +11,10 @@
 - 博客1：[AI 聊天应用的 10 条高级需求](https://www.cnblogs.com/experdot/p/18924253)
 - 博客2：[解决了AI聊天的 10 个痛点后，新的功能：交叉分析表](https://www.cnblogs.com/experdot/p/18974641)
 
+> 示例：渐进式交互，生成小说设定
+
+![Example](./Screenshot-0.png)
+
 ## 主要特性
 
 ### AI对话系统
