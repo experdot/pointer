@@ -4,7 +4,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   ClearOutlined,
-  MoreOutlined
+  MoreOutlined,
+  CommentOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ObjectNode as ObjectNodeType } from '../../../types'
@@ -19,6 +20,7 @@ interface ObjectTreeNodeProps {
   onDelete?: () => void
   onClearChildren?: () => void
   onSaveEdit?: (nodeId: string, newValue: string) => void
+  onCreateChat?: (nodeId: string, nodeName: string) => void
 }
 
 export default function ObjectTreeNode({
@@ -28,7 +30,8 @@ export default function ObjectTreeNode({
   onEdit,
   onDelete,
   onClearChildren,
-  onSaveEdit
+  onSaveEdit,
+  onCreateChat
 }: ObjectTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
@@ -73,6 +76,18 @@ export default function ObjectTreeNode({
         onClick: () => startInlineEdit()
       }
     ]
+
+    if (onCreateChat) {
+      items.push({
+        key: 'chat',
+        label: '创建对话',
+        icon: <CommentOutlined />,
+        onClick: (e) => {
+          e?.domEvent?.stopPropagation()
+          onCreateChat(node.id, node.name)
+        }
+      })
+    }
 
     if (!isRoot) {
       items.push({

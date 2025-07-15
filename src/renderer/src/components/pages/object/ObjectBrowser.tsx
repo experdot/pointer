@@ -62,6 +62,7 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
           onDelete={() => handleNodeDelete(nodeId)}
           onClearChildren={() => handleClearChildren(nodeId)}
           onSaveEdit={(id, newValue) => handleSaveEdit(id, newValue)}
+          onCreateChat={(id, name) => handleCreateChat(id, name)}
         />
       ),
       key: nodeId,
@@ -198,6 +199,230 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
       })
     },
     [dispatch, chat.id, nodes, modal]
+  )
+
+  // 获取节点上下文信息
+  const getNodeContext = useCallback((currentNode: ObjectNodeType) => {
+    if (!currentNode) return ''
+
+    // 获取节点完整信息
+    const getNodeInformation = (node: ObjectNodeType): string => {
+      let information = `# 节点 - [${node.name}]\n${node.description || ''}`
+
+      // 添加属性信息
+      if (node.properties && Object.keys(node.properties).length > 0) {
+        const properties = Object.entries(node.properties).map(([key, value]) => ({
+          Name: key,
+          Value: value
+        }))
+        information += `\n## 属性列表\n${JSON.stringify(properties)}`
+      }
+
+      // 添加子节点信息
+      if (node.children && node.children.length > 0) {
+        const children = node.children
+          .map((childId) => {
+            const childNode = nodes[childId]
+            return childNode
+              ? childNode.description
+                ? {
+                    Name: childNode.name,
+                    Description: childNode.description
+                  }
+                : {
+                    Name: childNode.name
+                  }
+              : null
+          })
+          .filter(Boolean)
+
+        if (children.length > 0) {
+          information += `\n## 子节点列表\n${JSON.stringify(children)}`
+        }
+      }
+
+      // 添加引用信息
+      if (node.references && node.references.length > 0) {
+        const references = node.references.map((ref) => {
+          const refNode = nodes[ref.id]
+          return {
+            Name: ref.name,
+            Description: ref.description || '',
+            Type: ref.type,
+            Strength: ref.strength,
+            NodeExists: !!refNode,
+            NodeDescription: refNode?.description || ''
+          }
+        })
+        information += `\n## 引用关系\n${JSON.stringify(references)}`
+      }
+
+      return information
+    }
+
+    // 从当前节点向上追踪到根节点，构建完整链路
+    const buildAncestorChain = (node: ObjectNodeType): ObjectNodeType[] => {
+      const chain: ObjectNodeType[] = []
+      let current = node
+
+      // 向上追踪到根节点
+      while (current) {
+        chain.unshift(current)
+        if (current.parentId && nodes[current.parentId]) {
+          current = nodes[current.parentId]
+        } else {
+          break
+        }
+      }
+
+      return chain
+    }
+
+    // 获取同级节点
+    const getSiblings = (node: ObjectNodeType): ObjectNodeType[] => {
+      if (!node.parentId) return []
+      const parent = nodes[node.parentId]
+      if (!parent || !parent.children) return []
+      return parent.children
+        .filter((id) => id !== node.id)
+        .map((id) => nodes[id])
+        .filter(Boolean)
+    }
+
+    // 获取当前节点的引用信息
+    const getCurrentReferences = (node: ObjectNodeType) => {
+      if (!node.references) return []
+      return node.references.map((ref) => ({
+        ...ref,
+        referencedNode: nodes[ref.id] || null
+      }))
+    }
+
+    // 获取引用当前节点的其他节点（反向引用）
+    const getIncomingReferences = (node: ObjectNodeType) => {
+      const incomingRefs: Array<{
+        fromNode: ObjectNodeType
+        reference: any
+      }> = []
+      
+      Object.values(nodes).forEach((otherNode) => {
+        if (otherNode.id !== node.id && otherNode.references) {
+          otherNode.references.forEach((ref) => {
+            if (ref.id === node.id) {
+              incomingRefs.push({
+                fromNode: otherNode,
+                reference: ref
+              })
+            }
+          })
+        }
+      })
+      
+      return incomingRefs
+    }
+
+    const ancestorChain = buildAncestorChain(currentNode)
+    const siblings = getSiblings(currentNode)
+    const currentReferences = getCurrentReferences(currentNode)
+    const incomingReferences = getIncomingReferences(currentNode)
+
+    // 构建完整的上下文信息
+    let contextInfo = '# 完整上下文信息\n\n'
+
+    // 添加层级结构信息
+    contextInfo += '## 节点层级结构\n'
+    contextInfo += '从根节点到当前节点的完整路径：\n'
+    ancestorChain.forEach((ancestor, index) => {
+      const indent = '  '.repeat(index)
+      contextInfo += `${indent}- ${ancestor.name}`
+      if (ancestor.description) {
+        contextInfo += ` (${ancestor.description})`
+      }
+      contextInfo += '\n'
+    })
+
+    // 添加每个层级节点的详细信息
+    contextInfo += '\n## 路径节点详细信息\n'
+    ancestorChain.forEach((ancestor, index) => {
+      contextInfo += `\n### 第${index + 1}层节点\n`
+      contextInfo += getNodeInformation(ancestor)
+      contextInfo += '\n'
+    })
+
+    // 添加同级节点信息
+    if (siblings.length > 0) {
+      contextInfo += '\n## 同级节点信息\n'
+      siblings.forEach((sibling) => {
+        contextInfo += `\n### 同级节点 - ${sibling.name}\n`
+        contextInfo += getNodeInformation(sibling)
+        contextInfo += '\n'
+      })
+    } else {
+      contextInfo += '\n## 同级节点信息\n无同级节点\n'
+    }
+
+    // 添加引用关系信息
+    if (currentReferences.length > 0) {
+      contextInfo += '\n## 当前节点的引用关系\n'
+      currentReferences.forEach((ref) => {
+        contextInfo += `\n### 引用节点 - ${ref.name}\n`
+        contextInfo += `- **引用类型**: ${ref.type}\n`
+        contextInfo += `- **引用强度**: ${ref.strength}\n`
+        if (ref.description) {
+          contextInfo += `- **引用描述**: ${ref.description}\n`
+        }
+        if (ref.referencedNode) {
+          contextInfo += `- **节点存在**: 是\n`
+          contextInfo += `- **节点描述**: ${ref.referencedNode.description || '无'}\n`
+        } else {
+          contextInfo += `- **节点存在**: 否（可能已被删除）\n`
+        }
+        contextInfo += '\n'
+      })
+    } else {
+      contextInfo += '\n## 当前节点的引用关系\n当前节点无引用其他节点\n'
+    }
+
+    // 添加反向引用信息
+    if (incomingReferences.length > 0) {
+      contextInfo += '\n## 被其他节点引用的情况\n'
+      incomingReferences.forEach((incomingRef) => {
+        contextInfo += `\n### 来自节点 - ${incomingRef.fromNode.name}\n`
+        contextInfo += `- **引用类型**: ${incomingRef.reference.type}\n`
+        contextInfo += `- **引用强度**: ${incomingRef.reference.strength}\n`
+        if (incomingRef.reference.description) {
+          contextInfo += `- **引用描述**: ${incomingRef.reference.description}\n`
+        }
+        contextInfo += `- **来源节点描述**: ${incomingRef.fromNode.description || '无'}\n`
+        contextInfo += '\n'
+      })
+    } else {
+      contextInfo += '\n## 被其他节点引用的情况\n当前节点未被其他节点引用\n'
+    }
+
+    return contextInfo
+  }, [nodes])
+
+  // 处理创建对话
+  const handleCreateChat = useCallback(
+    (nodeId: string, nodeName: string) => {
+      const node = nodes[nodeId]
+      if (!node) return
+
+      const nodeContext = getNodeContext(node)
+
+      dispatch({
+        type: 'CREATE_CHAT_FROM_OBJECT_NODE',
+        payload: {
+          folderId: chat.folderId,
+          nodeId,
+          nodeName,
+          nodeContext,
+          sourcePageId: chatId
+        }
+      })
+    },
+    [dispatch, chat.folderId, chatId, nodes, getNodeContext]
   )
 
   // 搜索处理

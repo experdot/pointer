@@ -451,6 +451,16 @@ export type AppAction =
       type: 'CREATE_AND_OPEN_OBJECT_CHAT'
       payload: { title: string; folderId?: string; lineage?: PageLineage }
     }
+  | {
+      type: 'CREATE_CHAT_FROM_OBJECT_NODE'
+      payload: {
+        folderId?: string
+        nodeId: string
+        nodeName: string
+        nodeContext: string
+        sourcePageId?: string
+      }
+    }
   | { type: 'UPDATE_CHAT'; payload: { id: string; updates: Partial<Page> } }
   | { type: 'UPDATE_PAGE_LINEAGE'; payload: { pageId: string; lineage: Partial<PageLineage> } }
   | { type: 'ADD_GENERATED_PAGE'; payload: { sourcePageId: string; generatedPageId: string } }

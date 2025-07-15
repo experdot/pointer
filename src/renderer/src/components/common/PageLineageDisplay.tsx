@@ -91,7 +91,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
       case 'crosstab_to_chat':
         return '从交叉分析表生成'
       case 'object_to_chat':
-        return '从对象页面生成'
+        return '从对象节点生成'
       case 'chat_to_object':
         return '从聊天页面生成'
       default:

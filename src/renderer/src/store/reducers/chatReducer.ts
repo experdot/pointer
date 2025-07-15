@@ -160,6 +160,89 @@ ${cellContent}
       }
     }
 
+    case 'CREATE_CHAT_FROM_OBJECT_NODE': {
+      const { folderId, nodeId, nodeName, nodeContext, sourcePageId } = action.payload
+
+      // 构建用户提示词
+      const prompt = `# 基于对象节点的深度分析
+
+## 节点信息
+- **节点名称**: ${nodeName}
+- **节点ID**: ${nodeId}
+
+## 节点上下文
+${nodeContext}
+
+## 请求
+请基于以上节点信息和上下文进行深度分析，你可以：
+1. 详细解释这个节点的含义、作用和在整个对象结构中的位置
+2. 分析节点的层级关系、属性特征和引用关系
+3. 基于上下文信息提供相关的扩展见解和建议
+4. 探讨可能的改进方向、相关问题或进一步的发展方向
+
+请开始你的分析：`
+
+      // 生成聊天标题
+      const chatTitle = `${nodeName} - 深度分析`
+
+      // 创建用户消息
+      const userMessage = {
+        id: uuidv4(),
+        role: 'user' as const,
+        content: prompt,
+        timestamp: Date.now()
+      }
+
+      // 创建溯源信息
+      const lineage = {
+        source: 'object_to_chat' as const,
+        sourcePageId,
+        sourceContext: {
+          customContext: {
+            nodeId,
+            nodeName,
+            context: nodeContext
+          }
+        },
+        generatedPageIds: [],
+        generatedAt: Date.now(),
+        description: `从对象页面的节点 "${nodeName}" 生成的深度分析聊天`
+      }
+
+      // 创建并打开新的普通聊天窗口
+      const newChat = createNewChat(chatTitle, folderId, lineage)
+      const regularChat = newChat as RegularChat
+      regularChat.messages = [userMessage]
+      regularChat.currentPath = [userMessage.id]
+
+      const newOpenTabs = state.openTabs.includes(newChat.id)
+        ? state.openTabs
+        : [...state.openTabs, newChat.id]
+
+      // 更新源页面的generatedPageIds
+      const updatedPages = state.pages.map((page) => {
+        if (page.id === sourcePageId && page.lineage) {
+          return {
+            ...page,
+            lineage: {
+              ...page.lineage,
+              generatedPageIds: [...page.lineage.generatedPageIds, newChat.id]
+            }
+          }
+        }
+        return page
+      })
+
+      return {
+        ...state,
+        pages: [...updatedPages, newChat],
+        openTabs: newOpenTabs,
+        activeTabId: newChat.id,
+        selectedNodeId: newChat.id,
+        selectedNodeType: 'chat'
+      }
+    }
+
     case 'CREATE_CROSSTAB_CHAT': {
       const newCrosstabChat = createNewCrosstabChat(
         action.payload.title,
