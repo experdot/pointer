@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { createParser } from 'eventsource-parser'
 
 export interface LLMConfig {
   apiHost: string
@@ -97,6 +98,53 @@ class AIHandler {
       let fullResponse = ''
       let fullReasoning = ''
 
+      // 使用 eventsource-parser 来解析 SSE 数据
+      const parser = createParser({
+        onEvent: (eventData) => {
+          if (eventData.data === '[DONE]') {
+            event.sender.send('ai-stream-data', {
+              requestId: request.requestId,
+              type: 'complete',
+              content: fullResponse,
+              reasoning_content: fullReasoning || undefined
+            } as AIStreamChunk)
+            return
+          }
+
+          try {
+            const parsed = JSON.parse(eventData.data)
+            const delta = parsed.choices?.[0]?.delta
+            const content = delta?.content
+            const reasoning_content =
+              delta?.reasoning_content ||
+              delta?.reasoning ||
+              parsed.reasoning_content ||
+              parsed?.reasoning
+
+            if (content) {
+              fullResponse += content
+              event.sender.send('ai-stream-data', {
+                requestId: request.requestId,
+                type: 'chunk',
+                content: content
+              } as AIStreamChunk)
+            }
+
+            if (reasoning_content) {
+              fullReasoning += reasoning_content
+              event.sender.send('ai-stream-data', {
+                requestId: request.requestId,
+                type: 'reasoning_content',
+                reasoning_content: reasoning_content
+              } as AIStreamChunk)
+            }
+          } catch (e) {
+            // 忽略解析错误，继续处理下一行
+            console.warn('Failed to parse streaming data:', e)
+          }
+        }
+      })
+
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -104,51 +152,7 @@ class AIHandler {
           if (done) break
 
           const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n').filter((line) => line.trim() !== '')
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim()
-
-              if (data === '[DONE]') {
-                event.sender.send('ai-stream-data', {
-                  requestId: request.requestId,
-                  type: 'complete',
-                  content: fullResponse,
-                  reasoning_content: fullReasoning || undefined
-                } as AIStreamChunk)
-                return
-              }
-
-              try {
-                const parsed = JSON.parse(data)
-                const delta = parsed.choices?.[0]?.delta
-                const content = delta?.content
-                const reasoning_content = delta?.reasoning_content || parsed.reasoning_content
-
-                if (content) {
-                  fullResponse += content
-                  event.sender.send('ai-stream-data', {
-                    requestId: request.requestId,
-                    type: 'chunk',
-                    content: content
-                  } as AIStreamChunk)
-                }
-
-                if (reasoning_content) {
-                  fullReasoning += reasoning_content
-                  event.sender.send('ai-stream-data', {
-                    requestId: request.requestId,
-                    type: 'reasoning_content',
-                    reasoning_content: reasoning_content
-                  } as AIStreamChunk)
-                }
-              } catch (e) {
-                // 忽略解析错误，继续处理下一行
-                console.warn('Failed to parse streaming data:', e)
-              }
-            }
-          }
+          parser.feed(chunk)
         }
 
         event.sender.send('ai-stream-data', {
@@ -238,7 +242,8 @@ class AIHandler {
 
       const data = await response.json()
       const content = data.choices?.[0]?.message?.content || ''
-      const reasoning_content = data.choices?.[0]?.message?.reasoning_content
+      const reasoning_content =
+        data.choices?.[0]?.message?.reasoning_content || data.choices?.[0]?.message?.reasoning
 
       return {
         success: true,
