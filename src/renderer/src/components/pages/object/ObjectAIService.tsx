@@ -621,7 +621,13 @@ ${existingPropertiesInfo}
     targetNodeId: string,
     userPrompt?: string,
     allNodes?: { [nodeId: string]: ObjectNodeType }
-  ): Promise<ObjectNodeType[]> {
+  ): Promise<{
+    relationNodes: ObjectNodeType[]
+    nodeUpdates: Array<{
+      nodeId: string
+      connection: any
+    }>
+  }> {
     const { node, getFullContextInformation, getNodeInformation } = context
 
     if (!allNodes) {
@@ -668,8 +674,12 @@ ${existingPropertiesInfo}
       const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
 
       // 获取源节点和目标节点的详细信息
-      const sourceNodeInfo = getNodeInformation ? getNodeInformation(sourceNode) : `节点名称: ${sourceNode.name}\n节点描述: ${sourceNode.description || '无'}`
-      const targetNodeInfo = getNodeInformation ? getNodeInformation(targetNode) : `节点名称: ${targetNode.name}\n节点描述: ${targetNode.description || '无'}`
+      const sourceNodeInfo = getNodeInformation
+        ? getNodeInformation(sourceNode)
+        : `节点名称: ${sourceNode.name}\n节点描述: ${sourceNode.description || '无'}`
+      const targetNodeInfo = getNodeInformation
+        ? getNodeInformation(targetNode)
+        : `节点名称: ${targetNode.name}\n节点描述: ${targetNode.description || '无'}`
 
       const aiPrompt = `# 任务
 根据两个节点的信息和上下文，生成它们之间的关系节点。关系节点本身也是一个对象，可以描述两个节点之间的连接关系。
@@ -726,13 +736,19 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
         throw new Error('期望数组格式')
       }
 
-      // 创建关系节点对象
+      // 创建关系节点对象和节点更新信息
       const relationNodes: ObjectNodeType[] = []
+      const nodeUpdates: Array<{
+        nodeId: string
+        connection: any
+      }> = []
 
       for (const relData of relationData) {
         if (relData.name && relData.sourceRole && relData.targetRole) {
+          const relationNodeId = uuidv4()
+
           const relationNode: ObjectNodeType = {
-            id: uuidv4(),
+            id: relationNodeId,
             name: relData.name,
             description: relData.description || '',
             type: relData.type || 'relation',
@@ -771,6 +787,38 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
           }
 
           relationNodes.push(relationNode)
+
+          // 为源节点添加连接到关系节点的连接
+          nodeUpdates.push({
+            nodeId: sourceNodeId,
+            connection: {
+              nodeId: relationNodeId,
+              role: '关系参与者',
+              description: `通过关系"${relData.name}"连接`,
+              strength: 'medium',
+              metadata: {
+                createdAt: Date.now(),
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
+              }
+            }
+          })
+
+          // 为目标节点添加连接到关系节点的连接
+          nodeUpdates.push({
+            nodeId: targetNodeId,
+            connection: {
+              nodeId: relationNodeId,
+              role: '关系参与者',
+              description: `通过关系"${relData.name}"连接`,
+              strength: 'medium',
+              metadata: {
+                createdAt: Date.now(),
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
+              }
+            }
+          })
         }
       }
 
@@ -788,7 +836,10 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
         })
       }
 
-      return relationNodes
+      return {
+        relationNodes,
+        nodeUpdates
+      }
     } catch (error) {
       // 更新任务状态为失败
       if (this.dispatch && this.chatId) {

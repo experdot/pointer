@@ -559,20 +559,20 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
                 nodeId: userTypesId,
                 role: '访问者',
                 description: '用户类型作为功能的访问者',
-                strength: 'strong',
+                strength: 'strong' as const,
                 metadata: {
                   createdAt: Date.now(),
-                  source: 'user'
+                  source: 'user' as const
                 }
               },
               {
                 nodeId: featuresId,
                 role: '被访问对象',
                 description: '功能模块作为被访问的对象',
-                strength: 'strong',
+                strength: 'strong' as const,
                 metadata: {
                   createdAt: Date.now(),
-                  source: 'user'
+                  source: 'user' as const
                 }
               }
             ],
@@ -597,20 +597,20 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
                 nodeId: platformsId,
                 role: '实现者',
                 description: '平台作为功能的实现者',
-                strength: 'strong',
+                strength: 'strong' as const,
                 metadata: {
                   createdAt: Date.now(),
-                  source: 'user'
+                  source: 'user' as const
                 }
               },
               {
                 nodeId: featuresId,
                 role: '被实现对象',
                 description: '功能模块作为被实现的对象',
-                strength: 'strong',
+                strength: 'strong' as const,
                 metadata: {
                   createdAt: Date.now(),
-                  source: 'user'
+                  source: 'user' as const
                 }
               }
             ],

@@ -680,12 +680,15 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
       // 选择一个或多个目标节点来创建关系
       // 这里简化为选择所有可用节点，实际应用中可能需要用户选择
-      const relationNodes: ObjectNodeType[] = []
+      let totalRelationNodes = 0
+      let totalNodeUpdates = 0
 
-      for (const targetNode of availableNodes.slice(0, 3)) {
-        // 限制为前3个节点
+      // 随机选择3个目标节点
+      const randomNodes = [...availableNodes].sort(() => Math.random() - 0.5).slice(0, 3)
+
+      for (const targetNode of randomNodes) {
         try {
-          const relations = await objectAIService.generateRelationNodes(
+          const result = await objectAIService.generateRelationNodes(
             context,
             selectedNode.id,
             targetNode.id,
@@ -693,24 +696,39 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
             nodes
           )
 
-          relationNodes.push(...relations)
+          // 添加生成的关系节点到对象数据
+          result.relationNodes.forEach((relationNode) => {
+            dispatch({
+              type: 'ADD_OBJECT_NODE',
+              payload: {
+                chatId: chat.id,
+                node: relationNode
+              }
+            })
+          })
+
+          // 更新源节点和目标节点的连接
+          result.nodeUpdates.forEach((update) => {
+            dispatch({
+              type: 'ADD_NODE_CONNECTION',
+              payload: {
+                chatId: chat.id,
+                nodeId: update.nodeId,
+                connection: update.connection
+              }
+            })
+          })
+
+          totalRelationNodes += result.relationNodes.length
+          totalNodeUpdates += result.nodeUpdates.length
         } catch (error) {
           console.error(`生成与${targetNode.name}的关系失败:`, error)
         }
       }
 
-      // 添加生成的关系节点到对象数据
-      relationNodes.forEach((relationNode) => {
-        dispatch({
-          type: 'ADD_OBJECT_NODE',
-          payload: {
-            chatId: chat.id,
-            node: relationNode
-          }
-        })
-      })
-
-      message.success(`成功生成了 ${relationNodes.length} 个关系节点`)
+      message.success(
+        `成功生成了 ${totalRelationNodes} 个关系节点，更新了 ${totalNodeUpdates} 个节点连接`
+      )
       setPrompt('')
     } catch (error) {
       console.error('生成关系节点失败:', error)
