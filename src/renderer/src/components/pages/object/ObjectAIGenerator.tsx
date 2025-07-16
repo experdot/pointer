@@ -20,7 +20,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
-import { ObjectChat, ObjectNode as ObjectNodeType, ObjectNodeReference } from '../../../types'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { createAIService } from '../../../services/aiService'
@@ -244,22 +244,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         }
       }
 
-      // 添加引用信息
-      if (node.references && node.references.length > 0) {
-        const references = node.references.map((ref) => {
-          const refNode = nodes[ref.id]
-          return {
-            Name: ref.name,
-            Description: ref.description || '',
-            Type: ref.type,
-            Strength: ref.strength,
-            NodeExists: !!refNode,
-            NodeDescription: refNode?.description || ''
-          }
-        })
-        information += `\n## 引用关系\n${JSON.stringify(references)}`
-      }
-
       return information
     }
 
@@ -298,43 +282,9 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       return node.children.map((id) => nodes[id]).filter(Boolean)
     }
 
-    // 获取当前节点的引用信息
-    const getCurrentReferences = (node: ObjectNodeType) => {
-      if (!node.references) return []
-      return node.references.map((ref) => ({
-        ...ref,
-        referencedNode: nodes[ref.id] || null
-      }))
-    }
-
-    // 获取引用当前节点的其他节点（反向引用）
-    const getIncomingReferences = (node: ObjectNodeType) => {
-      const incomingRefs: Array<{
-        fromNode: ObjectNodeType
-        reference: ObjectNodeReference
-      }> = []
-
-      Object.values(nodes).forEach((otherNode) => {
-        if (otherNode.id !== node.id && otherNode.references) {
-          otherNode.references.forEach((ref) => {
-            if (ref.id === node.id) {
-              incomingRefs.push({
-                fromNode: otherNode,
-                reference: ref
-              })
-            }
-          })
-        }
-      })
-
-      return incomingRefs
-    }
-
     const ancestorChain = buildAncestorChain(currentNode)
     const siblings = getSiblings(currentNode)
     const existingChildren = getExistingChildren(currentNode)
-    const currentReferences = getCurrentReferences(currentNode)
-    const incomingReferences = getIncomingReferences(currentNode)
 
     // 构建完整的上下文信息
     const getFullContextInformation = (): string => {
@@ -372,45 +322,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         contextInfo += '\n## 同级节点信息\n无同级节点\n'
       }
 
-      // 添加引用关系信息
-      if (currentReferences.length > 0) {
-        contextInfo += '\n## 当前节点的引用关系\n'
-        currentReferences.forEach((ref) => {
-          contextInfo += `\n### 引用节点 - ${ref.name}\n`
-          contextInfo += `- **引用类型**: ${ref.type}\n`
-          contextInfo += `- **引用强度**: ${ref.strength}\n`
-          if (ref.description) {
-            contextInfo += `- **引用描述**: ${ref.description}\n`
-          }
-          if (ref.referencedNode) {
-            contextInfo += `- **节点存在**: 是\n`
-            contextInfo += `- **节点描述**: ${ref.referencedNode.description || '无'}\n`
-          } else {
-            contextInfo += `- **节点存在**: 否（可能已被删除）\n`
-          }
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 当前节点的引用关系\n当前节点无引用其他节点\n'
-      }
-
-      // 添加反向引用信息
-      if (incomingReferences.length > 0) {
-        contextInfo += '\n## 被其他节点引用的情况\n'
-        incomingReferences.forEach((incomingRef) => {
-          contextInfo += `\n### 来自节点 - ${incomingRef.fromNode.name}\n`
-          contextInfo += `- **引用类型**: ${incomingRef.reference.type}\n`
-          contextInfo += `- **引用强度**: ${incomingRef.reference.strength}\n`
-          if (incomingRef.reference.description) {
-            contextInfo += `- **引用描述**: ${incomingRef.reference.description}\n`
-          }
-          contextInfo += `- **来源节点描述**: ${incomingRef.fromNode.description || '无'}\n`
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 被其他节点引用的情况\n当前节点未被其他节点引用\n'
-      }
-
       return contextInfo
     }
 
@@ -419,8 +330,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       ancestorChain,
       siblings,
       existingChildren,
-      currentReferences,
-      incomingReferences,
       // 新增：获取完整的上下文信息
       getFullContextInformation,
       // 新增：获取单个节点的完整信息
@@ -590,60 +499,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       setIsGenerating(false)
     }
   }
-
-  // 生成引用关系 - 已移除
-  /*
-  const handleGenerateReferences = async () => {
-    if (!selectedNode) return
-
-    const llmConfig = getLLMConfig()
-    if (!llmConfig) {
-      message.error('请先在设置中配置LLM')
-      return
-    }
-
-    const effectivePrompt = getEffectivePrompt()
-    setIsGenerating(true)
-    try {
-      const context = getGenerationContext(selectedNode)
-      if (!context) {
-        message.error('无法获取节点上下文')
-        return
-      }
-
-      const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
-
-      const references = await objectAIService.generateObjectReferences(
-        context,
-        effectivePrompt,
-        nodes
-      )
-
-      // 合并新引用到现有引用
-      const existingReferences = selectedNode.references || []
-      const updatedReferences = [...existingReferences, ...references]
-
-      // 更新节点引用
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { references: updatedReferences }
-        }
-      })
-
-      message.success(`成功生成了 ${references.length} 个引用关系`)
-      setPrompt('')
-    } catch (error) {
-      console.error('生成引用关系失败:', error)
-      message.error('生成引用关系失败，请稍后重试')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-  */
 
   // 生成关系节点
   const handleGenerateRelations = async () => {

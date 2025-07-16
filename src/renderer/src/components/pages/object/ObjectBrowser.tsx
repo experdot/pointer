@@ -248,22 +248,6 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
           }
         }
 
-        // 添加引用信息
-        if (node.references && node.references.length > 0) {
-          const references = node.references.map((ref) => {
-            const refNode = nodes[ref.id]
-            return {
-              Name: ref.name,
-              Description: ref.description || '',
-              Type: ref.type,
-              Strength: ref.strength,
-              NodeExists: !!refNode,
-              NodeDescription: refNode?.description || ''
-            }
-          })
-          information += `\n## 引用关系\n${JSON.stringify(references)}`
-        }
-
         return information
       }
 
@@ -296,14 +280,6 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
           .filter(Boolean)
       }
 
-      // 获取当前节点的引用信息
-      const getCurrentReferences = (node: ObjectNodeType) => {
-        if (!node.references) return []
-        return node.references.map((ref) => ({
-          ...ref,
-          referencedNode: nodes[ref.id] || null
-        }))
-      }
 
       // 获取当前节点的连接信息
       const getCurrentConnections = (node: ObjectNodeType) => {
@@ -314,58 +290,9 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
         }))
       }
 
-      // 获取引用当前节点的其他节点（反向引用）
-      const getIncomingReferences = (node: ObjectNodeType) => {
-        const incomingRefs: Array<{
-          fromNode: ObjectNodeType
-          reference: any
-        }> = []
-
-        Object.values(nodes).forEach((otherNode) => {
-          if (otherNode.id !== node.id && otherNode.references) {
-            otherNode.references.forEach((ref) => {
-              if (ref.id === node.id) {
-                incomingRefs.push({
-                  fromNode: otherNode,
-                  reference: ref
-                })
-              }
-            })
-          }
-        })
-
-        return incomingRefs
-      }
-
-      // 获取连接到当前节点的其他节点（反向连接）
-      const getIncomingConnections = (node: ObjectNodeType) => {
-        const incomingConns: Array<{
-          fromNode: ObjectNodeType
-          connection: any
-        }> = []
-
-        Object.values(nodes).forEach((otherNode) => {
-          if (otherNode.id !== node.id && otherNode.connections) {
-            otherNode.connections.forEach((conn) => {
-              if (conn.nodeId === node.id) {
-                incomingConns.push({
-                  fromNode: otherNode,
-                  connection: conn
-                })
-              }
-            })
-          }
-        })
-
-        return incomingConns
-      }
-
       const ancestorChain = buildAncestorChain(currentNode)
       const siblings = getSiblings(currentNode)
-      const currentReferences = getCurrentReferences(currentNode)
       const currentConnections = getCurrentConnections(currentNode)
-      const incomingReferences = getIncomingReferences(currentNode)
-      const incomingConnections = getIncomingConnections(currentNode)
 
       // 构建完整的上下文信息
       let contextInfo = '# 完整上下文信息\n\n'
@@ -429,63 +356,6 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
         })
       } else {
         contextInfo += '\n## 当前节点的连接关系\n当前节点无连接其他节点\n'
-      }
-
-      // 添加反向连接信息
-      if (incomingConnections.length > 0) {
-        contextInfo += '\n## 被其他节点连接的情况\n'
-        incomingConnections.forEach((incomingConn) => {
-          contextInfo += `\n### 来自节点 - ${incomingConn.fromNode.name}\n`
-          contextInfo += `- **连接角色**: ${incomingConn.connection.role}\n`
-          contextInfo += `- **连接强度**: ${incomingConn.connection.strength || 'medium'}\n`
-          if (incomingConn.connection.description) {
-            contextInfo += `- **连接描述**: ${incomingConn.connection.description}\n`
-          }
-          contextInfo += `- **来源节点类型**: ${incomingConn.fromNode.type || 'unknown'}\n`
-          contextInfo += `- **来源节点描述**: ${incomingConn.fromNode.description || '无'}\n`
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 被其他节点连接的情况\n当前节点未被其他节点连接\n'
-      }
-
-      // 添加引用关系信息（兼容性支持）
-      if (currentReferences.length > 0) {
-        contextInfo += '\n## 当前节点的引用关系（已废弃）\n'
-        currentReferences.forEach((ref) => {
-          contextInfo += `\n### 引用节点 - ${ref.name}\n`
-          contextInfo += `- **引用类型**: ${ref.type}\n`
-          contextInfo += `- **引用强度**: ${ref.strength}\n`
-          if (ref.description) {
-            contextInfo += `- **引用描述**: ${ref.description}\n`
-          }
-          if (ref.referencedNode) {
-            contextInfo += `- **节点存在**: 是\n`
-            contextInfo += `- **节点描述**: ${ref.referencedNode.description || '无'}\n`
-          } else {
-            contextInfo += `- **节点存在**: 否（可能已被删除）\n`
-          }
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 当前节点的引用关系（已废弃）\n当前节点无引用其他节点\n'
-      }
-
-      // 添加反向引用信息（兼容性支持）
-      if (incomingReferences.length > 0) {
-        contextInfo += '\n## 被其他节点引用的情况（已废弃）\n'
-        incomingReferences.forEach((incomingRef) => {
-          contextInfo += `\n### 来自节点 - ${incomingRef.fromNode.name}\n`
-          contextInfo += `- **引用类型**: ${incomingRef.reference.type}\n`
-          contextInfo += `- **引用强度**: ${incomingRef.reference.strength}\n`
-          if (incomingRef.reference.description) {
-            contextInfo += `- **引用描述**: ${incomingRef.reference.description}\n`
-          }
-          contextInfo += `- **来源节点描述**: ${incomingRef.fromNode.description || '无'}\n`
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 被其他节点引用的情况（已废弃）\n当前节点未被其他节点引用\n'
       }
 
       return contextInfo

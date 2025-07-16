@@ -1,4 +1,4 @@
-import { ObjectNode as ObjectNodeType, AITask, ObjectNodeReference } from '../../../types'
+import { ObjectNode as ObjectNodeType, AITask } from '../../../types'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface AIGenerationContext {

@@ -158,7 +158,7 @@ export interface CrosstabChat extends Page {
 // 定义连接的角色
 export interface NodeConnection {
   nodeId: string // 连接到哪个节点的ID
-  role: string // 在这个关系中扮演的角色，比如 "subject", "object", "instrument", "location"等
+  role: string // 在这个连接关系中扮演的角色，比如 "subject", "object", "instrument", "location"等
   description?: string // 对这个角色的额外描述
   strength?: 'weak' | 'medium' | 'strong' // 连接强度
   metadata?: {
@@ -168,23 +168,6 @@ export interface NodeConnection {
     aiPrompt?: string // 如果是AI生成，记录使用的提示
     bidirectional?: boolean // 是否双向连接
     tags?: string[] // 连接标签
-  }
-}
-
-// 对象节点引用接口 - 已废弃，保留用于兼容性
-export interface ObjectNodeReference {
-  id: string // 引用的节点ID
-  name: string // 引用的节点名称（冗余存储，便于显示和搜索）
-  description?: string // 引用关系的描述
-  type: 'dependency' | 'related' | 'inspiration' | 'conflict' | 'custom' // 引用类型
-  strength: 'weak' | 'medium' | 'strong' // 引用强度
-  metadata?: {
-    createdAt?: number
-    updatedAt?: number
-    source?: 'user' | 'ai' // 来源：用户手动添加或AI生成
-    aiPrompt?: string // 如果是AI生成，记录使用的提示
-    bidirectional?: boolean // 是否双向引用
-    tags?: string[] // 引用标签
   }
 }
 
@@ -200,11 +183,8 @@ export interface ObjectNode {
   children?: string[] // 子节点ID数组
   expanded?: boolean // 是否展开
 
-  // 如果这个节点是一个 "关系" 或 "事件"，它会通过这个字段连接其他节点
   connections?: NodeConnection[] // 连接到其他节点的关系
-
   properties?: { [key: string]: any } // 对象属性（键值对）
-  references?: ObjectNodeReference[] // 引用/依赖的其他节点 - 已废弃，保留用于兼容性
 
   metadata?: {
     // 元数据信息
@@ -234,11 +214,6 @@ export interface ObjectNode {
       modelId?: string
     }
     relations?: {
-      recommendations: string[]
-      timestamp: number
-      modelId?: string
-    }
-    references?: {
       recommendations: string[]
       timestamp: number
       modelId?: string
