@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
+import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse, Tag } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 import PropertyTableEditor from './PropertyTableEditor'
-import ReferenceEditor from './ReferenceEditor'
+import ConnectionEditor from './ConnectionEditor'
+import RelationManager from './RelationManager'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -87,8 +88,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     })
   }
 
-  // 保存引用
-  const handleReferencesSave = (references: any[]) => {
+  // 保存连接
+  const handleConnectionsSave = (connections: any[]) => {
     if (!selectedNode) return
 
     dispatch({
@@ -96,19 +97,30 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       payload: {
         chatId: chat.id,
         nodeId: selectedNode.id,
-        updates: { references }
+        updates: { connections }
       }
     })
   }
 
-  // AI生成引用关系
-  const handleGenerateReferences = async () => {
+  // 创建关系节点
+  const handleCreateRelation = async (
+    sourceNodeId: string,
+    targetNodeId: string,
+    prompt: string
+  ) => {
     if (!selectedNode) return
 
-    // 这里可以调用AI生成引用关系的逻辑
-    // 为了简化，这里先跳转到AI生成器的references选项卡
-    // 用户可以在AI生成器中进行生成
-    console.log('AI生成引用关系功能需要在AI生成器中实现')
+    // 这里需要调用AI服务生成关系节点
+    console.log('创建关系节点:', { sourceNodeId, targetNodeId, prompt })
+    // 后续在AI生成器中实现
+  }
+
+  // 删除节点
+  const handleDeleteNode = (nodeId: string) => {
+    dispatch({
+      type: 'DELETE_OBJECT_NODE',
+      payload: { chatId: chat.id, nodeId }
+    })
   }
 
   // 格式化显示值
@@ -117,7 +129,34 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       return 'null'
     }
     if (typeof value === 'object') {
-      return JSON.stringify(value, null, 2)
+      try {
+        // 使用replacer函数来过滤掉可能导致循环引用的属性
+        return JSON.stringify(
+          value,
+          (key, val) => {
+            // 过滤掉React内部属性和DOM元素
+            if (
+              key.startsWith('__react') ||
+              key.startsWith('_react') ||
+              (val && typeof val === 'object' && val.nodeType)
+            ) {
+              return '[Filtered]'
+            }
+            // 过滤掉函数
+            if (typeof val === 'function') {
+              return '[Function]'
+            }
+            return val
+          },
+          2
+        )
+      } catch (error) {
+        // 如果仍然有循环引用，返回安全的字符串表示
+        if (error instanceof TypeError && error.message.includes('circular')) {
+          return '[Object with circular reference]'
+        }
+        return '[Object - Unable to stringify]'
+      }
     }
     return String(value)
   }
@@ -125,6 +164,34 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   // 格式化时间
   const formatTime = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString('zh-CN')
+  }
+
+  // 获取节点类型的颜色
+  const getNodeTypeColor = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return 'blue'
+      case 'event':
+        return 'green'
+      case 'relation':
+        return 'purple'
+      default:
+        return 'default'
+    }
+  }
+
+  // 获取节点类型的文本
+  const getNodeTypeText = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return '实体'
+      case 'event':
+        return '事件'
+      case 'relation':
+        return '关系'
+      default:
+        return type || '未知'
+    }
   }
 
   // 渲染属性项
@@ -224,6 +291,14 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
 
           <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
             {renderPropertyItem('名称', selectedNode.name, 'name', true)}
+            {renderPropertyItem(
+              '类型',
+              <Tag color={getNodeTypeColor(selectedNode.type || 'unknown')}>
+                {getNodeTypeText(selectedNode.type || 'unknown')}
+              </Tag>,
+              'type',
+              true
+            )}
             {renderPropertyItem('描述', selectedNode.description, 'description', true)}
           </div>
         </Card>
@@ -239,16 +314,43 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           />
         </Card>
 
-        {/* 引用关系 */}
-        <Card size="small" style={{ marginBottom: '16px' }}>
-          <ReferenceEditor
-            references={selectedNode.references || []}
+        {/* 节点连接 */}
+        <div style={{ marginBottom: '16px' }}>
+          <ConnectionEditor
+            connections={selectedNode.connections || []}
             allNodes={nodes}
             currentNodeId={selectedNode.id}
-            onSave={handleReferencesSave}
-            onGenerateAI={handleGenerateReferences}
+            onSave={handleConnectionsSave}
           />
-        </Card>
+        </div>
+
+        {/* 关系管理 */}
+        <div style={{ marginBottom: '16px' }}>
+          <RelationManager
+            allNodes={nodes}
+            currentNodeId={selectedNode.id}
+            onCreateRelation={handleCreateRelation}
+            onDeleteNode={handleDeleteNode}
+          />
+        </div>
+
+        {/* 兼容性：显示旧的引用关系 */}
+        {selectedNode.references && selectedNode.references.length > 0 && (
+          <Card size="small" style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ margin: '0 0 12px 0' }}>
+              引用关系（已废弃）
+            </Title>
+            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
+              {selectedNode.references.map((ref, index) => (
+                <div key={index} style={{ marginBottom: '8px' }}>
+                  <Text type="secondary">
+                    {ref.name} ({ref.type}, {ref.strength})
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* 元数据 */}
         {selectedNode.metadata && (
@@ -259,8 +361,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
             <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
               {renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
               {renderPropertyItem('来源', selectedNode.metadata.source)}
-              {selectedNode.metadata.lastModified &&
-                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.lastModified))}
+              {selectedNode.metadata.updatedAt &&
+                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.updatedAt))}
             </div>
           </Card>
         )}

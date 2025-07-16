@@ -147,8 +147,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         case 'properties':
           recommendations = await objectAIService.getPropertiesPromptRecommendations(context)
           break
-        case 'references':
-          recommendations = await objectAIService.getReferencesPromptRecommendations(context)
+        case 'relations':
+          recommendations = await objectAIService.getRelationsPromptRecommendations(context)
           break
         default:
           recommendations = []
@@ -192,8 +192,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
-      case 'references':
-        return '生成引用关系'
+      case 'relations':
+        return '生成关系节点'
       default:
         return '生成'
     }
@@ -314,7 +314,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         fromNode: ObjectNodeType
         reference: ObjectNodeReference
       }> = []
-      
+
       Object.values(nodes).forEach((otherNode) => {
         if (otherNode.id !== node.id && otherNode.references) {
           otherNode.references.forEach((ref) => {
@@ -327,7 +327,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
           })
         }
       })
-      
+
       return incomingRefs
     }
 
@@ -458,6 +458,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         id: uuidv4(),
         name,
         description: '',
+        type: 'entity', // 默认类型为实体
         parentId: selectedNode.id,
         children: [],
         expanded: false,
@@ -591,7 +592,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     }
   }
 
-  // 生成引用关系
+  // 生成引用关系 - 已移除
+  /*
   const handleGenerateReferences = async () => {
     if (!selectedNode) return
 
@@ -642,6 +644,81 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       setIsGenerating(false)
     }
   }
+  */
+
+  // 生成关系节点
+  const handleGenerateRelations = async () => {
+    if (!selectedNode) return
+
+    const llmConfig = getLLMConfig()
+    if (!llmConfig) {
+      message.error('请先在设置中配置LLM')
+      return
+    }
+
+    const effectivePrompt = getEffectivePrompt()
+    setIsGenerating(true)
+    try {
+      const context = getGenerationContext(selectedNode)
+      if (!context) {
+        message.error('无法获取节点上下文')
+        return
+      }
+
+      const aiService = createAIService(llmConfig)
+      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+
+      // 获取可用的目标节点（排除当前节点和关系节点）
+      const availableNodes = Object.values(nodes).filter(
+        (node) => node.id !== selectedNode.id && node.type !== 'relation'
+      )
+
+      if (availableNodes.length === 0) {
+        message.warning('没有可用的目标节点来创建关系')
+        return
+      }
+
+      // 选择一个或多个目标节点来创建关系
+      // 这里简化为选择所有可用节点，实际应用中可能需要用户选择
+      const relationNodes: ObjectNodeType[] = []
+
+      for (const targetNode of availableNodes.slice(0, 3)) {
+        // 限制为前3个节点
+        try {
+          const relations = await objectAIService.generateRelationNodes(
+            context,
+            selectedNode.id,
+            targetNode.id,
+            effectivePrompt,
+            nodes
+          )
+
+          relationNodes.push(...relations)
+        } catch (error) {
+          console.error(`生成与${targetNode.name}的关系失败:`, error)
+        }
+      }
+
+      // 添加生成的关系节点到对象数据
+      relationNodes.forEach((relationNode) => {
+        dispatch({
+          type: 'ADD_OBJECT_NODE',
+          payload: {
+            chatId: chat.id,
+            node: relationNode
+          }
+        })
+      })
+
+      message.success(`成功生成了 ${relationNodes.length} 个关系节点`)
+      setPrompt('')
+    } catch (error) {
+      console.error('生成关系节点失败:', error)
+      message.error('生成关系节点失败，请稍后重试')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   // 使用AI推荐的提示词
   const useRecommendation = (recommendation: string) => {
@@ -673,8 +750,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return handleGenerateDescription
       case 'properties':
         return handleGenerateProperties
-      case 'references':
-        return handleGenerateReferences
+      case 'relations':
+        return handleGenerateRelations
       default:
         return handleGenerate
     }
@@ -698,10 +775,10 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
 提示：可以直接点击"生成属性"按钮，使用默认提示词
 按 Ctrl+Enter 快速生成`
-      case 'references':
-        return `描述您希望生成的引用关系...
+      case 'relations':
+        return `描述您希望生成的关系节点...
 
-提示：可以直接点击"生成引用关系"按钮，使用默认提示词
+提示：可以直接点击"生成关系节点"按钮，使用默认提示词
 按 Ctrl+Enter 快速生成`
       default:
         return ''
@@ -719,8 +796,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
-      case 'references':
-        return '生成引用关系'
+      case 'relations':
+        return '生成关系节点'
       default:
         return '生成'
     }
@@ -782,8 +859,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                 children: null
               },
               {
-                key: 'references',
-                label: '生成引用关系',
+                key: 'relations',
+                label: '生成关系节点',
                 children: null
               }
             ]}

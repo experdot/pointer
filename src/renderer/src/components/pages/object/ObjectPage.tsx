@@ -7,6 +7,7 @@ import ObjectBrowser from './ObjectBrowser'
 import ObjectPropertyView from './ObjectPropertyView'
 import ObjectAIGenerator from './ObjectAIGenerator'
 import ObjectCrosstabAnalyzer from './ObjectCrosstabAnalyzer'
+import RelationshipGraph from './RelationshipGraph'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import ModelSelector from '../chat/ModelSelector'
 import { createAIService } from '../../../services/aiService'
@@ -56,6 +57,17 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   const handleModelChange = useCallback((modelId: string) => {
     setSelectedModel(modelId)
   }, [])
+
+  // 处理节点选择（用于图谱交互）
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      dispatch({
+        type: 'SELECT_OBJECT_NODE',
+        payload: { chatId: chat.id, nodeId }
+      })
+    },
+    [dispatch, chat.id]
+  )
 
   // 获取节点的完整上下文信息
   const getNodeContext = useCallback(
@@ -150,6 +162,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
           const newNode: ObjectNodeType = {
             id: newNodeId,
             name: name,
+            type: 'entity', // 默认类型
             description: '', // 空描述，后续可以单独生成
             properties: {}, // 空属性，后续可以单独生成
             children: [],
@@ -209,6 +222,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
       const rootNode = {
         id: rootId,
         name: '根对象',
+        type: 'entity',
         description: '对象的根节点',
         children: [],
         expanded: true,
@@ -316,7 +330,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         >
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* AI生成器 */}
-            <div style={{ flex: '1', overflow: 'auto' }}>
+            <div style={{ flex: '0 0 auto', overflow: 'auto' }}>
               <ObjectAIGenerator
                 chatId={chatId}
                 selectedNodeId={chat.objectData.selectedNodeId}
@@ -325,8 +339,19 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
             </div>
 
             {/* 交叉分析工具 */}
-            <div style={{ flexShrink: 0 }}>
+            <div style={{ flex: '0 0 auto' }}>
               <ObjectCrosstabAnalyzer chatId={chatId} />
+            </div>
+
+            {/* 关系图谱 */}
+            <div style={{ flex: '1 1 auto', overflow: 'auto', padding: '16px' }}>
+              <RelationshipGraph
+                allNodes={chat.objectData.nodes}
+                selectedNodeId={chat.objectData.selectedNodeId}
+                onNodeClick={handleNodeClick}
+                width={400}
+                height={300}
+              />
             </div>
           </div>
         </Sider>

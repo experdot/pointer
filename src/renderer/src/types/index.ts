@@ -155,7 +155,23 @@ export interface CrosstabChat extends Page {
   crosstabData: CrosstabData
 }
 
-// 对象节点引用接口
+// 定义连接的角色
+export interface NodeConnection {
+  nodeId: string // 连接到哪个节点的ID
+  role: string // 在这个关系中扮演的角色，比如 "subject", "object", "instrument", "location"等
+  description?: string // 对这个角色的额外描述
+  strength?: 'weak' | 'medium' | 'strong' // 连接强度
+  metadata?: {
+    createdAt?: number
+    updatedAt?: number
+    source?: 'user' | 'ai' // 来源：用户手动添加或AI生成
+    aiPrompt?: string // 如果是AI生成，记录使用的提示
+    bidirectional?: boolean // 是否双向连接
+    tags?: string[] // 连接标签
+  }
+}
+
+// 对象节点引用接口 - 已废弃，保留用于兼容性
 export interface ObjectNodeReference {
   id: string // 引用的节点ID
   name: string // 引用的节点名称（冗余存储，便于显示和搜索）
@@ -172,26 +188,34 @@ export interface ObjectNodeReference {
   }
 }
 
-// 对象节点接口
+// 统一的对象节点接口
 export interface ObjectNode {
   id: string
   name: string
   description?: string // 节点描述
+  type: string // 节点类型：entity（实体）、event（事件）、relation（关系）等，完全自定义
+
+  // 树状视图结构支持，用于显示和编辑
   parentId?: string // 父节点ID
   children?: string[] // 子节点ID数组
   expanded?: boolean // 是否展开
+
+  // 如果这个节点是一个 "关系" 或 "事件"，它会通过这个字段连接其他节点
+  connections?: NodeConnection[] // 连接到其他节点的关系
+
+  properties?: { [key: string]: any } // 对象属性（键值对）
+  references?: ObjectNodeReference[] // 引用/依赖的其他节点 - 已废弃，保留用于兼容性
+
   metadata?: {
     // 元数据信息
     createdAt?: number
     updatedAt?: number
-    lastModified?: number
     source?: 'user' | 'ai' // 来源：用户创建或AI生成
     aiPrompt?: string // 如果是AI生成，记录使用的提示
     tags?: string[] // 标签
     readonly?: boolean // 是否只读
   }
-  properties?: { [key: string]: any } // 对象属性（键值对）
-  references?: ObjectNodeReference[] // 引用/依赖的其他节点
+
   aiRecommendations?: {
     // AI推荐的提示词，按生成类型分类
     children?: {
@@ -205,6 +229,11 @@ export interface ObjectNode {
       modelId?: string
     }
     properties?: {
+      recommendations: string[]
+      timestamp: number
+      modelId?: string
+    }
+    relations?: {
       recommendations: string[]
       timestamp: number
       modelId?: string
@@ -543,6 +572,46 @@ export type AppAction =
   | {
       type: 'EXPORT_OBJECT_NODE'
       payload: { chatId: string; nodeId: string }
+    }
+  // 新增节点连接相关操作
+  | {
+      type: 'ADD_NODE_CONNECTION'
+      payload: { chatId: string; nodeId: string; connection: NodeConnection }
+    }
+  | {
+      type: 'UPDATE_NODE_CONNECTION'
+      payload: {
+        chatId: string
+        nodeId: string
+        connectionIndex: number
+        connection: NodeConnection
+      }
+    }
+  | {
+      type: 'REMOVE_NODE_CONNECTION'
+      payload: { chatId: string; nodeId: string; connectionIndex: number }
+    }
+  | {
+      type: 'GENERATE_RELATION_NODES'
+      payload: {
+        chatId: string
+        sourceNodeId: string
+        targetNodeId: string
+        prompt: string
+        modelId?: string
+        relationId?: string
+      }
+    }
+  | {
+      type: 'CREATE_RELATION_NODE'
+      payload: {
+        chatId: string
+        relationNode: ObjectNode
+        sourceNodeId: string
+        targetNodeId: string
+        sourceRole: string
+        targetRole: string
+      }
     }
   | { type: 'DELETE_CHAT'; payload: { id: string } }
   | { type: 'DELETE_MULTIPLE_PAGES'; payload: { chatIds: string[] } }

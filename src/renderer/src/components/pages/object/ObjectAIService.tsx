@@ -614,16 +614,25 @@ ${existingPropertiesInfo}
     }
   }
 
-  // 生成对象引用关系
-  async generateObjectReferences(
+  // 生成关系节点 - 新增方法
+  async generateRelationNodes(
     context: AIGenerationContext,
+    sourceNodeId: string,
+    targetNodeId: string,
     userPrompt?: string,
     allNodes?: { [nodeId: string]: ObjectNodeType }
-  ): Promise<ObjectNodeReference[]> {
+  ): Promise<ObjectNodeType[]> {
     const { node, getFullContextInformation, getNodeInformation } = context
 
     if (!allNodes) {
-      throw new Error('需要提供所有节点信息来生成引用关系')
+      throw new Error('需要提供所有节点信息来生成关系节点')
+    }
+
+    const sourceNode = allNodes[sourceNodeId]
+    const targetNode = allNodes[targetNodeId]
+
+    if (!sourceNode || !targetNode) {
+      throw new Error('源节点或目标节点不存在')
     }
 
     const taskId = uuidv4()
@@ -635,15 +644,15 @@ ${existingPropertiesInfo}
         requestId: this.aiService.id,
         type: 'object_generation',
         status: 'running',
-        title: '生成引用关系',
-        description: `为节点 "${node.name}" 生成引用关系`,
+        title: '生成关系节点',
+        description: `为节点 "${sourceNode.name}" 和 "${targetNode.name}" 生成关系节点`,
         chatId: this.chatId,
         modelId: this.llmConfig.id,
         startTime: Date.now(),
         context: {
           object: {
-            nodeId: node.id,
-            prompt: userPrompt || '生成引用关系'
+            nodeId: sourceNodeId,
+            prompt: userPrompt || '生成关系节点'
           }
         }
       }
@@ -658,84 +667,51 @@ ${existingPropertiesInfo}
       // 获取完整的上下文信息
       const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
 
-      // 获取当前节点的详细信息
-      const nodeDetailInfo = getNodeInformation
-        ? getNodeInformation(node)
-        : `节点名称: ${node.name}\n节点描述: ${node.description || '无'}`
-
-      // 构建所有可用节点的信息（排除当前节点）
-      const availableNodes = Object.values(allNodes)
-        .filter((n) => n.id !== node.id)
-        .map((n) => ({
-          id: n.id,
-          name: n.name,
-          description: n.description || '',
-          path: this.getNodePath(n, allNodes)
-        }))
-
-      const availableNodesInfo = availableNodes
-        .map(
-          (n) => `  - [${n.id}] ${n.name} (${n.path})${n.description ? ` - ${n.description}` : ''}`
-        )
-        .join('\n')
-
-      // 构建已有引用信息
-      const existingReferences = node.references || []
-      const existingReferencesInfo =
-        existingReferences.length > 0
-          ? existingReferences
-              .map((ref) => `  - ${ref.name} (${ref.type}, ${ref.strength})`)
-              .join('\n')
-          : '  暂无引用'
+      // 获取源节点和目标节点的详细信息
+      const sourceNodeInfo = getNodeInformation ? getNodeInformation(sourceNode) : `节点名称: ${sourceNode.name}\n节点描述: ${sourceNode.description || '无'}`
+      const targetNodeInfo = getNodeInformation ? getNodeInformation(targetNode) : `节点名称: ${targetNode.name}\n节点描述: ${targetNode.description || '无'}`
 
       const aiPrompt = `# 任务
-根据对象节点的信息和上下文，为指定节点生成引用关系。
+根据两个节点的信息和上下文，生成它们之间的关系节点。关系节点本身也是一个对象，可以描述两个节点之间的连接关系。
 
 # 完整上下文信息
 ${fullContextInfo}
 
-# 当前节点详细信息
-${nodeDetailInfo}
+# 源节点信息
+${sourceNodeInfo}
 
-# 已有引用关系
-${existingReferencesInfo}
-
-# 可用节点列表
-${availableNodesInfo}
+# 目标节点信息
+${targetNodeInfo}
 
 # 用户需求
-${userPrompt || '请分析当前节点可能需要引用的其他节点'}
+${userPrompt || '请分析这两个节点之间可能存在的关系，并生成关系节点'}
 
 # 输出格式
 请严格按照以下JSON格式输出：
 \`\`\`json
 [
   {
-    "id": "节点ID",
-    "name": "节点名称",
-    "description": "引用关系描述",
-    "type": "dependency|related|inspiration|conflict|custom",
-    "strength": "weak|medium|strong"
+    "name": "关系节点名称",
+    "description": "关系节点描述",
+    "type": "relation",
+    "sourceRole": "源节点在这个关系中的角色",
+    "targetRole": "目标节点在这个关系中的角色",
+    "properties": {
+      "强度": "strong|medium|weak",
+      "类型": "依赖|关联|对立|因果|等等"
+    }
   }
 ]
 \`\`\`
 
 # 生成要求
-1. 分析当前节点的功能和属性，识别可能的依赖关系
-2. 考虑节点在整个对象系统中的位置和作用
-3. 引用类型说明：
-   - dependency: 当前节点需要依赖的其他节点
-   - related: 与当前节点相关但不是必需的节点
-   - inspiration: 为当前节点提供灵感或参考的节点
-   - conflict: 与当前节点存在冲突或对立关系的节点
-   - custom: 自定义关系类型
-4. 引用强度说明：
-   - weak: 弱关系，可有可无
-   - medium: 中等关系，有一定联系
-   - strong: 强关系，紧密相关或必需
-5. 避免与已有引用重复
-6. 生成的引用关系应该合理且有意义
-7. 如果没有找到合适的引用关系，可以返回空数组
+1. 分析两个节点的性质、功能和上下文
+2. 识别它们之间可能存在的关系类型
+3. 关系节点的名称应该清晰描述关系的性质
+4. 为源节点和目标节点在这个关系中定义合适的角色
+5. 可以生成多个不同类型的关系节点
+6. 关系节点的属性应该包含关系的详细信息
+7. 如果没有明显的关系，可以返回空数组
 
 请开始生成：`
 
@@ -745,28 +721,56 @@ ${userPrompt || '请分析当前节点可能需要引用的其他节点'}
       const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
       const jsonContent = jsonMatch ? jsonMatch[1] : response
 
-      const references = JSON.parse(jsonContent)
-      if (!Array.isArray(references)) {
+      const relationData = JSON.parse(jsonContent)
+      if (!Array.isArray(relationData)) {
         throw new Error('期望数组格式')
       }
 
-      // 验证和处理引用
-      const validReferences: ObjectNodeReference[] = []
-      for (const ref of references) {
-        if (ref.id && allNodes[ref.id] && ref.id !== node.id) {
-          const targetNode = allNodes[ref.id]
-          validReferences.push({
-            id: ref.id,
-            name: targetNode.name,
-            description: ref.description || '',
-            type: ref.type || 'related',
-            strength: ref.strength || 'medium',
+      // 创建关系节点对象
+      const relationNodes: ObjectNodeType[] = []
+
+      for (const relData of relationData) {
+        if (relData.name && relData.sourceRole && relData.targetRole) {
+          const relationNode: ObjectNodeType = {
+            id: uuidv4(),
+            name: relData.name,
+            description: relData.description || '',
+            type: relData.type || 'relation',
+            connections: [
+              {
+                nodeId: sourceNodeId,
+                role: relData.sourceRole,
+                description: `${sourceNode.name}在此关系中的角色`,
+                strength: 'medium',
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'ai',
+                  aiPrompt: userPrompt || '生成关系节点'
+                }
+              },
+              {
+                nodeId: targetNodeId,
+                role: relData.targetRole,
+                description: `${targetNode.name}在此关系中的角色`,
+                strength: 'medium',
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'ai',
+                  aiPrompt: userPrompt || '生成关系节点'
+                }
+              }
+            ],
+            properties: relData.properties || {},
+            children: [],
+            expanded: false,
             metadata: {
               createdAt: Date.now(),
               source: 'ai',
-              aiPrompt: userPrompt || '生成引用关系'
+              aiPrompt: userPrompt || '生成关系节点'
             }
-          })
+          }
+
+          relationNodes.push(relationNode)
         }
       }
 
@@ -784,7 +788,7 @@ ${userPrompt || '请分析当前节点可能需要引用的其他节点'}
         })
       }
 
-      return validReferences
+      return relationNodes
     } catch (error) {
       // 更新任务状态为失败
       if (this.dispatch && this.chatId) {
@@ -804,8 +808,13 @@ ${userPrompt || '请分析当前节点可能需要引用的其他节点'}
     }
   }
 
-  // 获取生成引用关系的推荐提示词
-  async getReferencesPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
+  // 获取生成关系节点的推荐提示词 - 新增方法
+  async getRelationsPromptRecommendations(
+    context: AIGenerationContext,
+    sourceNodeId?: string,
+    targetNodeId?: string,
+    allNodes?: { [nodeId: string]: ObjectNodeType }
+  ): Promise<string[]> {
     const { node, getFullContextInformation, getNodeInformation } = context
 
     try {
@@ -817,16 +826,21 @@ ${userPrompt || '请分析当前节点可能需要引用的其他节点'}
         ? getNodeInformation(node)
         : `节点名称: ${node.name}\n节点描述: ${node.description || '无'}`
 
-      const existingReferences = node.references || []
-      const existingReferencesInfo =
-        existingReferences.length > 0
-          ? existingReferences
-              .map((ref) => `  - ${ref.name} (${ref.type}, ${ref.strength})`)
-              .join('\n')
-          : '  暂无引用'
+      let contextualInfo = ''
+      if (sourceNodeId && targetNodeId && allNodes) {
+        const sourceNode = allNodes[sourceNodeId]
+        const targetNode = allNodes[targetNodeId]
+        if (sourceNode && targetNode) {
+          contextualInfo = `
+# 关系生成上下文
+源节点: ${sourceNode.name} (${sourceNode.description || '无描述'})
+目标节点: ${targetNode.name} (${targetNode.description || '无描述'})
+`
+        }
+      }
 
       const aiPrompt = `# 任务
-根据对象节点的信息，为用户推荐5个用于生成引用关系的提示词。
+根据对象节点的信息，为用户推荐5个用于生成关系节点的提示词。
 
 # 完整上下文信息
 ${fullContextInfo}
@@ -834,8 +848,7 @@ ${fullContextInfo}
 # 当前节点详细信息
 ${nodeDetailInfo}
 
-# 已有引用关系
-${existingReferencesInfo}
+${contextualInfo}
 
 # 输出格式
 请严格按照以下JSON格式输出，只包含提示词数组：
@@ -845,11 +858,10 @@ ${existingReferencesInfo}
 
 # 生成要求
 1. 提示词应该简洁明了，15-30字左右
-2. 提示词应该帮助用户识别和生成有用的引用关系
-3. 考虑不同类型的引用关系（依赖、相关、冲突等）
-4. 避免与已有引用重复
-5. 提示词应该具有启发性和实用性
-6. 结合完整的上下文信息，确保推荐的引用关系符合整体架构
+2. 提示词应该帮助用户识别和生成有用的关系节点
+3. 考虑不同类型的关系（依赖、关联、对立、因果等）
+4. 提示词应该具有启发性和实用性
+5. 结合完整的上下文信息，确保推荐的关系符合整体架构
 
 请开始生成：`
 
@@ -866,14 +878,14 @@ ${existingReferencesInfo}
 
       return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
     } catch (error) {
-      console.error('获取引用推荐失败:', error)
+      console.error('获取关系推荐失败:', error)
       // 返回默认推荐
       return [
-        '查找依赖的基础设施节点',
-        '识别相关的配置和参数',
-        '发现冲突的规则和限制',
-        '寻找灵感来源和参考',
-        '关联相关的功能模块'
+        '查找两个节点的依赖关系',
+        '识别功能性关联',
+        '发现对立或冲突关系',
+        '分析因果关系',
+        '探索协作关系'
       ]
     }
   }

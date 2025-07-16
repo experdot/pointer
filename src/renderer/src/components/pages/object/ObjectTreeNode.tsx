@@ -1,11 +1,15 @@
 import React, { useState } from 'react'
-import { Button, Dropdown, Typography, Tooltip, Input } from 'antd'
+import { Button, Dropdown, Typography, Tooltip, Input, Tag } from 'antd'
 import {
   EditOutlined,
   DeleteOutlined,
   ClearOutlined,
   MoreOutlined,
-  CommentOutlined
+  CommentOutlined,
+  FileTextOutlined,
+  ThunderboltOutlined,
+  CalendarOutlined,
+  ApiOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ObjectNode as ObjectNodeType } from '../../../types'
@@ -36,6 +40,62 @@ export default function ObjectTreeNode({
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
+
+  // 获取节点类型图标
+  const getNodeIcon = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return <FileTextOutlined />
+      case 'event':
+        return <CalendarOutlined />
+      case 'relation':
+        return <ApiOutlined />
+      default:
+        return <FileTextOutlined />
+    }
+  }
+
+  // 获取节点类型颜色
+  const getNodeTypeColor = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return '#1890ff'
+      case 'event':
+        return '#52c41a'
+      case 'relation':
+        return '#722ed1'
+      default:
+        return '#1890ff'
+    }
+  }
+
+  // 获取节点类型标签颜色
+  const getNodeTypeTagColor = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return 'blue'
+      case 'event':
+        return 'green'
+      case 'relation':
+        return 'purple'
+      default:
+        return 'default'
+    }
+  }
+
+  // 获取节点类型标签文本
+  const getNodeTypeTagText = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return '实体'
+      case 'event':
+        return '事件'
+      case 'relation':
+        return '关系'
+      default:
+        return type || '未知'
+    }
+  }
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -149,7 +209,15 @@ export default function ObjectTreeNode({
           gap: 8
         }}
       >
-        <span style={{ fontSize: '14px', flexShrink: 0 }}>📦</span>
+        <span
+          style={{
+            fontSize: '14px',
+            flexShrink: 0,
+            color: getNodeTypeColor(node.type || 'entity')
+          }}
+        >
+          {getNodeIcon(node.type || 'entity')}
+        </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           {isInlineEditing ? (
             <Input
@@ -162,7 +230,7 @@ export default function ObjectTreeNode({
               style={{ width: '100%' }}
             />
           ) : (
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Text
                 style={{
                   fontWeight: isSelected ? 'bold' : 'normal',
@@ -170,12 +238,25 @@ export default function ObjectTreeNode({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   minWidth: 0,
-                  flexShrink: 1,
-                  display: 'block'
+                  flexShrink: 1
                 }}
               >
                 {node.name}
               </Text>
+              <Tag
+                color={getNodeTypeTagColor(node.type || 'entity')}
+                style={{
+                  fontSize: '10px',
+                  padding: '0 4px',
+                  lineHeight: '16px',
+                  height: '16px',
+                  borderRadius: '2px',
+                  marginLeft: 'auto',
+                  flexShrink: 0
+                }}
+              >
+                {getNodeTypeTagText(node.type || 'entity')}
+              </Tag>
             </div>
           )}
         </div>
@@ -191,11 +272,7 @@ export default function ObjectTreeNode({
             transition: 'opacity 0.2s'
           }}
         >
-          <Dropdown
-            menu={{ items: getMenuItems() }}
-            trigger={['click']}
-            placement="bottomRight"
-          >
+          <Dropdown menu={{ items: getMenuItems() }} trigger={['click']} placement="bottomRight">
             <Button
               type="text"
               size="small"
@@ -207,4 +284,4 @@ export default function ObjectTreeNode({
       )}
     </div>
   )
-} 
+}

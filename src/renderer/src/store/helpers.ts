@@ -92,6 +92,7 @@ export const createNewObjectChat = (
   const rootNode: ObjectNode = {
     id: rootNodeId,
     name: '根对象',
+    type: 'entity',
     description: '对象的根节点',
     children: [],
     expanded: true,
