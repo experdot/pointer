@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Button, Dropdown, Typography, Tooltip, Input, Tag } from 'antd'
+import { Button, Dropdown, Typography, Input, Tag } from 'antd'
 import {
   EditOutlined,
   DeleteOutlined,
@@ -7,7 +7,6 @@ import {
   MoreOutlined,
   CommentOutlined,
   FileTextOutlined,
-  ThunderboltOutlined,
   CalendarOutlined,
   ApiOutlined
 } from '@ant-design/icons'

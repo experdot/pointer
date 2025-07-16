@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Card, TreeSelect, Space, Typography, Alert, Tooltip, App, Tag } from 'antd'
+import { Button, Card, TreeSelect, Space, Typography, Alert, App, Tag } from 'antd'
 import {
   TableOutlined,
   NodeIndexOutlined,

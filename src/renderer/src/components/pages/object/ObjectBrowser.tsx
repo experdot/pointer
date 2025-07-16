@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { Input, Typography, Space, Tree, Button, Modal, App } from 'antd'
+import { Input, Typography, Tree, App } from 'antd'
 import { SearchOutlined, FolderOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../../store/AppContext'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'

@@ -9,7 +9,6 @@ import {
   Tabs,
   Tag,
   message,
-  Tooltip,
   Spin
 } from 'antd'
 import {

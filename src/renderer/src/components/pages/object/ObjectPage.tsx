@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react'
-import { Layout, Card, Space, Typography, App } from 'antd'
+import { Layout, Space, Typography, App } from 'antd'
 import { ProjectOutlined } from '@ant-design/icons'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'

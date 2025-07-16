@@ -3,11 +3,10 @@ import { Button, Space, List, Typography, Card, Modal, Select, Input, Tag, Toolt
 import {
   PlusOutlined,
   LinkOutlined,
-  EditOutlined,
   DeleteOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
-import { ObjectNode as ObjectNodeType, NodeConnection } from '../../../types'
+import { ObjectNode as ObjectNodeType } from '../../../types'
 
 const { Title, Text } = Typography
 const { Option } = Select

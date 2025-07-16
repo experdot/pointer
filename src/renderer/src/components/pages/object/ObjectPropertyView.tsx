@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse, Tag } from 'antd'
+import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
 import PropertyTableEditor from './PropertyTableEditor'
 import ConnectionEditor from './ConnectionEditor'
@@ -130,28 +130,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     }
     if (typeof value === 'object') {
       try {
-        // 使用replacer函数来过滤掉可能导致循环引用的属性
-        return JSON.stringify(
-          value,
-          (key, val) => {
-            // 过滤掉React内部属性和DOM元素
-            if (
-              key.startsWith('__react') ||
-              key.startsWith('_react') ||
-              (val && typeof val === 'object' && val.nodeType)
-            ) {
-              return '[Filtered]'
-            }
-            // 过滤掉函数
-            if (typeof val === 'function') {
-              return '[Function]'
-            }
-            return val
-          },
-          2
-        )
+        return JSON.stringify(value, null, 2)
       } catch (error) {
-        // 如果仍然有循环引用，返回安全的字符串表示
         if (error instanceof TypeError && error.message.includes('circular')) {
           return '[Object with circular reference]'
         }
@@ -164,34 +144,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   // 格式化时间
   const formatTime = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString('zh-CN')
-  }
-
-  // 获取节点类型的颜色
-  const getNodeTypeColor = (type: string) => {
-    switch (type) {
-      case 'entity':
-        return 'blue'
-      case 'event':
-        return 'green'
-      case 'relation':
-        return 'purple'
-      default:
-        return 'default'
-    }
-  }
-
-  // 获取节点类型的文本
-  const getNodeTypeText = (type: string) => {
-    switch (type) {
-      case 'entity':
-        return '实体'
-      case 'event':
-        return '事件'
-      case 'relation':
-        return '关系'
-      default:
-        return type || '未知'
-    }
   }
 
   // 渲染属性项
@@ -291,14 +243,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
 
           <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
             {renderPropertyItem('名称', selectedNode.name, 'name', true)}
-            {renderPropertyItem(
-              '类型',
-              <Tag color={getNodeTypeColor(selectedNode.type || 'unknown')}>
-                {getNodeTypeText(selectedNode.type || 'unknown')}
-              </Tag>,
-              'type',
-              true
-            )}
+            {renderPropertyItem('类型', selectedNode.type, 'type', true)}
             {renderPropertyItem('描述', selectedNode.description, 'description', true)}
           </div>
         </Card>
@@ -333,24 +278,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
             onDeleteNode={handleDeleteNode}
           />
         </div>
-
-        {/* 兼容性：显示旧的引用关系 */}
-        {selectedNode.references && selectedNode.references.length > 0 && (
-          <Card size="small" style={{ marginBottom: '16px' }}>
-            <Title level={5} style={{ margin: '0 0 12px 0' }}>
-              引用关系（已废弃）
-            </Title>
-            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
-              {selectedNode.references.map((ref, index) => (
-                <div key={index} style={{ marginBottom: '8px' }}>
-                  <Text type="secondary">
-                    {ref.name} ({ref.type}, {ref.strength})
-                  </Text>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
 
         {/* 元数据 */}
         {selectedNode.metadata && (
