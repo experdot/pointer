@@ -501,7 +501,7 @@ ${nodeContext}
 
     // 对象聊天相关操作
     case 'CREATE_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(
+      const newObjectChat: ObjectChat = createNewObjectChat(
         action.payload.title,
         action.payload.folderId,
         action.payload.lineage
@@ -513,7 +513,7 @@ ${nodeContext}
     }
 
     case 'CREATE_AND_OPEN_OBJECT_CHAT': {
-      const newObjectChat = createNewObjectChat(
+      const newObjectChat: ObjectChat = createNewObjectChat(
         action.payload.title,
         action.payload.folderId,
         action.payload.lineage

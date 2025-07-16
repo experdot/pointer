@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons'
 import { useSettings } from '../../store/hooks/useSettings'
 import { useAppContext } from '../../store/AppContext'
-import { StorageService } from '../../utils/storage'
+import { StorageService } from '../../services/storageService'
 import {
   importExternalChatHistory,
   parseExternalChatHistory,

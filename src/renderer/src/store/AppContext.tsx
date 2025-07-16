@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import { AppState, AppAction } from '../types'
-import { StorageService } from '../utils/storage'
+import { StorageService } from '../services/storageService'
 import { INITIAL_SETTINGS } from './constants'
 import { appReducer } from './reducers'
 import { useStatePersistence } from './hooks/useStatePersistence'

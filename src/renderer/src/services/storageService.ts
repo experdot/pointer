@@ -14,6 +14,9 @@ export class StorageService {
   // 保存完整应用状态
   static saveAppState(state: AppState): void {
     try {
+      console.log('Saving app state:', state)
+      console.count('Saving app state')
+
       // 分离状态保存，提高性能和可靠性
       this.saveSettings(state.settings)
       this.savePages(state.pages)

@@ -18,7 +18,7 @@ import {
   SettingOutlined
 } from '@ant-design/icons'
 import { useSettings } from '../../store/hooks/useSettings'
-import { StorageService } from '../../utils/storage'
+import { StorageService } from '../../services/storageService'
 
 export default function SettingsDemo() {
   const { settings } = useSettings()
