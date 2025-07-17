@@ -22,7 +22,7 @@ import {
   ImportOutlined,
   SelectOutlined
 } from '@ant-design/icons'
-import { useSettings } from '../../store/hooks/useSettings'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { usePagesStore } from '../../stores/pagesStore'
 import { StorageService } from '../../services/storageService'
 import {
@@ -36,7 +36,7 @@ import { PageFolder } from '../../types/type'
 const { Text, Paragraph } = Typography
 
 export default function DataManagement() {
-  const { importSettings, exportSettings } = useSettings()
+  const { importSettings, exportSettings } = useSettingsStore()
   const { pages, folders, importPages, clearAllPages } = usePagesStore()
   const [importing, setImporting] = useState(false)
   const [importingExternal, setImportingExternal] = useState(false)

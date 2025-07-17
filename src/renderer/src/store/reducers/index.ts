@@ -4,7 +4,7 @@ import { handleTabActions } from './tabReducer'
 import { handleUIActions } from './uiReducer'
 import { handleSearchActions } from './searchReducer'
 import { handleTaskActions } from './taskReducer'
-import { INITIAL_SETTINGS } from '../constants'
+import { INITIAL_SETTINGS } from '../../stores/helpers/constants'
 
 // Main reducer that combines all domain-specific reducers
 export function appReducer(state: AppState, action: AppAction): AppState {

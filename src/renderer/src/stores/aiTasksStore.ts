@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { AITask, AITaskStatus, AITaskType } from '../types/type'
-import { createPersistConfig, handleStoreError } from './storeConfig'
+import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 
 export interface AITasksState {
   aiTasks: AITask[]

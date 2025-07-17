@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { Settings, LLMConfig } from '../types/type'
-import { createPersistConfig, handleStoreError } from './storeConfig'
-import { INITIAL_SETTINGS } from '../store/constants'
+import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
+import { INITIAL_SETTINGS } from './helpers/constants'
 
 export interface SettingsState {
   settings: Settings

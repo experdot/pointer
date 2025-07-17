@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { ObjectData, ObjectNode, NodeConnection, ObjectGenerationRecord } from '../types/type'
-import { createPersistConfig, handleStoreError } from './storeConfig'
+import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 import { usePagesStore } from './pagesStore'
 
 export interface ObjectState {
@@ -433,31 +433,31 @@ export const useObjectStore = create<ObjectState & ObjectActions>()(
         modelId: string,
         relationId?: string
       ) => {
-                 try {
-           const { updatePage } = usePagesStore.getState()
-           const page = usePagesStore.getState().findPageById(chatId)
+        try {
+          const { updatePage } = usePagesStore.getState()
+          const page = usePagesStore.getState().findPageById(chatId)
 
-           if (page && page.type === 'object' && page.objectData) {
-             // 创建关系生成记录
-             const generationRecord: ObjectGenerationRecord = {
-               id: relationId || Date.now().toString(),
-               parentNodeId: sourceNodeId,
-               prompt: `生成关系节点: ${prompt}`,
-               generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
-               timestamp: Date.now(),
-               modelId
-             }
+          if (page && page.type === 'object' && page.objectData) {
+            // 创建关系生成记录
+            const generationRecord: ObjectGenerationRecord = {
+              id: relationId || Date.now().toString(),
+              parentNodeId: sourceNodeId,
+              prompt: `生成关系节点: ${prompt}`,
+              generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
+              timestamp: Date.now(),
+              modelId
+            }
 
-             const updatedObjectData = {
-               ...page.objectData,
-               generationHistory: [...page.objectData.generationHistory, generationRecord]
-             }
+            const updatedObjectData = {
+              ...page.objectData,
+              generationHistory: [...page.objectData.generationHistory, generationRecord]
+            }
 
-             updatePage(chatId, { objectData: updatedObjectData })
-           }
-         } catch (error) {
-           handleStoreError('objectStore', 'generateRelationNodes', error)
-         }
+            updatePage(chatId, { objectData: updatedObjectData })
+          }
+        } catch (error) {
+          handleStoreError('objectStore', 'generateRelationNodes', error)
+        }
       },
 
       createRelationNode: (
@@ -488,33 +488,39 @@ export const useObjectStore = create<ObjectState & ObjectActions>()(
 
               updatedNodes[relationNode.id] = newRelationNode
 
-                             // 更新源节点和目标节点的connections
-               updatedNodes[sourceNodeId] = {
-                 ...sourceNode,
-                 connections: [...(sourceNode.connections || []), {
-                   nodeId: relationNode.id,
-                   role: sourceRole,
-                   description: `${sourceRole}角色`,
-                   strength: 'medium' as const,
-                   metadata: {
-                     createdAt: Date.now(),
-                     source: 'ai' as const
-                   }
-                 }]
-               }
-               updatedNodes[targetNodeId] = {
-                 ...targetNode,
-                 connections: [...(targetNode.connections || []), {
-                   nodeId: relationNode.id,
-                   role: targetRole,
-                   description: `${targetRole}角色`,
-                   strength: 'medium' as const,
-                   metadata: {
-                     createdAt: Date.now(),
-                     source: 'ai' as const
-                   }
-                 }]
-               }
+              // 更新源节点和目标节点的connections
+              updatedNodes[sourceNodeId] = {
+                ...sourceNode,
+                connections: [
+                  ...(sourceNode.connections || []),
+                  {
+                    nodeId: relationNode.id,
+                    role: sourceRole,
+                    description: `${sourceRole}角色`,
+                    strength: 'medium' as const,
+                    metadata: {
+                      createdAt: Date.now(),
+                      source: 'ai' as const
+                    }
+                  }
+                ]
+              }
+              updatedNodes[targetNodeId] = {
+                ...targetNode,
+                connections: [
+                  ...(targetNode.connections || []),
+                  {
+                    nodeId: relationNode.id,
+                    role: targetRole,
+                    description: `${targetRole}角色`,
+                    strength: 'medium' as const,
+                    metadata: {
+                      createdAt: Date.now(),
+                      source: 'ai' as const
+                    }
+                  }
+                ]
+              }
 
               const updatedObjectData = {
                 ...page.objectData,
@@ -540,24 +546,24 @@ export const useObjectStore = create<ObjectState & ObjectActions>()(
           const { updatePage } = usePagesStore.getState()
           const page = usePagesStore.getState().findPageById(chatId)
 
-                     if (page && page.type === 'object' && page.objectData) {
-             // 创建生成记录
-             const generationRecord: ObjectGenerationRecord = {
-               id: generationId || Date.now().toString(),
-               parentNodeId: nodeId,
-               prompt,
-               generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
-               timestamp: Date.now(),
-               modelId
-             }
+          if (page && page.type === 'object' && page.objectData) {
+            // 创建生成记录
+            const generationRecord: ObjectGenerationRecord = {
+              id: generationId || Date.now().toString(),
+              parentNodeId: nodeId,
+              prompt,
+              generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
+              timestamp: Date.now(),
+              modelId
+            }
 
-             const updatedObjectData = {
-               ...page.objectData,
-               generationHistory: [...page.objectData.generationHistory, generationRecord]
-             }
+            const updatedObjectData = {
+              ...page.objectData,
+              generationHistory: [...page.objectData.generationHistory, generationRecord]
+            }
 
-             updatePage(chatId, { objectData: updatedObjectData })
-           }
+            updatePage(chatId, { objectData: updatedObjectData })
+          }
         } catch (error) {
           handleStoreError('objectStore', 'generateObjectChildren', error)
         }

@@ -355,7 +355,7 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
         const contextMessage = {
           id: `msg-${Date.now()}`,
           content: `基于对象节点 "${nodeName}" 创建的对话\n\n**节点上下文信息：**\n\n${nodeContext}`,
-          role: 'system' as const,
+          role: 'user' as const,
           timestamp: Date.now(),
           isStreaming: false,
           metadata: {

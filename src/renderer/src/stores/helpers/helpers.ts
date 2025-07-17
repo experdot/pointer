@@ -10,7 +10,7 @@ import {
   ObjectData,
   ObjectNode,
   PageLineage
-} from '../types/type'
+} from '../../types/type'
 import { SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from './constants'
 
 // 创建包含元关系的根节点结构

@@ -11,11 +11,10 @@ import RelationshipGraph from './RelationshipGraph'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import ModelSelector from '../chat/ModelSelector'
 import { createAIService } from '../../../services/aiService'
-import { useSettings } from '../../../store/hooks/useSettings'
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectNode as ObjectNodeType } from '../../../types/type'
 import { createObjectAIService } from './ObjectAIService'
-import { createObjectRootWithMetaRelations } from '../../../store/helpers'
+import { createObjectRootWithMetaRelations } from '../../../stores/helpers/helpers'
 
 const { Sider, Content } = Layout
 const { Title } = Typography
@@ -27,7 +26,6 @@ interface ObjectPageProps {
 const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   const stores = useAppStores()
   const { message } = App.useApp()
-  const { settings } = useSettings()
   const [selectedModel, setSelectedModel] = useState<string | undefined>(
     stores.settings.settings.defaultLLMId
   )
@@ -42,13 +40,13 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   // 获取LLM配置
   const getLLMConfig = useCallback(() => {
     const targetModelId = selectedModel || stores.settings.settings.defaultLLMId
-    const { llmConfigs } = settings
+    const { llmConfigs } = stores.settings.settings
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }
 
     return llmConfigs.find((config) => config.id === targetModelId) || llmConfigs[0]
-  }, [selectedModel, settings, stores.settings.settings.defaultLLMId])
+  }, [selectedModel, stores.settings.settings, stores.settings.settings.defaultLLMId])
 
   const handleModelChange = useCallback((modelId: string) => {
     setSelectedModel(modelId)

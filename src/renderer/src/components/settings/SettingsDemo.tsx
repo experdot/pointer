@@ -17,11 +17,11 @@ import {
   DatabaseOutlined,
   SettingOutlined
 } from '@ant-design/icons'
-import { useSettings } from '../../store/hooks/useSettings'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { StorageService } from '../../services/storageService'
 
 export default function SettingsDemo() {
-  const { settings } = useSettings()
+  const { settings } = useSettingsStore()
   const [storageInfo, setStorageInfo] = useState({
     settings: '0 KB',
     pages: '0 KB',

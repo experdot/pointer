@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { createPersistConfig, handleStoreError } from './storeConfig'
-import { constrainSidebarWidth } from '../store/helpers'
+import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
+import { constrainSidebarWidth } from './helpers/helpers'
 
 export interface UIState {
   // 节点选择状态

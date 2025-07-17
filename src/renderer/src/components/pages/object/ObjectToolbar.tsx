@@ -27,7 +27,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat } from '../../../types/type'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useObjectStore } from '../../../stores/objectStore'
-import { createObjectRootWithMetaRelations } from '../../../store/helpers'
+import { createObjectRootWithMetaRelations } from '../../../stores/helpers/helpers'
 
 interface ObjectToolbarProps {
   chatId: string

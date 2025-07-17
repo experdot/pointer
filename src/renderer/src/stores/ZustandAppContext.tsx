@@ -18,7 +18,6 @@ export function ZustandAppProvider({ children }: { children: ReactNode }) {
     const initializeStores = async () => {
       try {
         // 这里可以添加任何需要的初始化逻辑
-        // 例如：从旧的storageService迁移数据
         console.log('Zustand stores initialized')
         setIsLoaded(true)
       } catch (error) {
@@ -40,69 +39,4 @@ export function useZustandAppContext() {
     throw new Error('useZustandAppContext must be used within a ZustandAppProvider')
   }
   return context
-}
-
-// 迁移辅助函数
-export const migrateFromOldContext = (oldState: any) => {
-  const stores = useAppStores()
-
-  try {
-    // 迁移页面数据
-    if (oldState.pages) {
-      stores.pages.importPages(oldState.pages)
-    }
-
-    // 迁移文件夹数据
-    if (oldState.folders) {
-      oldState.folders.forEach((folder: any) => {
-        stores.pages.createFolder(folder.name, folder.parentId)
-      })
-    }
-
-    // 迁移标签页数据
-    if (oldState.openTabs) {
-      oldState.openTabs.forEach((tabId: string) => {
-        stores.tabs.openTab(tabId)
-      })
-    }
-
-    // 迁移活动标签页
-    if (oldState.activeTabId) {
-      stores.tabs.setActiveTab(oldState.activeTabId)
-    }
-
-    // 迁移UI状态
-    if (oldState.selectedNodeId) {
-      stores.ui.setSelectedNode(oldState.selectedNodeId, oldState.selectedNodeType)
-    }
-
-    if (oldState.sidebarCollapsed !== undefined) {
-      if (oldState.sidebarCollapsed) {
-        stores.ui.collapseSidebar()
-      }
-    }
-
-    if (oldState.sidebarWidth) {
-      stores.ui.setSidebarWidth(oldState.sidebarWidth)
-    }
-
-    // 迁移设置
-    if (oldState.settings) {
-      stores.settings.updateSettings(oldState.settings)
-    }
-
-    // 迁移搜索状态
-    if (oldState.searchQuery) {
-      stores.search.setSearchQuery(oldState.searchQuery)
-    }
-
-    console.log('Migration from old context completed')
-  } catch (error) {
-    console.error('Error migrating from old context:', error)
-  }
-}
-
-// 使用示例的Hook
-export const useZustandStores = () => {
-  return useAppStores()
 }

@@ -11,7 +11,6 @@ import {
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import { useAppStores } from '../../../stores'
-import { useSettings } from '../../../store/hooks/useSettings'
 import { createAIService } from '../../../services/aiService'
 import { createObjectAIService } from './ObjectAIService'
 
@@ -30,7 +29,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   onGenerate
 }) => {
   const stores = useAppStores()
-  const { settings } = useSettings()
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState('children')
@@ -55,7 +53,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
   // 获取LLM配置
   const getLLMConfig = () => {
-    const { llmConfigs, defaultLLMId } = settings
+    const { llmConfigs, defaultLLMId } = stores.settings.settings
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }

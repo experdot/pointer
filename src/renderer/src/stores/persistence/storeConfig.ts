@@ -1,4 +1,4 @@
-import { StorageService } from '../services/storageService'
+import { StorageService } from '../../services/storageService'
 
 // 通用的持久化配置
 export const createPersistConfig = <T>(storeName: string, version: number = 1) => ({
@@ -6,6 +6,7 @@ export const createPersistConfig = <T>(storeName: string, version: number = 1) =
   storage: {
     getItem: (name: string) => {
       try {
+        console.log('getItem', name)
         const item = localStorage.getItem(name)
         return item ? JSON.parse(item) : null
       } catch (error) {
@@ -15,6 +16,7 @@ export const createPersistConfig = <T>(storeName: string, version: number = 1) =
     },
     setItem: (name: string, value: T) => {
       try {
+        console.log('setItem', name, value)
         localStorage.setItem(name, JSON.stringify(value))
       } catch (error) {
         console.error(`Error saving ${name} to localStorage:`, error)
@@ -22,6 +24,7 @@ export const createPersistConfig = <T>(storeName: string, version: number = 1) =
     },
     removeItem: (name: string) => {
       try {
+        console.log('removeItem', name)
         localStorage.removeItem(name)
       } catch (error) {
         console.error(`Error removing ${name} from localStorage:`, error)
