@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 import { constrainSidebarWidth } from './helpers/helpers'
+import { useTabsStore } from './tabsStore'
 
 export interface UIState {
   // 节点选择状态
@@ -71,6 +72,11 @@ export const useUIStore = create<UIState & UIActions>()(
         set((state) => {
           state.selectedNodeId = nodeId
           state.selectedNodeType = nodeType
+
+          if (nodeType === 'chat') {
+            const { openTab } = useTabsStore.getState()
+            openTab(nodeId)
+          }
         })
       },
 

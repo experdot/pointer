@@ -6,6 +6,7 @@ import { createPersistConfig, handleStoreError } from './persistence/storeConfig
 import { removeFromArray, createNewFolder, updateFolderById } from './helpers/helpers'
 import { useTabsStore } from './tabsStore'
 import { v4 as uuidv4 } from 'uuid'
+import { useUIStore } from './uiStore'
 
 export interface PagesState {
   pages: Page[]
@@ -313,8 +314,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           })
 
           // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
@@ -345,9 +346,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             state.pages.push(newPage)
           })
 
-          // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
@@ -379,9 +379,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             state.pages.push(newPage)
           })
 
-          // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
@@ -480,9 +479,8 @@ ${params.cellContent}
             }
           })
 
-          // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
@@ -566,9 +564,8 @@ ${params.nodeContext}
             }
           })
 
-          // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
@@ -628,9 +625,8 @@ ${params.nodeContext}
             }
           })
 
-          // 使用tabsStore打开标签页
-          const { openTab } = useTabsStore.getState()
-          openTab(newPage.id)
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
 
           return newPage.id
         } catch (error) {
