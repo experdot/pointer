@@ -18,7 +18,7 @@ import {
   SettingOutlined
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
-import { StorageService } from '../../services/storageService'
+import { usePagesStore } from '../../stores/pagesStore'
 
 export default function SettingsDemo() {
   const { settings } = useSettingsStore()
@@ -31,9 +31,9 @@ export default function SettingsDemo() {
 
   const updateStorageInfo = () => {
     try {
-      const settingsData = StorageService.loadSettings()
-      const chatsData = StorageService.loadPages()
-      const foldersData = StorageService.loadFolders()
+      const settingsData = useSettingsStore.getState().settings
+      const chatsData = usePagesStore.getState().pages
+      const foldersData = usePagesStore.getState().folders
 
       const settingsSize = JSON.stringify(settingsData || {}).length
       const chatsSize = JSON.stringify(chatsData || []).length

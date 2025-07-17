@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { usePagesStore } from '../../stores/pagesStore'
-import { StorageService } from '../../services/storageService'
+
 import {
   importExternalChatHistory,
   parseExternalChatHistory,
@@ -104,10 +104,8 @@ export default function DataManagement() {
 
         if (result.success) {
           // 获取当前状态
-          const currentState = StorageService.loadAppState()
-          const currentChats = currentState?.pages || []
-          const currentFolders = currentState?.folders || []
-          const currentSettings = currentState?.settings
+          const currentChats = usePagesStore.getState().pages || []
+          const currentFolders = usePagesStore.getState().folders || []
 
           // 创建新文件夹（如果有的话）
           let updatedFolders = currentFolders
@@ -127,8 +125,8 @@ export default function DataManagement() {
           const mergedChats = [...currentChats, ...result.pages]
 
           // 保存到存储并更新状态
-          StorageService.savePages(mergedChats)
-          StorageService.saveFolders(updatedFolders)
+          usePagesStore.getState().importPages(mergedChats)
+          usePagesStore.getState().importFolders(updatedFolders)
 
           // 更新应用状态，确保保留当前的设置
           importPages(mergedChats)
@@ -196,10 +194,8 @@ export default function DataManagement() {
 
     if (result.success) {
       // 获取当前状态
-      const currentState = StorageService.loadAppState()
-      const currentChats = currentState?.pages || []
-      const currentFolders = currentState?.folders || []
-      const currentSettings = currentState?.settings
+      const currentChats = usePagesStore.getState().pages || []
+      const currentFolders = usePagesStore.getState().folders || []
 
       // 创建新文件夹（如果有的话）
       let updatedFolders = currentFolders
@@ -219,8 +215,8 @@ export default function DataManagement() {
       const mergedChats = [...currentChats, ...result.pages]
 
       // 保存到存储并更新状态
-      StorageService.savePages(mergedChats)
-      StorageService.saveFolders(updatedFolders)
+      usePagesStore.getState().importPages(mergedChats)
+      usePagesStore.getState().importFolders(updatedFolders)
 
       // 更新应用状态，确保保留当前的设置
       importPages(mergedChats)
@@ -302,26 +298,8 @@ export default function DataManagement() {
       cancelText: '取消',
       onOk: () => {
         try {
-          console.log('重置前 localStorage 状态:')
-          console.log('SETTINGS:', localStorage.getItem('ai-chat-app-settings'))
-          console.log('CHATS:', localStorage.getItem('ai-chat-app-chats'))
-          console.log('FOLDERS:', localStorage.getItem('ai-chat-app-folders'))
-          console.log('APP_STATE:', localStorage.getItem('ai-chat-app-state'))
-
-          // 清除localStorage中的所有数据 - 双重保险
-          StorageService.clearAllData()
-
-          // 手动清除以确保万无一失
-          localStorage.removeItem('ai-chat-app-settings')
-          localStorage.removeItem('ai-chat-app-chats')
-          localStorage.removeItem('ai-chat-app-folders')
-          localStorage.removeItem('ai-chat-app-state')
-
-          console.log('重置后 localStorage 状态:')
-          console.log('SETTINGS:', localStorage.getItem('ai-chat-app-settings'))
-          console.log('CHATS:', localStorage.getItem('ai-chat-app-chats'))
-          console.log('FOLDERS:', localStorage.getItem('ai-chat-app-folders'))
-          console.log('APP_STATE:', localStorage.getItem('ai-chat-app-state'))
+          // 清除localStorage中的所有数据 
+          usePagesStore.getState().clearAllPages()
 
           message.success('数据已重置')
 
@@ -345,7 +323,7 @@ export default function DataManagement() {
   }
 
   return (
-    <Card size="small" title="数据管理" bordered={false}>
+    <Card size="small" title="数据管理">
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {/* 说明信息 */}
         <div style={{ marginBottom: '12px' }}>

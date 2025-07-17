@@ -71,6 +71,7 @@ export interface PagesActions {
   // 工具方法
   clearAllPages: () => void
   importPages: (pages: Page[]) => void
+  importFolders: (folders: PageFolder[]) => void
   exportPages: () => Page[]
 }
 
@@ -649,6 +650,12 @@ ${params.nodeContext}
       importPages: (pages) => {
         set((state) => {
           state.pages = [...state.pages, ...pages]
+        })
+      },
+
+      importFolders: (folders) => {
+        set((state) => {
+          state.folders = [...state.folders, ...folders]
         })
       },
 
