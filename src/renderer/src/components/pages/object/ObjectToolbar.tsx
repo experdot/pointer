@@ -26,6 +26,7 @@ import {
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat } from '../../../types'
 import { useAppContext } from '../../../store/AppContext'
+import { createObjectRootWithMetaRelations } from '../../../store/helpers'
 
 interface ObjectToolbarProps {
   chatId: string
@@ -254,30 +255,18 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       cancelText: '取消',
       okType: 'danger',
       onOk: () => {
-        // 创建新的根节点
-        const newRootNode = {
-          id: generateId(),
-          name: '根对象',
-          type: 'entity',
-          description: '对象的根节点',
-          children: [],
-          expanded: true,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {}
-        }
+        // 使用统一的函数创建包含元关系的根节点结构
+        const { rootNodeId, nodes, expandedNodes } = createObjectRootWithMetaRelations()
 
         dispatch({
           type: 'UPDATE_OBJECT_DATA',
           payload: {
             chatId: chat.id,
             data: {
-              rootNodeId: newRootNode.id,
-              nodes: { [newRootNode.id]: newRootNode },
+              rootNodeId,
+              nodes,
               selectedNodeId: undefined,
-              expandedNodes: [newRootNode.id],
+              expandedNodes,
               searchQuery: undefined,
               filteredNodeIds: undefined,
               generationHistory: []

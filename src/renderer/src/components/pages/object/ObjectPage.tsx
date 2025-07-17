@@ -15,6 +15,7 @@ import { useSettings } from '../../../store/hooks/useSettings'
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectNode as ObjectNodeType } from '../../../types'
 import { createObjectAIService } from './ObjectAIService'
+import { createObjectRootWithMetaRelations } from '../../../store/helpers'
 
 const { Sider, Content } = Layout
 const { Title } = Typography
@@ -36,11 +37,6 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
   if (!chat || chat.type !== 'object') {
     return <div>对象页面数据加载错误</div>
-  }
-
-  // 生成唯一ID
-  const generateId = () => {
-    return uuidv4()
   }
 
   // 获取LLM配置
@@ -216,32 +212,19 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   useEffect(() => {
     const { objectData } = chat
 
-    // 如果没有根节点，创建一个默认的根节点
+    // 如果没有根节点，创建包含元关系的默认根节点
     if (!objectData.rootNodeId || !objectData.nodes[objectData.rootNodeId]) {
-      const rootId = generateId()
-      const rootNode = {
-        id: rootId,
-        name: '根对象',
-        type: 'entity',
-        description: '对象的根节点',
-        children: [],
-        expanded: true,
-        metadata: {
-          createdAt: Date.now(),
-          source: 'user' as const
-        },
-        properties: {}
-      }
+      const { rootNodeId, nodes, expandedNodes } = createObjectRootWithMetaRelations()
 
       dispatch({
         type: 'UPDATE_OBJECT_DATA',
         payload: {
           chatId: chat.id,
           data: {
-            rootNodeId: rootId,
-            nodes: { [rootId]: rootNode },
+            rootNodeId,
+            nodes,
             selectedNodeId: undefined,
-            expandedNodes: [rootId],
+            expandedNodes,
             searchQuery: undefined,
             filteredNodeIds: undefined,
             generationHistory: objectData.generationHistory || []
@@ -249,7 +232,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         }
       })
     }
-  }, [chat.id, chat.objectData, dispatch])
+  }, [chat, dispatch])
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
