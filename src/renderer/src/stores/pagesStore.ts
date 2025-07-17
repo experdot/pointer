@@ -295,7 +295,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       createAndOpenChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
-            id: `chat-${Date.now()}`,
+            id: uuidv4(),
             title,
             type: 'regular',
             createdAt: Date.now(),
@@ -349,7 +349,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       createAndOpenObjectChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
-            id: `object-${Date.now()}`,
+            id: uuidv4(),
             title,
             type: 'object',
             createdAt: Date.now(),

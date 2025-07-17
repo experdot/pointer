@@ -32,7 +32,6 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     deleteMultiplePages,
     updateFolder
   } = usePagesStore()
-  const { openTab } = useTabsStore()
   const {
     selectedNodeId,
     selectedNodeType,

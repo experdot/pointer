@@ -208,18 +208,12 @@ export default function DataManagement() {
           createdAt: Date.now(),
           order: Date.now()
         }
-        updatedFolders = [...currentFolders, newFolder]
+        updatedFolders = [newFolder]
       }
-
-      // 合并新聊天到现有聊天中
-      const mergedChats = [...currentChats, ...result.pages]
-
+      
       // 保存到存储并更新状态
-      usePagesStore.getState().importPages(mergedChats)
-      usePagesStore.getState().importFolders(updatedFolders)
-
-      // 更新应用状态，确保保留当前的设置
-      importPages(mergedChats)
+      usePagesStore.getState().importPages([...result.pages])
+      usePagesStore.getState().importFolders([...updatedFolders])
 
       message.success(result.message)
       setSelectiveImportModal(false)

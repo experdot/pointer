@@ -99,28 +99,8 @@ export default function Sidebar({
 
   // 批量删除选中的聊天
   const handleBatchDelete = useCallback(() => {
-    // 过滤出聊天ID（排除文件夹ID）
-    const chatIds = checkedNodeIds
-      .filter((nodeId) => nodeId.startsWith('chat-'))
-      .map((nodeId) => nodeId.replace('chat-', ''))
-
-    if (chatIds.length === 0) {
-      return
-    }
-
-    const chatCount = chatIds.length
-    modal.confirm({
-      title: '批量删除聊天',
-      content: `确定要删除选中的 ${chatCount} 个聊天吗？此操作无法撤销。`,
-      okText: '确定',
-      cancelText: '取消',
-      onOk() {
-        deleteMultiplePages(chatIds)
-        // 删除后清空选中状态
-        clearCheckedNodes()
-      }
-    })
-  }, [modal, checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
+    // TODO
+  },[checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
 
   // 检查是否有选中的项目
   const hasCheckedItems = checkedNodeIds.length > 0
