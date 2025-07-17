@@ -1,141 +1,106 @@
 import { useCallback } from 'react'
-import { useAppContext } from '../AppContext'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { Settings, LLMConfig } from '../../types/type'
 import { StorageService } from '../../services/storageService'
 
 export function useSettings() {
-  const { state, dispatch } = useAppContext()
+  const settingsStore = useSettingsStore()
 
   const updateSettings = useCallback(
     (newSettings: Partial<Settings>) => {
-      const updatedSettings = { ...state.settings, ...newSettings }
-
-      dispatch({
-        type: 'UPDATE_SETTINGS',
-        payload: updatedSettings
-      })
-
+      settingsStore.updateSettings(newSettings)
       // 立即保存设置到存储
-      StorageService.saveSettings(updatedSettings)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [state.settings, dispatch]
+    [settingsStore]
   )
 
   const addLLMConfig = useCallback(
     (config: LLMConfig) => {
-      const currentConfigs = state.settings.llmConfigs || []
-      const isFirstConfig = currentConfigs.length === 0
-
-      // 如果是第一个配置，自动设为默认
-      const newConfig = isFirstConfig ? { ...config, isDefault: true } : config
-      const newConfigs = [...currentConfigs, newConfig]
-
-      // 如果是第一个配置，更新defaultLLMId
-      const updatedSettings: Partial<Settings> = {
-        llmConfigs: newConfigs
-      }
-
-      if (isFirstConfig) {
-        updatedSettings.defaultLLMId = newConfig.id
-      }
-
-      updateSettings(updatedSettings)
+      settingsStore.addLLMConfig(config)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [state.settings.llmConfigs, updateSettings]
+    [settingsStore]
   )
 
   const updateLLMConfig = useCallback(
-    (configId: string, updates: Partial<LLMConfig>) => {
-      const newConfigs =
-        state.settings.llmConfigs?.map((config) =>
-          config.id === configId ? { ...config, ...updates } : config
-        ) || []
-      updateSettings({ llmConfigs: newConfigs })
+    (id: string, updates: Partial<LLMConfig>) => {
+      settingsStore.updateLLMConfig(id, updates)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [state.settings.llmConfigs, updateSettings]
+    [settingsStore]
   )
 
   const deleteLLMConfig = useCallback(
-    (configId: string) => {
-      const currentConfigs = state.settings.llmConfigs || []
-      const newConfigs = currentConfigs.filter((config) => config.id !== configId)
-      let newDefaultLLMId = state.settings.defaultLLMId
-
-      // 如果删除的是默认配置，需要选择新的默认配置
-      if (state.settings.defaultLLMId === configId) {
-        if (newConfigs.length > 0) {
-          // 选择第一个配置作为新的默认配置
-          const newDefaultConfig = newConfigs[0]
-          newDefaultLLMId = newDefaultConfig.id
-
-          // 更新配置列表，设置新的默认配置
-          newConfigs[0] = { ...newDefaultConfig, isDefault: true }
-        } else {
-          // 如果没有剩余配置，清除默认设置
-          newDefaultLLMId = undefined
-        }
-      }
-
-      updateSettings({
-        llmConfigs: newConfigs,
-        defaultLLMId: newDefaultLLMId
-      })
+    (id: string) => {
+      settingsStore.deleteLLMConfig(id)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [state.settings.llmConfigs, state.settings.defaultLLMId, updateSettings]
+    [settingsStore]
   )
 
   const setDefaultLLM = useCallback(
-    (configId: string) => {
-      const newConfigs =
-        state.settings.llmConfigs?.map((config) => ({
-          ...config,
-          isDefault: config.id === configId
-        })) || []
-
-      updateSettings({
-        llmConfigs: newConfigs,
-        defaultLLMId: configId
-      })
+    (id: string) => {
+      settingsStore.setDefaultLLM(id)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [state.settings.llmConfigs, updateSettings]
+    [settingsStore]
+  )
+
+  const setFontSize = useCallback(
+    (size: 'small' | 'medium' | 'large') => {
+      settingsStore.setFontSize(size)
+      StorageService.saveSettings(settingsStore.settings)
+    },
+    [settingsStore]
+  )
+
+  const getLLMConfig = useCallback(
+    (id: string) => {
+      return settingsStore.getLLMConfig(id)
+    },
+    [settingsStore]
+  )
+
+  const getDefaultLLMConfig = useCallback(() => {
+    return settingsStore.getDefaultLLMConfig()
+  }, [settingsStore])
+
+  const validateLLMConfig = useCallback(
+    (config: Partial<LLMConfig>) => {
+      return settingsStore.validateLLMConfig(config)
+    },
+    [settingsStore]
   )
 
   const resetSettings = useCallback(() => {
-    const defaultSettings: Settings = {
-      llmConfigs: [],
-      defaultLLMId: undefined,
-      fontSize: 'medium'
-    }
-
-    updateSettings(defaultSettings)
-  }, [updateSettings])
+    settingsStore.resetSettings()
+    StorageService.saveSettings(settingsStore.settings)
+  }, [settingsStore])
 
   const exportSettings = useCallback(() => {
-    return StorageService.exportData()
-  }, [])
+    return settingsStore.exportSettings()
+  }, [settingsStore])
 
   const importSettings = useCallback(
-    (dataString: string) => {
-      const success = StorageService.importData(dataString)
-      if (success) {
-        // 重新加载状态
-        const savedState = StorageService.loadAppState()
-        if (savedState) {
-          dispatch({ type: 'LOAD_STATE', payload: savedState })
-        }
-      }
-      return success
+    (settings: Settings) => {
+      settingsStore.importSettings(settings)
+      StorageService.saveSettings(settingsStore.settings)
     },
-    [dispatch]
+    [settingsStore]
   )
 
   return {
-    settings: state.settings,
+    settings: settingsStore.settings,
     updateSettings,
     addLLMConfig,
     updateLLMConfig,
     deleteLLMConfig,
     setDefaultLLM,
+    setFontSize,
+    getLLMConfig,
+    getDefaultLLMConfig,
+    validateLLMConfig,
     resetSettings,
     exportSettings,
     importSettings

@@ -23,7 +23,7 @@ import {
   SelectOutlined
 } from '@ant-design/icons'
 import { useSettings } from '../../store/hooks/useSettings'
-import { useAppContext } from '../../store/AppContext'
+import { usePagesStore } from '../../stores/pagesStore'
 import { StorageService } from '../../services/storageService'
 import {
   importExternalChatHistory,
@@ -37,7 +37,7 @@ const { Text, Paragraph } = Typography
 
 export default function DataManagement() {
   const { importSettings, exportSettings } = useSettings()
-  const { dispatch } = useAppContext()
+  const { pages, folders, importPages, clearAllPages } = usePagesStore()
   const [importing, setImporting] = useState(false)
   const [importingExternal, setImportingExternal] = useState(false)
   const [selectiveImportModal, setSelectiveImportModal] = useState(false)
@@ -49,7 +49,7 @@ export default function DataManagement() {
   const handleExport = () => {
     try {
       const data = exportSettings()
-      const blob = new Blob([data], { type: 'application/json' })
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
 
@@ -73,13 +73,9 @@ export default function DataManagement() {
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string
-        const success = importSettings(content)
-
-        if (success) {
-          message.success('数据导入成功')
-        } else {
-          message.error('导入失败，请检查文件格式')
-        }
+        const parsedData = JSON.parse(content)
+        importSettings(parsedData)
+        message.success('数据导入成功')
       } catch (error) {
         message.error('导入失败，文件格式错误')
       } finally {
@@ -135,14 +131,7 @@ export default function DataManagement() {
           StorageService.saveFolders(updatedFolders)
 
           // 更新应用状态，确保保留当前的设置
-          dispatch({
-            type: 'LOAD_STATE',
-            payload: {
-              pages: mergedChats,
-              folders: updatedFolders,
-              settings: currentSettings // 保留当前的设置，包括LLM配置
-            }
-          })
+          importPages(mergedChats)
 
           message.success(result.message)
         } else {
@@ -234,14 +223,7 @@ export default function DataManagement() {
       StorageService.saveFolders(updatedFolders)
 
       // 更新应用状态，确保保留当前的设置
-      dispatch({
-        type: 'LOAD_STATE',
-        payload: {
-          pages: mergedChats,
-          folders: updatedFolders,
-          settings: currentSettings // 保留当前的设置，包括LLM配置
-        }
-      })
+      importPages(mergedChats)
 
       message.success(result.message)
       setSelectiveImportModal(false)
@@ -356,7 +338,7 @@ export default function DataManagement() {
   const getCurrentDataSize = () => {
     try {
       const data = exportSettings()
-      return `${(data.length / 1024).toFixed(2)} KB`
+      return `${(JSON.stringify(data).length / 1024).toFixed(2)} KB`
     } catch {
       return '计算中...'
     }

@@ -28,7 +28,8 @@ import {
   SwapOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons'
-import { useAppContext } from '../../store/AppContext'
+import { useAITasksStore } from '../../stores/aiTasksStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { AITask, AITaskStatus, AITaskType } from '../../types/type'
 
 const { Text, Title } = Typography
@@ -145,12 +146,15 @@ const formatCreatedTime = (timestamp: number) => {
   })
 }
 
-interface TaskMonitorProps {
-  // 移除height属性，让组件自动占满剩余空间
-}
-
 export default function TaskMonitor() {
-  const { state, dispatch } = useAppContext()
+  const {
+    aiTasks,
+    cancelTask,
+    removeTask,
+    clearCompletedTasks,
+    clearAllTasks
+  } = useAITasksStore()
+  const { settings } = useSettingsStore()
   const { modal, message } = App.useApp()
 
   // 分页状态
@@ -165,24 +169,22 @@ export default function TaskMonitor() {
   // 获取模型名称的辅助函数
   const getModelName = (modelId?: string) => {
     if (!modelId) return null
-    const modelConfig = state.settings.llmConfigs.find((config) => config.id === modelId)
+    const modelConfig = settings.llmConfigs.find((config) => config.id === modelId)
     return modelConfig?.name || modelId
   }
 
   // 按状态分组任务
   const groupedTasks = useMemo(() => {
-    const running = state.aiTasks.filter(
-      (task) => task.status === 'running' || task.status === 'pending'
-    )
-    const completed = state.aiTasks
+    const running = aiTasks.filter((task) => task.status === 'running' || task.status === 'pending')
+    const completed = aiTasks
       .filter((task) => task.status === 'completed')
       .sort((a, b) => b.startTime - a.startTime) // 按创建时间降序排序，最新的在前面
-    const failed = state.aiTasks
+    const failed = aiTasks
       .filter((task) => task.status === 'failed' || task.status === 'cancelled')
       .sort((a, b) => b.startTime - a.startTime) // 失败的任务也按创建时间降序排序
 
     return { running, completed, failed }
-  }, [state.aiTasks])
+  }, [aiTasks])
 
   // 计算分页后的任务数据
   const paginatedTasks = useMemo(() => {
@@ -237,13 +239,13 @@ export default function TaskMonitor() {
 
   // 清除已完成的任务
   const handleClearCompleted = () => {
-    dispatch({ type: 'CLEAR_COMPLETED_AI_TASKS' })
+    clearCompletedTasks()
     setCompletedPage(1) // 重置分页
   }
 
   // 清除所有任务
   const handleClearAll = () => {
-    dispatch({ type: 'CLEAR_ALL_AI_TASKS' })
+    clearAllTasks()
     setRunningPage(1) // 重置分页
     setCompletedPage(1) // 重置分页
     setFailedPage(1) // 重置分页
@@ -252,7 +254,7 @@ export default function TaskMonitor() {
   // 取消任务
   const handleCancelTask = async (taskId: string) => {
     // 找到对应的任务
-    const task = state.aiTasks.find((t) => t.id === taskId)
+    const task = aiTasks.find((t) => t.id === taskId)
     if (!task) {
       message.error('任务不存在')
       return
@@ -265,33 +267,14 @@ export default function TaskMonitor() {
       await window.api.ai.stopStreaming(task.requestId)
 
       // 更新任务状态为已取消
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'cancelled',
-            endTime: Date.now()
-          }
-        }
-      })
+      cancelTask(taskId)
 
       hide()
       message.success('任务已取消')
     } catch (error) {
       console.error('Failed to cancel AI task:', error)
       // 即使停止失败，也要更新任务状态
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'cancelled',
-            endTime: Date.now(),
-            error: error instanceof Error ? error.message : 'Failed to cancel task'
-          }
-        }
-      })
+      cancelTask(taskId)
 
       message.warning('任务取消可能未完全成功')
     }
@@ -299,10 +282,7 @@ export default function TaskMonitor() {
 
   // 移除单个任务
   const handleRemoveTask = (taskId: string) => {
-    dispatch({
-      type: 'REMOVE_AI_TASK',
-      payload: { taskId }
-    })
+    removeTask(taskId)
   }
 
   // 查看任务详情
@@ -568,7 +548,7 @@ export default function TaskMonitor() {
     )
   }
 
-  if (state.aiTasks.length === 0) {
+  if (aiTasks.length === 0) {
     return (
       <div
         style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -590,7 +570,7 @@ export default function TaskMonitor() {
         }}
       >
         <Title level={5} style={{ margin: 0 }}>
-          AI任务监控 ({state.aiTasks.length})
+          AI任务监控 ({aiTasks.length})
         </Title>
         <Space>
           {groupedTasks.completed.length > 0 && (
@@ -598,7 +578,7 @@ export default function TaskMonitor() {
               清除已完成
             </Button>
           )}
-          {state.aiTasks.length > 0 && (
+          {aiTasks.length > 0 && (
             <Button type="text" size="small" onClick={handleClearAll}>
               清除全部
             </Button>

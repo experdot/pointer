@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { Input, Typography, Tree, App } from 'antd'
 import { SearchOutlined, FolderOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import ObjectToolbar from './ObjectToolbar'
 import ObjectTreeNode from './ObjectTreeNode'
@@ -13,12 +13,11 @@ interface ObjectBrowserProps {
 }
 
 const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
-  const [searchQuery, setSearchQuery] = useState('')
+  const stores = useAppStores()
   const { modal } = App.useApp()
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -26,7 +25,7 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
 
   // 获取对象数据
   const objectData = chat.objectData
-  const { nodes, rootNodeId, selectedNodeId, expandedNodes } = objectData
+  const { nodes, rootNodeId, selectedNodeId, expandedNodes, searchQuery = '' } = objectData
 
   // 构建Tree组件所需的数据结构
   const buildTreeData = useCallback(
@@ -91,13 +90,10 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
     (selectedKeys: React.Key[]) => {
       const nodeId = selectedKeys[0]?.toString()
       if (nodeId) {
-        dispatch({
-          type: 'SELECT_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        stores.object.selectObjectNode(chat.id, nodeId)
       }
     },
-    [dispatch, chat.id]
+    [stores.object, chat.id]
   )
 
   // 处理节点展开/折叠
@@ -117,20 +113,14 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
 
       // 批量更新展开状态
       newlyExpanded.forEach((nodeId) => {
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        stores.object.expandObjectNode(chat.id, nodeId)
       })
 
       newlyCollapsed.forEach((nodeId) => {
-        dispatch({
-          type: 'COLLAPSE_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        stores.object.collapseObjectNode(chat.id, nodeId)
       })
     },
-    [dispatch, chat.id, expandedNodes]
+    [stores.object, chat.id, expandedNodes]
   )
 
   // 处理节点编辑
@@ -142,16 +132,9 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
   // 处理保存编辑
   const handleSaveEdit = useCallback(
     (nodeId: string, newValue: string) => {
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId,
-          updates: { name: newValue }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, nodeId, { name: newValue })
     },
-    [dispatch, chat.id]
+    [stores.object, chat.id]
   )
 
   // 处理节点删除
@@ -173,14 +156,11 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
         cancelText: '取消',
         okType: 'danger',
         onOk: () => {
-          dispatch({
-            type: 'DELETE_OBJECT_NODE',
-            payload: { chatId: chat.id, nodeId }
-          })
+          stores.object.deleteObjectNode(chat.id, nodeId)
         }
       })
     },
-    [dispatch, chat.id, nodes, modal]
+    [stores.object, chat.id, nodes, modal]
   )
 
   // 处理清空子节点
@@ -197,14 +177,11 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
         cancelText: '取消',
         okType: 'danger',
         onOk: () => {
-          dispatch({
-            type: 'CLEAR_OBJECT_NODE_CHILDREN',
-            payload: { chatId: chat.id, nodeId }
-          })
+          stores.object.clearObjectNodeChildren(chat.id, nodeId)
         }
       })
     },
-    [dispatch, chat.id, nodes, modal]
+    [stores.object, chat.id, nodes, modal]
   )
 
   // 获取节点上下文信息
@@ -370,33 +347,44 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
 
       const nodeContext = getNodeContext(node)
 
-      dispatch({
-        type: 'CREATE_CHAT_FROM_OBJECT_NODE',
-        payload: {
-          folderId: chat.folderId,
-          nodeId,
-          nodeName,
-          nodeContext,
-          sourcePageId: chatId
+      // 创建基于节点的聊天页面
+      try {
+        const newChatId = stores.pages.createAndOpenChat(`${nodeName} 对话`, chat.folderId)
+
+        // 添加一条包含节点上下文的系统消息
+        const contextMessage = {
+          id: `msg-${Date.now()}`,
+          content: `基于对象节点 "${nodeName}" 创建的对话\n\n**节点上下文信息：**\n\n${nodeContext}`,
+          role: 'system' as const,
+          timestamp: Date.now(),
+          isStreaming: false,
+          metadata: {
+            sourceNodeId: nodeId,
+            sourcePageId: chatId,
+            nodeContext: true
+          }
         }
-      })
+
+        // 使用 messagesStore 添加初始消息
+        stores.messages.addMessage(newChatId, contextMessage)
+
+        console.log('创建聊天成功:', newChatId)
+      } catch (error) {
+        console.error('创建聊天失败:', error)
+      }
     },
-    [dispatch, chat.folderId, chatId, nodes, getNodeContext]
+    [stores.pages, stores.messages, chat.folderId, chatId, nodes, getNodeContext]
   )
 
   // 搜索处理
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const query = e.target.value
-      setSearchQuery(query)
 
-      // 派发搜索action
-      dispatch({
-        type: 'SEARCH_OBJECT_NODES',
-        payload: { chatId: chat.id, query }
-      })
+      // 使用 objectStore 的搜索方法
+      stores.object.searchObjectNodes(chat.id, query)
     },
-    [dispatch, chat.id]
+    [stores.object, chat.id]
   )
 
   return (

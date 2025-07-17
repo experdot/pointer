@@ -34,6 +34,7 @@
     "electron-updater": "^6.3.9",
     "eventsource-parser": "^3.0.3",
     "html2canvas": "^1.4.1",
+    "immer": "^10.1.1",
     "katex": "^0.16.11",
     "mermaid": "^10.9.1",
     "react-markdown": "^10.1.0",
@@ -44,7 +45,8 @@
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "use-debounce": "^10.0.1",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

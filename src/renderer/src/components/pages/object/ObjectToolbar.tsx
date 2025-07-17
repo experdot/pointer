@@ -25,7 +25,8 @@ import {
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat } from '../../../types/type'
-import { useAppContext } from '../../../store/AppContext'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useObjectStore } from '../../../stores/objectStore'
 import { createObjectRootWithMetaRelations } from '../../../store/helpers'
 
 interface ObjectToolbarProps {
@@ -33,14 +34,21 @@ interface ObjectToolbarProps {
 }
 
 const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const { pages } = usePagesStore()
+  const {
+    addObjectNode,
+    clearObjectNodeChildren,
+    updateObjectData,
+    expandObjectNode,
+    collapseObjectNode
+  } = useObjectStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [form] = Form.useForm()
   const { modal, message } = App.useApp()
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = pages.find((p) => p.id === chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -118,21 +126,11 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
       console.log('新节点对象:', newNode)
 
-      dispatch({
-        type: 'ADD_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          node: newNode,
-          parentId: parentId || undefined
-        }
-      })
+      addObjectNode(chat.id, newNode, parentId || undefined)
 
       // 展开父节点以显示新添加的节点
       if (parentId && !expandedNodes.includes(parentId)) {
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId: parentId }
-        })
+        expandObjectNode(chat.id, parentId)
       }
 
       message.success(`成功添加节点：${name}`)
@@ -200,13 +198,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
         // 验证数据格式
         if (jsonData.objectData && jsonData.objectData.nodes) {
-          dispatch({
-            type: 'IMPORT_OBJECT_FROM_JSON',
-            payload: {
-              chatId: chat.id,
-              jsonData: jsonData.objectData
-            }
-          })
+          updateObjectData(chat.id, jsonData.objectData)
           message.success('导入成功！')
         } else {
           message.error('无效的文件格式')
@@ -227,10 +219,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
     const allNodeIds = Object.keys(nodes)
     allNodeIds.forEach((nodeId) => {
       if (!expandedNodes.includes(nodeId)) {
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        expandObjectNode(chat.id, nodeId)
       }
     })
   }
@@ -238,10 +227,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   // 折叠所有节点
   const handleCollapseAll = () => {
     expandedNodes.forEach((nodeId) => {
-      dispatch({
-        type: 'COLLAPSE_OBJECT_NODE',
-        payload: { chatId: chat.id, nodeId }
-      })
+      collapseObjectNode(chat.id, nodeId)
     })
   }
 
@@ -258,20 +244,14 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         // 使用统一的函数创建包含元关系的根节点结构
         const { rootNodeId, nodes, expandedNodes } = createObjectRootWithMetaRelations()
 
-        dispatch({
-          type: 'UPDATE_OBJECT_DATA',
-          payload: {
-            chatId: chat.id,
-            data: {
-              rootNodeId,
-              nodes,
-              selectedNodeId: undefined,
-              expandedNodes,
-              searchQuery: undefined,
-              filteredNodeIds: undefined,
-              generationHistory: []
-            }
-          }
+        updateObjectData(chat.id, {
+          rootNodeId,
+          nodes,
+          selectedNodeId: undefined,
+          expandedNodes,
+          searchQuery: undefined,
+          filteredNodeIds: undefined,
+          generationHistory: []
         })
 
         message.success('已清空所有对象数据')
@@ -614,20 +594,14 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
           }
         }
 
-        dispatch({
-          type: 'UPDATE_OBJECT_DATA',
-          payload: {
-            chatId: chat.id,
-            data: {
-              rootNodeId: rootId,
-              nodes: exampleNodes,
-              selectedNodeId: undefined,
-              expandedNodes: [rootId],
-              searchQuery: undefined,
-              filteredNodeIds: undefined,
-              generationHistory: []
-            }
-          }
+        updateObjectData(chat.id, {
+          rootNodeId: rootId,
+          nodes: exampleNodes,
+          selectedNodeId: undefined,
+          expandedNodes: [rootId],
+          searchQuery: undefined,
+          filteredNodeIds: undefined,
+          generationHistory: []
         })
 
         message.success('示例数据生成成功！')

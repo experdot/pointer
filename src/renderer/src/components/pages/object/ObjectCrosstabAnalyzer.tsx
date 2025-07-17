@@ -10,7 +10,7 @@ import {
   ApiOutlined
 } from '@ant-design/icons'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 
 const { Text } = Typography
 
@@ -19,13 +19,13 @@ interface ObjectCrosstabAnalyzerProps {
 }
 
 const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const { message } = App.useApp()
   const [selectedHorizontalNode, setSelectedHorizontalNode] = useState<string | null>(null)
   const [selectedVerticalNode, setSelectedVerticalNode] = useState<string | null>(null)
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -231,26 +231,69 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     // 创建交叉分析标题
     const title = `${horizontalNode.name} × ${verticalNode.name} 交叉分析`
 
-    // 派发创建交叉表的action，传递完整的上下文信息
-    dispatch({
-      type: 'CREATE_CROSSTAB_FROM_OBJECTS',
-      payload: {
-        title,
-        folderId: chat.folderId,
-        horizontalNodeId: selectedHorizontalNode,
-        verticalNodeId: selectedVerticalNode,
+    try {
+      // 使用 pagesStore 创建交叉分析页面
+      const newCrosstabId = stores.pages.createAndOpenCrosstabChat(title, chat.folderId)
+
+      // 设置交叉分析的初始数据和上下文
+      const crosstabMetadata = {
+        topic: title,
+        horizontalDimensions: [
+          {
+            id: selectedHorizontalNode,
+            name: horizontalNode.name,
+            description: horizontalNode.description || `基于${horizontalNode.name}节点的横轴维度`,
+            values: horizontalItems,
+            order: 0
+          }
+        ],
+        verticalDimensions: [
+          {
+            id: selectedVerticalNode,
+            name: verticalNode.name,
+            description: verticalNode.description || `基于${verticalNode.name}节点的纵轴维度`,
+            values: verticalItems,
+            order: 0
+          }
+        ],
+        valueDimensions: [
+          {
+            id: 'relationship',
+            name: '关系强度',
+            description: '描述横轴和纵轴元素之间的关系强度'
+          }
+        ],
+        topicSuggestions: [
+          `分析${horizontalNode.name}与${verticalNode.name}的关系`,
+          `探索${horizontalNode.name}的各个方面如何影响${verticalNode.name}`,
+          `评估${verticalNode.name}在不同${horizontalNode.name}情况下的表现`
+        ]
+      }
+
+      // 将源数据作为额外信息存储（虽然不在标准接口中，但可以存储在页面的其他地方）
+      const sourceData = {
+        sourcePageId: chatId,
         objectData: chat.objectData,
         horizontalContext,
-        verticalContext,
-        sourcePageId: chatId
+        verticalContext
       }
-    })
 
-    message.success('交叉分析表已创建！')
+      // 更新交叉分析的元数据
+      stores.crosstab.updateMetadata(newCrosstabId, crosstabMetadata)
 
-    // 重置选择
-    setSelectedHorizontalNode(null)
-    setSelectedVerticalNode(null)
+      // 可以考虑将源数据存储为页面的自定义属性或在交叉表数据中添加额外字段
+      // 这里先记录日志，后续可以根据需要扩展存储方式
+      console.log('交叉分析源数据:', sourceData)
+
+      message.success('交叉分析表已创建！')
+
+      // 重置选择
+      setSelectedHorizontalNode(null)
+      setSelectedVerticalNode(null)
+    } catch (error) {
+      console.error('创建交叉分析失败:', error)
+      message.error('创建交叉分析失败，请稍后重试')
+    }
   }
 
   // 检查是否可以创建交叉分析

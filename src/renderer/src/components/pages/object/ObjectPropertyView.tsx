@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { ObjectChat } from '../../../types/type'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 import PropertyTableEditor from './PropertyTableEditor'
 import ConnectionEditor from './ConnectionEditor'
 import RelationManager from './RelationManager'
@@ -15,12 +15,12 @@ interface ObjectPropertyViewProps {
 }
 
 const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -52,14 +52,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       }
 
       // 更新节点
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { [editingField]: parsedValue }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { [editingField]: parsedValue })
 
       setEditingField(null)
       setEditValue('')
@@ -78,28 +71,14 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   const handlePropertiesSave = (properties: { [key: string]: any }) => {
     if (!selectedNode) return
 
-    dispatch({
-      type: 'UPDATE_OBJECT_NODE',
-      payload: {
-        chatId: chat.id,
-        nodeId: selectedNode.id,
-        updates: { properties }
-      }
-    })
+    stores.object.updateObjectNode(chat.id, selectedNode.id, { properties })
   }
 
   // 保存连接
   const handleConnectionsSave = (connections: any[]) => {
     if (!selectedNode) return
 
-    dispatch({
-      type: 'UPDATE_OBJECT_NODE',
-      payload: {
-        chatId: chat.id,
-        nodeId: selectedNode.id,
-        updates: { connections }
-      }
-    })
+    stores.object.updateObjectNode(chat.id, selectedNode.id, { connections })
   }
 
   // 创建关系节点
@@ -117,10 +96,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
 
   // 删除节点
   const handleDeleteNode = (nodeId: string) => {
-    dispatch({
-      type: 'DELETE_OBJECT_NODE',
-      payload: { chatId: chat.id, nodeId }
-    })
+    stores.object.deleteObjectNode(chat.id, nodeId)
   }
 
   // 格式化显示值

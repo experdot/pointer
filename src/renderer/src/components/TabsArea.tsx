@@ -12,7 +12,10 @@ import {
   TableOutlined,
   BlockOutlined
 } from '@ant-design/icons'
-import { useAppContext } from '../store/AppContext'
+import { usePagesStore } from '../stores/pagesStore'
+import { useTabsStore } from '../stores/tabsStore'
+import { useUIStore } from '../stores/uiStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { ChatWindow, ChatWindowRef } from './pages/chat/index'
 import { CrosstabChat } from './pages/crosstab/index'
 import { ObjectPage } from './pages/object/index'
@@ -20,7 +23,22 @@ import Settings from './Settings'
 import './TabsArea.css'
 
 export default function TabsArea() {
-  const { state, dispatch } = useAppContext()
+  const { pages, createAndOpenChat, createAndOpenCrosstabChat, createAndOpenObjectChat } =
+    usePagesStore()
+  const {
+    openTabs,
+    activeTabId,
+    closeTab,
+    closeOtherTabs,
+    closeTabsToRight,
+    closeAllTabs,
+    pinTab,
+    unpinTab,
+    reorderTabs,
+    setActiveTab
+  } = useTabsStore()
+  const {} = useUIStore()
+  const { settings } = useSettingsStore()
   const chatWindowRefs = useRef<Map<string, ChatWindowRef>>(new Map())
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [draggedTabId, setDraggedTabId] = React.useState<string | null>(null)
@@ -37,27 +55,18 @@ export default function TabsArea() {
 
   // 创建新聊天
   const handleCreateChat = useCallback(() => {
-    dispatch({
-      type: 'CREATE_AND_OPEN_CHAT',
-      payload: { title: '新建聊天' }
-    })
-  }, [dispatch])
+    createAndOpenChat('新建聊天')
+  }, [createAndOpenChat])
 
   // 创建交叉视图聊天
   const handleCreateCrosstabChat = useCallback(() => {
-    dispatch({
-      type: 'CREATE_AND_OPEN_CROSSTAB_CHAT',
-      payload: { title: '新建交叉视图' }
-    })
-  }, [dispatch])
+    createAndOpenCrosstabChat('新建交叉视图')
+  }, [createAndOpenCrosstabChat])
 
   // 创建对象页面聊天
   const handleCreateObjectChat = useCallback(() => {
-    dispatch({
-      type: 'CREATE_AND_OPEN_OBJECT_CHAT',
-      payload: { title: '新建对象页面' }
-    })
-  }, [dispatch])
+    createAndOpenObjectChat('新建对象页面')
+  }, [createAndOpenObjectChat])
 
   // 处理打开设置
   const handleOpenSettings = useCallback(() => {
@@ -71,26 +80,29 @@ export default function TabsArea() {
     event.dataTransfer.effectAllowed = 'move'
   }, [])
 
-  const handleDragOver = useCallback((event: React.DragEvent, chatId: string) => {
-    event.preventDefault()
-    
-    if (draggedTabId) {
-      const sourceChat = state.pages.find(p => p.id === draggedTabId)
-      const targetChat = state.pages.find(p => p.id === chatId)
-      
-      const sourcePinned = sourceChat?.pinned || false
-      const targetPinned = targetChat?.pinned || false
-      
-      // 检查是否可以拖拽
-      if (sourcePinned !== targetPinned) {
-        event.dataTransfer.dropEffect = 'none'
-        return
+  const handleDragOver = useCallback(
+    (event: React.DragEvent, chatId: string) => {
+      event.preventDefault()
+
+      if (draggedTabId) {
+        const sourceChat = pages.find((p) => p.id === draggedTabId)
+        const targetChat = pages.find((p) => p.id === chatId)
+
+        const sourcePinned = sourceChat?.pinned || false
+        const targetPinned = targetChat?.pinned || false
+
+        // 检查是否可以拖拽
+        if (sourcePinned !== targetPinned) {
+          event.dataTransfer.dropEffect = 'none'
+          return
+        }
       }
-    }
-    
-    event.dataTransfer.dropEffect = 'move'
-    setDragOverTabId(chatId)
-  }, [draggedTabId, state.pages])
+
+      event.dataTransfer.dropEffect = 'move'
+      setDragOverTabId(chatId)
+    },
+    [draggedTabId, pages]
+  )
 
   const handleDragLeave = useCallback((event: React.DragEvent) => {
     // 只在离开整个标签区域时清除
@@ -99,47 +111,47 @@ export default function TabsArea() {
     }
   }, [])
 
-  const handleDrop = useCallback((event: React.DragEvent, targetChatId: string) => {
-    event.preventDefault()
-    const sourceChatId = event.dataTransfer.getData('text/plain')
-    
-    if (sourceChatId && sourceChatId !== targetChatId) {
-      const sourceChat = state.pages.find(p => p.id === sourceChatId)
-      const targetChat = state.pages.find(p => p.id === targetChatId)
-      
-      // 检查是否可以进行拖拽排序
-      const sourcePinned = sourceChat?.pinned || false
-      const targetPinned = targetChat?.pinned || false
-      
-      // 固定标签页和非固定标签页不能互相拖拽
-      if (sourcePinned !== targetPinned) {
-        setDraggedTabId(null)
-        setDragOverTabId(null)
-        return
+  const handleDrop = useCallback(
+    (event: React.DragEvent, targetChatId: string) => {
+      event.preventDefault()
+      const sourceChatId = event.dataTransfer.getData('text/plain')
+
+      if (sourceChatId && sourceChatId !== targetChatId) {
+        const sourceChat = pages.find((p) => p.id === sourceChatId)
+        const targetChat = pages.find((p) => p.id === targetChatId)
+
+        // 检查是否可以进行拖拽排序
+        const sourcePinned = sourceChat?.pinned || false
+        const targetPinned = targetChat?.pinned || false
+
+        // 固定标签页和非固定标签页不能互相拖拽
+        if (sourcePinned !== targetPinned) {
+          setDraggedTabId(null)
+          setDragOverTabId(null)
+          return
+        }
+
+        const currentTabs = [...openTabs]
+        const sourceIndex = currentTabs.indexOf(sourceChatId)
+        const targetIndex = currentTabs.indexOf(targetChatId)
+
+        if (sourceIndex !== -1 && targetIndex !== -1) {
+          // 移除源标签
+          currentTabs.splice(sourceIndex, 1)
+          // 在目标位置插入
+          const newTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+          currentTabs.splice(newTargetIndex, 0, sourceChatId)
+
+          // 通过reorderTabs进行排序，确保固定标签页在前
+          reorderTabs(currentTabs)
+        }
       }
-      
-      const currentTabs = [...state.openTabs]
-      const sourceIndex = currentTabs.indexOf(sourceChatId)
-      const targetIndex = currentTabs.indexOf(targetChatId)
-      
-      if (sourceIndex !== -1 && targetIndex !== -1) {
-        // 移除源标签
-        currentTabs.splice(sourceIndex, 1)
-        // 在目标位置插入
-        const newTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
-        currentTabs.splice(newTargetIndex, 0, sourceChatId)
-        
-        // 通过reducer进行排序，确保固定标签页在前
-        dispatch({
-          type: 'REORDER_TABS',
-          payload: { newOrder: currentTabs }
-        })
-      }
-    }
-    
-    setDraggedTabId(null)
-    setDragOverTabId(null)
-  }, [state.openTabs, state.pages, dispatch])
+
+      setDraggedTabId(null)
+      setDragOverTabId(null)
+    },
+    [openTabs, pages, reorderTabs]
+  )
 
   const handleDragEnd = useCallback(() => {
     setDraggedTabId(null)
@@ -149,49 +161,26 @@ export default function TabsArea() {
   // 键盘快捷键处理
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const { ctrlKey, altKey, shiftKey, key } = event
-      const activeTabId = state.activeTabId
-
-      if (!activeTabId) return
-
-      // Ctrl+W: 关闭当前标签页
-      if (ctrlKey && !altKey && !shiftKey && key === 'w') {
+      // Ctrl+T 创建新聊天
+      if ((event.ctrlKey || event.metaKey) && event.key === 't') {
         event.preventDefault()
-        dispatch({ type: 'CLOSE_TAB', payload: { chatId: activeTabId } })
-        return
+        handleCreateChat()
       }
-
-      // Ctrl+P: 固定/取消固定当前标签页
-      if (ctrlKey && !altKey && !shiftKey && key === 'p') {
+      // Ctrl+W 关闭当前标签页
+      if ((event.ctrlKey || event.metaKey) && event.key === 'w') {
         event.preventDefault()
-        const chat = state.pages.find((c) => c.id === activeTabId)
-        const isPinned = chat?.pinned || false
-        dispatch({
-          type: isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
-          payload: { chatId: activeTabId }
-        })
-        return
+        if (activeTabId) {
+          closeTab(activeTabId)
+        }
       }
-
-      // Ctrl+Alt+W: 关闭其他标签页
-      if (ctrlKey && altKey && !shiftKey && key === 'w') {
+      // Ctrl+Tab 切换到下一个标签页
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Tab') {
         event.preventDefault()
-        dispatch({ type: 'CLOSE_OTHER_TABS', payload: { chatId: activeTabId } })
-        return
-      }
-
-      // Ctrl+Shift+W: 关闭右侧标签页
-      if (ctrlKey && !altKey && shiftKey && key === 'w') {
-        event.preventDefault()
-        dispatch({ type: 'CLOSE_TABS_TO_RIGHT', payload: { chatId: activeTabId } })
-        return
-      }
-
-      // Ctrl+Shift+Alt+W: 关闭全部标签页
-      if (ctrlKey && altKey && shiftKey && key === 'w') {
-        event.preventDefault()
-        dispatch({ type: 'CLOSE_ALL_TABS' })
-        return
+        if (openTabs.length > 0 && activeTabId) {
+          const currentIndex = openTabs.indexOf(activeTabId)
+          const nextIndex = (currentIndex + 1) % openTabs.length
+          setActiveTab(openTabs[nextIndex])
+        }
       }
     }
 
@@ -199,12 +188,12 @@ export default function TabsArea() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [state.activeTabId, state.pages, dispatch])
+  }, [activeTabId, openTabs, closeTab, setActiveTab, handleCreateChat])
 
   // 当活动标签页改变时，聚焦到输入框
   useEffect(() => {
-    if (state.activeTabId) {
-      const chatWindowRef = chatWindowRefs.current.get(state.activeTabId)
+    if (activeTabId) {
+      const chatWindowRef = chatWindowRefs.current.get(activeTabId)
       if (chatWindowRef) {
         // 使用 setTimeout 确保 DOM 已经完成渲染
         setTimeout(() => {
@@ -212,23 +201,23 @@ export default function TabsArea() {
         }, 100)
       }
     }
-  }, [state.activeTabId])
+  }, [activeTabId])
 
   const handleTabChange = (activeKey: string) => {
-    dispatch({ type: 'SET_ACTIVE_TAB', payload: { chatId: activeKey } })
+    setActiveTab(activeKey)
   }
 
   const handleTabClose = (targetKey: string) => {
-    dispatch({ type: 'CLOSE_TAB', payload: { chatId: targetKey } })
+    closeTab(targetKey)
   }
 
   // 获取右键菜单项
   const getContextMenuItems = (chatId: string): MenuProps['items'] => {
-    const chat = state.pages.find((c) => c.id === chatId)
+    const chat = pages.find((c) => c.id === chatId)
     const isPinned = chat?.pinned || false
-    const currentIndex = state.openTabs.indexOf(chatId)
-    const hasTabsToRight = currentIndex < state.openTabs.length - 1
-    const hasOtherTabs = state.openTabs.length > 1
+    const currentIndex = openTabs.indexOf(chatId)
+    const hasTabsToRight = currentIndex < openTabs.length - 1
+    const hasOtherTabs = openTabs.length > 1
 
     return [
       {
@@ -241,10 +230,11 @@ export default function TabsArea() {
         ),
         icon: isPinned ? <PushpinOutlined /> : <PushpinFilled />,
         onClick: () => {
-          dispatch({
-            type: isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
-            payload: { chatId }
-          })
+          if (isPinned) {
+            unpinTab(chatId)
+          } else {
+            pinTab(chatId)
+          }
         }
       },
       { type: 'divider' },
@@ -273,7 +263,7 @@ export default function TabsArea() {
         icon: <CloseCircleOutlined />,
         disabled: !hasOtherTabs,
         onClick: () => {
-          dispatch({ type: 'CLOSE_OTHER_TABS', payload: { chatId } })
+          closeOtherTabs(chatId)
         }
       },
       {
@@ -287,7 +277,7 @@ export default function TabsArea() {
         icon: <CloseCircleOutlined />,
         disabled: !hasTabsToRight,
         onClick: () => {
-          dispatch({ type: 'CLOSE_TABS_TO_RIGHT', payload: { chatId } })
+          closeTabsToRight(chatId)
         }
       },
       {
@@ -300,7 +290,7 @@ export default function TabsArea() {
         ),
         icon: <DeleteOutlined />,
         onClick: () => {
-          dispatch({ type: 'CLOSE_ALL_TABS' })
+          closeAllTabs()
         }
       }
     ]
@@ -380,9 +370,9 @@ export default function TabsArea() {
     }
   }
 
-  const hasLLMConfigs = state.settings.llmConfigs && state.settings.llmConfigs.length > 0
+  const hasLLMConfigs = settings.llmConfigs && settings.llmConfigs.length > 0
 
-  if (state.openTabs.length === 0) {
+  if (openTabs.length === 0) {
     return (
       <div className="tabs-area-empty">
         {!hasLLMConfigs ? (
@@ -413,7 +403,7 @@ export default function TabsArea() {
             description={
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ color: '#262626', marginBottom: 8 }}>暂无打开的聊天</h3>
-                                  <p style={{ color: '#8c8c8c', marginBottom: 24 }}>
+                <p style={{ color: '#8c8c8c', marginBottom: 24 }}>
                   创建一个新聊天开始对话，或者尝试新的交叉视图分析
                 </p>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
@@ -451,25 +441,27 @@ export default function TabsArea() {
     )
   }
 
-  const tabItems = state.openTabs
+  const tabItems = openTabs
     .map((chatId) => {
-      const chat = state.pages.find((c) => c.id === chatId)
+      const chat = pages.find((c) => c.id === chatId)
       if (!chat) return null
 
       const chatStatus = getChatStatus(chat)
       const isPinned = chat.pinned || false
 
       // 检查是否可以与当前拖拽的标签页进行拖拽
-      const canDragToThis = !draggedTabId || (() => {
-        const sourceChat = state.pages.find(p => p.id === draggedTabId)
-        const sourcePinned = sourceChat?.pinned || false
-        const targetPinned = chat.pinned || false
-        return sourcePinned === targetPinned
-      })()
+      const canDragToThis =
+        !draggedTabId ||
+        (() => {
+          const sourceChat = pages.find((p) => p.id === draggedTabId)
+          const sourcePinned = sourceChat?.pinned || false
+          const targetPinned = chat.pinned || false
+          return sourcePinned === targetPinned
+        })()
 
       const tabLabel = (
         <Dropdown menu={{ items: getContextMenuItems(chatId) }} trigger={['contextMenu']}>
-          <span 
+          <span
             className={`tab-label-content ${draggedTabId === chatId ? 'dragging' : ''} ${dragOverTabId === chatId ? (canDragToThis ? 'drag-over' : 'drag-over-forbidden') : ''}`}
             draggable
             onDragStart={(e) => handleDragStart(e, chatId)}
@@ -515,7 +507,7 @@ export default function TabsArea() {
     <div className="tabs-area">
       <Tabs
         type="editable-card"
-        activeKey={state.activeTabId || undefined}
+        activeKey={activeTabId || undefined}
         onChange={handleTabChange}
         onEdit={(targetKey, action) => {
           if (action === 'remove' && typeof targetKey === 'string') {
@@ -527,24 +519,24 @@ export default function TabsArea() {
         size="small"
         style={
           {
-            '--pinned-tabs': state.openTabs
+            '--pinned-tabs': openTabs
               .filter((id) => {
-                const chat = state.pages.find((c) => c.id === id)
+                const chat = pages.find((c) => c.id === id)
                 return chat?.pinned
               })
               .map((id) => `[data-node-key="${id}"]`)
               .join(','),
-            '--pinned-count': state.openTabs.filter((id) => {
-              const chat = state.pages.find((c) => c.id === id)
+            '--pinned-count': openTabs.filter((id) => {
+              const chat = pages.find((c) => c.id === id)
               return chat?.pinned
             }).length
           } as React.CSSProperties
         }
       />
       <style>{`
-        ${state.openTabs
+        ${openTabs
           .filter((id) => {
-            const chat = state.pages.find((c) => c.id === id)
+            const chat = pages.find((c) => c.id === id)
             return chat?.pinned
           })
           .map(
@@ -564,7 +556,9 @@ export default function TabsArea() {
             background: #1890ff;
             border-radius: 0 2px 2px 0;
           }
-          ${index === pinnedTabs.length - 1 ? `
+          ${
+            index === pinnedTabs.length - 1
+              ? `
           .tabs-area .ant-tabs-tab[data-node-key="${id}"]::after {
             content: '';
             position: absolute;
@@ -576,7 +570,9 @@ export default function TabsArea() {
             background: rgba(24, 144, 255, 0.3);
             border-radius: 1px;
           }
-          ` : ''}
+          `
+              : ''
+          }
         `
           )
           .join('')}

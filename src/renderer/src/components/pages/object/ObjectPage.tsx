@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useState } from 'react'
 import { Layout, Space, Typography, App } from 'antd'
 import { ProjectOutlined } from '@ant-design/icons'
 import { ObjectChat } from '../../../types/type'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 import ObjectBrowser from './ObjectBrowser'
 import ObjectPropertyView from './ObjectPropertyView'
 import ObjectAIGenerator from './ObjectAIGenerator'
@@ -25,15 +25,15 @@ interface ObjectPageProps {
 }
 
 const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const { message } = App.useApp()
   const { settings } = useSettings()
   const [selectedModel, setSelectedModel] = useState<string | undefined>(
-    state.settings.defaultLLMId
+    stores.settings.settings.defaultLLMId
   )
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>对象页面数据加载错误</div>
@@ -41,14 +41,14 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
   // 获取LLM配置
   const getLLMConfig = useCallback(() => {
-    const targetModelId = selectedModel || state.settings.defaultLLMId
+    const targetModelId = selectedModel || stores.settings.settings.defaultLLMId
     const { llmConfigs } = settings
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }
 
     return llmConfigs.find((config) => config.id === targetModelId) || llmConfigs[0]
-  }, [selectedModel, settings, state.settings.defaultLLMId])
+  }, [selectedModel, settings, stores.settings.settings.defaultLLMId])
 
   const handleModelChange = useCallback((modelId: string) => {
     setSelectedModel(modelId)
@@ -57,12 +57,9 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   // 处理节点选择（用于图谱交互）
   const handleNodeClick = useCallback(
     (nodeId: string) => {
-      dispatch({
-        type: 'SELECT_OBJECT_NODE',
-        payload: { chatId: chat.id, nodeId }
-      })
+      stores.object.selectObjectNode(chat.id, nodeId)
     },
-    [dispatch, chat.id]
+    [stores.object, chat.id]
   )
 
   // 获取节点的完整上下文信息
@@ -131,20 +128,42 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
       try {
         // 首先记录生成请求
         const generationId = uuidv4()
-        dispatch({
-          type: 'GENERATE_OBJECT_CHILDREN',
-          payload: {
-            chatId: chat.id,
-            nodeId,
-            prompt,
-            modelId: llmConfig.id,
-            generationId
-          }
-        })
+        const generationRecord = {
+          id: generationId,
+          nodeId,
+          parentNodeId: nodeId,
+          prompt,
+          modelId: llmConfig.id,
+          timestamp: Date.now(),
+          status: 'pending' as const,
+          generatedNodeIds: []
+        }
+
+        stores.object.addObjectGenerationRecord(chat.id, generationRecord)
 
         // 创建AI服务
         const aiService = createAIService(llmConfig)
-        const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+
+        // 创建 dispatch 适配器以兼容 ObjectAIService
+        const dispatchAdapter = (action: any) => {
+          switch (action.type) {
+            case 'ADD_AI_TASK':
+              stores.aiTasks.addTask(action.payload.task)
+              break
+            case 'UPDATE_AI_TASK':
+              stores.aiTasks.updateTask(action.payload.taskId, action.payload.updates)
+              break
+            default:
+              console.warn('Unknown action type:', action.type)
+          }
+        }
+
+        const objectAIService = createObjectAIService(
+          llmConfig,
+          aiService,
+          dispatchAdapter,
+          chat.id
+        )
 
         // 调用AI服务生成子节点名称
         const names = await objectAIService.generateChildrenNames(context, prompt)
@@ -177,27 +196,14 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
 
         // 批量添加节点
         newNodes.forEach((node) => {
-          dispatch({
-            type: 'ADD_OBJECT_NODE',
-            payload: { chatId: chat.id, node, parentId: nodeId }
-          })
+          stores.object.addObjectNode(chat.id, node, nodeId)
         })
 
         // 更新生成记录
-        dispatch({
-          type: 'UPDATE_GENERATION_RECORD',
-          payload: {
-            chatId: chat.id,
-            generationId,
-            generatedNodeIds: newNodeIds
-          }
-        })
+        stores.object.updateGenerationRecord(chat.id, generationId, newNodeIds)
 
         // 展开父节点以显示新生成的子节点
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        stores.object.expandObjectNode(chat.id, nodeId)
 
         message.success(`成功生成了 ${newNodes.length} 个子节点`)
       } catch (error) {
@@ -205,7 +211,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         message.error('AI生成失败，请检查网络连接和配置')
       }
     },
-    [dispatch, chat.id, chat.objectData, getLLMConfig, getNodeContext]
+    [stores.object, chat.id, chat.objectData, getLLMConfig, getNodeContext]
   )
 
   // 初始化对象数据（如果需要）
@@ -216,23 +222,17 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
     if (!objectData.rootNodeId || !objectData.nodes[objectData.rootNodeId]) {
       const { rootNodeId, nodes, expandedNodes } = createObjectRootWithMetaRelations()
 
-      dispatch({
-        type: 'UPDATE_OBJECT_DATA',
-        payload: {
-          chatId: chat.id,
-          data: {
-            rootNodeId,
-            nodes,
-            selectedNodeId: undefined,
-            expandedNodes,
-            searchQuery: undefined,
-            filteredNodeIds: undefined,
-            generationHistory: objectData.generationHistory || []
-          }
-        }
+      stores.object.updateObjectData(chat.id, {
+        rootNodeId,
+        nodes,
+        selectedNodeId: undefined,
+        expandedNodes,
+        searchQuery: undefined,
+        filteredNodeIds: undefined,
+        generationHistory: objectData.generationHistory || []
       })
     }
-  }, [chat, dispatch])
+  }, [chat, stores.object])
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -266,7 +266,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
           <Space>
             <span style={{ fontSize: '12px', color: '#666' }}>模型选择:</span>
             <ModelSelector
-              llmConfigs={state.settings.llmConfigs || []}
+              llmConfigs={stores.settings.settings.llmConfigs || []}
               selectedModel={selectedModel}
               onChange={handleModelChange}
               size="small"

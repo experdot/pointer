@@ -1,12 +1,7 @@
 import React from 'react'
 import { Button, Badge, Tooltip } from 'antd'
-import { 
-  FolderOutlined, 
-  SearchOutlined, 
-  MonitorOutlined, 
-  SettingOutlined 
-} from '@ant-design/icons'
-import { useAppContext } from '../store/AppContext'
+import { FolderOutlined, SearchOutlined, MonitorOutlined, SettingOutlined } from '@ant-design/icons'
+import { useAITasksStore } from '../stores/aiTasksStore'
 
 export type ActivityBarTab = 'explore' | 'search' | 'tasks' | 'settings'
 
@@ -16,12 +11,10 @@ interface ActivityBarProps {
 }
 
 export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps) {
-  const { state } = useAppContext()
+  const { getRunningTasksCount } = useAITasksStore()
 
   // 计算活跃任务数量
-  const activeTaskCount = state.aiTasks.filter(task => 
-    task.status === 'running' || task.status === 'pending'
-  ).length
+  const activeTaskCount = getRunningTasksCount()
 
   const items = [
     {
@@ -53,29 +46,19 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
 
   return (
     <div className="activity-bar">
-      {items.map(item => (
+      {items.map((item) => (
         <Tooltip key={item.key} title={item.tooltip} placement="right">
-          <div className="activity-bar-item">
-            {item.badge !== undefined ? (
-              <Badge count={item.badge} size="small" offset={[0, 0]}>
-                <Button
-                  type="text"
-                  icon={item.icon}
-                  className={`activity-bar-button ${activeTab === item.key ? 'active' : ''}`}
-                  onClick={() => onTabChange(item.key)}
-                />
-              </Badge>
-            ) : (
-              <Button
-                type="text"
-                icon={item.icon}
-                className={`activity-bar-button ${activeTab === item.key ? 'active' : ''}`}
-                onClick={() => onTabChange(item.key)}
-              />
-            )}
-          </div>
+          <Badge count={item.badge} size="small" offset={[4, -4]}>
+            <Button
+              type={activeTab === item.key ? 'primary' : 'text'}
+              size="large"
+              icon={item.icon}
+              className="activity-bar-button"
+              onClick={() => onTabChange(item.key)}
+            />
+          </Badge>
         </Tooltip>
       ))}
     </div>
   )
-} 
+}

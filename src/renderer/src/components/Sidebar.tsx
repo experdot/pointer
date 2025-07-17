@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react'
-import { useAppContext } from '../store/AppContext'
+import { usePagesStore } from '../stores/pagesStore'
+import { useTabsStore } from '../stores/tabsStore'
+import { useUIStore } from '../stores/uiStore'
 import ChatHistoryTree from './sidebar/ChatHistoryTree'
 import SidebarActions from './sidebar/SidebarActions'
 import Settings from './Settings'
@@ -15,90 +17,90 @@ interface SidebarProps {
   onSettingsOpen: () => void
 }
 
-export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettingsOpen }: SidebarProps) {
-  const { state, dispatch } = useAppContext()
+export default function Sidebar({
+  collapsed,
+  activeTab,
+  onSearchOpen,
+  onSettingsOpen
+}: SidebarProps) {
+  const {
+    pages,
+    createFolder,
+    createAndOpenChat,
+    createAndOpenCrosstabChat,
+    createAndOpenObjectChat,
+    deleteMultiplePages
+  } = usePagesStore()
+  const { openTab } = useTabsStore()
+  const { selectedNodeType, selectedNodeId, checkedNodeIds, setSelectedNode, clearCheckedNodes } =
+    useUIStore()
   const { modal } = App.useApp()
 
   const handleCreateChat = useCallback(() => {
     // 根据当前选中的节点决定新聊天的位置
     let folderId: string | undefined = undefined
 
-    if (state.selectedNodeType === 'folder' && state.selectedNodeId) {
+    if (selectedNodeType === 'folder' && selectedNodeId) {
       // 如果选中的是文件夹，在文件夹内创建聊天
-      folderId = state.selectedNodeId
-    } else if (state.selectedNodeType === 'chat' && state.selectedNodeId) {
+      folderId = selectedNodeId
+    } else if (selectedNodeType === 'chat' && selectedNodeId) {
       // 如果选中的是聊天，找到聊天所在的文件夹（如果有的话）
-      const selectedChat = state.pages.find((chat) => chat.id === state.selectedNodeId)
+      const selectedChat = pages.find((chat) => chat.id === selectedNodeId)
       folderId = selectedChat?.folderId
     }
 
-    dispatch({
-      type: 'CREATE_AND_OPEN_CHAT',
-      payload: { title: '新建聊天', folderId }
-    })
-  }, [dispatch, state.selectedNodeType, state.selectedNodeId, state.pages])
+    createAndOpenChat('新建聊天', folderId)
+  }, [selectedNodeType, selectedNodeId, pages, createAndOpenChat])
 
   const handleCreateCrosstabChat = useCallback(() => {
     // 根据当前选中的节点决定新交叉视图聊天的位置
     let folderId: string | undefined = undefined
 
-    if (state.selectedNodeType === 'folder' && state.selectedNodeId) {
+    if (selectedNodeType === 'folder' && selectedNodeId) {
       // 如果选中的是文件夹，在文件夹内创建聊天
-      folderId = state.selectedNodeId
-    } else if (state.selectedNodeType === 'chat' && state.selectedNodeId) {
+      folderId = selectedNodeId
+    } else if (selectedNodeType === 'chat' && selectedNodeId) {
       // 如果选中的是聊天，找到聊天所在的文件夹（如果有的话）
-      const selectedChat = state.pages.find((chat) => chat.id === state.selectedNodeId)
+      const selectedChat = pages.find((chat) => chat.id === selectedNodeId)
       folderId = selectedChat?.folderId
     }
 
-    dispatch({
-      type: 'CREATE_AND_OPEN_CROSSTAB_CHAT',
-      payload: { title: '新建交叉视图', folderId }
-    })
-  }, [dispatch, state.selectedNodeType, state.selectedNodeId, state.pages])
+    createAndOpenCrosstabChat('新建交叉视图', folderId)
+  }, [selectedNodeType, selectedNodeId, pages, createAndOpenCrosstabChat])
 
   const handleCreateObjectChat = useCallback(() => {
     // 根据当前选中的节点决定新对象页面的位置
     let folderId: string | undefined = undefined
 
-    if (state.selectedNodeType === 'folder' && state.selectedNodeId) {
+    if (selectedNodeType === 'folder' && selectedNodeId) {
       // 如果选中的是文件夹，在文件夹内创建对象页面
-      folderId = state.selectedNodeId
-    } else if (state.selectedNodeType === 'chat' && state.selectedNodeId) {
+      folderId = selectedNodeId
+    } else if (selectedNodeType === 'chat' && selectedNodeId) {
       // 如果选中的是聊天，找到聊天所在的文件夹（如果有的话）
-      const selectedChat = state.pages.find((chat) => chat.id === state.selectedNodeId)
+      const selectedChat = pages.find((chat) => chat.id === selectedNodeId)
       folderId = selectedChat?.folderId
     }
 
-    dispatch({
-      type: 'CREATE_AND_OPEN_OBJECT_CHAT',
-      payload: { title: '新建对象页面', folderId }
-    })
-  }, [dispatch, state.selectedNodeType, state.selectedNodeId, state.pages])
+    createAndOpenObjectChat('新建对象页面', folderId)
+  }, [selectedNodeType, selectedNodeId, pages, createAndOpenObjectChat])
 
   const handleCreateFolder = useCallback(() => {
-    dispatch({
-      type: 'CREATE_FOLDER',
-      payload: { name: '新建文件夹' }
-    })
-  }, [dispatch])
+    createFolder('新建文件夹')
+  }, [createFolder])
 
   const handleChatClick = useCallback(
     (chatId: string) => {
-      dispatch({ type: 'OPEN_TAB', payload: { chatId } })
+      openTab(chatId)
       // 同时选中该聊天节点
-      dispatch({
-        type: 'SET_SELECTED_NODE',
-        payload: { nodeId: chatId, nodeType: 'chat' }
-      })
+      setSelectedNode(chatId, 'chat')
     },
-    [dispatch]
+    [openTab, setSelectedNode]
   )
 
   // 批量删除选中的聊天
   const handleBatchDelete = useCallback(() => {
     // 过滤出聊天ID（排除文件夹ID）
-    const chatIds = state.checkedNodeIds
+    const chatIds = checkedNodeIds
       .filter((nodeId) => nodeId.startsWith('chat-'))
       .map((nodeId) => nodeId.replace('chat-', ''))
 
@@ -113,18 +115,15 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
       okText: '确定',
       cancelText: '取消',
       onOk() {
-        dispatch({
-          type: 'DELETE_MULTIPLE_PAGES',
-          payload: { chatIds }
-        })
+        deleteMultiplePages(chatIds)
         // 删除后清空选中状态
-        dispatch({ type: 'CLEAR_CHECKED_NODES' })
+        clearCheckedNodes()
       }
     })
-  }, [dispatch, modal, state.checkedNodeIds])
+  }, [modal, checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
 
   // 检查是否有选中的项目
-  const hasCheckedItems = state.checkedNodeIds.length > 0
+  const hasCheckedItems = checkedNodeIds.length > 0
 
   if (collapsed) {
     return null // 当折叠时不显示内容
@@ -150,9 +149,7 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
             </div>
             <div className="sidebar-content">
               {hasCheckedItems && (
-                <div className="multi-select-indicator">
-                  已选中 {state.checkedNodeIds.length} 项
-                </div>
+                <div className="multi-select-indicator">已选中 {checkedNodeIds.length} 项</div>
               )}
               <ChatHistoryTree onChatClick={handleChatClick} />
             </div>
@@ -196,9 +193,5 @@ export default function Sidebar({ collapsed, activeTab, onSearchOpen, onSettings
     }
   }
 
-  return (
-    <div className="sidebar">
-      {renderContent()}
-    </div>
-  )
+  return <div className="sidebar">{renderContent()}</div>
 }

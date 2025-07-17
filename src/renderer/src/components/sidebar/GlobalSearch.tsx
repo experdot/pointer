@@ -21,8 +21,9 @@ import {
   CloseOutlined,
   SettingOutlined
 } from '@ant-design/icons'
-import { useAppContext } from '../../store/AppContext'
-import { searchMessages } from '../../store/reducers/searchReducer'
+import { useSearchStore } from '../../stores/searchStore'
+import { usePagesStore } from '../../stores/pagesStore'
+import { useTabsStore } from '../../stores/tabsStore'
 import { SearchResult, SearchOptions } from '../../types/type'
 import './search-styles.css'
 
@@ -35,18 +36,23 @@ interface GlobalSearchProps {
 }
 
 export default function GlobalSearch({ visible, onClose, embedded = false }: GlobalSearchProps) {
-  const { state, dispatch } = useAppContext()
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
+  const {
+    searchQuery,
+    searchResults,
+    isSearching,
+    searchOptions,
+    setSearchQuery,
+    setSearchResults,
+    setIsSearching,
+    setSearchOptions,
+    clearSearch
+  } = useSearchStore()
+  const { pages } = usePagesStore()
+  const { openTab } = useTabsStore()
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
   const inputRef = useRef<InputRef>(null)
   const [inputValue, setInputValue] = useState('')
   const [showOptions, setShowOptions] = useState(false)
-  const [searchOptions, setSearchOptions] = useState<SearchOptions>({
-    matchCase: false,
-    matchWholeWord: false,
-    useRegex: false
-  })
 
   // 执行搜索
   const performSearch = useCallback(
@@ -67,7 +73,8 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
 
         try {
           // 执行搜索
-          const results = searchMessages(state.pages, query, searchOptions)
+          const { searchMessages } = useSearchStore.getState()
+          const results = searchMessages(pages, query, searchOptions)
           setSearchResults(results)
           setIsSearching(false)
         } catch (error) {
@@ -79,7 +86,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
 
       setSearchTimeout(timeout)
     },
-    [state.pages, searchTimeout, searchOptions]
+    [pages, searchTimeout, searchOptions, setSearchResults, setIsSearching]
   )
 
   // 处理输入变化
@@ -105,12 +112,12 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
   // 处理搜索结果点击
   const handleResultClick = useCallback(
     (result: SearchResult) => {
-      dispatch({ type: 'OPEN_TAB', payload: { chatId: result.chatId } })
+      openTab(result.chatId)
       if (!embedded) {
         onClose()
       }
     },
-    [dispatch, onClose, embedded]
+    [openTab, onClose, embedded]
   )
 
   // 清除搜索
@@ -138,7 +145,8 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
           // 立即执行搜索
           setIsSearching(true)
           try {
-            const results = searchMessages(state.pages, value, searchOptions)
+            const { searchMessages } = useSearchStore.getState()
+            const results = searchMessages(pages, value, searchOptions)
             setSearchResults(results)
             setIsSearching(false)
           } catch (error) {
@@ -149,7 +157,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
         }
       }
     },
-    [inputValue, state.pages, searchOptions]
+    [inputValue, pages, searchOptions, setSearchResults, setIsSearching]
   )
 
   // 处理搜索选项变化

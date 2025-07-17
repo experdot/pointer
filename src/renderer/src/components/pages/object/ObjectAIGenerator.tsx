@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
 import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { createAIService } from '../../../services/aiService'
 import { createObjectAIService } from './ObjectAIService'
@@ -29,13 +29,29 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   selectedNodeId,
   onGenerate
 }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const { settings } = useSettings()
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState('children')
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const textareaRef = useRef<any>(null)
+
+  // 创建 dispatch 适配器，用于兼容 ObjectAIService
+  const createDispatchAdapter = () => {
+    return (action: any) => {
+      switch (action.type) {
+        case 'ADD_AI_TASK':
+          stores.aiTasks.addTask(action.payload.task)
+          break
+        case 'UPDATE_AI_TASK':
+          stores.aiTasks.updateTask(action.payload.taskId, action.payload.updates)
+          break
+        default:
+          console.warn('未处理的 dispatch action:', action)
+      }
+    }
+  }
 
   // 获取LLM配置
   const getLLMConfig = () => {
@@ -47,7 +63,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   }
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -115,7 +131,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     setIsLoadingRecommendations(true)
     try {
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const context = getGenerationContext(selectedNode)
       if (!context) {
@@ -153,13 +174,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         }
       }
 
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { aiRecommendations: updatedRecommendations }
-        }
+      stores.object.updateObjectNode(chat.id, selectedNode.id, {
+        aiRecommendations: updatedRecommendations
       })
 
       message.success('AI推荐获取成功')
@@ -346,7 +362,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const childrenNames = await objectAIService.generateChildrenNames(context, effectivePrompt)
 
@@ -369,24 +390,11 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
       // 批量添加节点
       newNodes.forEach((node) => {
-        dispatch({
-          type: 'ADD_OBJECT_NODE',
-          payload: {
-            chatId: chat.id,
-            node,
-            parentId: selectedNode.id
-          }
-        })
+        stores.object.addObjectNode(chat.id, node, selectedNode.id)
       })
 
       // 展开当前节点以显示新生成的子节点
-      dispatch({
-        type: 'EXPAND_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id
-        }
-      })
+      stores.object.expandObjectNode(chat.id, selectedNode.id)
 
       message.success(`成功生成了 ${newNodes.length} 个子节点`)
       setPrompt('')
@@ -418,19 +426,17 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const description = await objectAIService.generateNodeDescription(context, effectivePrompt)
 
       // 更新节点描述
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { description }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { description })
 
       message.success('成功生成了节点描述')
       setPrompt('')
@@ -462,7 +468,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const properties = await objectAIService.generateObjectProperties(context, effectivePrompt)
 
@@ -470,14 +481,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       const updatedProperties = { ...selectedNode.properties, ...properties }
 
       // 更新节点属性
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { properties: updatedProperties }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { properties: updatedProperties })
 
       message.success(`成功生成了 ${Object.keys(properties).length} 个属性`)
       setPrompt('')
@@ -509,7 +513,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       // 获取可用的目标节点（排除当前节点和关系节点）
       const availableNodes = Object.values(nodes).filter(
@@ -541,25 +550,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
           // 添加生成的关系节点到对象数据
           result.relationNodes.forEach((relationNode) => {
-            dispatch({
-              type: 'ADD_OBJECT_NODE',
-              payload: {
-                chatId: chat.id,
-                node: relationNode
-              }
-            })
+            stores.object.addObjectNode(chat.id, relationNode)
           })
 
           // 更新源节点和目标节点的连接
           result.nodeUpdates.forEach((update) => {
-            dispatch({
-              type: 'ADD_NODE_CONNECTION',
-              payload: {
-                chatId: chat.id,
-                nodeId: update.nodeId,
-                connection: update.connection
-              }
-            })
+            stores.object.addNodeConnection(chat.id, update.nodeId, update.connection)
           })
 
           totalRelationNodes += result.relationNodes.length

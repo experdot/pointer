@@ -14,7 +14,7 @@ import {
   generateAxisCombinations,
   generateDimensionPath
 } from './CrosstabUtils'
-import { useAppContext } from '../../../store/AppContext'
+import { useAppStores } from '../../../stores'
 import { v4 as uuidv4 } from 'uuid'
 
 const { Step } = Steps
@@ -28,7 +28,7 @@ interface StepFlowProps {
 }
 
 export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig }: StepFlowProps) {
-  const { dispatch } = useAppContext()
+  const stores = useAppStores()
   const [loading, setLoading] = useState(false)
   const [currentProcessingStep, setCurrentProcessingStep] = useState<number | null>(null)
   const [generateDimensionValuesLoading, setGenerateDimensionValuesLoading] = useState<{
@@ -57,12 +57,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
         // 更新AI任务状态为cancelled
         if (currentTaskId) {
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId: currentTaskId,
-              updates: { status: 'cancelled', endTime: Date.now() }
-            }
+          stores.aiTasks.updateTask(currentTaskId, {
+            status: 'cancelled',
+            endTime: Date.now()
           })
         }
 
@@ -76,7 +73,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         message.error('停止生成失败')
       }
     }
-  }, [currentAIService, currentTaskId, dispatch, message])
+  }, [currentAIService, currentTaskId, stores.aiTasks, message])
 
   // 停止维度值生成
   const stopDimensionGeneration = useCallback(
@@ -90,12 +87,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
           // 更新AI任务状态为cancelled
           if (taskId) {
-            dispatch({
-              type: 'UPDATE_AI_TASK',
-              payload: {
-                taskId: taskId,
-                updates: { status: 'cancelled', endTime: Date.now() }
-              }
+            stores.aiTasks.updateTask(taskId, {
+              status: 'cancelled',
+              endTime: Date.now()
             })
           }
 
@@ -117,7 +111,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         }
       }
     },
-    [dimensionAIServices, dimensionTaskIds, dispatch, message]
+    [dimensionAIServices, dimensionTaskIds, stores.aiTasks, message]
   )
 
   // 停止表格数据生成
@@ -128,12 +122,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
         // 更新所有相关的AI任务状态为cancelled
         tableDataTaskIds.forEach((taskId) => {
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId: taskId,
-              updates: { status: 'cancelled', endTime: Date.now() }
-            }
+          stores.aiTasks.updateTask(taskId, {
+            status: 'cancelled',
+            endTime: Date.now()
           })
         })
 
@@ -146,7 +137,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         message.error('停止表格数据生成失败')
       }
     }
-  }, [tableDataAIService, tableDataTaskIds, dispatch, message])
+  }, [tableDataAIService, tableDataTaskIds, stores.aiTasks, message])
 
   const handleStepExecution = useCallback(
     async (stepIndex: number) => {
@@ -191,7 +182,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               startTime: Date.now()
             }
 
-            dispatch({ type: 'ADD_AI_TASK', payload: { task: metadataTask } })
+            stores.aiTasks.addTask(metadataTask)
 
             try {
               result = await new Promise<string>((resolve, reject) => {
@@ -209,12 +200,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                 )
               })
 
-              dispatch({
-                type: 'UPDATE_AI_TASK',
-                payload: {
-                  taskId: metadataTaskId,
-                  updates: { status: 'completed', endTime: Date.now() }
-                }
+              stores.aiTasks.updateTask(metadataTaskId, {
+                status: 'completed',
+                endTime: Date.now()
               })
 
               // 解析JSON结果
@@ -236,12 +224,10 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
               onStepComplete(stepIndex, { metadata })
             } catch (error) {
-              dispatch({
-                type: 'UPDATE_AI_TASK',
-                payload: {
-                  taskId: metadataTaskId,
-                  updates: { status: 'failed', error: error.message, endTime: Date.now() }
-                }
+              stores.aiTasks.updateTask(metadataTaskId, {
+                status: 'failed',
+                error: error.message,
+                endTime: Date.now()
               })
               throw error
             }
@@ -253,15 +239,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         }
 
         // 更新步骤状态
-        dispatch({
-          type: 'UPDATE_CROSSTAB_STEP',
-          payload: { chatId: chat.id, stepIndex, response: result }
-        })
+        stores.crosstab.updateCrosstabStep(chat.id, stepIndex, result)
 
-        dispatch({
-          type: 'COMPLETE_CROSSTAB_STEP',
-          payload: { chatId: chat.id, stepIndex }
-        })
+        stores.crosstab.completeCrosstabStep(chat.id, stepIndex)
 
         message.success('步骤完成')
       } catch (error) {
@@ -274,7 +254,16 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         setCurrentProcessingStep(null)
       }
     },
-    [chat.id, userInput, getLLMConfig, dispatch, loading, message, onStepComplete]
+    [
+      chat.id,
+      userInput,
+      getLLMConfig,
+      loading,
+      message,
+      onStepComplete,
+      stores.crosstab,
+      stores.aiTasks
+    ]
   )
 
   const handleGenerateDimensionValues = useCallback(
@@ -326,7 +315,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           startTime: Date.now()
         }
 
-        dispatch({ type: 'ADD_AI_TASK', payload: { task } })
+        stores.aiTasks.addTask(task)
 
         const result = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
@@ -343,13 +332,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           )
         })
 
-        dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: { status: 'completed', endTime: Date.now() }
-          }
-        })
+        stores.aiTasks.updateTask(taskId, { status: 'completed', endTime: Date.now() })
 
         const jsonContent = extractJsonContent(result)
         const values = JSON.parse(jsonContent)
@@ -365,13 +348,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             updatedDimensions
         }
 
-        dispatch({
-          type: 'UPDATE_CROSSTAB_DATA',
-          payload: {
-            chatId: chat.id,
-            data: { metadata: updatedMetadata }
-          }
-        })
+        stores.crosstab.updateCrosstabData(chat.id, { metadata: updatedMetadata })
 
         message.success(`维度"${dimension.name}"的值生成完成`)
       } catch (error) {
@@ -391,7 +368,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         setGenerateDimensionValuesLoading((prev) => ({ ...prev, [dimensionId]: false }))
       }
     },
-    [chat.id, chat.crosstabData.metadata, getLLMConfig, dispatch, message]
+    [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, message]
   )
 
   const handleGenerateTableData = useCallback(async () => {
@@ -465,7 +442,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             startTime: Date.now()
           }
 
-          dispatch({ type: 'ADD_AI_TASK', payload: { task } })
+          stores.aiTasks.addTask(task)
 
           try {
             const result = await new Promise<string>((resolve, reject) => {
@@ -483,13 +460,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               )
             })
 
-            dispatch({
-              type: 'UPDATE_AI_TASK',
-              payload: {
-                taskId,
-                updates: { status: 'completed', endTime: Date.now() }
-              }
-            })
+            stores.aiTasks.updateTask(taskId, { status: 'completed', endTime: Date.now() })
 
             const jsonContent = extractJsonContent(result)
             const cellValues = JSON.parse(jsonContent)
@@ -540,24 +511,14 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             currentTableData[cellKey] = validatedCellValues
 
             // 立即更新当前单元格数据到UI
-            dispatch({
-              type: 'UPDATE_CROSSTAB_DATA',
-              payload: {
-                chatId: chat.id,
-                data: {
-                  tableData: { ...currentTableData }
-                }
-              }
-            })
+            stores.crosstab.updateCrosstabData(chat.id, { tableData: currentTableData })
 
             completedCells++
           } catch (error) {
-            dispatch({
-              type: 'UPDATE_AI_TASK',
-              payload: {
-                taskId,
-                updates: { status: 'failed', error: error.message, endTime: Date.now() }
-              }
+            stores.aiTasks.updateTask(taskId, {
+              status: 'failed',
+              error: error.message,
+              endTime: Date.now()
             })
             console.error(`单元格 ${cellKey} 生成失败:`, error)
           }
@@ -573,7 +534,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       setTableDataTaskIds([]) // 清理任务ID
       setGenerateTableDataLoading(false)
     }
-  }, [chat.id, chat.crosstabData.metadata, getLLMConfig, dispatch, message])
+  }, [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, message])
 
   // 检查是否可以生成表格数据
   const canGenerateTableData =
