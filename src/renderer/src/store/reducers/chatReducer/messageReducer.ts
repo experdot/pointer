@@ -1,5 +1,5 @@
-import { AppState, AppAction, RegularChat } from '../../types'
-import { updatePageById } from '../helpers'
+import { AppState, AppAction, RegularChat } from '../../../types'
+import { updatePageById } from '../../helpers'
 
 // 类型守卫函数，检查是否为 RegularChat
 const isRegularChat = (chat: any): chat is RegularChat => {

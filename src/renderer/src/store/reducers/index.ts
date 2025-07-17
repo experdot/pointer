@@ -1,8 +1,6 @@
 import { AppState, AppAction } from '../../types'
 import { handleChatActions } from './chatReducer'
-import { handleFolderActions } from './folderReducer'
 import { handleTabActions } from './tabReducer'
-import { handleMessageActions } from './messageReducer'
 import { handleUIActions } from './uiReducer'
 import { handleSearchActions } from './searchReducer'
 import { handleTaskActions } from './taskReducer'
@@ -14,13 +12,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   let newState = handleChatActions(state, action)
   if (newState !== state) return newState
 
-  newState = handleFolderActions(state, action)
-  if (newState !== state) return newState
-
   newState = handleTabActions(state, action)
-  if (newState !== state) return newState
-
-  newState = handleMessageActions(state, action)
   if (newState !== state) return newState
 
   newState = handleUIActions(state, action)
