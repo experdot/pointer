@@ -1,4 +1,4 @@
-import { AppState, AppAction, ObjectChat, ObjectGenerationRecord } from '../../../types'
+import { AppState, AppAction, ObjectChat, ObjectGenerationRecord } from '../../../types/type'
 import {
   createNewObjectChat,
   addNodeToObjectData,

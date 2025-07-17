@@ -16,7 +16,7 @@ import {
   DownOutlined,
   UpOutlined
 } from '@ant-design/icons'
-import { ChatMessage, LLMConfig } from '../../../types'
+import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
 import { Markdown } from '../../common/markdown/Markdown'
 import { captureDivToClipboard } from '@renderer/utils/exporter'

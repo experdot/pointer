@@ -6,7 +6,7 @@ import {
   ReloadOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons'
-import { ObjectNode as ObjectNodeType, NodeConnection } from '../../../types'
+import { ObjectNode as ObjectNodeType, NodeConnection } from '../../../types/type'
 
 const { Title, Text } = Typography
 const { Option } = Select

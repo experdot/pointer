@@ -1,7 +1,12 @@
 import React, { useState, useCallback } from 'react'
 import { Steps, Button, App, Card, Space, Typography, Tag } from 'antd'
-import { PlayCircleOutlined, CheckCircleOutlined, LoadingOutlined, StopOutlined } from '@ant-design/icons'
-import { CrosstabChat as CrosstabChatType, AITask } from '../../../types'
+import {
+  PlayCircleOutlined,
+  CheckCircleOutlined,
+  LoadingOutlined,
+  StopOutlined
+} from '@ant-design/icons'
+import { CrosstabChat as CrosstabChatType, AITask } from '../../../types/type'
 import { createAIService, AIService } from '../../../services/aiService'
 import {
   PROMPT_TEMPLATES,
@@ -49,7 +54,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
     if (currentAIService) {
       try {
         await currentAIService.stopStreaming()
-        
+
         // 更新AI任务状态为cancelled
         if (currentTaskId) {
           dispatch({
@@ -60,7 +65,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             }
           })
         }
-        
+
         setCurrentAIService(null)
         setCurrentTaskId(null)
         setLoading(false)
@@ -74,52 +79,55 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
   }, [currentAIService, currentTaskId, dispatch, message])
 
   // 停止维度值生成
-  const stopDimensionGeneration = useCallback(async (dimensionId: string) => {
-    const aiService = dimensionAIServices[dimensionId]
-    const taskId = dimensionTaskIds[dimensionId]
-    
-    if (aiService) {
-      try {
-        await aiService.stopStreaming()
-        
-        // 更新AI任务状态为cancelled
-        if (taskId) {
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId: taskId,
-              updates: { status: 'cancelled', endTime: Date.now() }
-            }
+  const stopDimensionGeneration = useCallback(
+    async (dimensionId: string) => {
+      const aiService = dimensionAIServices[dimensionId]
+      const taskId = dimensionTaskIds[dimensionId]
+
+      if (aiService) {
+        try {
+          await aiService.stopStreaming()
+
+          // 更新AI任务状态为cancelled
+          if (taskId) {
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId: taskId,
+                updates: { status: 'cancelled', endTime: Date.now() }
+              }
+            })
+          }
+
+          setDimensionAIServices((prev) => {
+            const newServices = { ...prev }
+            delete newServices[dimensionId]
+            return newServices
           })
+          setDimensionTaskIds((prev) => {
+            const newTaskIds = { ...prev }
+            delete newTaskIds[dimensionId]
+            return newTaskIds
+          })
+          setGenerateDimensionValuesLoading((prev) => ({ ...prev, [dimensionId]: false }))
+          message.info('已停止维度值生成')
+        } catch (error) {
+          console.error('停止维度值生成失败:', error)
+          message.error('停止维度值生成失败')
         }
-        
-        setDimensionAIServices(prev => {
-          const newServices = { ...prev }
-          delete newServices[dimensionId]
-          return newServices
-        })
-        setDimensionTaskIds(prev => {
-          const newTaskIds = { ...prev }
-          delete newTaskIds[dimensionId]
-          return newTaskIds
-        })
-        setGenerateDimensionValuesLoading(prev => ({ ...prev, [dimensionId]: false }))
-        message.info('已停止维度值生成')
-      } catch (error) {
-        console.error('停止维度值生成失败:', error)
-        message.error('停止维度值生成失败')
       }
-    }
-  }, [dimensionAIServices, dimensionTaskIds, dispatch, message])
+    },
+    [dimensionAIServices, dimensionTaskIds, dispatch, message]
+  )
 
   // 停止表格数据生成
   const stopTableDataGeneration = useCallback(async () => {
     if (tableDataAIService) {
       try {
         await tableDataAIService.stopStreaming()
-        
+
         // 更新所有相关的AI任务状态为cancelled
-        tableDataTaskIds.forEach(taskId => {
+        tableDataTaskIds.forEach((taskId) => {
           dispatch({
             type: 'UPDATE_AI_TASK',
             payload: {
@@ -128,7 +136,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             }
           })
         })
-        
+
         setTableDataAIService(null)
         setTableDataTaskIds([])
         setGenerateTableDataLoading(false)
@@ -303,9 +311,9 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
 
         const aiService = createAIService(llmConfig)
-        setDimensionAIServices(prev => ({ ...prev, [dimensionId]: aiService })) // 保存AI服务实例
+        setDimensionAIServices((prev) => ({ ...prev, [dimensionId]: aiService })) // 保存AI服务实例
         const taskId = uuidv4()
-        setDimensionTaskIds(prev => ({ ...prev, [dimensionId]: taskId })) // 保存任务ID
+        setDimensionTaskIds((prev) => ({ ...prev, [dimensionId]: taskId })) // 保存任务ID
         const task: AITask = {
           id: taskId,
           requestId: aiService.id,
@@ -370,12 +378,12 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         console.error('维度值生成失败:', error)
         message.error(`维度值生成失败: ${error.message}`)
       } finally {
-        setDimensionAIServices(prev => {
+        setDimensionAIServices((prev) => {
           const newServices = { ...prev }
           delete newServices[dimensionId]
           return newServices
         })
-        setDimensionTaskIds(prev => {
+        setDimensionTaskIds((prev) => {
           const newTaskIds = { ...prev }
           delete newTaskIds[dimensionId]
           return newTaskIds
@@ -424,7 +432,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
       let completedCells = 0
       const totalCells = horizontalCombinations.length * verticalCombinations.length
-      
+
       // 维护本地的tableData状态，避免异步状态更新问题
       const currentTableData = { ...chat.crosstabData.tableData }
 
@@ -444,7 +452,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           const aiService = createAIService(llmConfig)
           setTableDataAIService(aiService) // 保存AI服务实例（注意：这里只保存最后一个，实际应用中可能需要保存所有）
           const taskId = uuidv4()
-          setTableDataTaskIds(prev => [...prev, taskId]) // 保存任务ID
+          setTableDataTaskIds((prev) => [...prev, taskId]) // 保存任务ID
           const task: AITask = {
             id: taskId,
             requestId: aiService.id,
@@ -483,17 +491,17 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               }
             })
 
-                                const jsonContent = extractJsonContent(result)
+            const jsonContent = extractJsonContent(result)
             const cellValues = JSON.parse(jsonContent)
 
             // 处理AI生成的数据格式，确保键是实际的值维度ID
             const processedCellValues: { [key: string]: string } = {}
-            
+
             if (valueDimensions.length > 0) {
               // 检查是否使用了通用键格式
               const keys = Object.keys(cellValues)
-              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
-              
+              const hasGenericKeys = keys.some((key) => key.match(/^value\d+$/))
+
               if (hasGenericKeys) {
                 // 映射通用键到实际的值维度ID
                 valueDimensions.forEach((dimension, index) => {
@@ -504,15 +512,18 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                 })
               } else {
                 // 检查是否直接使用了值维度ID
-                valueDimensions.forEach(dimension => {
+                valueDimensions.forEach((dimension) => {
                   if (cellValues[dimension.id]) {
                     processedCellValues[dimension.id] = cellValues[dimension.id]
                   }
                 })
               }
-              
+
               // 如果没有找到匹配的键，尝试使用第一个可用的值作为第一个维度的值
-              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+              if (
+                Object.keys(processedCellValues).length === 0 &&
+                Object.keys(cellValues).length > 0
+              ) {
                 const firstDimension = valueDimensions[0]
                 const firstValue = Object.values(cellValues)[0]
                 processedCellValues[firstDimension.id] = firstValue as string
@@ -521,23 +532,23 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
             // 确保所有维度都有值
             const validatedCellValues: { [key: string]: string } = {}
-            valueDimensions.forEach(dim => {
+            valueDimensions.forEach((dim) => {
               validatedCellValues[dim.id] = processedCellValues[dim.id] || ''
             })
 
-        // 更新本地tableData状态
-        currentTableData[cellKey] = validatedCellValues
+            // 更新本地tableData状态
+            currentTableData[cellKey] = validatedCellValues
 
-        // 立即更新当前单元格数据到UI
-        dispatch({
-          type: 'UPDATE_CROSSTAB_DATA',
-          payload: {
-            chatId: chat.id,
-            data: { 
-              tableData: { ...currentTableData }
-            }
-          }
-        })
+            // 立即更新当前单元格数据到UI
+            dispatch({
+              type: 'UPDATE_CROSSTAB_DATA',
+              payload: {
+                chatId: chat.id,
+                data: {
+                  tableData: { ...currentTableData }
+                }
+              }
+            })
 
             completedCells++
           } catch (error) {
@@ -658,7 +669,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               }
             />
           ))}
-          
+
           {/* 添加后续步骤的显示 */}
           {chat.crosstabData.metadata && (
             <>
@@ -669,12 +680,15 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Text strong>步骤说明：</Text>
                       <Text>为每个维度生成具体的值列表</Text>
-                      
+
                       <div>
                         <Text strong>横轴维度：</Text>
                         <Space wrap style={{ marginTop: 8 }}>
                           {chat.crosstabData.metadata.horizontalDimensions.map((dim) => (
-                            <div key={dim.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <div
+                              key={dim.id}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
                               <Tag
                                 color={dim.values.length > 0 ? 'green' : 'default'}
                                 style={{ cursor: 'pointer', margin: 0 }}
@@ -706,7 +720,10 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                         <Text strong>纵轴维度：</Text>
                         <Space wrap style={{ marginTop: 8 }}>
                           {chat.crosstabData.metadata.verticalDimensions.map((dim) => (
-                            <div key={dim.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <div
+                              key={dim.id}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
                               <Tag
                                 color={dim.values.length > 0 ? 'green' : 'default'}
                                 style={{ cursor: 'pointer', margin: 0 }}
@@ -737,17 +754,23 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                   </Card>
                 }
                 status={
-                  [...chat.crosstabData.metadata.horizontalDimensions, ...chat.crosstabData.metadata.verticalDimensions].every(
-                    (dim) => dim.values && dim.values.length > 0
-                  ) ? 'finish' : 'process'
+                  [
+                    ...chat.crosstabData.metadata.horizontalDimensions,
+                    ...chat.crosstabData.metadata.verticalDimensions
+                  ].every((dim) => dim.values && dim.values.length > 0)
+                    ? 'finish'
+                    : 'process'
                 }
                 icon={
-                  [...chat.crosstabData.metadata.horizontalDimensions, ...chat.crosstabData.metadata.verticalDimensions].every(
-                    (dim) => dim.values && dim.values.length > 0
-                  ) ? <CheckCircleOutlined /> : undefined
+                  [
+                    ...chat.crosstabData.metadata.horizontalDimensions,
+                    ...chat.crosstabData.metadata.verticalDimensions
+                  ].every((dim) => dim.values && dim.values.length > 0) ? (
+                    <CheckCircleOutlined />
+                  ) : undefined
                 }
               />
-              
+
               <Step
                 title="生成表格数据"
                 description={
@@ -755,12 +778,18 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Text strong>步骤说明：</Text>
                       <Text>为所有维度交叉点生成对应的值内容</Text>
-                      
+
                       {canGenerateTableData ? (
                         <Space>
                           <Button
                             type="primary"
-                            icon={generateTableDataLoading ? <LoadingOutlined /> : <PlayCircleOutlined />}
+                            icon={
+                              generateTableDataLoading ? (
+                                <LoadingOutlined />
+                              ) : (
+                                <PlayCircleOutlined />
+                              )
+                            }
                             onClick={handleGenerateTableData}
                             disabled={generateTableDataLoading}
                             loading={generateTableDataLoading}
@@ -785,11 +814,16 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
                   </Card>
                 }
                 status={
-                  Object.keys(chat.crosstabData.tableData).length > 0 ? 'finish' : 
-                  canGenerateTableData ? 'wait' : 'wait'
+                  Object.keys(chat.crosstabData.tableData).length > 0
+                    ? 'finish'
+                    : canGenerateTableData
+                      ? 'wait'
+                      : 'wait'
                 }
                 icon={
-                  Object.keys(chat.crosstabData.tableData).length > 0 ? <CheckCircleOutlined /> : undefined
+                  Object.keys(chat.crosstabData.tableData).length > 0 ? (
+                    <CheckCircleOutlined />
+                  ) : undefined
                 }
               />
             </>

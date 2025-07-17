@@ -23,7 +23,7 @@ import {
   MoreOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
-import { LLMConfig } from '../../types'
+import { LLMConfig } from '../../types/type'
 import { v4 as uuidv4 } from 'uuid'
 import { createAIService } from '../../services/aiService'
 import { useSettings } from '../../store/hooks/useSettings'

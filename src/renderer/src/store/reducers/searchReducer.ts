@@ -1,4 +1,4 @@
-import { AppState, AppAction, SearchResult, ChatMessage, SearchOptions } from '../../types'
+import { AppState, AppAction, SearchResult, ChatMessage, SearchOptions } from '../../types/type'
 
 export const handleSearchActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -47,15 +47,19 @@ export const handleSearchActions = (state: AppState, action: AppAction): AppStat
 }
 
 // 搜索工具函数
-export const searchMessages = (pages: any[], query: string, options: SearchOptions = { matchCase: false, matchWholeWord: false, useRegex: false }): SearchResult[] => {
+export const searchMessages = (
+  pages: any[],
+  query: string,
+  options: SearchOptions = { matchCase: false, matchWholeWord: false, useRegex: false }
+): SearchResult[] => {
   if (!query.trim()) return []
 
   const results: SearchResult[] = []
-  
+
   // 根据选项处理搜索词
   let searchPattern: RegExp
   let searchTerm: string
-  
+
   try {
     if (options.useRegex) {
       // 使用正则表达式
@@ -65,12 +69,12 @@ export const searchMessages = (pages: any[], query: string, options: SearchOptio
     } else {
       // 非正则表达式模式
       let escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      
+
       if (options.matchWholeWord) {
         // 匹配整个单词
         escapedQuery = `\\b${escapedQuery}\\b`
       }
-      
+
       const flags = options.matchCase ? 'g' : 'gi'
       searchPattern = new RegExp(escapedQuery, flags)
       searchTerm = options.matchCase ? query : query.toLowerCase()
@@ -100,11 +104,11 @@ export const searchMessages = (pages: any[], query: string, options: SearchOptio
 
         if (contentMatch) {
           sourceContent = message.content
-          
+
           // 重新创建正则表达式以获得匹配位置
           const matchPattern = new RegExp(searchPattern.source, searchPattern.flags)
           const match = matchPattern.exec(content)
-          
+
           if (match) {
             const index = match.index
             const matchLength = match[0].length
@@ -114,17 +118,17 @@ export const searchMessages = (pages: any[], query: string, options: SearchOptio
 
             // 计算高亮位置（相对于片段的位置）
             const highlightStart = index - start
-            
+
             if (highlightStart >= 0 && highlightStart < snippet.length) {
               highlightIndices = [highlightStart, highlightStart + matchLength]
             }
           }
         } else if (reasoningMatch && message.reasoning_content) {
           sourceContent = message.reasoning_content
-          
+
           const matchPattern = new RegExp(searchPattern.source, searchPattern.flags)
           const match = matchPattern.exec(reasoningContent)
-          
+
           if (match) {
             const index = match.index
             const matchLength = match[0].length
@@ -133,7 +137,7 @@ export const searchMessages = (pages: any[], query: string, options: SearchOptio
             snippet = reasoningContent.substring(start, end)
 
             const highlightStart = index - start
-            
+
             if (highlightStart >= 0 && highlightStart < snippet.length) {
               highlightIndices = [highlightStart, highlightStart + matchLength]
             }

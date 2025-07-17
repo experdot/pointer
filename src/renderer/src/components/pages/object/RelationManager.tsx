@@ -1,12 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Space, List, Typography, Card, Modal, Select, Input, Tag, Tooltip } from 'antd'
-import {
-  PlusOutlined,
-  LinkOutlined,
-  DeleteOutlined,
-  ThunderboltOutlined
-} from '@ant-design/icons'
-import { ObjectNode as ObjectNodeType } from '../../../types'
+import { PlusOutlined, LinkOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { ObjectNode as ObjectNodeType } from '../../../types/type'
 
 const { Title, Text } = Typography
 const { Option } = Select

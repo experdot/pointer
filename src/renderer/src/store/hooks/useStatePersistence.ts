@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { AppState } from '../../types'
+import { AppState } from '../../types/type'
 import { StorageService } from '../../services/storageService'
 import { SAVE_DEBOUNCE_DELAY } from '../constants'
 

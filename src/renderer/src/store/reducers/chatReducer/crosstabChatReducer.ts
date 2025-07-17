@@ -1,4 +1,4 @@
-import { AppState, AppAction, CrosstabChat } from '../../../types'
+import { AppState, AppAction, CrosstabChat } from '../../../types/type'
 import { createNewCrosstabChat } from '../../helpers'
 
 export const handleCrosstabChatActions = (state: AppState, action: AppAction): AppState => {

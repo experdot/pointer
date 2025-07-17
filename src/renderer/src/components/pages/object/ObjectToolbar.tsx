@@ -24,7 +24,7 @@ import {
   ExclamationCircleOutlined
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
-import { ObjectChat } from '../../../types'
+import { ObjectChat } from '../../../types/type'
 import { useAppContext } from '../../../store/AppContext'
 import { createObjectRootWithMetaRelations } from '../../../store/helpers'
 

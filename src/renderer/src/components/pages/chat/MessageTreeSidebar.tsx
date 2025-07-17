@@ -11,7 +11,7 @@ import {
   UpOutlined,
   DownOutlined
 } from '@ant-design/icons'
-import { ChatMessage } from '../../../types'
+import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
 import './message-tree-sidebar.css'
 

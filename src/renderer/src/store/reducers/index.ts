@@ -1,4 +1,4 @@
-import { AppState, AppAction } from '../../types'
+import { AppState, AppAction } from '../../types/type'
 import { handleChatActions } from './chatReducer'
 import { handleTabActions } from './tabReducer'
 import { handleUIActions } from './uiReducer'

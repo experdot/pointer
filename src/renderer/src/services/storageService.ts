@@ -1,4 +1,4 @@
-import { AppState, Settings, Page, PageFolder } from '../types'
+import { AppState, Settings, Page, PageFolder } from '../types/type'
 
 // 应用版本号，用于存储键的版本控制
 const APP_VERSION = '1.0.0-preview.2'

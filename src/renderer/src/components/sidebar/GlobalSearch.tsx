@@ -1,10 +1,29 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { List, Avatar, Typography, Empty, Spin, Card, Tag, Button, Input, Checkbox, Space, Tooltip } from 'antd'
+import {
+  List,
+  Avatar,
+  Typography,
+  Empty,
+  Spin,
+  Card,
+  Tag,
+  Button,
+  Input,
+  Checkbox,
+  Space,
+  Tooltip
+} from 'antd'
 import type { InputRef } from 'antd'
-import { SearchOutlined, UserOutlined, RobotOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons'
+import {
+  SearchOutlined,
+  UserOutlined,
+  RobotOutlined,
+  CloseOutlined,
+  SettingOutlined
+} from '@ant-design/icons'
 import { useAppContext } from '../../store/AppContext'
 import { searchMessages } from '../../store/reducers/searchReducer'
-import { SearchResult, SearchOptions } from '../../types'
+import { SearchResult, SearchOptions } from '../../types/type'
 import './search-styles.css'
 
 const { Text, Paragraph } = Typography
@@ -45,7 +64,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
 
       const timeout = setTimeout(() => {
         setIsSearching(true)
-        
+
         try {
           // 执行搜索
           const results = searchMessages(state.pages, query, searchOptions)
@@ -68,7 +87,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
       setInputValue(value)
-      
+
       if (!value.trim()) {
         setSearchResults([])
         setIsSearching(false)
@@ -77,7 +96,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
         }
         return
       }
-      
+
       performSearch(value)
     },
     [performSearch, searchTimeout]
@@ -138,7 +157,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
     (option: keyof SearchOptions, value: boolean) => {
       const newOptions = { ...searchOptions, [option]: value }
       setSearchOptions(newOptions)
-      
+
       // 如果有搜索内容，重新搜索
       if (inputValue.trim()) {
         performSearch(inputValue)
@@ -246,7 +265,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          size={embedded ? "middle" : "large"}
+          size={embedded ? 'middle' : 'large'}
           prefix={<SearchOutlined />}
           suffix={
             <Space>
@@ -271,7 +290,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
           }
         />
       </div>
-      
+
       {showOptions && (
         <div className="search-options">
           <Space direction="vertical" size="small" style={{ width: '100%' }}>

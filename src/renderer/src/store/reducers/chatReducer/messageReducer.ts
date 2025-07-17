@@ -1,4 +1,4 @@
-import { AppState, AppAction, RegularChat } from '../../../types'
+import { AppState, AppAction, RegularChat } from '../../../types/type'
 import { updatePageById } from '../../helpers'
 
 // 类型守卫函数，检查是否为 RegularChat

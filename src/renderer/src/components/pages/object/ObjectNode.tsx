@@ -1,12 +1,7 @@
 import React from 'react'
 import { Button, Typography, Space, Tooltip, Input, App } from 'antd'
-import {
-  RightOutlined,
-  DeleteOutlined,
-  StarOutlined,
-  FileTextOutlined
-} from '@ant-design/icons'
-import { ObjectNode as ObjectNodeType } from '../../../types'
+import { RightOutlined, DeleteOutlined, StarOutlined, FileTextOutlined } from '@ant-design/icons'
+import { ObjectNode as ObjectNodeType } from '../../../types/type'
 
 const { Text } = Typography
 
@@ -38,15 +33,13 @@ const ObjectNode: React.FC<ObjectNodeProps> = ({
   // 处理AI生成
   const handleAIGenerate = () => {
     let aiPrompt = ''
-    
+
     modal.confirm({
       title: `为 "${node.name}" 生成子对象`,
       content: (
         <div>
           <div style={{ marginBottom: 16 }}>
-            <Typography.Text type="secondary">
-              请描述您希望生成什么类型的子对象：
-            </Typography.Text>
+            <Typography.Text type="secondary">请描述您希望生成什么类型的子对象：</Typography.Text>
           </div>
           <Input.TextArea
             placeholder="例如：生成3个员工节点，包含姓名、部门、职位信息"

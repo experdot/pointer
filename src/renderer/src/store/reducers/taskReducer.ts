@@ -1,4 +1,4 @@
-import { AppState, AppAction } from '../../types'
+import { AppState, AppAction } from '../../types/type'
 
 export const handleTaskActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -12,10 +12,8 @@ export const handleTaskActions = (state: AppState, action: AppAction): AppState 
     case 'UPDATE_AI_TASK': {
       return {
         ...state,
-        aiTasks: state.aiTasks.map(task =>
-          task.id === action.payload.taskId
-            ? { ...task, ...action.payload.updates }
-            : task
+        aiTasks: state.aiTasks.map((task) =>
+          task.id === action.payload.taskId ? { ...task, ...action.payload.updates } : task
         )
       }
     }
@@ -23,15 +21,16 @@ export const handleTaskActions = (state: AppState, action: AppAction): AppState 
     case 'REMOVE_AI_TASK': {
       return {
         ...state,
-        aiTasks: state.aiTasks.filter(task => task.id !== action.payload.taskId)
+        aiTasks: state.aiTasks.filter((task) => task.id !== action.payload.taskId)
       }
     }
 
     case 'CLEAR_COMPLETED_AI_TASKS': {
       return {
         ...state,
-        aiTasks: state.aiTasks.filter(task => 
-          task.status !== 'completed' && task.status !== 'failed' && task.status !== 'cancelled'
+        aiTasks: state.aiTasks.filter(
+          (task) =>
+            task.status !== 'completed' && task.status !== 'failed' && task.status !== 'cancelled'
         )
       }
     }
@@ -46,4 +45,4 @@ export const handleTaskActions = (state: AppState, action: AppAction): AppState 
     default:
       return state
   }
-} 
+}

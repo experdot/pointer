@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
-import { ObjectChat } from '../../../types'
+import { ObjectChat } from '../../../types/type'
 import { useAppContext } from '../../../store/AppContext'
 import PropertyTableEditor from './PropertyTableEditor'
 import ConnectionEditor from './ConnectionEditor'

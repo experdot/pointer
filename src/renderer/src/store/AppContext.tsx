@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { AppState, AppAction } from '../types'
+import { AppState, AppAction } from '../types/type'
 import { StorageService } from '../services/storageService'
 import { INITIAL_SETTINGS } from './constants'
 import { appReducer } from './reducers'

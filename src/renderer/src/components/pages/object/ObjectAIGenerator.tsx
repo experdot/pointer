@@ -1,16 +1,5 @@
 import React, { useState, useRef } from 'react'
-import {
-  Button,
-  Input,
-  Space,
-  Typography,
-  Card,
-  Empty,
-  Tabs,
-  Tag,
-  message,
-  Spin
-} from 'antd'
+import { Button, Input, Space, Typography, Card, Empty, Tabs, Tag, message, Spin } from 'antd'
 import {
   StarOutlined,
   SendOutlined,
@@ -20,7 +9,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import { useAppContext } from '../../../store/AppContext'
 import { useSettings } from '../../../store/hooks/useSettings'
 import { createAIService } from '../../../services/aiService'

@@ -6,7 +6,7 @@ import {
   DeleteOutlined,
   CommentOutlined
 } from '@ant-design/icons'
-import { CrosstabMetadata } from '../../../types'
+import { CrosstabMetadata } from '../../../types/type'
 
 // 从idea.md中提取的提示词模板
 export const PROMPT_TEMPLATES = {
@@ -200,30 +200,34 @@ export function parseDimensionPath(path: string): string[] {
  */
 export function generateAxisCombinations(dimensions: any[]): string[][] {
   if (dimensions.length === 0) return [[]]
-  
+
   const [firstDimension, ...restDimensions] = dimensions
   const restCombinations = generateAxisCombinations(restDimensions)
-  
+
   const result: string[][] = []
   for (const value of firstDimension.values) {
     for (const restCombination of restCombinations) {
       result.push([value, ...restCombination])
     }
   }
-  
+
   return result
 }
 
 /**
  * 获取维度显示名称的工具函数
  */
-export function getDimensionDisplayName(metadata: CrosstabMetadata | null, axis: 'horizontal' | 'vertical'): string {
+export function getDimensionDisplayName(
+  metadata: CrosstabMetadata | null,
+  axis: 'horizontal' | 'vertical'
+): string {
   if (!metadata) return axis === 'horizontal' ? '横轴' : '纵轴'
-  
-  const dimensions = axis === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
+
+  const dimensions =
+    axis === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
   if (dimensions.length === 0) return axis === 'horizontal' ? '横轴' : '纵轴'
-  
-  return dimensions.map(d => d.name).join(' - ')
+
+  return dimensions.map((d) => d.name).join(' - ')
 }
 
 /**
@@ -404,27 +408,23 @@ export function generateTableColumns(
           })
         }
 
-        return React.createElement(
-          'div',
-          { className: 'cell-content' },
-          [
-            React.createElement(
-              'div',
-              {
-                className: `cell-text ${isGenerating ? 'generating' : ''} ${!text ? 'empty' : ''}`,
-                key: 'text'
-              },
-              isGenerating ? '生成中...' : text || '点击生成内容'
-            ),
-            React.createElement(Dropdown, {
-              key: 'dropdown',
-              menu: { items: menuItems },
-              trigger: ['hover'],
-              placement: 'bottomRight',
-              children: React.createElement('div', { className: 'cell-menu-trigger' })
-            })
-          ]
-        )
+        return React.createElement('div', { className: 'cell-content' }, [
+          React.createElement(
+            'div',
+            {
+              className: `cell-text ${isGenerating ? 'generating' : ''} ${!text ? 'empty' : ''}`,
+              key: 'text'
+            },
+            isGenerating ? '生成中...' : text || '点击生成内容'
+          ),
+          React.createElement(Dropdown, {
+            key: 'dropdown',
+            menu: { items: menuItems },
+            trigger: ['hover'],
+            placement: 'bottomRight',
+            children: React.createElement('div', { className: 'cell-menu-trigger' })
+          })
+        ])
       }
     })
   })

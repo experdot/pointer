@@ -1,4 +1,4 @@
-import { AppState, AppAction, RegularChat } from '../../../types'
+import { AppState, AppAction, RegularChat } from '../../../types/type'
 import { createNewChat } from '../../helpers'
 import { v4 as uuidv4 } from 'uuid'
 

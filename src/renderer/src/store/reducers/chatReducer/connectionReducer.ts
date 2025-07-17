@@ -1,4 +1,4 @@
-import { AppState, AppAction, ObjectGenerationRecord } from '../../../types'
+import { AppState, AppAction, ObjectGenerationRecord } from '../../../types/type'
 import { generateNodeId } from '../../helpers'
 
 export const handleConnectionActions = (state: AppState, action: AppAction): AppState => {

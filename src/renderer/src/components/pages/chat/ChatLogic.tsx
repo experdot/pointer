@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { App } from 'antd'
 import { v4 as uuidv4 } from 'uuid'
 import { useAppContext } from '../../../store/AppContext'
-import { ChatMessage, LLMConfig, AITask } from '../../../types'
+import { ChatMessage, LLMConfig, AITask } from '../../../types/type'
 import { createAIService } from '../../../services/aiService'
 import { MessageTree } from './messageTree'
 
@@ -61,7 +61,13 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
   }, [])
 
   const sendAIMessage = useCallback(
-    async (messages: ChatMessage[], llmConfig: LLMConfig, parentId?: string, taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat', taskContext?: any): Promise<string> => {
+    async (
+      messages: ChatMessage[],
+      llmConfig: LLMConfig,
+      parentId?: string,
+      taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat',
+      taskContext?: any
+    ): Promise<string> => {
       const aiService = createAIService(llmConfig)
       const messageId = uuidv4()
 
@@ -74,7 +80,14 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         requestId: aiService.id, // 使用AI服务的requestId
         type: taskType,
         status: 'running',
-        title: taskType === 'chat' ? '发送消息' : taskType === 'retry' ? '重试消息' : taskType === 'edit_resend' ? '编辑重发' : '模型切换',
+        title:
+          taskType === 'chat'
+            ? '发送消息'
+            : taskType === 'retry'
+              ? '重试消息'
+              : taskType === 'edit_resend'
+                ? '编辑重发'
+                : '模型切换',
         description: `使用模型 ${llmConfig.name} 生成回复`,
         chatId,
         messageId,

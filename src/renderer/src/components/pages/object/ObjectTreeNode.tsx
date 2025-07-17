@@ -11,7 +11,7 @@ import {
   ApiOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectNode as ObjectNodeType } from '../../../types/type'
 
 const { Text } = Typography
 

@@ -1,4 +1,4 @@
-import { Page, ChatMessage, RegularChat } from '../types'
+import { Page, ChatMessage, RegularChat } from '../types/type'
 import { v4 as uuidv4 } from 'uuid'
 import { MessageTree } from '../components/pages/chat/messageTree'
 import './exporter.css'

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { Input, Typography, Tree, App } from 'antd'
 import { SearchOutlined, FolderOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { useAppContext } from '../../../store/AppContext'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import ObjectToolbar from './ObjectToolbar'
 import ObjectTreeNode from './ObjectTreeNode'
 
@@ -279,7 +279,6 @@ const ObjectBrowser: React.FC<ObjectBrowserProps> = ({ chatId }) => {
           .map((id) => nodes[id])
           .filter(Boolean)
       }
-
 
       // 获取当前节点的连接信息
       const getCurrentConnections = (node: ObjectNodeType) => {

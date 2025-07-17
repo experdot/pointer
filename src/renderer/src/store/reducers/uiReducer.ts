@@ -1,4 +1,4 @@
-import { AppState, AppAction, Settings } from '../../types'
+import { AppState, AppAction, Settings } from '../../types/type'
 import { constrainSidebarWidth } from '../helpers'
 
 export const handleUIActions = (state: AppState, action: AppAction): AppState => {

@@ -1,4 +1,4 @@
-import { AppState, AppAction } from '../../types'
+import { AppState, AppAction } from '../../types/type'
 
 export const handleTabActions = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -20,15 +20,15 @@ export const handleTabActions = (state: AppState, action: AppAction): AppState =
       // 根据是否固定来决定插入位置
       const isPinned = chat.pinned || false
       let newOpenTabs
-      
+
       if (isPinned) {
         // 固定标签页插入到所有固定标签页的末尾
-        const pinnedTabs = state.openTabs.filter(id => {
-          const tab = state.pages.find(p => p.id === id)
+        const pinnedTabs = state.openTabs.filter((id) => {
+          const tab = state.pages.find((p) => p.id === id)
           return tab?.pinned || false
         })
-        const unpinnedTabs = state.openTabs.filter(id => {
-          const tab = state.pages.find(p => p.id === id)
+        const unpinnedTabs = state.openTabs.filter((id) => {
+          const tab = state.pages.find((p) => p.id === id)
           return !(tab?.pinned || false)
         })
         newOpenTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
@@ -138,18 +138,18 @@ export const handleTabActions = (state: AppState, action: AppAction): AppState =
       let newOpenTabs = [...state.openTabs]
       if (newOpenTabs.includes(chatId)) {
         // 移除当前位置的标签页
-        newOpenTabs = newOpenTabs.filter(id => id !== chatId)
-        
+        newOpenTabs = newOpenTabs.filter((id) => id !== chatId)
+
         // 找到所有固定标签页的位置
-        const pinnedTabs = newOpenTabs.filter(id => {
-          const tab = updatedPages.find(p => p.id === id)
+        const pinnedTabs = newOpenTabs.filter((id) => {
+          const tab = updatedPages.find((p) => p.id === id)
           return tab?.pinned || false
         })
-        const unpinnedTabs = newOpenTabs.filter(id => {
-          const tab = updatedPages.find(p => p.id === id)
+        const unpinnedTabs = newOpenTabs.filter((id) => {
+          const tab = updatedPages.find((p) => p.id === id)
           return !(tab?.pinned || false)
         })
-        
+
         // 将新固定的标签页插入到固定标签页的末尾
         newOpenTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
       }
@@ -176,18 +176,18 @@ export const handleTabActions = (state: AppState, action: AppAction): AppState =
       let newOpenTabs = [...state.openTabs]
       if (newOpenTabs.includes(chatId)) {
         // 移除当前位置的标签页
-        newOpenTabs = newOpenTabs.filter(id => id !== chatId)
-        
+        newOpenTabs = newOpenTabs.filter((id) => id !== chatId)
+
         // 找到所有固定标签页的位置
-        const pinnedTabs = newOpenTabs.filter(id => {
-          const tab = updatedPages.find(p => p.id === id)
+        const pinnedTabs = newOpenTabs.filter((id) => {
+          const tab = updatedPages.find((p) => p.id === id)
           return tab?.pinned || false
         })
-        const unpinnedTabs = newOpenTabs.filter(id => {
-          const tab = updatedPages.find(p => p.id === id)
+        const unpinnedTabs = newOpenTabs.filter((id) => {
+          const tab = updatedPages.find((p) => p.id === id)
           return !(tab?.pinned || false)
         })
-        
+
         // 将取消固定的标签页插入到未固定标签页的开头
         newOpenTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
       }
@@ -201,28 +201,28 @@ export const handleTabActions = (state: AppState, action: AppAction): AppState =
 
     case 'REORDER_TABS': {
       const { newOrder } = action.payload
-      
+
       // 验证新顺序是否有效
-      const validOrder = newOrder.filter(id => 
-        state.openTabs.includes(id) && state.pages.find(p => p.id === id)
+      const validOrder = newOrder.filter(
+        (id) => state.openTabs.includes(id) && state.pages.find((p) => p.id === id)
       )
-      
+
       // 如果有遗漏的标签页，添加到末尾
-      const missingTabs = state.openTabs.filter(id => !validOrder.includes(id))
+      const missingTabs = state.openTabs.filter((id) => !validOrder.includes(id))
       const reorderedTabs = [...validOrder, ...missingTabs]
-      
+
       // 重新分离固定标签页和普通标签页，确保固定标签页在前
-      const pinnedTabs = reorderedTabs.filter(id => {
-        const tab = state.pages.find(p => p.id === id)
+      const pinnedTabs = reorderedTabs.filter((id) => {
+        const tab = state.pages.find((p) => p.id === id)
         return tab?.pinned || false
       })
-      const unpinnedTabs = reorderedTabs.filter(id => {
-        const tab = state.pages.find(p => p.id === id)
+      const unpinnedTabs = reorderedTabs.filter((id) => {
+        const tab = state.pages.find((p) => p.id === id)
         return !(tab?.pinned || false)
       })
-      
+
       const finalOrder = [...pinnedTabs, ...unpinnedTabs]
-      
+
       return {
         ...state,
         openTabs: finalOrder

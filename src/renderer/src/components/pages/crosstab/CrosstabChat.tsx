@@ -9,8 +9,13 @@ import {
 
 import { useAppContext } from '../../../store/AppContext'
 import { createAIService } from '../../../services/aiService'
-import { PROMPT_TEMPLATES, extractJsonContent, generateAxisCombinations, generateDimensionPath } from './CrosstabUtils'
-import { AITask } from '../../../types'
+import {
+  PROMPT_TEMPLATES,
+  extractJsonContent,
+  generateAxisCombinations,
+  generateDimensionPath
+} from './CrosstabUtils'
+import { AITask } from '../../../types/type'
 import { v4 as uuidv4 } from 'uuid'
 import StepFlow from './StepFlow'
 import TopicInput from './TopicInput'
@@ -39,8 +44,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const [isGeneratingRow, setIsGeneratingRow] = useState<string | null>(null)
   const [isGeneratingCell, setIsGeneratingCell] = useState<string | null>(null)
   const [isGeneratingTopicSuggestions, setIsGeneratingTopicSuggestions] = useState(false)
-  const [isGeneratingDimensionSuggestions, setIsGeneratingDimensionSuggestions] = useState<{ [dimensionId: string]: boolean }>({})
-  const [isGeneratingDimensionValues, setIsGeneratingDimensionValues] = useState<{ [dimensionId: string]: boolean }>({})
+  const [isGeneratingDimensionSuggestions, setIsGeneratingDimensionSuggestions] = useState<{
+    [dimensionId: string]: boolean
+  }>({})
+  const [isGeneratingDimensionValues, setIsGeneratingDimensionValues] = useState<{
+    [dimensionId: string]: boolean
+  }>({})
   const { message } = App.useApp()
 
   const chat = useMemo(() => {
@@ -73,8 +82,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       }
 
       const { verticalDimensions } = chat.crosstabData.metadata
-      const hasVerticalData = verticalDimensions.every(dim => dim.values.length > 0)
-      
+      const hasVerticalData = verticalDimensions.every((dim) => dim.values.length > 0)
+
       if (!hasVerticalData) {
         message.error('请先完成纵轴维度数据生成')
         return
@@ -85,16 +94,18 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       // 生成该列的所有单元格数据
       try {
         // 使用已经导入的函数
-        const verticalCombinations = generateAxisCombinations(chat.crosstabData.metadata.verticalDimensions)
+        const verticalCombinations = generateAxisCombinations(
+          chat.crosstabData.metadata.verticalDimensions
+        )
         const aiService = createAIService(llmConfig)
-        
+
         const updatedTableData = { ...chat.crosstabData.tableData }
-        
+
         // 为该列的每个单元格生成数据
         for (const vCombination of verticalCombinations) {
           const rowPath = generateDimensionPath(vCombination)
           const cellKey = `${columnPath}|${rowPath}`
-          
+
           const taskId = uuidv4()
           const task: AITask = {
             id: taskId,
@@ -118,7 +129,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
               .replace('[HORIZONTAL_PATH]', columnPath)
               .replace('[VERTICAL_PATH]', rowPath)
-              .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+              .replace(
+                '[VALUE_DIMENSIONS]',
+                JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2)
+              )
 
             const response = await new Promise<string>((resolve, reject) => {
               aiService.sendMessage(
@@ -138,10 +152,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             const processedCellValues: { [key: string]: string } = {}
             if (chat.crosstabData.metadata.valueDimensions.length > 0) {
               const valueDimensions = chat.crosstabData.metadata.valueDimensions
-              
+
               const keys = Object.keys(cellValues)
-              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
-              
+              const hasGenericKeys = keys.some((key) => key.match(/^value\d+$/))
+
               if (hasGenericKeys) {
                 valueDimensions.forEach((dimension, index) => {
                   const genericKey = `value${index + 1}`
@@ -150,14 +164,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
                   }
                 })
               } else {
-                valueDimensions.forEach(dimension => {
+                valueDimensions.forEach((dimension) => {
                   if (cellValues[dimension.id]) {
                     processedCellValues[dimension.id] = cellValues[dimension.id]
                   }
                 })
               }
-              
-              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+
+              if (
+                Object.keys(processedCellValues).length === 0 &&
+                Object.keys(cellValues).length > 0
+              ) {
                 const firstDimension = valueDimensions[0]
                 const firstValue = Object.values(cellValues)[0]
                 processedCellValues[firstDimension.id] = firstValue as string
@@ -228,8 +245,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       }
 
       const { horizontalDimensions } = chat.crosstabData.metadata
-      const hasHorizontalData = horizontalDimensions.every(dim => dim.values.length > 0)
-      
+      const hasHorizontalData = horizontalDimensions.every((dim) => dim.values.length > 0)
+
       if (!hasHorizontalData) {
         message.error('请先完成横轴维度数据生成')
         return
@@ -240,16 +257,18 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       // 生成该行的所有单元格数据
       try {
         // 使用已经导入的函数
-        const horizontalCombinations = generateAxisCombinations(chat.crosstabData.metadata.horizontalDimensions)
+        const horizontalCombinations = generateAxisCombinations(
+          chat.crosstabData.metadata.horizontalDimensions
+        )
         const aiService = createAIService(llmConfig)
-        
+
         const updatedTableData = { ...chat.crosstabData.tableData }
-        
+
         // 为该行的每个单元格生成数据
         for (const hCombination of horizontalCombinations) {
           const columnPath = generateDimensionPath(hCombination)
           const cellKey = `${columnPath}|${rowPath}`
-          
+
           const taskId = uuidv4()
           const task: AITask = {
             id: taskId,
@@ -273,7 +292,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
               .replace('[HORIZONTAL_PATH]', columnPath)
               .replace('[VERTICAL_PATH]', rowPath)
-              .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+              .replace(
+                '[VALUE_DIMENSIONS]',
+                JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2)
+              )
 
             const response = await new Promise<string>((resolve, reject) => {
               aiService.sendMessage(
@@ -293,10 +315,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             const processedCellValues: { [key: string]: string } = {}
             if (chat.crosstabData.metadata.valueDimensions.length > 0) {
               const valueDimensions = chat.crosstabData.metadata.valueDimensions
-              
+
               const keys = Object.keys(cellValues)
-              const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
-              
+              const hasGenericKeys = keys.some((key) => key.match(/^value\d+$/))
+
               if (hasGenericKeys) {
                 valueDimensions.forEach((dimension, index) => {
                   const genericKey = `value${index + 1}`
@@ -305,14 +327,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
                   }
                 })
               } else {
-                valueDimensions.forEach(dimension => {
+                valueDimensions.forEach((dimension) => {
                   if (cellValues[dimension.id]) {
                     processedCellValues[dimension.id] = cellValues[dimension.id]
                   }
                 })
               }
-              
-              if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
+
+              if (
+                Object.keys(processedCellValues).length === 0 &&
+                Object.keys(cellValues).length > 0
+              ) {
                 const firstDimension = valueDimensions[0]
                 const firstValue = Object.values(cellValues)[0]
                 processedCellValues[firstDimension.id] = firstValue as string
@@ -410,7 +435,10 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
           .replace('[HORIZONTAL_PATH]', columnPath)
           .replace('[VERTICAL_PATH]', rowPath)
-          .replace('[VALUE_DIMENSIONS]', JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2))
+          .replace(
+            '[VALUE_DIMENSIONS]',
+            JSON.stringify(chat.crosstabData.metadata.valueDimensions, null, 2)
+          )
 
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
@@ -428,15 +456,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
         // 处理AI生成的数据格式，确保键是实际的值维度ID
         const processedCellValues: { [key: string]: string } = {}
-        
+
         // 如果AI生成的数据使用的是通用键（如value1, value2），需要映射到实际的值维度ID
         if (chat.crosstabData.metadata.valueDimensions.length > 0) {
           const valueDimensions = chat.crosstabData.metadata.valueDimensions
-          
+
           // 检查是否使用了通用键格式
           const keys = Object.keys(cellValues)
-          const hasGenericKeys = keys.some(key => key.match(/^value\d+$/))
-          
+          const hasGenericKeys = keys.some((key) => key.match(/^value\d+$/))
+
           if (hasGenericKeys) {
             // 映射通用键到实际的值维度ID
             valueDimensions.forEach((dimension, index) => {
@@ -447,13 +475,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             })
           } else {
             // 检查是否直接使用了值维度ID
-            valueDimensions.forEach(dimension => {
+            valueDimensions.forEach((dimension) => {
               if (cellValues[dimension.id]) {
                 processedCellValues[dimension.id] = cellValues[dimension.id]
               }
             })
           }
-          
+
           // 如果没有找到匹配的键，尝试使用第一个可用的值作为第一个维度的值
           if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
             const firstDimension = valueDimensions[0]
@@ -517,9 +545,9 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       if (!chat) return
 
       const updatedTableData = { ...chat.crosstabData.tableData }
-      
+
       // 删除所有以该列路径开头的单元格数据
-      Object.keys(updatedTableData).forEach(cellKey => {
+      Object.keys(updatedTableData).forEach((cellKey) => {
         if (cellKey.startsWith(columnPath + '|')) {
           delete updatedTableData[cellKey]
         }
@@ -545,7 +573,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       const updatedTableData = { ...chat.crosstabData.tableData }
 
       // 删除所有以该行路径结尾的单元格数据
-      Object.keys(updatedTableData).forEach(cellKey => {
+      Object.keys(updatedTableData).forEach((cellKey) => {
         if (cellKey.endsWith('|' + rowPath)) {
           delete updatedTableData[cellKey]
         }
@@ -672,10 +700,11 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       if (!chat || !chat.crosstabData.metadata) return
 
       const metadata = chat.crosstabData.metadata
-      const dimensionsKey = dimensionType === 'horizontal' ? 'horizontalDimensions' : 'verticalDimensions'
+      const dimensionsKey =
+        dimensionType === 'horizontal' ? 'horizontalDimensions' : 'verticalDimensions'
       const dimensions = metadata[dimensionsKey]
-      
-      const updatedDimensions = dimensions.map(dim => 
+
+      const updatedDimensions = dimensions.map((dim) =>
         dim.id === dimensionId ? { ...dim, ...updates } : dim
       )
 
@@ -709,14 +738,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         return
       }
 
-      setIsGeneratingDimensionValues(prev => ({ ...prev, [dimensionId]: true }))
+      setIsGeneratingDimensionValues((prev) => ({ ...prev, [dimensionId]: true }))
 
       try {
-        const dimensions = dimensionType === 'horizontal' 
-          ? chat.crosstabData.metadata.horizontalDimensions 
-          : chat.crosstabData.metadata.verticalDimensions
-        
-        const dimension = dimensions.find(d => d.id === dimensionId)
+        const dimensions =
+          dimensionType === 'horizontal'
+            ? chat.crosstabData.metadata.horizontalDimensions
+            : chat.crosstabData.metadata.verticalDimensions
+
+        const dimension = dimensions.find((d) => d.id === dimensionId)
         if (!dimension) {
           message.error('找不到指定的维度')
           return
@@ -750,7 +780,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         console.error('维度值生成失败:', error)
         message.error(`维度值生成失败: ${error.message}`)
       } finally {
-        setIsGeneratingDimensionValues(prev => ({ ...prev, [dimensionId]: false }))
+        setIsGeneratingDimensionValues((prev) => ({ ...prev, [dimensionId]: false }))
       }
     },
     [chat, getLLMConfig, handleUpdateDimension, message]
@@ -853,7 +883,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     } catch (error) {
       console.error('Topic suggestions generation error:', error)
       message.error('主题候选项生成失败，请重试')
-      
+
       dispatch({
         type: 'UPDATE_AI_TASK',
         payload: {
@@ -870,149 +900,159 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     }
   }, [chat, isGeneratingTopicSuggestions, getLLMConfig, dispatch, chatId, message])
 
-  const handleGenerateDimensionSuggestions = useCallback(async (dimensionId: string) => {
-    if (!chat || !chat.crosstabData.metadata) {
-      message.error('请先完成主题设置')
-      return
-    }
+  const handleGenerateDimensionSuggestions = useCallback(
+    async (dimensionId: string) => {
+      if (!chat || !chat.crosstabData.metadata) {
+        message.error('请先完成主题设置')
+        return
+      }
 
-    if (isGeneratingDimensionSuggestions[dimensionId]) return
+      if (isGeneratingDimensionSuggestions[dimensionId]) return
 
-    const llmConfig = getLLMConfig()
-    if (!llmConfig) {
-      message.error('请先在设置中配置LLM')
-      return
-    }
+      const llmConfig = getLLMConfig()
+      if (!llmConfig) {
+        message.error('请先在设置中配置LLM')
+        return
+      }
 
-    setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: true }))
+      setIsGeneratingDimensionSuggestions((prev) => ({ ...prev, [dimensionId]: true }))
 
-    const taskId = uuidv4()
-    const aiService = createAIService(llmConfig)
+      const taskId = uuidv4()
+      const aiService = createAIService(llmConfig)
 
-    // 查找维度
-    const allDimensions = [
-      ...chat.crosstabData.metadata.horizontalDimensions,
-      ...chat.crosstabData.metadata.verticalDimensions,
-      ...chat.crosstabData.metadata.valueDimensions
-    ]
-    const dimension = allDimensions.find(d => d.id === dimensionId)
+      // 查找维度
+      const allDimensions = [
+        ...chat.crosstabData.metadata.horizontalDimensions,
+        ...chat.crosstabData.metadata.verticalDimensions,
+        ...chat.crosstabData.metadata.valueDimensions
+      ]
+      const dimension = allDimensions.find((d) => d.id === dimensionId)
 
-    if (!dimension) {
-      message.error('找不到指定的维度')
-      setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: false }))
-      return
-    }
+      if (!dimension) {
+        message.error('找不到指定的维度')
+        setIsGeneratingDimensionSuggestions((prev) => ({ ...prev, [dimensionId]: false }))
+        return
+      }
 
-    const task: AITask = {
-      id: taskId,
-      requestId: aiService.id,
-      type: 'crosstab_cell',
-      status: 'running',
-      title: '生成维度候选项',
-      description: `为维度 "${dimension.name}" 生成候选项`,
-      chatId,
-      modelId: llmConfig.id,
-      startTime: Date.now(),
-      context: {
-        crosstab: {
-          horizontalItem: 'suggestions',
-          verticalItem: dimensionId,
-          metadata: chat.crosstabData.metadata
+      const task: AITask = {
+        id: taskId,
+        requestId: aiService.id,
+        type: 'crosstab_cell',
+        status: 'running',
+        title: '生成维度候选项',
+        description: `为维度 "${dimension.name}" 生成候选项`,
+        chatId,
+        modelId: llmConfig.id,
+        startTime: Date.now(),
+        context: {
+          crosstab: {
+            horizontalItem: 'suggestions',
+            verticalItem: dimensionId,
+            metadata: chat.crosstabData.metadata
+          }
         }
       }
-    }
 
-    dispatch({
-      type: 'ADD_AI_TASK',
-      payload: { task }
-    })
-
-    try {
-      const prompt = PROMPT_TEMPLATES.dimensionSuggestions
-        .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
-        .replace('[DIMENSION_TYPE]', dimension.id.startsWith('h') ? 'horizontal' : dimension.id.startsWith('v') ? 'vertical' : 'value')
-        .replace('[DIMENSION_NAME]', dimension.name)
-        .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
-
-      const response = await new Promise<string>((resolve, reject) => {
-        aiService.sendMessage(
-          [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
-          {
-            onChunk: () => {},
-            onComplete: (response) => resolve(response),
-            onError: (error) => reject(error)
-          }
-        )
+      dispatch({
+        type: 'ADD_AI_TASK',
+        payload: { task }
       })
 
       try {
-        const parsedSuggestions = JSON.parse(extractJsonContent(response))
-        if (Array.isArray(parsedSuggestions)) {
-          // 更新维度的建议
-          const metadata = chat.crosstabData.metadata
-          let updatedMetadata = { ...metadata }
+        const prompt = PROMPT_TEMPLATES.dimensionSuggestions
+          .replace('[METADATA_JSON]', JSON.stringify(chat.crosstabData.metadata, null, 2))
+          .replace(
+            '[DIMENSION_TYPE]',
+            dimension.id.startsWith('h')
+              ? 'horizontal'
+              : dimension.id.startsWith('v')
+                ? 'vertical'
+                : 'value'
+          )
+          .replace('[DIMENSION_NAME]', dimension.name)
+          .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
 
-          // 根据维度类型更新对应的维度
-          if (dimension.id.startsWith('h')) {
-            updatedMetadata.horizontalDimensions = updatedMetadata.horizontalDimensions.map(d =>
-              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
-            )
-          } else if (dimension.id.startsWith('v')) {
-            updatedMetadata.verticalDimensions = updatedMetadata.verticalDimensions.map(d =>
-              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
-            )
-          } else {
-            updatedMetadata.valueDimensions = updatedMetadata.valueDimensions.map(d =>
-              d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
-            )
-          }
-
-          dispatch({
-            type: 'UPDATE_CROSSTAB_DATA',
-            payload: {
-              chatId,
-              data: { metadata: updatedMetadata }
+        const response = await new Promise<string>((resolve, reject) => {
+          aiService.sendMessage(
+            [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
+            {
+              onChunk: () => {},
+              onComplete: (response) => resolve(response),
+              onError: (error) => reject(error)
             }
-          })
+          )
+        })
 
-          dispatch({
-            type: 'UPDATE_AI_TASK',
-            payload: {
-              taskId,
-              updates: {
-                status: 'completed',
-                endTime: Date.now()
+        try {
+          const parsedSuggestions = JSON.parse(extractJsonContent(response))
+          if (Array.isArray(parsedSuggestions)) {
+            // 更新维度的建议
+            const metadata = chat.crosstabData.metadata
+            let updatedMetadata = { ...metadata }
+
+            // 根据维度类型更新对应的维度
+            if (dimension.id.startsWith('h')) {
+              updatedMetadata.horizontalDimensions = updatedMetadata.horizontalDimensions.map(
+                (d) => (d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d)
+              )
+            } else if (dimension.id.startsWith('v')) {
+              updatedMetadata.verticalDimensions = updatedMetadata.verticalDimensions.map((d) =>
+                d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
+              )
+            } else {
+              updatedMetadata.valueDimensions = updatedMetadata.valueDimensions.map((d) =>
+                d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d
+              )
+            }
+
+            dispatch({
+              type: 'UPDATE_CROSSTAB_DATA',
+              payload: {
+                chatId,
+                data: { metadata: updatedMetadata }
               }
-            }
-          })
+            })
 
-          message.success('维度候选项生成完成')
-        } else {
-          throw new Error('返回的不是数组格式')
-        }
-      } catch (e) {
-        message.error('解析维度候选项失败')
-        throw e
-      }
-    } catch (error) {
-      console.error('Dimension suggestions generation error:', error)
-      message.error('维度候选项生成失败，请重试')
-      
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'failed',
-            endTime: Date.now(),
-            error: error instanceof Error ? error.message : 'Unknown error'
+            dispatch({
+              type: 'UPDATE_AI_TASK',
+              payload: {
+                taskId,
+                updates: {
+                  status: 'completed',
+                  endTime: Date.now()
+                }
+              }
+            })
+
+            message.success('维度候选项生成完成')
+          } else {
+            throw new Error('返回的不是数组格式')
           }
+        } catch (e) {
+          message.error('解析维度候选项失败')
+          throw e
         }
-      })
-    } finally {
-      setIsGeneratingDimensionSuggestions(prev => ({ ...prev, [dimensionId]: false }))
-    }
-  }, [chat, isGeneratingDimensionSuggestions, getLLMConfig, dispatch, chatId, message])
+      } catch (error) {
+        console.error('Dimension suggestions generation error:', error)
+        message.error('维度候选项生成失败，请重试')
+
+        dispatch({
+          type: 'UPDATE_AI_TASK',
+          payload: {
+            taskId,
+            updates: {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+      } finally {
+        setIsGeneratingDimensionSuggestions((prev) => ({ ...prev, [dimensionId]: false }))
+      }
+    },
+    [chat, isGeneratingDimensionSuggestions, getLLMConfig, dispatch, chatId, message]
+  )
 
   const handleSelectTopicSuggestion = useCallback(
     (suggestion: string) => {

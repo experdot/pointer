@@ -1,4 +1,4 @@
-import { ChatMessage } from '../../../types'
+import { ChatMessage } from '../../../types/type'
 
 export interface MessageTreeNode {
   message: ChatMessage

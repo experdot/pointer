@@ -31,7 +31,7 @@ import {
   importSelectedChats,
   SelectableChatItem
 } from '../../utils/externalChatImporter'
-import { PageFolder } from '../../types'
+import { PageFolder } from '../../types/type'
 
 const { Text, Paragraph } = Typography
 

@@ -9,7 +9,7 @@ import {
   CalendarOutlined,
   ApiOutlined
 } from '@ant-design/icons'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import { useAppContext } from '../../../store/AppContext'
 
 const { Text } = Typography

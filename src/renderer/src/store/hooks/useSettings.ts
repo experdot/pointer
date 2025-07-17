@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useAppContext } from '../AppContext'
-import { Settings, LLMConfig } from '../../types'
+import { Settings, LLMConfig } from '../../types/type'
 import { StorageService } from '../../services/storageService'
 
 export function useSettings() {
