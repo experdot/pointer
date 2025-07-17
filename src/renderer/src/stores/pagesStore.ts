@@ -3,8 +3,7 @@ import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { Page, PageFolder, PageLineage } from '../types/type'
 import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
-import { removeFromArray, createNewFolder, updateFolderById } from './helpers/helpers'
-import { useTabsStore } from './tabsStore'
+import { removeFromArray, createNewFolder, updateFolderById, createNewCrosstabChat } from './helpers/helpers'
 import { v4 as uuidv4 } from 'uuid'
 import { useUIStore } from './uiStore'
 
@@ -327,18 +326,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       createAndOpenCrosstabChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
-            id: `crosstab-${Date.now()}`,
             title,
-            type: 'crosstab',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
             folderId,
-            crosstabData: {
-              metadata: null,
-              tableData: {},
-              currentStep: 0,
-              steps: []
-            },
+            ...createNewCrosstabChat(title, folderId, lineage),
             ...(lineage && { lineage })
           }
 
