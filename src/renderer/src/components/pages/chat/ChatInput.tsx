@@ -116,7 +116,7 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            autoSize={{ minRows: 1, maxRows: 4 }}
+            autoSize={{ minRows: 1, maxRows: 10 }}
             disabled={disabled || hasNoModels}
           />
           {loading ? (

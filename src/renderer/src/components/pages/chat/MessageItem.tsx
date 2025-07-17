@@ -284,7 +284,7 @@ export default function MessageItem({
                   <TextArea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    autoSize={{ minRows: 2, maxRows: 8 }}
+                    autoSize={{ minRows: 2, maxRows: 16 }}
                     placeholder="编辑消息内容..."
                   />
                   <div className="message-edit-actions">

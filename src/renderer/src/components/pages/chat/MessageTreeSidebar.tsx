@@ -433,6 +433,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
             showLine={true}
             defaultExpandAll={false}
             selectable={true}
+            blockNode={true}
             className="message-tree"
           />
         )}

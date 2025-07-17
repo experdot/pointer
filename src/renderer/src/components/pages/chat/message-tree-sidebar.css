@@ -231,7 +231,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0;
+  padding: 8px;
 }
 
 .tree-empty {
@@ -242,7 +242,7 @@
 
 /* 消息树样式 */
 .message-tree {
-  padding: 0 4px;
+  padding: 12px;
 }
 
 .message-tree .ant-tree {
@@ -277,7 +277,6 @@
 
 .message-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
   background-color: #e6f7ff;
-  border: 1px solid #91d5ff;
 }
 
 .message-tree .ant-tree-treenode {
@@ -313,7 +312,6 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  margin: 0 4px;
   gap: 4px;
 }
 
@@ -376,7 +374,6 @@
 }
 
 .message-tree .tree-node-preview .ant-typography {
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
