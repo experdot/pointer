@@ -39,6 +39,31 @@ export interface ObjectActions {
   ) => void
   removeNodeConnection: (chatId: string, nodeId: string, connectionIndex: number) => void
 
+  // 关系节点生成和创建
+  generateRelationNodes: (
+    chatId: string,
+    sourceNodeId: string,
+    targetNodeId: string,
+    prompt: string,
+    modelId: string,
+    relationId?: string
+  ) => void
+  createRelationNode: (
+    chatId: string,
+    relationNode: ObjectNode,
+    sourceNodeId: string,
+    targetNodeId: string,
+    sourceRole: string,
+    targetRole: string
+  ) => void
+  generateObjectChildren: (
+    chatId: string,
+    nodeId: string,
+    prompt: string,
+    modelId: string,
+    generationId?: string
+  ) => void
+
   // 生成记录
   addObjectGenerationRecord: (chatId: string, record: ObjectGenerationRecord) => void
   updateGenerationRecord: (chatId: string, generationId: string, generatedNodeIds: string[]) => void
@@ -396,6 +421,145 @@ export const useObjectStore = create<ObjectState & ObjectActions>()(
           }
         } catch (error) {
           handleStoreError('objectStore', 'removeNodeConnection', error)
+        }
+      },
+
+      // 关系节点生成和创建
+      generateRelationNodes: (
+        chatId: string,
+        sourceNodeId: string,
+        targetNodeId: string,
+        prompt: string,
+        modelId: string,
+        relationId?: string
+      ) => {
+                 try {
+           const { updatePage } = usePagesStore.getState()
+           const page = usePagesStore.getState().findPageById(chatId)
+
+           if (page && page.type === 'object' && page.objectData) {
+             // 创建关系生成记录
+             const generationRecord: ObjectGenerationRecord = {
+               id: relationId || Date.now().toString(),
+               parentNodeId: sourceNodeId,
+               prompt: `生成关系节点: ${prompt}`,
+               generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
+               timestamp: Date.now(),
+               modelId
+             }
+
+             const updatedObjectData = {
+               ...page.objectData,
+               generationHistory: [...page.objectData.generationHistory, generationRecord]
+             }
+
+             updatePage(chatId, { objectData: updatedObjectData })
+           }
+         } catch (error) {
+           handleStoreError('objectStore', 'generateRelationNodes', error)
+         }
+      },
+
+      createRelationNode: (
+        chatId: string,
+        relationNode: ObjectNode,
+        sourceNodeId: string,
+        targetNodeId: string,
+        sourceRole: string,
+        targetRole: string
+      ) => {
+        try {
+          const { updatePage } = usePagesStore.getState()
+          const page = usePagesStore.getState().findPageById(chatId)
+
+          if (page && page.type === 'object' && page.objectData) {
+            const updatedNodes = { ...page.objectData.nodes }
+            const sourceNode = updatedNodes[sourceNodeId]
+            const targetNode = updatedNodes[targetNodeId]
+
+            if (sourceNode && targetNode) {
+              const newRelationNode = {
+                ...relationNode,
+                id: Date.now().toString(),
+                sourceRole,
+                targetRole,
+                createdAt: new Date().toISOString()
+              }
+
+              updatedNodes[relationNode.id] = newRelationNode
+
+                             // 更新源节点和目标节点的connections
+               updatedNodes[sourceNodeId] = {
+                 ...sourceNode,
+                 connections: [...(sourceNode.connections || []), {
+                   nodeId: relationNode.id,
+                   role: sourceRole,
+                   description: `${sourceRole}角色`,
+                   strength: 'medium' as const,
+                   metadata: {
+                     createdAt: Date.now(),
+                     source: 'ai' as const
+                   }
+                 }]
+               }
+               updatedNodes[targetNodeId] = {
+                 ...targetNode,
+                 connections: [...(targetNode.connections || []), {
+                   nodeId: relationNode.id,
+                   role: targetRole,
+                   description: `${targetRole}角色`,
+                   strength: 'medium' as const,
+                   metadata: {
+                     createdAt: Date.now(),
+                     source: 'ai' as const
+                   }
+                 }]
+               }
+
+              const updatedObjectData = {
+                ...page.objectData,
+                nodes: updatedNodes
+              }
+
+              updatePage(chatId, { objectData: updatedObjectData })
+            }
+          }
+        } catch (error) {
+          handleStoreError('objectStore', 'createRelationNode', error)
+        }
+      },
+
+      generateObjectChildren: (
+        chatId: string,
+        nodeId: string,
+        prompt: string,
+        modelId: string,
+        generationId?: string
+      ) => {
+        try {
+          const { updatePage } = usePagesStore.getState()
+          const page = usePagesStore.getState().findPageById(chatId)
+
+                     if (page && page.type === 'object' && page.objectData) {
+             // 创建生成记录
+             const generationRecord: ObjectGenerationRecord = {
+               id: generationId || Date.now().toString(),
+               parentNodeId: nodeId,
+               prompt,
+               generatedNodeIds: [], // AI生成完成后会通过updateGenerationRecord更新
+               timestamp: Date.now(),
+               modelId
+             }
+
+             const updatedObjectData = {
+               ...page.objectData,
+               generationHistory: [...page.objectData.generationHistory, generationRecord]
+             }
+
+             updatePage(chatId, { objectData: updatedObjectData })
+           }
+        } catch (error) {
+          handleStoreError('objectStore', 'generateObjectChildren', error)
         }
       },
 

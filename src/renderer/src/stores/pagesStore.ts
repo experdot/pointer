@@ -5,6 +5,7 @@ import { Page, PageFolder, PageLineage } from '../types/type'
 import { createPersistConfig, handleStoreError } from './storeConfig'
 import { removeFromArray, createNewFolder, updateFolderById } from '../store/helpers'
 import { useTabsStore } from './tabsStore'
+import { v4 as uuidv4 } from 'uuid'
 
 export interface PagesState {
   pages: Page[]
@@ -36,9 +37,36 @@ export interface PagesActions {
   getFoldersByParentId: (parentId?: string) => PageFolder[]
 
   // 页面创建和打开
-  createAndOpenChat: (title: string, folderId?: string) => string
-  createAndOpenCrosstabChat: (title: string, folderId?: string) => string
-  createAndOpenObjectChat: (title: string, folderId?: string) => string
+  createAndOpenChat: (title: string, folderId?: string, lineage?: PageLineage) => string
+  createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
+  createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
+
+  // 复杂页面创建功能
+  createChatFromCell: (params: {
+    folderId?: string
+    horizontalItem: string
+    verticalItem: string
+    cellContent: string
+    metadata: any
+    sourcePageId: string
+  }) => string
+  createChatFromObjectNode: (params: {
+    folderId?: string
+    nodeId: string
+    nodeName: string
+    nodeContext: string
+    sourcePageId: string
+  }) => string
+  createCrosstabFromObjects: (params: {
+    title: string
+    folderId?: string
+    horizontalNodeId: string
+    verticalNodeId: string
+    objectData: any
+    horizontalContext: any
+    verticalContext: any
+    sourcePageId: string
+  }) => string
 
   // 工具方法
   clearAllPages: () => void
@@ -263,7 +291,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       },
 
       // 页面创建和打开
-      createAndOpenChat: (title, folderId) => {
+      createAndOpenChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
             id: `chat-${Date.now()}`,
@@ -275,7 +303,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             messages: [],
             messageMap: {},
             currentPath: [],
-            rootMessageId: undefined
+            rootMessageId: undefined,
+            ...(lineage && { lineage })
           }
 
           set((state) => {
@@ -293,7 +322,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
         }
       },
 
-      createAndOpenCrosstabChat: (title, folderId) => {
+      createAndOpenCrosstabChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
             id: `crosstab-${Date.now()}`,
@@ -307,7 +336,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
               tableData: {},
               currentStep: 0,
               steps: []
-            }
+            },
+            ...(lineage && { lineage })
           }
 
           set((state) => {
@@ -325,7 +355,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
         }
       },
 
-      createAndOpenObjectChat: (title, folderId) => {
+      createAndOpenObjectChat: (title, folderId, lineage) => {
         try {
           const newPage: Page = {
             id: `object-${Date.now()}`,
@@ -340,7 +370,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
               selectedNodeId: undefined,
               expandedNodes: [],
               generationHistory: []
-            }
+            },
+            ...(lineage && { lineage })
           }
 
           set((state) => {
@@ -354,6 +385,255 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           return newPage.id
         } catch (error) {
           handleStoreError('pagesStore', 'createAndOpenObjectChat', error)
+          throw error
+        }
+      },
+
+      // 复杂页面创建功能
+      createChatFromCell: (params) => {
+        try {
+          // 从metadata中提取维度信息
+          const horizontalDimensionNames =
+            params.metadata?.horizontalDimensions?.map((d: any) => d.name).join(' > ') || '未知'
+          const verticalDimensionNames =
+            params.metadata?.verticalDimensions?.map((d: any) => d.name).join(' > ') || '未知'
+          const valueDimensionNames =
+            params.metadata?.valueDimensions?.map((d: any) => d.name).join(', ') || '未知'
+
+          // 构建用户提示词
+          const prompt = `# 基于交叉分析表单元格的深度分析
+
+## 背景信息
+- **主题**: ${params.metadata?.topic || '未知'}
+- **横轴维度**: ${horizontalDimensionNames}
+- **纵轴维度**: ${verticalDimensionNames}
+- **值维度**: ${valueDimensionNames}
+
+## 单元格位置
+- **横轴路径**: ${params.horizontalItem}
+- **纵轴路径**: ${params.verticalItem}
+
+## 单元格内容
+${params.cellContent}
+
+## 请求
+请基于以上信息进行深度分析，你可以：
+1. 详细解释这个单元格内容的含义和背景
+2. 分析其在整个交叉分析表中的作用和重要性
+3. 提供相关的扩展信息或见解
+4. 探讨可能的改进方向或相关问题
+
+请开始你的分析：`
+
+          // 创建用户消息
+          const userMessage = {
+            id: uuidv4(),
+            role: 'user' as const,
+            content: prompt,
+            timestamp: Date.now()
+          }
+
+          const newPage: Page = {
+            id: uuidv4(),
+            title: `${params.horizontalItem} × ${params.verticalItem} - 深度分析`,
+            type: 'regular',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            folderId: params.folderId,
+            messages: [userMessage],
+            messageMap: { [userMessage.id]: userMessage },
+            currentPath: [userMessage.id],
+            rootMessageId: undefined,
+            lineage: {
+              source: 'crosstab_to_chat' as const,
+              sourcePageId: params.sourcePageId,
+              sourceContext: {
+                crosstabChat: {
+                  horizontalItem: params.horizontalItem,
+                  verticalItem: params.verticalItem,
+                  cellContent: params.cellContent
+                }
+              },
+              generatedPageIds: [],
+              generatedAt: Date.now(),
+              description: `从交叉分析表的单元格 "${params.horizontalItem} × ${params.verticalItem}" 生成的深度分析聊天`
+            }
+          }
+
+          set((state) => {
+            state.pages.push(newPage)
+
+            // 更新源页面的generatedPageIds
+            const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
+            if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
+              state.pages[sourcePageIndex] = {
+                ...state.pages[sourcePageIndex],
+                lineage: {
+                  ...state.pages[sourcePageIndex].lineage!,
+                  generatedPageIds: [
+                    ...state.pages[sourcePageIndex].lineage!.generatedPageIds,
+                    newPage.id
+                  ]
+                }
+              }
+            }
+          })
+
+          // 使用tabsStore打开标签页
+          const { openTab } = useTabsStore.getState()
+          openTab(newPage.id)
+
+          return newPage.id
+        } catch (error) {
+          handleStoreError('pagesStore', 'createChatFromCell', error)
+          throw error
+        }
+      },
+
+      createChatFromObjectNode: (params) => {
+        try {
+          // 构建用户提示词
+          const prompt = `# 基于对象节点的深度分析
+
+## 节点信息
+- **节点名称**: ${params.nodeName}
+- **节点ID**: ${params.nodeId}
+
+## 节点上下文
+${params.nodeContext}
+
+## 请求
+请基于以上节点信息和上下文进行深度分析，你可以：
+1. 详细解释这个节点的含义、作用和在整个对象结构中的位置
+2. 分析节点的层级关系、属性特征和引用关系
+3. 基于上下文信息提供相关的扩展见解和建议
+4. 探讨可能的改进方向、相关问题或进一步的发展方向
+
+请开始你的分析：`
+
+          // 创建用户消息
+          const userMessage = {
+            id: uuidv4(),
+            role: 'user' as const,
+            content: prompt,
+            timestamp: Date.now()
+          }
+
+          const newPage: Page = {
+            id: uuidv4(),
+            title: `${params.nodeName} - 深度分析`,
+            type: 'regular',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            folderId: params.folderId,
+            messages: [userMessage],
+            messageMap: { [userMessage.id]: userMessage },
+            currentPath: [userMessage.id],
+            rootMessageId: undefined,
+            lineage: {
+              source: 'object_to_chat' as const,
+              sourcePageId: params.sourcePageId,
+              sourceContext: {
+                customContext: {
+                  nodeId: params.nodeId,
+                  nodeName: params.nodeName,
+                  context: params.nodeContext
+                }
+              },
+              generatedPageIds: [],
+              generatedAt: Date.now(),
+              description: `从对象页面的节点 "${params.nodeName}" 生成的深度分析聊天`
+            }
+          }
+
+          set((state) => {
+            state.pages.push(newPage)
+
+            // 更新源页面的generatedPageIds
+            const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
+            if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
+              state.pages[sourcePageIndex] = {
+                ...state.pages[sourcePageIndex],
+                lineage: {
+                  ...state.pages[sourcePageIndex].lineage!,
+                  generatedPageIds: [
+                    ...state.pages[sourcePageIndex].lineage!.generatedPageIds,
+                    newPage.id
+                  ]
+                }
+              }
+            }
+          })
+
+          // 使用tabsStore打开标签页
+          const { openTab } = useTabsStore.getState()
+          openTab(newPage.id)
+
+          return newPage.id
+        } catch (error) {
+          handleStoreError('pagesStore', 'createChatFromObjectNode', error)
+          throw error
+        }
+      },
+
+      createCrosstabFromObjects: (params) => {
+        try {
+          const newPage: Page = {
+            id: uuidv4(),
+            title: params.title,
+            type: 'crosstab',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            folderId: params.folderId,
+            crosstabData: {
+              metadata: null,
+              tableData: {},
+              currentStep: 0,
+              steps: []
+            },
+            lineage: {
+              source: 'object_to_crosstab' as const,
+              sourcePageId: params.sourcePageId,
+              sourceContext: {
+                objectCrosstab: {
+                  horizontalNodeId: params.horizontalNodeId,
+                  verticalNodeId: params.verticalNodeId,
+                  horizontalNodeName: params.horizontalContext?.name || 'Unknown',
+                  verticalNodeName: params.verticalContext?.name || 'Unknown'
+                }
+              },
+              generatedPageIds: [],
+              generatedAt: Date.now(),
+              description: `从对象页面生成的交叉分析表`
+            }
+          }
+
+          set((state) => {
+            state.pages.push(newPage)
+
+            // 更新源页面的generatedPageIds
+            const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
+            if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
+              state.pages[sourcePageIndex] = {
+                ...state.pages[sourcePageIndex],
+                lineage: {
+                  ...state.pages[sourcePageIndex].lineage!,
+                  generatedPageIds: [
+                    ...state.pages[sourcePageIndex].lineage!.generatedPageIds,
+                    newPage.id
+                  ]
+                }
+              }
+            }
+          })
+
+          // 使用tabsStore打开标签页
+          const { openTab } = useTabsStore.getState()
+          openTab(newPage.id)
+
+          return newPage.id
+        } catch (error) {
+          handleStoreError('pagesStore', 'createCrosstabFromObjects', error)
           throw error
         }
       },

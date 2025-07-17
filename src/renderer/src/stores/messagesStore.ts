@@ -22,7 +22,12 @@ export interface MessagesActions {
   updateStreamingMessage: (chatId: string, content: string, timestamp: number) => void
   completeStreamingMessage: (chatId: string, message: ChatMessage) => void
   clearStreamingMessage: (chatId: string) => void
-  completeMessageStreaming: (chatId: string, messageId: string, content: string, reasoning_content?: string) => void
+  completeMessageStreaming: (
+    chatId: string,
+    messageId: string,
+    content: string,
+    reasoning_content?: string
+  ) => void
   completeMessageStreamingWithReasoning: (
     chatId: string,
     messageId: string,
@@ -69,23 +74,53 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
           const page = usePagesStore.getState().findPageById(chatId)
 
           if (page && page.type === 'regular') {
-            const updatedMessages = [...(page.messages || []), message]
+            const newMessage = {
+              ...message,
+              parentId: parentId
+            }
+
+            let updatedMessages = [...(page.messages || [])]
             const messageMap = { ...(page.messageMap || {}) }
 
             // 更新消息映射
-            messageMap[message.id] = message
+            messageMap[newMessage.id] = newMessage
 
             // 更新父消息的子消息列表
             if (parentId && messageMap[parentId]) {
               messageMap[parentId] = {
                 ...messageMap[parentId],
-                children: [...(messageMap[parentId].children || []), message.id]
+                children: [...(messageMap[parentId].children || []), newMessage.id]
               }
+              // 同时更新 messages 数组中的父消息
+              updatedMessages = updatedMessages.map((msg) =>
+                msg.id === parentId
+                  ? {
+                      ...msg,
+                      children: [...(msg.children || []), newMessage.id]
+                    }
+                  : msg
+              )
+            }
+
+            updatedMessages.push(newMessage)
+
+            // 更新 currentPath
+            let newCurrentPath = page.currentPath || []
+            if (parentId) {
+              const parentIndex = newCurrentPath.indexOf(parentId)
+              if (parentIndex !== -1) {
+                newCurrentPath = [...newCurrentPath.slice(0, parentIndex + 1), newMessage.id]
+              } else {
+                newCurrentPath = [...newCurrentPath, newMessage.id]
+              }
+            } else {
+              newCurrentPath = [newMessage.id]
             }
 
             updatePage(chatId, {
               messages: updatedMessages,
-              messageMap
+              messageMap,
+              currentPath: newCurrentPath
             })
           }
         } catch (error) {
@@ -146,9 +181,10 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
           const { updatePage } = usePagesStore.getState()
           const page = usePagesStore.getState().findPageById(chatId)
           if (page && page.type === 'regular') {
-            const updatedMessages = page.messages?.map((msg) =>
-              msg.id === messageId ? { ...msg, isFavorited: !msg.isFavorited } : msg
-            ) || []
+            const updatedMessages =
+              page.messages?.map((msg) =>
+                msg.id === messageId ? { ...msg, isFavorited: !msg.isFavorited } : msg
+              ) || []
             updatePage(chatId, { messages: updatedMessages })
           }
         } catch (error) {
