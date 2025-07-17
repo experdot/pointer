@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef } from 'react'
-import { useAppContext } from '../store/AppContext'
+import { useUIStore } from '../stores/uiStore'
 
 interface ResizeHandleProps {
   onResize?: (width: number) => void
 }
 
 export default function ResizeHandle({ onResize }: ResizeHandleProps) {
-  const { state, dispatch } = useAppContext()
+  const { sidebarWidth, setSidebarWidth } = useUIStore()
   const isResizing = useRef(false)
   const startX = useRef(0)
   const startWidth = useRef(0)
@@ -16,11 +16,11 @@ export default function ResizeHandle({ onResize }: ResizeHandleProps) {
       e.preventDefault()
       isResizing.current = true
       startX.current = e.clientX
-      startWidth.current = state.sidebarWidth
+      startWidth.current = sidebarWidth
       document.body.style.cursor = 'col-resize'
       document.body.style.userSelect = 'none'
     },
-    [state.sidebarWidth]
+    [sidebarWidth]
   )
 
   const handleMouseMove = useCallback(
@@ -30,14 +30,10 @@ export default function ResizeHandle({ onResize }: ResizeHandleProps) {
       const deltaX = e.clientX - startX.current
       const newWidth = startWidth.current + deltaX
 
-      dispatch({
-        type: 'SET_SIDEBAR_WIDTH',
-        payload: { width: newWidth }
-      })
-
+      setSidebarWidth(newWidth)
       onResize?.(newWidth)
     },
-    [dispatch, onResize]
+    [setSidebarWidth, onResize]
   )
 
   const handleMouseUp = useCallback(() => {
@@ -58,33 +54,19 @@ export default function ResizeHandle({ onResize }: ResizeHandleProps) {
     }
   }, [handleMouseMove, handleMouseUp])
 
-  // 如果侧边栏收起，不显示拖拽手柄
-  if (state.sidebarCollapsed) {
-    return null
-  }
-
   return (
     <div
       className="resize-handle"
       onMouseDown={handleMouseDown}
       style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
         width: '4px',
         height: '100%',
-        backgroundColor: 'transparent',
         cursor: 'col-resize',
-        position: 'absolute',
-        right: '-2px',
-        top: 0,
-        zIndex: 10,
-        transition: 'background-color 0.2s'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#d9d9d9'
-      }}
-      onMouseLeave={(e) => {
-        if (!isResizing.current) {
-          e.currentTarget.style.backgroundColor = 'transparent'
-        }
+        backgroundColor: 'transparent',
+        zIndex: 1000
       }}
     />
   )

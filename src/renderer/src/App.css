@@ -9,7 +9,7 @@
 
 /* 自定义标题栏样式 */
 .custom-title-bar {
-  height: 32px;
+  height: 40px;
   background: #f5f5f5;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
@@ -44,8 +44,8 @@
 .title-bar-button,
 .title-bar-control-button {
   -webkit-app-region: no-drag; /* 禁用按钮区域的拖拽 */
-  height: 32px;
-  width: 32px;
+  width: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,8 +65,8 @@
 }
 
 .title-bar-control-button {
-  width: 46px;
-  height: 32px;
+  width: 48px !important;
+  height: 40px;
   border-radius: 0;
 }
 
@@ -90,11 +90,6 @@
 .app-main-layout {
   flex: 1;
   overflow: hidden;
-}
-
-/* 移除原有的 app-header 样式 */
-.app-header {
-  display: none;
 }
 
 /* ActivityBar Styles */
@@ -125,7 +120,6 @@
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: #666;
   transition: all 0.2s ease;
 }
 

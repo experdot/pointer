@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Modal, Form, Tabs, Space, Button, App } from 'antd'
 import { SettingOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons'
-import { useSettings } from '../store/hooks/useSettings'
+import { useSettingsStore } from '../stores/settingsStore'
 import AppearanceSettings from './settings/AppearanceSettings'
 import LLMSettings from './settings/LLMSettings'
 import DataManagement from './settings/DataManagement'
@@ -14,7 +14,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ open, onClose, embedded = false }: SettingsProps) {
-  const { settings, updateSettings } = useSettings()
+  const { settings, updateSettings } = useSettingsStore()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const { message } = App.useApp()

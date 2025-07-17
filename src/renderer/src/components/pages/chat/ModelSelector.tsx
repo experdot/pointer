@@ -1,7 +1,7 @@
 import React from 'react'
 import { Select, Typography, Tag } from 'antd'
 import { StarFilled, RobotOutlined } from '@ant-design/icons'
-import { LLMConfig } from '../../../types'
+import { LLMConfig } from '../../../types/type'
 
 const { Text } = Typography
 

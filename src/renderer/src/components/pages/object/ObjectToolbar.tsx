@@ -1,5 +1,17 @@
 import React, { useRef, useState } from 'react'
-import { Button, Space, Tooltip, Dropdown, Divider, Modal, Form, Input, Select, TreeSelect, App } from 'antd'
+import {
+  Button,
+  Space,
+  Tooltip,
+  Dropdown,
+  Divider,
+  Modal,
+  Form,
+  Input,
+  Select,
+  TreeSelect,
+  App
+} from 'antd'
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -12,22 +24,31 @@ import {
   ExclamationCircleOutlined
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
-import { ObjectChat } from '../../../types'
-import { useAppContext } from '../../../store/AppContext'
+import { ObjectChat } from '../../../types/type'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useObjectStore } from '../../../stores/objectStore'
+import { createObjectRootWithMetaRelations } from '../../../stores/helpers/helpers'
 
 interface ObjectToolbarProps {
   chatId: string
 }
 
 const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const { pages } = usePagesStore()
+  const {
+    addObjectNode,
+    clearObjectNodeChildren,
+    updateObjectData,
+    expandObjectNode,
+    collapseObjectNode
+  } = useObjectStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [form] = Form.useForm()
   const { modal, message } = App.useApp()
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = pages.find((p) => p.id === chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -43,26 +64,26 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   // 构建树形数据结构用于TreeSelect
   const buildTreeData = () => {
     const treeData: any[] = []
-    
+
     const buildNode = (nodeId: string): any => {
       const node = nodes[nodeId]
       if (!node) return null
-      
+
       return {
         title: node.name,
         value: nodeId,
         key: nodeId,
-        children: node.children?.map(childId => buildNode(childId)).filter(Boolean) || []
+        children: node.children?.map((childId) => buildNode(childId)).filter(Boolean) || []
       }
     }
-    
+
     if (rootNodeId) {
       const rootNode = buildNode(rootNodeId)
       if (rootNode) {
         treeData.push(rootNode)
       }
     }
-    
+
     return treeData
   }
 
@@ -70,12 +91,13 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const handleAddNode = () => {
     // 设置默认父节点：优先选择当前选中的节点，否则选择根节点
     const defaultParentId = selectedNodeId || rootNodeId
-    
+
     form.setFieldsValue({
       parentId: defaultParentId,
-      description: ''
+      description: '',
+      type: 'entity' // 默认类型
     })
-    
+
     setIsModalVisible(true)
   }
 
@@ -83,14 +105,15 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
-      const { name, description, parentId } = values
+      const { name, description, parentId, type } = values
 
-      console.log('创建新节点:', { name, description, parentId })
+      console.log('创建新节点:', { name, description, parentId, type })
 
       const newNode = {
         id: generateId(),
         name: name.trim(),
         description: description || '',
+        type: type || 'entity', // 默认为实体类型
         children: [],
         expanded: false,
         parentId: parentId, // 使用用户选择的父节点ID
@@ -103,21 +126,11 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
       console.log('新节点对象:', newNode)
 
-      dispatch({
-        type: 'ADD_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          node: newNode,
-          parentId: parentId || undefined
-        }
-      })
+      addObjectNode(chat.id, newNode, parentId || undefined)
 
       // 展开父节点以显示新添加的节点
       if (parentId && !expandedNodes.includes(parentId)) {
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId: parentId }
-        })
+        expandObjectNode(chat.id, parentId)
       }
 
       message.success(`成功添加节点：${name}`)
@@ -160,7 +173,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      
+
       message.success('导出成功！')
     } catch (error) {
       console.error('导出失败:', error)
@@ -185,13 +198,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
 
         // 验证数据格式
         if (jsonData.objectData && jsonData.objectData.nodes) {
-          dispatch({
-            type: 'IMPORT_OBJECT_FROM_JSON',
-            payload: {
-              chatId: chat.id,
-              jsonData: jsonData.objectData
-            }
-          })
+          updateObjectData(chat.id, jsonData.objectData)
           message.success('导入成功！')
         } else {
           message.error('无效的文件格式')
@@ -212,10 +219,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
     const allNodeIds = Object.keys(nodes)
     allNodeIds.forEach((nodeId) => {
       if (!expandedNodes.includes(nodeId)) {
-        dispatch({
-          type: 'EXPAND_OBJECT_NODE',
-          payload: { chatId: chat.id, nodeId }
-        })
+        expandObjectNode(chat.id, nodeId)
       }
     })
   }
@@ -223,10 +227,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
   // 折叠所有节点
   const handleCollapseAll = () => {
     expandedNodes.forEach((nodeId) => {
-      dispatch({
-        type: 'COLLAPSE_OBJECT_NODE',
-        payload: { chatId: chat.id, nodeId }
-      })
+      collapseObjectNode(chat.id, nodeId)
     })
   }
 
@@ -240,34 +241,17 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
       cancelText: '取消',
       okType: 'danger',
       onOk: () => {
-        // 创建新的根节点
-        const newRootNode = {
-          id: generateId(),
-          name: '根对象',
-          description: '对象的根节点',
-          children: [],
-          expanded: true,
-          metadata: {
-            createdAt: Date.now(),
-            source: 'user' as const
-          },
-          properties: {}
-        }
+        // 使用统一的函数创建包含元关系的根节点结构
+        const { rootNodeId, nodes, expandedNodes } = createObjectRootWithMetaRelations()
 
-        dispatch({
-          type: 'UPDATE_OBJECT_DATA',
-          payload: {
-            chatId: chat.id,
-            data: {
-              rootNodeId: newRootNode.id,
-              nodes: { [newRootNode.id]: newRootNode },
-              selectedNodeId: undefined,
-              expandedNodes: [newRootNode.id],
-              searchQuery: undefined,
-              filteredNodeIds: undefined,
-              generationHistory: []
-            }
-          }
+        updateObjectData(chat.id, {
+          rootNodeId,
+          nodes,
+          selectedNodeId: undefined,
+          expandedNodes,
+          searchQuery: undefined,
+          filteredNodeIds: undefined,
+          generationHistory: []
         })
 
         message.success('已清空所有对象数据')
@@ -306,11 +290,16 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
         const mobileId = generateId()
         const desktopId = generateId()
 
+        // 关系节点
+        const userFeatureRelationId = generateId()
+        const platformFeatureRelationId = generateId()
+
         const exampleNodes = {
           [rootId]: {
             id: rootId,
             name: '系统架构',
             description: '系统架构的根对象',
+            type: 'entity',
             children: [userTypesId, featuresId, platformsId],
             expanded: true,
             metadata: {
@@ -327,6 +316,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: userTypesId,
             name: '用户类型',
             description: '不同类型的用户角色',
+            type: 'entity',
             parentId: rootId,
             children: [adminId, editorId, viewerId],
             expanded: false,
@@ -342,6 +332,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: adminId,
             name: '管理员',
             description: '系统管理员用户',
+            type: 'entity',
             parentId: userTypesId,
             children: [],
             expanded: false,
@@ -358,6 +349,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: editorId,
             name: '编辑者',
             description: '内容编辑用户',
+            type: 'entity',
             parentId: userTypesId,
             children: [],
             expanded: false,
@@ -374,6 +366,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: viewerId,
             name: '访客',
             description: '只读访问用户',
+            type: 'entity',
             parentId: userTypesId,
             children: [],
             expanded: false,
@@ -391,6 +384,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: featuresId,
             name: '功能模块',
             description: '系统主要功能模块',
+            type: 'entity',
             parentId: rootId,
             children: [authId, analyticsId, notificationId],
             expanded: false,
@@ -406,6 +400,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: authId,
             name: '认证系统',
             description: '用户认证和授权',
+            type: 'entity',
             parentId: featuresId,
             children: [],
             expanded: false,
@@ -422,6 +417,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: analyticsId,
             name: '数据分析',
             description: '数据统计和分析功能',
+            type: 'entity',
             parentId: featuresId,
             children: [],
             expanded: false,
@@ -438,6 +434,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: notificationId,
             name: '通知系统',
             description: '消息推送和通知',
+            type: 'entity',
             parentId: featuresId,
             children: [],
             expanded: false,
@@ -455,6 +452,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: platformsId,
             name: '支持平台',
             description: '系统支持的各种平台',
+            type: 'entity',
             parentId: rootId,
             children: [webId, mobileId, desktopId],
             expanded: false,
@@ -470,6 +468,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: webId,
             name: 'Web平台',
             description: '浏览器Web应用',
+            type: 'entity',
             parentId: platformsId,
             children: [],
             expanded: false,
@@ -486,6 +485,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: mobileId,
             name: '移动端',
             description: '手机和平板应用',
+            type: 'entity',
             parentId: platformsId,
             children: [],
             expanded: false,
@@ -502,6 +502,7 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
             id: desktopId,
             name: '桌面端',
             description: '桌面应用程序',
+            type: 'entity',
             parentId: platformsId,
             children: [],
             expanded: false,
@@ -513,23 +514,94 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
               technology: 'Electron',
               os: ['Windows', 'macOS', 'Linux']
             }
+          },
+          // 关系节点示例
+          [userFeatureRelationId]: {
+            id: userFeatureRelationId,
+            name: '用户-功能访问关系',
+            description: '描述用户类型与功能模块之间的访问关系',
+            type: 'relation',
+            children: [],
+            expanded: false,
+            connections: [
+              {
+                nodeId: userTypesId,
+                role: '访问者',
+                description: '用户类型作为功能的访问者',
+                strength: 'strong' as const,
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'user' as const
+                }
+              },
+              {
+                nodeId: featuresId,
+                role: '被访问对象',
+                description: '功能模块作为被访问的对象',
+                strength: 'strong' as const,
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'user' as const
+                }
+              }
+            ],
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              relationshipType: 'access',
+              bidirectional: false
+            }
+          },
+          [platformFeatureRelationId]: {
+            id: platformFeatureRelationId,
+            name: '平台-功能实现关系',
+            description: '描述平台如何实现功能模块',
+            type: 'relation',
+            children: [],
+            expanded: false,
+            connections: [
+              {
+                nodeId: platformsId,
+                role: '实现者',
+                description: '平台作为功能的实现者',
+                strength: 'strong' as const,
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'user' as const
+                }
+              },
+              {
+                nodeId: featuresId,
+                role: '被实现对象',
+                description: '功能模块作为被实现的对象',
+                strength: 'strong' as const,
+                metadata: {
+                  createdAt: Date.now(),
+                  source: 'user' as const
+                }
+              }
+            ],
+            metadata: {
+              createdAt: Date.now(),
+              source: 'user' as const
+            },
+            properties: {
+              relationshipType: 'implementation',
+              bidirectional: false
+            }
           }
         }
 
-        dispatch({
-          type: 'UPDATE_OBJECT_DATA',
-          payload: {
-            chatId: chat.id,
-            data: {
-              rootNodeId: rootId,
-              nodes: exampleNodes,
-              selectedNodeId: undefined,
-              expandedNodes: [rootId],
-              searchQuery: undefined,
-              filteredNodeIds: undefined,
-              generationHistory: []
-            }
-          }
+        updateObjectData(chat.id, {
+          rootNodeId: rootId,
+          nodes: exampleNodes,
+          selectedNodeId: undefined,
+          expandedNodes: [rootId],
+          searchQuery: undefined,
+          filteredNodeIds: undefined,
+          generationHistory: []
         })
 
         message.success('示例数据生成成功！')
@@ -680,7 +752,8 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
           form={form}
           layout="vertical"
           initialValues={{
-            description: ''
+            description: '',
+            type: 'entity' // 默认类型
           }}
         >
           <Form.Item
@@ -714,14 +787,20 @@ const ObjectToolbar: React.FC<ObjectToolbarProps> = ({ chatId }) => {
           </Form.Item>
 
           <Form.Item
-            label="描述"
-            name="description"
+            label="节点类型"
+            name="type"
+            rules={[{ required: true, message: '请选择节点类型' }]}
+            initialValue="entity"
           >
-            <Input.TextArea 
-              placeholder="请输入节点描述（可选）" 
-              rows={3}
-              maxLength={200}
-            />
+            <Select placeholder="请选择节点类型">
+              <Select.Option value="entity">实体 (Entity)</Select.Option>
+              <Select.Option value="event">事件 (Event)</Select.Option>
+              <Select.Option value="relation">关系 (Relation)</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="描述" name="description">
+            <Input.TextArea placeholder="请输入节点描述（可选）" rows={3} maxLength={200} />
           </Form.Item>
         </Form>
       </Modal>

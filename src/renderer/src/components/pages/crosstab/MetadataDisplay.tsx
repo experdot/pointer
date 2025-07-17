@@ -1,5 +1,16 @@
 import React, { useState } from 'react'
-import { Card, Button, Typography, Tag, Space, Spin, Divider, Input, Popconfirm, Tooltip } from 'antd'
+import {
+  Card,
+  Button,
+  Typography,
+  Tag,
+  Space,
+  Spin,
+  Divider,
+  Input,
+  Popconfirm,
+  Tooltip
+} from 'antd'
 import {
   EditOutlined,
   BorderOutlined,
@@ -10,9 +21,13 @@ import {
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
-  CloseOutlined,
+  CloseOutlined
 } from '@ant-design/icons'
-import { CrosstabMetadata, CrosstabAxisDimension, CrosstabValueDimension } from '../../../types'
+import {
+  CrosstabMetadata,
+  CrosstabAxisDimension,
+  CrosstabValueDimension
+} from '../../../types/type'
 import { v4 as uuidv4 } from 'uuid'
 
 const { Text, Title } = Typography
@@ -72,19 +87,19 @@ export default function MetadataDisplay({
       updateMetadata({ topic: editValue })
     } else if (editingField.startsWith('horizontal_')) {
       const [, dimensionId, fieldType] = editingField.split('_')
-      const dimensions = metadata.horizontalDimensions.map(dim => 
+      const dimensions = metadata.horizontalDimensions.map((dim) =>
         dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
       )
       updateMetadata({ horizontalDimensions: dimensions })
     } else if (editingField.startsWith('vertical_')) {
       const [, dimensionId, fieldType] = editingField.split('_')
-      const dimensions = metadata.verticalDimensions.map(dim => 
+      const dimensions = metadata.verticalDimensions.map((dim) =>
         dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
       )
       updateMetadata({ verticalDimensions: dimensions })
     } else if (editingField.startsWith('value_')) {
       const [, dimensionId, fieldType] = editingField.split('_')
-      const dimensions = metadata.valueDimensions.map(dim => 
+      const dimensions = metadata.valueDimensions.map((dim) =>
         dim.id === dimensionId ? { ...dim, [fieldType]: editValue } : dim
       )
       updateMetadata({ valueDimensions: dimensions })
@@ -137,17 +152,17 @@ export default function MetadataDisplay({
   }
 
   const deleteHorizontalDimension = (dimensionId: string) => {
-    const dimensions = metadata.horizontalDimensions.filter(dim => dim.id !== dimensionId)
+    const dimensions = metadata.horizontalDimensions.filter((dim) => dim.id !== dimensionId)
     updateMetadata({ horizontalDimensions: dimensions })
   }
 
   const deleteVerticalDimension = (dimensionId: string) => {
-    const dimensions = metadata.verticalDimensions.filter(dim => dim.id !== dimensionId)
+    const dimensions = metadata.verticalDimensions.filter((dim) => dim.id !== dimensionId)
     updateMetadata({ verticalDimensions: dimensions })
   }
 
   const deleteValueDimension = (dimensionId: string) => {
-    const dimensions = metadata.valueDimensions.filter(dim => dim.id !== dimensionId)
+    const dimensions = metadata.valueDimensions.filter((dim) => dim.id !== dimensionId)
     updateMetadata({ valueDimensions: dimensions })
   }
 
@@ -184,19 +199,19 @@ export default function MetadataDisplay({
       )
     }
 
-         return (
-       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
-         <Text style={{ wordBreak: 'break-word', flex: 1 }}>{value || placeholder}</Text>
-         <Tooltip title="编辑">
-           <Button
-             type="text"
-             size="small"
-             icon={<EditOutlined />}
-             onClick={() => startEdit(field, value)}
-           />
-         </Tooltip>
-       </div>
-     )
+    return (
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+        <Text style={{ wordBreak: 'break-word', flex: 1 }}>{value || placeholder}</Text>
+        <Tooltip title="编辑">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => startEdit(field, value)}
+          />
+        </Tooltip>
+      </div>
+    )
   }
 
   const renderAxisDimensions = (
@@ -204,8 +219,10 @@ export default function MetadataDisplay({
     axisName: string,
     dimensionType: 'horizontal' | 'vertical'
   ) => {
-    const deleteFunction = dimensionType === 'horizontal' ? deleteHorizontalDimension : deleteVerticalDimension
-    const addFunction = dimensionType === 'horizontal' ? addHorizontalDimension : addVerticalDimension
+    const deleteFunction =
+      dimensionType === 'horizontal' ? deleteHorizontalDimension : deleteVerticalDimension
+    const addFunction =
+      dimensionType === 'horizontal' ? addHorizontalDimension : addVerticalDimension
 
     return (
       <div className="dimensions-container">
@@ -228,7 +245,9 @@ export default function MetadataDisplay({
           >
             <Space direction="vertical" style={{ width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>名称：</Text>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>
+                  名称：
+                </Text>
                 <div style={{ flex: 1 }}>
                   {renderEditableField(
                     dimension.name,
@@ -237,9 +256,11 @@ export default function MetadataDisplay({
                   )}
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>描述：</Text>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>
+                  描述：
+                </Text>
                 <div style={{ flex: 1 }}>
                   {renderEditableField(
                     dimension.description || '',
@@ -249,10 +270,12 @@ export default function MetadataDisplay({
                   )}
                 </div>
               </div>
-              
+
               {dimension.values.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                  <Text strong style={{ fontSize: '12px', minWidth: '40px' }}>当前值：</Text>
+                  <Text strong style={{ fontSize: '12px', minWidth: '40px' }}>
+                    当前值：
+                  </Text>
                   <div style={{ flex: 1 }}>
                     {dimension.values.map((value, idx) => (
                       <Tag key={idx} style={{ marginBottom: 4 }}>
@@ -265,7 +288,7 @@ export default function MetadataDisplay({
             </Space>
           </Card>
         ))}
-        
+
         <Button
           type="dashed"
           icon={<PlusOutlined />}
@@ -274,7 +297,7 @@ export default function MetadataDisplay({
         >
           添加{axisName}维度
         </Button>
-        
+
         {dimensions.length === 0 && (
           <div className="metadata-item">
             <Text type="secondary">暂无{axisName}维度</Text>
@@ -304,33 +327,37 @@ export default function MetadataDisplay({
             }
             style={{ marginBottom: 12 }}
           >
-                         <Space direction="vertical" style={{ width: '100%' }}>
-               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                 <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>名称：</Text>
-                 <div style={{ flex: 1 }}>
-                   {renderEditableField(
-                     dimension.name,
-                     `value_${dimension.id}_name`,
-                     '请输入值维度名称'
-                   )}
-                 </div>
-               </div>
-               
-               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                 <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>描述：</Text>
-                 <div style={{ flex: 1 }}>
-                   {renderEditableField(
-                     dimension.description,
-                     `value_${dimension.id}_description`,
-                     '请输入值维度描述',
-                     true
-                   )}
-                 </div>
-               </div>
-             </Space>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>
+                  名称：
+                </Text>
+                <div style={{ flex: 1 }}>
+                  {renderEditableField(
+                    dimension.name,
+                    `value_${dimension.id}_name`,
+                    '请输入值维度名称'
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '12px', minWidth: '40px' }}>
+                  描述：
+                </Text>
+                <div style={{ flex: 1 }}>
+                  {renderEditableField(
+                    dimension.description,
+                    `value_${dimension.id}_description`,
+                    '请输入值维度描述',
+                    true
+                  )}
+                </div>
+              </div>
+            </Space>
           </Card>
         ))}
-        
+
         <Button
           type="dashed"
           icon={<PlusOutlined />}
@@ -339,7 +366,7 @@ export default function MetadataDisplay({
         >
           添加值维度
         </Button>
-        
+
         {dimensions.length === 0 && (
           <div className="metadata-item">
             <Text type="secondary">暂无值维度</Text>
@@ -350,15 +377,16 @@ export default function MetadataDisplay({
   }
 
   return (
-    <Card
-      title="多维度主题结构分析"
-      className="tab-card"
-    >
+    <Card title="多维度主题结构分析" className="tab-card">
       <div className="metadata-display">
         {/* 主题部分 */}
         <div className="metadata-item">
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-            <Title level={5} style={{ margin: 0, minWidth: '60px' }}>主题</Title>
+          <div
+            style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}
+          >
+            <Title level={5} style={{ margin: 0, minWidth: '60px' }}>
+              主题
+            </Title>
             <div style={{ flex: 1 }}>
               {renderEditableField(metadata.topic, 'topic', '请输入主题')}
             </div>
@@ -390,11 +418,13 @@ export default function MetadataDisplay({
                   {topicSuggestionsCollapsed ? '展开' : '收起'}主题候选项
                 </Button>
                 <span className="suggestions-count">
-                  {isGeneratingTopicSuggestions ? '生成中...' : `${metadata.topicSuggestions?.length || 0} 个候选项`}
+                  {isGeneratingTopicSuggestions
+                    ? '生成中...'
+                    : `${metadata.topicSuggestions?.length || 0} 个候选项`}
                 </span>
               </div>
             </div>
-            
+
             {!topicSuggestionsCollapsed && (
               <div className="suggestions-content">
                 {isGeneratingTopicSuggestions && (
@@ -403,7 +433,7 @@ export default function MetadataDisplay({
                     <Text type="secondary">正在生成主题候选项...</Text>
                   </div>
                 )}
-                
+
                 {metadata.topicSuggestions && metadata.topicSuggestions.length > 0 && (
                   <div className="suggestions-list">
                     {metadata.topicSuggestions.map((suggestion, index) => (

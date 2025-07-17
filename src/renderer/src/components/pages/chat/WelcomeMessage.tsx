@@ -1,7 +1,7 @@
 import React from 'react'
 import { RobotOutlined, SettingOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Space, Typography } from 'antd'
-import { useAppContext } from '../../../store/AppContext'
+import { useSettingsStore } from '../../../stores/settingsStore'
 
 const { Text, Title } = Typography
 
@@ -10,12 +10,12 @@ interface WelcomeMessageProps {
 }
 
 export default function WelcomeMessage({ onOpenSettings }: WelcomeMessageProps) {
-  const { state } = useAppContext()
+  const { settings } = useSettingsStore()
 
-  const hasLLMConfigs = state.settings.llmConfigs && state.settings.llmConfigs.length > 0
+  const hasLLMConfigs = settings.llmConfigs && settings.llmConfigs.length > 0
   const hasDefaultModel =
-    state.settings.defaultLLMId &&
-    state.settings.llmConfigs?.find((config) => config.id === state.settings.defaultLLMId)
+    settings.defaultLLMId &&
+    settings.llmConfigs?.find((config) => config.id === settings.defaultLLMId)
 
   // 如果没有配置任何LLM
   if (!hasLLMConfigs) {

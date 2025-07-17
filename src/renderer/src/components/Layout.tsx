@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Layout as AntLayout, Button, Tooltip } from 'antd'
-import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons'
-import { useAppContext } from '../store/AppContext'
+import { useUIStore } from '../stores/uiStore'
+import { useSearchStore } from '../stores/searchStore'
 import Sidebar from './Sidebar'
 import ActivityBar, { ActivityBarTab } from './ActivityBar'
 import TabsArea from './TabsArea'
@@ -13,7 +13,8 @@ import TitleBar from './TitleBar'
 const { Sider, Content } = AntLayout
 
 export default function Layout() {
-  const { state, dispatch } = useAppContext()
+  const { sidebarCollapsed, sidebarWidth, toggleSidebar } = useUIStore()
+  const { clearSearch } = useSearchStore()
   const [activeTab, setActiveTab] = useState<ActivityBarTab>('explore')
   const [searchOpen, setSearchOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -25,13 +26,13 @@ export default function Layout() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
         setActiveTab('search')
-        if (state.sidebarCollapsed) {
-          dispatch({ type: 'TOGGLE_SIDEBAR' })
+        if (sidebarCollapsed) {
+          toggleSidebar()
         }
       }
       // ESC 关闭搜索
       if (e.key === 'Escape' && activeTab === 'search') {
-        dispatch({ type: 'CLEAR_SEARCH' })
+        clearSearch()
       }
     }
 
@@ -39,18 +40,18 @@ export default function Layout() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [activeTab, state.sidebarCollapsed, dispatch])
+  }, [activeTab, sidebarCollapsed, toggleSidebar, clearSearch])
 
   const handleCloseSearch = () => {
     setSearchOpen(false)
-    dispatch({ type: 'CLEAR_SEARCH' })
+    clearSearch()
   }
 
   const handleActivityTabChange = (tab: ActivityBarTab) => {
     setActiveTab(tab)
     // 如果侧边栏折叠，自动展开
-    if (state.sidebarCollapsed) {
-      dispatch({ type: 'TOGGLE_SIDEBAR' })
+    if (sidebarCollapsed) {
+      toggleSidebar()
     }
   }
 
@@ -62,44 +63,32 @@ export default function Layout() {
     setSettingsOpen(true)
   }
 
-  const toggleSidebar = () => {
-    dispatch({ type: 'TOGGLE_SIDEBAR' })
-  }
-
   return (
     <div className="app-layout">
       {/* 自定义标题栏 */}
       <TitleBar
         title="Pointer - AI聊天助手"
-        sidebarCollapsed={state.sidebarCollapsed}
+        sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={toggleSidebar}
       />
 
       <AntLayout className="app-main-layout">
         {/* ActivityBar */}
-        <Sider
-          width={50}
-          collapsedWidth={50}
-          theme="light"
-          className="app-activity-bar"
-        >
-          <ActivityBar
-            activeTab={activeTab}
-            onTabChange={handleActivityTabChange}
-          />
+        <Sider width={50} collapsedWidth={50} theme="light" className="app-activity-bar">
+          <ActivityBar activeTab={activeTab} onTabChange={handleActivityTabChange} />
         </Sider>
 
         {/* Sidebar */}
         <Sider
-          width={state.sidebarWidth}
+          width={sidebarWidth}
           collapsedWidth={0}
-          collapsed={state.sidebarCollapsed}
+          collapsed={sidebarCollapsed}
           theme="light"
           className="app-sider"
           style={{ position: 'relative' }}
         >
           <Sidebar
-            collapsed={state.sidebarCollapsed}
+            collapsed={sidebarCollapsed}
             activeTab={activeTab}
             onSearchOpen={handleSearchOpen}
             onSettingsOpen={handleSettingsOpen}

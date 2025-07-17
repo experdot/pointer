@@ -1,13 +1,16 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Card, TreeSelect, Space, Typography, Alert, Tooltip, App } from 'antd'
+import { Button, Card, TreeSelect, Space, Typography, Alert, App, Tag } from 'antd'
 import {
   TableOutlined,
   NodeIndexOutlined,
   ArrowRightOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  FileTextOutlined,
+  CalendarOutlined,
+  ApiOutlined
 } from '@ant-design/icons'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
-import { useAppContext } from '../../../store/AppContext'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
+import { useAppStores } from '../../../stores'
 
 const { Text } = Typography
 
@@ -16,19 +19,61 @@ interface ObjectCrosstabAnalyzerProps {
 }
 
 const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const { message } = App.useApp()
   const [selectedHorizontalNode, setSelectedHorizontalNode] = useState<string | null>(null)
   const [selectedVerticalNode, setSelectedVerticalNode] = useState<string | null>(null)
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
   }
 
   const { nodes, rootNodeId } = chat.objectData
+
+  // 获取节点类型图标
+  const getNodeIcon = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return <FileTextOutlined style={{ color: '#1890ff' }} />
+      case 'event':
+        return <CalendarOutlined style={{ color: '#52c41a' }} />
+      case 'relation':
+        return <ApiOutlined style={{ color: '#722ed1' }} />
+      default:
+        return <FileTextOutlined style={{ color: '#1890ff' }} />
+    }
+  }
+
+  // 获取节点类型标签颜色
+  const getNodeTypeTagColor = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return 'blue'
+      case 'event':
+        return 'green'
+      case 'relation':
+        return 'purple'
+      default:
+        return 'default'
+    }
+  }
+
+  // 获取节点类型标签文本
+  const getNodeTypeTagText = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return '实体'
+      case 'event':
+        return '事件'
+      case 'relation':
+        return '关系'
+      default:
+        return type || '未知'
+    }
+  }
 
   // 构建TreeSelect所需的树形数据结构
   const buildTreeSelectData = useMemo(() => {
@@ -37,18 +82,29 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       if (!node) return null
 
       const hasChildren = node.children && node.children.length > 0
-      const childrenData = hasChildren 
-        ? node.children.map(childId => buildTreeData(childId)).filter(Boolean)
+      const childrenData = hasChildren
+        ? node.children.map((childId) => buildTreeData(childId)).filter(Boolean)
         : []
 
       return {
         title: (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '12px' }}>📦</span>
+            {getNodeIcon(node.type || 'entity')}
             <span>{node.name}</span>
+            <Tag
+              color={getNodeTypeTagColor(node.type || 'entity')}
+              style={{ fontSize: '10px', padding: '0 4px', lineHeight: '14px', height: '14px' }}
+            >
+              {getNodeTypeTagText(node.type || 'entity')}
+            </Tag>
             {node.children && node.children.length > 0 && (
               <Text type="secondary" style={{ fontSize: '11px' }}>
                 ({node.children.length} 个子项)
+              </Text>
+            )}
+            {node.connections && node.connections.length > 0 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                ({node.connections.length} 个连接)
               </Text>
             )}
           </div>
@@ -111,11 +167,17 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     const node = nodes[nodeId]
     if (!node) return null
 
-    const children = node.children ? node.children.map((childId) => nodes[childId]).filter(Boolean) : []
+    const children = node.children
+      ? node.children.map((childId) => nodes[childId]).filter(Boolean)
+      : []
+    const connections = node.connections || []
+
     return {
       node,
       children,
-      count: children.length
+      connections,
+      count: children.length,
+      connectionCount: connections.length
     }
   }
 
@@ -137,6 +199,31 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
       return
     }
 
+    // 对于关系节点，可以使用连接的节点作为分析维度
+    const getAnalysisItems = (node: ObjectNodeType) => {
+      if (node.type === 'relation' && node.connections && node.connections.length > 0) {
+        // 关系节点：使用连接的节点作为分析项
+        return node.connections.map((conn) => {
+          const connectedNode = nodes[conn.nodeId]
+          return connectedNode ? connectedNode.name : conn.role
+        })
+      } else {
+        // 实体/事件节点：使用子节点作为分析项
+        return node.children
+          ? node.children.map((childId) => nodes[childId]?.name).filter(Boolean)
+          : []
+      }
+    }
+
+    // 检查是否有足够的分析项
+    const horizontalItems = getAnalysisItems(horizontalNode)
+    const verticalItems = getAnalysisItems(verticalNode)
+
+    if (horizontalItems.length === 0 || verticalItems.length === 0) {
+      message.warning('选中的节点需要有子节点或连接关系才能进行交叉分析')
+      return
+    }
+
     // 获取横轴和纵轴的完整上下文信息
     const horizontalContext = getNodeContext(selectedHorizontalNode)
     const verticalContext = getNodeContext(selectedVerticalNode)
@@ -144,32 +231,79 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
     // 创建交叉分析标题
     const title = `${horizontalNode.name} × ${verticalNode.name} 交叉分析`
 
-    // 派发创建交叉表的action，传递完整的上下文信息
-    dispatch({
-      type: 'CREATE_CROSSTAB_FROM_OBJECTS',
-      payload: {
-        title,
-        folderId: chat.folderId,
-        horizontalNodeId: selectedHorizontalNode,
-        verticalNodeId: selectedVerticalNode,
+    try {
+      // 使用 pagesStore 创建交叉分析页面
+      const newCrosstabId = stores.pages.createAndOpenCrosstabChat(title, chat.folderId)
+
+      // 设置交叉分析的初始数据和上下文
+      const crosstabMetadata = {
+        topic: title,
+        horizontalDimensions: [
+          {
+            id: selectedHorizontalNode,
+            name: horizontalNode.name,
+            description: horizontalNode.description || `基于${horizontalNode.name}节点的横轴维度`,
+            values: horizontalItems,
+            order: 0
+          }
+        ],
+        verticalDimensions: [
+          {
+            id: selectedVerticalNode,
+            name: verticalNode.name,
+            description: verticalNode.description || `基于${verticalNode.name}节点的纵轴维度`,
+            values: verticalItems,
+            order: 0
+          }
+        ],
+        valueDimensions: [
+          {
+            id: 'relationship',
+            name: '关系强度',
+            description: '描述横轴和纵轴元素之间的关系强度'
+          }
+        ],
+        topicSuggestions: [
+          `分析${horizontalNode.name}与${verticalNode.name}的关系`,
+          `探索${horizontalNode.name}的各个方面如何影响${verticalNode.name}`,
+          `评估${verticalNode.name}在不同${horizontalNode.name}情况下的表现`
+        ]
+      }
+
+      // 将源数据作为额外信息存储（虽然不在标准接口中，但可以存储在页面的其他地方）
+      const sourceData = {
+        sourcePageId: chatId,
         objectData: chat.objectData,
         horizontalContext,
-        verticalContext,
-        sourcePageId: chatId
+        verticalContext
       }
-    })
 
-    message.success('交叉分析表已创建！')
+      // 更新交叉分析的元数据
+      stores.crosstab.updateMetadata(newCrosstabId, crosstabMetadata)
 
-    // 重置选择
-    setSelectedHorizontalNode(null)
-    setSelectedVerticalNode(null)
+      // 可以考虑将源数据存储为页面的自定义属性或在交叉表数据中添加额外字段
+      // 这里先记录日志，后续可以根据需要扩展存储方式
+      console.log('交叉分析源数据:', sourceData)
+
+      message.success('交叉分析表已创建！')
+
+      // 重置选择
+      setSelectedHorizontalNode(null)
+      setSelectedVerticalNode(null)
+    } catch (error) {
+      console.error('创建交叉分析失败:', error)
+      message.error('创建交叉分析失败，请稍后重试')
+    }
   }
 
   // 检查是否可以创建交叉分析
   const canCreateCrosstab =
     selectedHorizontalNode &&
-    selectedVerticalNode
+    selectedVerticalNode &&
+    horizontalNodeInfo &&
+    verticalNodeInfo &&
+    (horizontalNodeInfo.count > 0 || horizontalNodeInfo.connectionCount > 0) &&
+    (verticalNodeInfo.count > 0 || verticalNodeInfo.connectionCount > 0)
 
   return (
     <Card
@@ -186,7 +320,7 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
         {/* 说明 */}
         <Alert
           message="交叉分析"
-          description="选择两个对象节点作为横轴和纵轴，创建交叉分析表来探索它们之间的关系。"
+          description="选择两个对象节点作为横轴和纵轴，创建交叉分析表来探索它们之间的关系。支持实体、事件和关系节点的交叉分析。"
           type="info"
           showIcon
           icon={<InfoCircleOutlined />}
@@ -208,9 +342,32 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             treeDefaultExpandAll
           />
           {horizontalNodeInfo && (
-            <div style={{ marginTop: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                横轴：{horizontalNodeInfo.node.name} ({horizontalNodeInfo.count} 个子项)
+            <div
+              style={{
+                marginTop: '8px',
+                padding: '8px',
+                background: '#f5f5f5',
+                borderRadius: '4px'
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}
+              >
+                {getNodeIcon(horizontalNodeInfo.node.type || 'entity')}
+                <Text strong style={{ fontSize: '12px' }}>
+                  横轴：{horizontalNodeInfo.node.name}
+                </Text>
+                <Tag
+                  color={getNodeTypeTagColor(horizontalNodeInfo.node.type || 'entity')}
+                  style={{ fontSize: '10px', padding: '0 4px', lineHeight: '14px', height: '14px' }}
+                >
+                  {getNodeTypeTagText(horizontalNodeInfo.node.type || 'entity')}
+                </Tag>
+              </div>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {horizontalNodeInfo.count} 个子项
+                {horizontalNodeInfo.connectionCount > 0 &&
+                  `, ${horizontalNodeInfo.connectionCount} 个连接`}
               </Text>
             </div>
           )}
@@ -232,9 +389,32 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
             treeDefaultExpandAll
           />
           {verticalNodeInfo && (
-            <div style={{ marginTop: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                纵轴：{verticalNodeInfo.node.name} ({verticalNodeInfo.count} 个子项)
+            <div
+              style={{
+                marginTop: '8px',
+                padding: '8px',
+                background: '#f5f5f5',
+                borderRadius: '4px'
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}
+              >
+                {getNodeIcon(verticalNodeInfo.node.type || 'entity')}
+                <Text strong style={{ fontSize: '12px' }}>
+                  纵轴：{verticalNodeInfo.node.name}
+                </Text>
+                <Tag
+                  color={getNodeTypeTagColor(verticalNodeInfo.node.type || 'entity')}
+                  style={{ fontSize: '10px', padding: '0 4px', lineHeight: '14px', height: '14px' }}
+                >
+                  {getNodeTypeTagText(verticalNodeInfo.node.type || 'entity')}
+                </Tag>
+              </div>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {verticalNodeInfo.count} 个子项
+                {verticalNodeInfo.connectionCount > 0 &&
+                  `, ${verticalNodeInfo.connectionCount} 个连接`}
               </Text>
             </div>
           )}
@@ -243,20 +423,32 @@ const ObjectCrosstabAnalyzer: React.FC<ObjectCrosstabAnalyzerProps> = ({ chatId 
         {/* 预览 */}
         {canCreateCrosstab && (
           <div style={{ padding: '12px', background: '#f9f9f9', borderRadius: '4px' }}>
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+            <Text
+              type="secondary"
+              style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}
+            >
               交叉分析预览：
             </Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Text strong style={{ fontSize: '13px' }}>
-                {horizontalNodeInfo?.node.name}
-              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {getNodeIcon(horizontalNodeInfo?.node.type || 'entity')}
+                <Text strong style={{ fontSize: '13px' }}>
+                  {horizontalNodeInfo?.node.name}
+                </Text>
+              </div>
               <ArrowRightOutlined />
-              <Text strong style={{ fontSize: '13px' }}>
-                {verticalNodeInfo?.node.name}
-              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {getNodeIcon(verticalNodeInfo?.node.type || 'entity')}
+                <Text strong style={{ fontSize: '13px' }}>
+                  {verticalNodeInfo?.node.name}
+                </Text>
+              </div>
             </div>
             <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-              将创建 {horizontalNodeInfo?.count} × {verticalNodeInfo?.count} 的交叉分析表
+              将创建{' '}
+              {Math.max(horizontalNodeInfo?.count || 0, horizontalNodeInfo?.connectionCount || 0)} ×{' '}
+              {Math.max(verticalNodeInfo?.count || 0, verticalNodeInfo?.connectionCount || 0)}{' '}
+              的交叉分析表
             </Text>
           </div>
         )}

@@ -13,7 +13,9 @@ import {
   CaretRightOutlined,
   CaretDownOutlined
 } from '@ant-design/icons'
-import { useAppContext } from '../../store/AppContext'
+import { usePagesStore } from '../../stores/pagesStore'
+import { useUIStore } from '../../stores/uiStore'
+import { useTabsStore } from '../../stores/tabsStore'
 
 const { Text, Paragraph } = Typography
 
@@ -28,10 +30,12 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   showInCard = true,
   size = 'default'
 }) => {
-  const { state, dispatch } = useAppContext()
+  const { pages } = usePagesStore()
+  const { lineageDisplayCollapsed, toggleLineageDisplayCollapse } = useUIStore()
+  const { openTab } = useTabsStore()
 
   // 获取当前页面
-  const currentPage = state.pages.find((page) => page.id === pageId)
+  const currentPage = pages.find((page) => page.id === pageId)
 
   if (!currentPage) {
     return null
@@ -40,18 +44,18 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   const lineage = currentPage.lineage
 
   // 获取折叠状态，默认为折叠状态
-  const isCollapsed = state.lineageDisplayCollapsed[pageId] ?? true
+  const isCollapsed = lineageDisplayCollapsed[pageId] ?? true
 
   // 处理折叠状态切换
   const handleToggleCollapse = () => {
-    dispatch({ type: 'TOGGLE_LINEAGE_DISPLAY_COLLAPSE', payload: { pageId } })
+    toggleLineageDisplayCollapse(pageId)
   }
 
   // 获取源页面信息
   const getSourcePageInfo = () => {
     if (!lineage?.sourcePageId) return null
 
-    const sourcePage = state.pages.find((page) => page.id === lineage.sourcePageId)
+    const sourcePage = pages.find((page) => page.id === lineage.sourcePageId)
     return sourcePage || null
   }
 
@@ -60,7 +64,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     if (!lineage?.generatedPageIds || lineage.generatedPageIds.length === 0) return []
 
     return lineage.generatedPageIds
-      .map((id) => state.pages.find((page) => page.id === id))
+      .map((id) => pages.find((page) => page.id === id))
       .filter(Boolean)
   }
 
@@ -127,13 +131,10 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
 
   // 处理导航到页面
   const handleNavigateToPage = (targetPageId: string) => {
-    dispatch({ type: 'OPEN_TAB', payload: { chatId: targetPageId } })
-    dispatch({ type: 'SET_ACTIVE_TAB', payload: { chatId: targetPageId } })
+    openTab(targetPageId)
     // 同时选中该聊天节点
-    dispatch({
-      type: 'SET_SELECTED_NODE',
-      payload: { nodeId: targetPageId, nodeType: 'chat' }
-    })
+    const { setSelectedNode } = useUIStore.getState()
+    setSelectedNode(targetPageId, 'chat')
   }
 
   // 获取上下文信息描述

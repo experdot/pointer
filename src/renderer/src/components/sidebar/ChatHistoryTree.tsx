@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { Tree, Modal, App } from 'antd'
 import type { DataNode, TreeProps } from 'antd/es/tree'
-import { useAppContext } from '../../store/AppContext'
+import { usePagesStore } from '../../stores/pagesStore'
+import { useTabsStore } from '../../stores/tabsStore'
+import { useUIStore } from '../../stores/uiStore'
 import ChatHistoryTreeNode from './ChatHistoryTreeNode'
 import './tree-styles.css'
 
@@ -20,7 +22,24 @@ interface ChatHistoryTreeProps {
 }
 
 export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
-  const { state, dispatch } = useAppContext()
+  const {
+    pages,
+    folders,
+    movePage,
+    moveFolder,
+    deletePage,
+    deleteFolder,
+    deleteMultiplePages,
+    updateFolder
+  } = usePagesStore()
+  const {
+    selectedNodeId,
+    selectedNodeType,
+    checkedNodeIds,
+    setSelectedNode,
+    setCheckedNodes,
+    clearCheckedNodes
+  } = useUIStore()
   const { modal } = App.useApp()
 
   // 解析节点键，获取节点类型和ID
@@ -39,16 +58,16 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
   // 计算当前选中的节点键
   const selectedKeys = useMemo(() => {
-    if (state.selectedNodeId && state.selectedNodeType) {
-      return [`${state.selectedNodeType}-${state.selectedNodeId}`]
+    if (selectedNodeId && selectedNodeType) {
+      return [`${selectedNodeType}-${selectedNodeId}`]
     }
     return []
-  }, [state.selectedNodeId, state.selectedNodeType])
+  }, [selectedNodeId, selectedNodeType])
 
   // 计算多选状态下的选中节点键
   const checkedKeys = useMemo(() => {
-    return state.checkedNodeIds
-  }, [state.checkedNodeIds])
+    return checkedNodeIds
+  }, [checkedNodeIds])
 
   const handleNodeEdit = useCallback((nodeId: string, nodeType: 'folder' | 'chat') => {
     // Handle inline editing - for now just trigger the node's own edit state
@@ -58,37 +77,28 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
   const handleSaveEdit = useCallback(
     (nodeId: string, nodeType: 'folder' | 'chat', newValue: string) => {
       if (nodeType === 'folder') {
-        dispatch({
-          type: 'UPDATE_FOLDER',
-          payload: { id: nodeId, updates: { name: newValue } }
-        })
+        updateFolder(nodeId, { name: newValue })
       } else {
-        dispatch({
-          type: 'UPDATE_CHAT',
-          payload: { id: nodeId, updates: { title: newValue } }
-        })
+        const { updatePage } = usePagesStore.getState()
+        updatePage(nodeId, { title: newValue })
       }
     },
-    [dispatch]
+    [updateFolder]
   )
 
   const handleNodeCreate = useCallback(
     (parentId: string | undefined, nodeType: 'folder' | 'chat') => {
       // Create a new node with default name and trigger edit
       if (nodeType === 'folder') {
-        dispatch({
-          type: 'CREATE_FOLDER',
-          payload: { name: '新建文件夹', parentId }
-        })
+        const { createFolder } = usePagesStore.getState()
+        createFolder('新建文件夹', parentId)
       } else {
         // 使用全局的创建聊天逻辑，但指定特定的父文件夹
-        dispatch({
-          type: 'CREATE_AND_OPEN_CHAT',
-          payload: { title: '新建聊天', folderId: parentId }
-        })
+        const { createAndOpenChat } = usePagesStore.getState()
+        createAndOpenChat('新建聊天', parentId)
       }
     },
-    [dispatch]
+    []
   )
 
   const handleDeleteFolder = useCallback(
@@ -99,11 +109,11 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          dispatch({ type: 'DELETE_FOLDER', payload: { id: folderId } })
+          deleteFolder(folderId)
         }
       })
     },
-    [dispatch, modal]
+    [deleteFolder, modal]
   )
 
   const handleDeleteChat = useCallback(
@@ -114,14 +124,12 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          dispatch({ type: 'DELETE_CHAT', payload: { id: chatId } })
+          deletePage(chatId)
         }
       })
     },
-    [dispatch, modal]
+    [deletePage, modal]
   )
-
-
 
   // 处理拖拽放置事件
   const handleDrop = useCallback(
@@ -138,10 +146,10 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         // 检查是否会形成循环引用（文件夹不能拖入自己的子文件夹中）
         if (dragNodeInfo.type === 'folder') {
           const wouldCreateCycle = (targetFolderId: string, sourceFolderId: string): boolean => {
-            let current = state.folders.find((f) => f.id === targetFolderId)
+            let current = folders.find((f) => f.id === targetFolderId)
             while (current) {
               if (current.id === sourceFolderId) return true
-              current = state.folders.find((f) => f.id === current?.parentId)
+              current = folders.find((f) => f.id === current?.parentId)
             }
             return false
           }
@@ -152,36 +160,22 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
           }
 
           // 获取目标文件夹下的最大order值（包括文件夹和聊天）
-          const folderChildren = state.folders.filter((f) => f.parentId === dropNodeInfo.id)
-          const folderChats = state.pages.filter((chat) => chat.folderId === dropNodeInfo.id)
+          const folderChildren = folders.filter((f) => f.parentId === dropNodeInfo.id)
+          const folderChats = pages.filter((chat) => chat.folderId === dropNodeInfo.id)
           const allOrders = [
             ...folderChildren.map((f) => f.order || 0),
             ...folderChats.map((c) => c.order || 0)
           ]
           const maxOrder = allOrders.length > 0 ? Math.max(...allOrders) : 0
 
-          dispatch({
-            type: 'MOVE_FOLDER',
-            payload: {
-              folderId: dragNodeInfo.id,
-              targetParentId: dropNodeInfo.id,
-              newOrder: maxOrder + 1000
-            }
-          })
+          moveFolder(dragNodeInfo.id, maxOrder + 1000, dropNodeInfo.id)
         } else if (dragNodeInfo.type === 'chat') {
           // 将聊天移动到文件夹内，获取该文件夹下聊天的最大order值
-          const folderChats = state.pages.filter((chat) => chat.folderId === dropNodeInfo.id)
+          const folderChats = pages.filter((chat) => chat.folderId === dropNodeInfo.id)
           const maxOrder =
             folderChats.length > 0 ? Math.max(...folderChats.map((chat) => chat.order || 0)) : 0
 
-          dispatch({
-            type: 'MOVE_CHAT',
-            payload: {
-              chatId: dragNodeInfo.id,
-              targetFolderId: dropNodeInfo.id,
-              newOrder: maxOrder + 1000
-            }
-          })
+          movePage(dragNodeInfo.id, dropNodeInfo.id, maxOrder + 1000)
         }
         return
       }
@@ -191,13 +185,13 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         // 获取拖拽和目标节点信息
         const dragItem =
           dragNodeInfo.type === 'chat'
-            ? state.pages.find((chat) => chat.id === dragNodeInfo.id)
-            : state.folders.find((folder) => folder.id === dragNodeInfo.id)
+            ? pages.find((chat) => chat.id === dragNodeInfo.id)
+            : folders.find((folder) => folder.id === dragNodeInfo.id)
 
         const dropItem =
           dropNodeInfo.type === 'chat'
-            ? state.pages.find((chat) => chat.id === dropNodeInfo.id)
-            : state.folders.find((folder) => folder.id === dropNodeInfo.id)
+            ? pages.find((chat) => chat.id === dropNodeInfo.id)
+            : folders.find((folder) => folder.id === dropNodeInfo.id)
 
         if (!dragItem || !dropItem) return
 
@@ -214,10 +208,10 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         // 防止文件夹拖入自己的子文件夹
         if (dragNodeInfo.type === 'folder' && targetParentId) {
           const wouldCreateCycle = (targetId: string, sourceId: string): boolean => {
-            let current = state.folders.find((f) => f.id === targetId)
+            let current = folders.find((f) => f.id === targetId)
             while (current) {
               if (current.id === sourceId) return true
-              current = state.folders.find((f) => f.id === current?.parentId)
+              current = folders.find((f) => f.id === current?.parentId)
             }
             return false
           }
@@ -232,7 +226,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
         // 根据节点类型计算order
         if (dragNodeInfo.type === 'chat') {
-          const siblings = state.pages
+          const siblings = pages
             .filter((chat) => chat.folderId === targetParentId && chat.id !== dragNodeInfo.id)
             .sort((a, b) => (a.order || 0) - (b.order || 0))
 
@@ -253,16 +247,9 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
             }
           }
 
-          dispatch({
-            type: 'MOVE_CHAT',
-            payload: {
-              chatId: dragNodeInfo.id,
-              targetFolderId: targetParentId,
-              newOrder
-            }
-          })
+          movePage(dragNodeInfo.id, targetParentId, newOrder)
         } else if (dragNodeInfo.type === 'folder') {
-          const siblings = state.folders
+          const siblings = folders
             .filter((folder) => folder.parentId === targetParentId && folder.id !== dragNodeInfo.id)
             .sort((a, b) => (a.order || 0) - (b.order || 0))
 
@@ -283,18 +270,11 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
             }
           }
 
-          dispatch({
-            type: 'MOVE_FOLDER',
-            payload: {
-              folderId: dragNodeInfo.id,
-              targetParentId,
-              newOrder
-            }
-          })
+          moveFolder(dragNodeInfo.id, newOrder, targetParentId)
         }
       }
     },
-    [parseNodeKey, state.folders, state.pages, dispatch]
+    [parseNodeKey, folders, pages, movePage, moveFolder]
   )
 
   // 递归构建文件夹树
@@ -303,12 +283,12 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       const result: DataNode[] = []
 
       // 获取指定父级下的文件夹
-      const childFolders = state.folders
+      const childFolders = folders
         .filter((folder) => folder.parentId === parentId)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
 
       // 获取指定父级下的聊天
-      const chats = state.pages
+      const chats = pages
         .filter((chat) => chat.folderId === parentId)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
 
@@ -354,8 +334,8 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       return result
     },
     [
-      state.folders,
-      state.pages,
+      folders,
+      pages,
       handleNodeEdit,
       handleDeleteFolder,
       handleDeleteChat,
@@ -371,28 +351,28 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
   }, [buildFolderTree])
 
   const handleTreeSelect = useCallback(
-    (selectedKeys: React.Key[], info: { selected: boolean; selectedNodes: any[]; node: any; event: 'select' }) => {
+    (
+      selectedKeys: React.Key[],
+      info: { selected: boolean; selectedNodes: any[]; node: any; event: 'select' }
+    ) => {
       const key = selectedKeys[0]
       const event = info.event as any
-      
+
       if (key && typeof key === 'string') {
         // 处理 ctrl+shift 多选
         if (event?.ctrlKey || event?.metaKey) {
           // Ctrl+点击：切换选中状态
-          const currentChecked = state.checkedNodeIds.includes(key)
+          const currentChecked = checkedNodeIds.includes(key)
           const newCheckedKeys = currentChecked
-            ? state.checkedNodeIds.filter(k => k !== key)
-            : [...state.checkedNodeIds, key]
-          
-          dispatch({
-            type: 'SET_CHECKED_NODES',
-            payload: { nodeIds: newCheckedKeys }
-          })
-        } else if (event?.shiftKey && state.selectedNodeId) {
+            ? checkedNodeIds.filter((k) => k !== key)
+            : [...checkedNodeIds, key]
+
+          setCheckedNodes(newCheckedKeys)
+        } else if (event?.shiftKey && selectedNodeId) {
           // Shift+点击：范围选择
           const treeData = buildTreeData()
           const flattenNodes = (nodes: DataNode[], result: string[] = []): string[] => {
-            nodes.forEach(node => {
+            nodes.forEach((node) => {
               result.push(node.key as string)
               if (node.children) {
                 flattenNodes(node.children, result)
@@ -400,65 +380,57 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
             })
             return result
           }
-          
+
           const allKeys = flattenNodes(treeData)
-          const currentSelectedKey = `${state.selectedNodeType}-${state.selectedNodeId}`
+          const currentSelectedKey = `${selectedNodeType}-${selectedNodeId}`
           const startIndex = allKeys.indexOf(currentSelectedKey)
           const endIndex = allKeys.indexOf(key)
-          
+
           if (startIndex !== -1 && endIndex !== -1) {
             const rangeStart = Math.min(startIndex, endIndex)
             const rangeEnd = Math.max(startIndex, endIndex)
             const rangeKeys = allKeys.slice(rangeStart, rangeEnd + 1)
-            
-            dispatch({
-              type: 'SET_CHECKED_NODES',
-              payload: { nodeIds: rangeKeys }
-            })
+
+            setCheckedNodes(rangeKeys)
           }
         } else {
           // 普通点击：清空多选，设置单选
-          dispatch({
-            type: 'CLEAR_CHECKED_NODES'
-          })
-          
+          clearCheckedNodes()
+
           if (key.startsWith('chat-')) {
             const chatId = key.replace('chat-', '')
-            dispatch({
-              type: 'SET_SELECTED_NODE',
-              payload: { nodeId: chatId, nodeType: 'chat' }
-            })
+            setSelectedNode(chatId, 'chat')
             onChatClick(chatId)
           } else if (key.startsWith('folder-')) {
             const folderId = key.replace('folder-', '')
-            dispatch({
-              type: 'SET_SELECTED_NODE',
-              payload: { nodeId: folderId, nodeType: 'folder' }
-            })
-            const folder = state.folders.find((f) => f.id === folderId)
+            setSelectedNode(folderId, 'folder')
+            const folder = folders.find((f) => f.id === folderId)
             if (folder) {
-              dispatch({
-                type: 'UPDATE_FOLDER',
-                payload: { id: folderId, updates: { expanded: !folder.expanded } }
-              })
+              updateFolder(folderId, { expanded: !folder.expanded })
             }
           }
         }
       } else if (selectedKeys.length === 0) {
         // 如果没有选中任何节点，清除选中状态
-        dispatch({
-          type: 'SET_SELECTED_NODE',
-          payload: { nodeId: null, nodeType: null }
-        })
-        dispatch({
-          type: 'CLEAR_CHECKED_NODES'
-        })
+        setSelectedNode(null, null)
+        clearCheckedNodes()
       }
     },
-    [onChatClick, state.folders, state.selectedNodeId, state.selectedNodeType, state.checkedNodeIds, dispatch, buildTreeData]
+    [
+      onChatClick,
+      folders,
+      selectedNodeId,
+      selectedNodeType,
+      checkedNodeIds,
+      setSelectedNode,
+      setCheckedNodes,
+      clearCheckedNodes,
+      updateFolder,
+      buildTreeData
+    ]
   )
 
-  const expandedKeys = state.folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`)
+  const expandedKeys = folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`)
 
   return (
     <Tree
@@ -469,7 +441,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       checkable={false}
       multiple
       expandedKeys={expandedKeys}
-      selectedKeys={state.checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
+      selectedKeys={checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
       treeData={buildTreeData()}
       onSelect={handleTreeSelect}
       onDrop={handleDrop}
@@ -492,13 +464,10 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       }}
       onExpand={(expandedKeys) => {
         // Update folder expanded state
-        state.folders.forEach((folder) => {
+        folders.forEach((folder) => {
           const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
           if (folder.expanded !== isExpanded) {
-            dispatch({
-              type: 'UPDATE_FOLDER',
-              payload: { id: folder.id, updates: { expanded: isExpanded } }
-            })
+            updateFolder(folder.id, { expanded: isExpanded })
           }
         })
       }}

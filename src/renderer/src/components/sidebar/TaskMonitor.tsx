@@ -1,5 +1,19 @@
 import React, { useMemo, useState } from 'react'
-import { List, Card, Progress, Typography, Tag, Space, Button, Empty, Tooltip, Pagination, Descriptions, Modal, App } from 'antd'
+import {
+  List,
+  Card,
+  Progress,
+  Typography,
+  Tag,
+  Space,
+  Button,
+  Empty,
+  Tooltip,
+  Pagination,
+  Descriptions,
+  Modal,
+  App
+} from 'antd'
 import {
   LoadingOutlined,
   CheckCircleOutlined,
@@ -14,8 +28,9 @@ import {
   SwapOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons'
-import { useAppContext } from '../../store/AppContext'
-import { AITask, AITaskStatus, AITaskType } from '../../types'
+import { useAITasksStore } from '../../stores/aiTasksStore'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { AITask, AITaskStatus, AITaskType } from '../../types/type'
 
 const { Text, Title } = Typography
 
@@ -85,7 +100,7 @@ const formatDuration = (startTime: number, endTime?: number) => {
   const duration = (endTime || Date.now()) - startTime
   const seconds = Math.floor(duration / 1000)
   const minutes = Math.floor(seconds / 60)
-  
+
   if (minutes > 0) {
     return `${minutes}分${seconds % 60}秒`
   }
@@ -100,7 +115,7 @@ const formatCreatedTime = (timestamp: number) => {
   const diffMinutes = Math.floor(diffMs / (1000 * 60))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  
+
   // 如果是今天
   if (diffDays === 0) {
     if (diffHours === 0) {
@@ -111,17 +126,17 @@ const formatCreatedTime = (timestamp: number) => {
     }
     return `${diffHours}小时前`
   }
-  
+
   // 如果是昨天
   if (diffDays === 1) {
     return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
   }
-  
+
   // 如果是更早的日期
   if (diffDays < 7) {
     return `${diffDays}天前`
   }
-  
+
   // 超过一周，显示具体日期
   return date.toLocaleString('zh-CN', {
     month: 'short',
@@ -131,12 +146,15 @@ const formatCreatedTime = (timestamp: number) => {
   })
 }
 
-interface TaskMonitorProps {
-  // 移除height属性，让组件自动占满剩余空间
-}
-
 export default function TaskMonitor() {
-  const { state, dispatch } = useAppContext()
+  const {
+    aiTasks,
+    cancelTask,
+    removeTask,
+    clearCompletedTasks,
+    clearAllTasks
+  } = useAITasksStore()
+  const { settings } = useSettingsStore()
   const { modal, message } = App.useApp()
 
   // 分页状态
@@ -151,22 +169,22 @@ export default function TaskMonitor() {
   // 获取模型名称的辅助函数
   const getModelName = (modelId?: string) => {
     if (!modelId) return null
-    const modelConfig = state.settings.llmConfigs.find(config => config.id === modelId)
+    const modelConfig = settings.llmConfigs.find((config) => config.id === modelId)
     return modelConfig?.name || modelId
   }
 
   // 按状态分组任务
   const groupedTasks = useMemo(() => {
-    const running = state.aiTasks.filter(task => task.status === 'running' || task.status === 'pending')
-    const completed = state.aiTasks
-      .filter(task => task.status === 'completed')
+    const running = aiTasks.filter((task) => task.status === 'running' || task.status === 'pending')
+    const completed = aiTasks
+      .filter((task) => task.status === 'completed')
       .sort((a, b) => b.startTime - a.startTime) // 按创建时间降序排序，最新的在前面
-    const failed = state.aiTasks
-      .filter(task => task.status === 'failed' || task.status === 'cancelled')
+    const failed = aiTasks
+      .filter((task) => task.status === 'failed' || task.status === 'cancelled')
       .sort((a, b) => b.startTime - a.startTime) // 失败的任务也按创建时间降序排序
-    
+
     return { running, completed, failed }
-  }, [state.aiTasks])
+  }, [aiTasks])
 
   // 计算分页后的任务数据
   const paginatedTasks = useMemo(() => {
@@ -196,24 +214,38 @@ export default function TaskMonitor() {
       setRunningPage(1)
     }
     // 如果当前页面没有已完成任务，且不是第一页，则跳转到第一页
-    if (groupedTasks.completed.length > 0 && paginatedTasks.completed.length === 0 && completedPage > 1) {
+    if (
+      groupedTasks.completed.length > 0 &&
+      paginatedTasks.completed.length === 0 &&
+      completedPage > 1
+    ) {
       setCompletedPage(1)
     }
     // 如果当前页面没有失败任务，且不是第一页，则跳转到第一页
     if (groupedTasks.failed.length > 0 && paginatedTasks.failed.length === 0 && failedPage > 1) {
       setFailedPage(1)
     }
-  }, [groupedTasks.running.length, groupedTasks.completed.length, groupedTasks.failed.length, paginatedTasks.running.length, paginatedTasks.completed.length, paginatedTasks.failed.length, runningPage, completedPage, failedPage])
+  }, [
+    groupedTasks.running.length,
+    groupedTasks.completed.length,
+    groupedTasks.failed.length,
+    paginatedTasks.running.length,
+    paginatedTasks.completed.length,
+    paginatedTasks.failed.length,
+    runningPage,
+    completedPage,
+    failedPage
+  ])
 
   // 清除已完成的任务
   const handleClearCompleted = () => {
-    dispatch({ type: 'CLEAR_COMPLETED_AI_TASKS' })
+    clearCompletedTasks()
     setCompletedPage(1) // 重置分页
   }
 
   // 清除所有任务
   const handleClearAll = () => {
-    dispatch({ type: 'CLEAR_ALL_AI_TASKS' })
+    clearAllTasks()
     setRunningPage(1) // 重置分页
     setCompletedPage(1) // 重置分页
     setFailedPage(1) // 重置分页
@@ -222,7 +254,7 @@ export default function TaskMonitor() {
   // 取消任务
   const handleCancelTask = async (taskId: string) => {
     // 找到对应的任务
-    const task = state.aiTasks.find(t => t.id === taskId)
+    const task = aiTasks.find((t) => t.id === taskId)
     if (!task) {
       message.error('任务不存在')
       return
@@ -230,49 +262,27 @@ export default function TaskMonitor() {
 
     try {
       const hide = message.loading('正在取消任务...', 0)
-      
+
       // 使用任务的requestId来停止AI服务
       await window.api.ai.stopStreaming(task.requestId)
-      
+
       // 更新任务状态为已取消
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'cancelled',
-            endTime: Date.now()
-          }
-        }
-      })
-      
+      cancelTask(taskId)
+
       hide()
       message.success('任务已取消')
     } catch (error) {
       console.error('Failed to cancel AI task:', error)
       // 即使停止失败，也要更新任务状态
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId,
-          updates: {
-            status: 'cancelled',
-            endTime: Date.now(),
-            error: error instanceof Error ? error.message : 'Failed to cancel task'
-          }
-        }
-      })
-      
+      cancelTask(taskId)
+
       message.warning('任务取消可能未完全成功')
     }
   }
 
   // 移除单个任务
   const handleRemoveTask = (taskId: string) => {
-    dispatch({
-      type: 'REMOVE_AI_TASK',
-      payload: { taskId }
-    })
+    removeTask(taskId)
   }
 
   // 查看任务详情
@@ -338,14 +348,10 @@ export default function TaskMonitor() {
     if (context.object) {
       items.push(
         <Descriptions.Item key="node-id" label="节点ID">
-          <Text copyable={{ text: context.object.nodeId }}>
-            {context.object.nodeId}
-          </Text>
+          <Text copyable={{ text: context.object.nodeId }}>{context.object.nodeId}</Text>
         </Descriptions.Item>,
         <Descriptions.Item key="prompt" label="生成提示">
-          <Text copyable={{ text: context.object.prompt }}>
-            {context.object.prompt}
-          </Text>
+          <Text copyable={{ text: context.object.prompt }}>{context.object.prompt}</Text>
         </Descriptions.Item>
       )
     }
@@ -405,7 +411,7 @@ export default function TaskMonitor() {
   const renderTaskItem = (task: AITask) => {
     const statusDisplay = getTaskStatusDisplay(task.status)
     const isActive = task.status === 'running' || task.status === 'pending'
-    
+
     return (
       <List.Item
         key={task.id}
@@ -443,30 +449,26 @@ export default function TaskMonitor() {
           avatar={
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               {getTaskIcon(task.type)}
-              <span style={{ color: statusDisplay.color }}>
-                {statusDisplay.icon}
-              </span>
+              <span style={{ color: statusDisplay.color }}>{statusDisplay.icon}</span>
             </div>
           }
           title={
             <div>
               {/* 标题单独一行，超出显示省略号 */}
-              <div style={{ 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap',
-                marginBottom: 4
-              }}>
+              <div
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  marginBottom: 4
+                }}
+              >
                 <Text strong>{task.title}</Text>
               </div>
               {/* 标签行 */}
               <div>
-                <Tag color={statusDisplay.color}>
-                  {getTaskTypeName(task.type)}
-                </Tag>
-                <Tag color={statusDisplay.color}>
-                  {statusDisplay.text}
-                </Tag>
+                <Tag color={statusDisplay.color}>{getTaskTypeName(task.type)}</Tag>
+                <Tag color={statusDisplay.color}>{statusDisplay.text}</Tag>
               </div>
             </div>
           }
@@ -474,12 +476,14 @@ export default function TaskMonitor() {
             <div>
               {/* 描述单独一行，超出显示省略号 */}
               {task.description && (
-                <div style={{ 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  whiteSpace: 'nowrap',
-                  marginBottom: 4
-                }}>
+                <div
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    marginBottom: 4
+                  }}
+                >
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     {task.description}
                   </Text>
@@ -508,12 +512,14 @@ export default function TaskMonitor() {
                     status={task.status === 'failed' ? 'exception' : undefined}
                   />
                   {task.progress.message && (
-                    <div style={{ 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
-                      whiteSpace: 'nowrap',
-                      marginTop: 2
-                    }}>
+                    <div
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        marginTop: 2
+                      }}
+                    >
                       <Text type="secondary" style={{ fontSize: 11 }}>
                         {task.progress.message}
                       </Text>
@@ -522,12 +528,14 @@ export default function TaskMonitor() {
                 </div>
               )}
               {task.error && (
-                <div style={{ 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  whiteSpace: 'nowrap',
-                  marginTop: 4
-                }}>
+                <div
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    marginTop: 4
+                  }}
+                >
                   <Text type="danger" style={{ fontSize: 11 }}>
                     错误: {task.error}
                   </Text>
@@ -540,39 +548,38 @@ export default function TaskMonitor() {
     )
   }
 
-  if (state.aiTasks.length === 0) {
+  if (aiTasks.length === 0) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无AI任务"
-        />
+      <div
+        style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无AI任务" />
       </div>
     )
   }
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+          flexShrink: 0
+        }}
+      >
         <Title level={5} style={{ margin: 0 }}>
-          AI任务监控 ({state.aiTasks.length})
+          AI任务监控 ({aiTasks.length})
         </Title>
         <Space>
           {groupedTasks.completed.length > 0 && (
-            <Button
-              type="text"
-              size="small"
-              onClick={handleClearCompleted}
-            >
+            <Button type="text" size="small" onClick={handleClearCompleted}>
               清除已完成
             </Button>
           )}
-          {state.aiTasks.length > 0 && (
-            <Button
-              type="text"
-              size="small"
-              onClick={handleClearAll}
-            >
+          {aiTasks.length > 0 && (
+            <Button type="text" size="small" onClick={handleClearAll}>
               清除全部
             </Button>
           )}
@@ -694,16 +701,18 @@ export default function TaskMonitor() {
         {selectedTask && (
           <div>
             {/* 基本信息 */}
-            <Descriptions title="基本信息" column={1} size="small" bordered style={{ marginBottom: 16 }}>
+            <Descriptions
+              title="基本信息"
+              column={1}
+              size="small"
+              bordered
+              style={{ marginBottom: 16 }}
+            >
               <Descriptions.Item label="任务ID">
-                <Text copyable={{ text: selectedTask.id }}>
-                  {selectedTask.id}
-                </Text>
+                <Text copyable={{ text: selectedTask.id }}>{selectedTask.id}</Text>
               </Descriptions.Item>
               <Descriptions.Item label="任务标题">
-                <Text copyable={{ text: selectedTask.title }}>
-                  {selectedTask.title}
-                </Text>
+                <Text copyable={{ text: selectedTask.title }}>{selectedTask.title}</Text>
               </Descriptions.Item>
               {selectedTask.description && (
                 <Descriptions.Item label="任务描述">
@@ -722,9 +731,7 @@ export default function TaskMonitor() {
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label="请求ID">
-                <Text copyable={{ text: selectedTask.requestId }}>
-                  {selectedTask.requestId}
-                </Text>
+                <Text copyable={{ text: selectedTask.requestId }}>{selectedTask.requestId}</Text>
               </Descriptions.Item>
               {selectedTask.modelId && (
                 <Descriptions.Item label="使用模型">
@@ -734,28 +741,26 @@ export default function TaskMonitor() {
                 </Descriptions.Item>
               )}
               <Descriptions.Item label="创建时间">
-                {formatCreatedTime(selectedTask.startTime)} ({new Date(selectedTask.startTime).toLocaleString('zh-CN')})
+                {formatCreatedTime(selectedTask.startTime)} (
+                {new Date(selectedTask.startTime).toLocaleString('zh-CN')})
               </Descriptions.Item>
               <Descriptions.Item label="持续时间">
                 {formatDuration(selectedTask.startTime, selectedTask.endTime)}
               </Descriptions.Item>
               {selectedTask.endTime && (
                 <Descriptions.Item label="结束时间">
-                  {formatCreatedTime(selectedTask.endTime)} ({new Date(selectedTask.endTime).toLocaleString('zh-CN')})
+                  {formatCreatedTime(selectedTask.endTime)} (
+                  {new Date(selectedTask.endTime).toLocaleString('zh-CN')})
                 </Descriptions.Item>
               )}
               {selectedTask.chatId && (
                 <Descriptions.Item label="关联聊天ID">
-                  <Text copyable={{ text: selectedTask.chatId }}>
-                    {selectedTask.chatId}
-                  </Text>
+                  <Text copyable={{ text: selectedTask.chatId }}>{selectedTask.chatId}</Text>
                 </Descriptions.Item>
               )}
               {selectedTask.messageId && (
                 <Descriptions.Item label="关联消息ID">
-                  <Text copyable={{ text: selectedTask.messageId }}>
-                    {selectedTask.messageId}
-                  </Text>
+                  <Text copyable={{ text: selectedTask.messageId }}>{selectedTask.messageId}</Text>
                 </Descriptions.Item>
               )}
             </Descriptions>
@@ -765,15 +770,17 @@ export default function TaskMonitor() {
               <div style={{ marginBottom: 16 }}>
                 <Title level={5}>进度信息</Title>
                 <Progress
-                  percent={Math.round((selectedTask.progress.current / selectedTask.progress.total) * 100)}
+                  percent={Math.round(
+                    (selectedTask.progress.current / selectedTask.progress.total) * 100
+                  )}
                   status={selectedTask.status === 'failed' ? 'exception' : undefined}
-                  format={(percent) => `${selectedTask.progress?.current}/${selectedTask.progress?.total} (${percent}%)`}
+                  format={(percent) =>
+                    `${selectedTask.progress?.current}/${selectedTask.progress?.total} (${percent}%)`
+                  }
                 />
                 {selectedTask.progress.message && (
                   <div style={{ marginTop: 8 }}>
-                    <Text type="secondary">
-                      {selectedTask.progress.message}
-                    </Text>
+                    <Text type="secondary">{selectedTask.progress.message}</Text>
                   </div>
                 )}
               </div>
@@ -783,7 +790,10 @@ export default function TaskMonitor() {
             {selectedTask.error && (
               <div style={{ marginBottom: 16 }}>
                 <Title level={5}>错误信息</Title>
-                <Card size="small" style={{ backgroundColor: '#fff2f0', border: '1px solid #ffccc7' }}>
+                <Card
+                  size="small"
+                  style={{ backgroundColor: '#fff2f0', border: '1px solid #ffccc7' }}
+                >
                   <Text type="danger" copyable={{ text: selectedTask.error }}>
                     {selectedTask.error}
                   </Text>
@@ -801,4 +811,4 @@ export default function TaskMonitor() {
       </Modal>
     </div>
   )
-} 
+}

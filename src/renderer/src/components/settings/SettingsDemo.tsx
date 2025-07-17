@@ -17,11 +17,11 @@ import {
   DatabaseOutlined,
   SettingOutlined
 } from '@ant-design/icons'
-import { useSettings } from '../../store/hooks/useSettings'
-import { StorageService } from '../../utils/storage'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { usePagesStore } from '../../stores/pagesStore'
 
 export default function SettingsDemo() {
-  const { settings } = useSettings()
+  const { settings } = useSettingsStore()
   const [storageInfo, setStorageInfo] = useState({
     settings: '0 KB',
     pages: '0 KB',
@@ -31,9 +31,9 @@ export default function SettingsDemo() {
 
   const updateStorageInfo = () => {
     try {
-      const settingsData = StorageService.loadSettings()
-      const chatsData = StorageService.loadPages()
-      const foldersData = StorageService.loadFolders()
+      const settingsData = useSettingsStore.getState().settings
+      const chatsData = usePagesStore.getState().pages
+      const foldersData = usePagesStore.getState().folders
 
       const settingsSize = JSON.stringify(settingsData || {}).length
       const chatsSize = JSON.stringify(chatsData || []).length

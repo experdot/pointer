@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
-import { useAppContext } from '../../../store/AppContext'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useUIStore } from '../../../stores/uiStore'
+import { useSettingsStore } from '../../../stores/settingsStore'
+import { useMessagesStore } from '../../../stores/messagesStore'
 import ChatLogic from './ChatLogic'
 import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
@@ -18,7 +21,16 @@ export interface ChatWindowRef {
 }
 
 const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) => {
-  const { state, dispatch } = useAppContext()
+  const { pages } = usePagesStore()
+  const {
+    collapsedMessages,
+    allMessagesCollapsed,
+    toggleMessageCollapse,
+    collapseAllMessages,
+    expandAllMessages
+  } = useUIStore()
+  const { settings } = useSettingsStore()
+  const { updateCurrentPath } = useMessagesStore()
   const [inputValue, setInputValue] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [messageTreeCollapsed, setMessageTreeCollapsed] = useState(true)
@@ -34,7 +46,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     }
   }))
 
-  const chat = state.pages.find((c) => c.id === chatId)
+  const chat = pages.find((c) => c.id === chatId)
 
   // 创建消息树实例
   const messageTree = useMemo(() => {
@@ -45,31 +57,19 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   // 处理分支切换（所有消息都使用兄弟分支切换）
   const handleSwitchBranch = (messageId: string, branchIndex: number) => {
     const newPath = messageTree.switchToSiblingBranch(messageId, branchIndex)
-    dispatch({
-      type: 'UPDATE_CURRENT_PATH',
-      payload: { chatId, path: newPath }
-    })
+    updateCurrentPath(chatId, newPath)
   }
 
   const handleToggleMessageCollapse = (messageId: string) => {
-    dispatch({
-      type: 'TOGGLE_MESSAGE_COLLAPSE',
-      payload: { chatId, messageId }
-    })
+    toggleMessageCollapse(chatId, messageId)
   }
 
   const handleCollapseAll = () => {
-    dispatch({
-      type: 'COLLAPSE_ALL_MESSAGES',
-      payload: { chatId }
-    })
+    collapseAllMessages(chatId, chat.messages.map((msg) => msg.id))
   }
 
   const handleExpandAll = () => {
-    dispatch({
-      type: 'EXPAND_ALL_MESSAGES',
-      payload: { chatId }
-    })
+    expandAllMessages(chatId)
   }
 
   const handleOpenSettings = () => {
@@ -83,30 +83,24 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const handleMessageTreeNodeSelect = (messageId: string) => {
     // 构建到选中消息的路径
     const path: string[] = []
-    let currentMsg = chat?.messages.find(msg => msg.id === messageId)
-    
+    let currentMsg = chat?.messages.find((msg) => msg.id === messageId)
+
     while (currentMsg) {
       path.unshift(currentMsg.id)
       if (currentMsg.parentId) {
-        currentMsg = chat?.messages.find(msg => msg.id === currentMsg!.parentId)
+        currentMsg = chat?.messages.find((msg) => msg.id === currentMsg!.parentId)
       } else {
         break
       }
     }
-    
+
     // 更新当前路径
-    dispatch({
-      type: 'UPDATE_CURRENT_PATH',
-      payload: { chatId, path }
-    })
+    updateCurrentPath(chatId, path)
   }
 
   const handleMessageTreePathChange = (path: string[]) => {
     // 更新当前路径
-    dispatch({
-      type: 'UPDATE_CURRENT_PATH',
-      payload: { chatId, path }
-    })
+    updateCurrentPath(chatId, path)
   }
 
   const handleMessageTreeWidthChange = (width: number) => {
@@ -119,8 +113,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }
 
   // 获取当前聊天的折叠状态
-  const collapsedMessages = state.collapsedMessages[chatId] || []
-  const allMessagesCollapsed = state.allMessagesCollapsed[chatId] || false
+  const collapsedMessagesForChat = collapsedMessages[chatId] || []
+  const allMessagesCollapsedForChat = allMessagesCollapsed[chatId] || false
 
   return (
     <div className="chat-window">
@@ -161,7 +155,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                 width={messageTreeWidth}
                 onWidthChange={handleMessageTreeWidthChange}
               />
-              
+
               {/* 聊天主内容区 */}
               <div className="chat-main-content">
                 <ChatHeader
@@ -169,7 +163,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   chatTitle={chat.title}
                   messages={chat.messages}
                   currentPath={chat.currentPath}
-                  allMessagesCollapsed={allMessagesCollapsed}
+                  allMessagesCollapsed={allMessagesCollapsed[chatId] || false}
                   onCollapseAll={handleCollapseAll}
                   onExpandAll={handleExpandAll}
                   messageTreeCollapsed={messageTreeCollapsed}
@@ -181,7 +175,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   isLoading={isLoading}
                   streamingContent={chat.streamingMessage?.content}
                   streamingTimestamp={chat.streamingMessage?.timestamp}
-                  llmConfigs={state.settings.llmConfigs || []}
+                  llmConfigs={settings.llmConfigs || []}
                   onRetryMessage={onRetryMessage}
                   onEditMessage={onEditMessage}
                   onEditAndResendMessage={onEditAndResendMessage}
@@ -189,7 +183,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onModelChange={onModelChangeForMessage}
                   onSwitchBranch={handleSwitchBranch}
                   // 折叠相关props
-                  collapsedMessages={collapsedMessages}
+                  collapsedMessages={collapsedMessagesForChat}
                   onToggleMessageCollapse={handleToggleMessageCollapse}
                   // 设置相关props
                   onOpenSettings={handleOpenSettings}
@@ -207,9 +201,9 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onStop={onStopGeneration}
                   disabled={isLoading}
                   loading={isLoading}
-                  llmConfigs={state.settings.llmConfigs || []}
+                  llmConfigs={settings.llmConfigs || []}
                   selectedModel={selectedModel}
-                  defaultModelId={state.settings.defaultLLMId}
+                  defaultModelId={settings.defaultLLMId}
                   onModelChange={onModelChange}
                   onOpenSettings={handleOpenSettings}
                 />

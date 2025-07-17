@@ -1,7 +1,7 @@
 import React, { useRef, forwardRef, useImperativeHandle } from 'react'
 import { Input, Button, Alert } from 'antd'
 import { SendOutlined, StopOutlined, SettingOutlined } from '@ant-design/icons'
-import { LLMConfig } from '../../../types'
+import { LLMConfig } from '../../../types/type'
 import ModelSelector from './ModelSelector'
 
 const { TextArea } = Input

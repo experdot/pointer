@@ -1,17 +1,5 @@
 import React, { useState, useRef } from 'react'
-import {
-  Button,
-  Input,
-  Space,
-  Typography,
-  Card,
-  Empty,
-  Tabs,
-  Tag,
-  message,
-  Tooltip,
-  Spin
-} from 'antd'
+import { Button, Input, Space, Typography, Card, Empty, Tabs, Tag, message, Spin } from 'antd'
 import {
   StarOutlined,
   SendOutlined,
@@ -21,9 +9,8 @@ import {
   ReloadOutlined
 } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
-import { ObjectChat, ObjectNode as ObjectNodeType, ObjectNodeReference } from '../../../types'
-import { useAppContext } from '../../../store/AppContext'
-import { useSettings } from '../../../store/hooks/useSettings'
+import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
+import { useAppStores } from '../../../stores'
 import { createAIService } from '../../../services/aiService'
 import { createObjectAIService } from './ObjectAIService'
 
@@ -41,17 +28,32 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   selectedNodeId,
   onGenerate
 }) => {
-  const { state, dispatch } = useAppContext()
-  const { settings } = useSettings()
+  const stores = useAppStores()
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState('children')
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const textareaRef = useRef<any>(null)
 
+  // 创建 dispatch 适配器，用于兼容 ObjectAIService
+  const createDispatchAdapter = () => {
+    return (action: any) => {
+      switch (action.type) {
+        case 'ADD_AI_TASK':
+          stores.aiTasks.addTask(action.payload.task)
+          break
+        case 'UPDATE_AI_TASK':
+          stores.aiTasks.updateTask(action.payload.taskId, action.payload.updates)
+          break
+        default:
+          console.warn('未处理的 dispatch action:', action)
+      }
+    }
+  }
+
   // 获取LLM配置
   const getLLMConfig = () => {
-    const { llmConfigs, defaultLLMId } = settings
+    const { llmConfigs, defaultLLMId } = stores.settings.settings
     if (!llmConfigs || llmConfigs.length === 0) {
       return null
     }
@@ -59,7 +61,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
   }
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -127,7 +129,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     setIsLoadingRecommendations(true)
     try {
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const context = getGenerationContext(selectedNode)
       if (!context) {
@@ -147,8 +154,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         case 'properties':
           recommendations = await objectAIService.getPropertiesPromptRecommendations(context)
           break
-        case 'references':
-          recommendations = await objectAIService.getReferencesPromptRecommendations(context)
+        case 'relations':
+          recommendations = await objectAIService.getRelationsPromptRecommendations(context)
           break
         default:
           recommendations = []
@@ -165,13 +172,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         }
       }
 
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { aiRecommendations: updatedRecommendations }
-        }
+      stores.object.updateObjectNode(chat.id, selectedNode.id, {
+        aiRecommendations: updatedRecommendations
       })
 
       message.success('AI推荐获取成功')
@@ -192,8 +194,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
-      case 'references':
-        return '生成引用关系'
+      case 'relations':
+        return '生成关系节点'
       default:
         return '生成'
     }
@@ -245,22 +247,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         }
       }
 
-      // 添加引用信息
-      if (node.references && node.references.length > 0) {
-        const references = node.references.map((ref) => {
-          const refNode = nodes[ref.id]
-          return {
-            Name: ref.name,
-            Description: ref.description || '',
-            Type: ref.type,
-            Strength: ref.strength,
-            NodeExists: !!refNode,
-            NodeDescription: refNode?.description || ''
-          }
-        })
-        information += `\n## 引用关系\n${JSON.stringify(references)}`
-      }
-
       return information
     }
 
@@ -299,43 +285,9 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       return node.children.map((id) => nodes[id]).filter(Boolean)
     }
 
-    // 获取当前节点的引用信息
-    const getCurrentReferences = (node: ObjectNodeType) => {
-      if (!node.references) return []
-      return node.references.map((ref) => ({
-        ...ref,
-        referencedNode: nodes[ref.id] || null
-      }))
-    }
-
-    // 获取引用当前节点的其他节点（反向引用）
-    const getIncomingReferences = (node: ObjectNodeType) => {
-      const incomingRefs: Array<{
-        fromNode: ObjectNodeType
-        reference: ObjectNodeReference
-      }> = []
-      
-      Object.values(nodes).forEach((otherNode) => {
-        if (otherNode.id !== node.id && otherNode.references) {
-          otherNode.references.forEach((ref) => {
-            if (ref.id === node.id) {
-              incomingRefs.push({
-                fromNode: otherNode,
-                reference: ref
-              })
-            }
-          })
-        }
-      })
-      
-      return incomingRefs
-    }
-
     const ancestorChain = buildAncestorChain(currentNode)
     const siblings = getSiblings(currentNode)
     const existingChildren = getExistingChildren(currentNode)
-    const currentReferences = getCurrentReferences(currentNode)
-    const incomingReferences = getIncomingReferences(currentNode)
 
     // 构建完整的上下文信息
     const getFullContextInformation = (): string => {
@@ -373,45 +325,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         contextInfo += '\n## 同级节点信息\n无同级节点\n'
       }
 
-      // 添加引用关系信息
-      if (currentReferences.length > 0) {
-        contextInfo += '\n## 当前节点的引用关系\n'
-        currentReferences.forEach((ref) => {
-          contextInfo += `\n### 引用节点 - ${ref.name}\n`
-          contextInfo += `- **引用类型**: ${ref.type}\n`
-          contextInfo += `- **引用强度**: ${ref.strength}\n`
-          if (ref.description) {
-            contextInfo += `- **引用描述**: ${ref.description}\n`
-          }
-          if (ref.referencedNode) {
-            contextInfo += `- **节点存在**: 是\n`
-            contextInfo += `- **节点描述**: ${ref.referencedNode.description || '无'}\n`
-          } else {
-            contextInfo += `- **节点存在**: 否（可能已被删除）\n`
-          }
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 当前节点的引用关系\n当前节点无引用其他节点\n'
-      }
-
-      // 添加反向引用信息
-      if (incomingReferences.length > 0) {
-        contextInfo += '\n## 被其他节点引用的情况\n'
-        incomingReferences.forEach((incomingRef) => {
-          contextInfo += `\n### 来自节点 - ${incomingRef.fromNode.name}\n`
-          contextInfo += `- **引用类型**: ${incomingRef.reference.type}\n`
-          contextInfo += `- **引用强度**: ${incomingRef.reference.strength}\n`
-          if (incomingRef.reference.description) {
-            contextInfo += `- **引用描述**: ${incomingRef.reference.description}\n`
-          }
-          contextInfo += `- **来源节点描述**: ${incomingRef.fromNode.description || '无'}\n`
-          contextInfo += '\n'
-        })
-      } else {
-        contextInfo += '\n## 被其他节点引用的情况\n当前节点未被其他节点引用\n'
-      }
-
       return contextInfo
     }
 
@@ -420,8 +333,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       ancestorChain,
       siblings,
       existingChildren,
-      currentReferences,
-      incomingReferences,
       // 新增：获取完整的上下文信息
       getFullContextInformation,
       // 新增：获取单个节点的完整信息
@@ -449,7 +360,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const childrenNames = await objectAIService.generateChildrenNames(context, effectivePrompt)
 
@@ -458,6 +374,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         id: uuidv4(),
         name,
         description: '',
+        type: 'entity', // 默认类型为实体
         parentId: selectedNode.id,
         children: [],
         expanded: false,
@@ -471,24 +388,11 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
       // 批量添加节点
       newNodes.forEach((node) => {
-        dispatch({
-          type: 'ADD_OBJECT_NODE',
-          payload: {
-            chatId: chat.id,
-            node,
-            parentId: selectedNode.id
-          }
-        })
+        stores.object.addObjectNode(chat.id, node, selectedNode.id)
       })
 
       // 展开当前节点以显示新生成的子节点
-      dispatch({
-        type: 'EXPAND_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id
-        }
-      })
+      stores.object.expandObjectNode(chat.id, selectedNode.id)
 
       message.success(`成功生成了 ${newNodes.length} 个子节点`)
       setPrompt('')
@@ -520,19 +424,17 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const description = await objectAIService.generateNodeDescription(context, effectivePrompt)
 
       // 更新节点描述
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { description }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { description })
 
       message.success('成功生成了节点描述')
       setPrompt('')
@@ -564,7 +466,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
+      )
 
       const properties = await objectAIService.generateObjectProperties(context, effectivePrompt)
 
@@ -572,14 +479,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       const updatedProperties = { ...selectedNode.properties, ...properties }
 
       // 更新节点属性
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { properties: updatedProperties }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { properties: updatedProperties })
 
       message.success(`成功生成了 ${Object.keys(properties).length} 个属性`)
       setPrompt('')
@@ -591,8 +491,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     }
   }
 
-  // 生成引用关系
-  const handleGenerateReferences = async () => {
+  // 生成关系节点
+  const handleGenerateRelations = async () => {
     if (!selectedNode) return
 
     const llmConfig = getLLMConfig()
@@ -611,33 +511,65 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       }
 
       const aiService = createAIService(llmConfig)
-      const objectAIService = createObjectAIService(llmConfig, aiService, dispatch, chat.id)
-
-      const references = await objectAIService.generateObjectReferences(
-        context,
-        effectivePrompt,
-        nodes
+      const objectAIService = createObjectAIService(
+        llmConfig,
+        aiService,
+        createDispatchAdapter(),
+        chat.id
       )
 
-      // 合并新引用到现有引用
-      const existingReferences = selectedNode.references || []
-      const updatedReferences = [...existingReferences, ...references]
+      // 获取可用的目标节点（排除当前节点和关系节点）
+      const availableNodes = Object.values(nodes).filter(
+        (node) => node.id !== selectedNode.id && node.type !== 'relation'
+      )
 
-      // 更新节点引用
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { references: updatedReferences }
+      if (availableNodes.length === 0) {
+        message.warning('没有可用的目标节点来创建关系')
+        return
+      }
+
+      // 选择一个或多个目标节点来创建关系
+      // 这里简化为选择所有可用节点，实际应用中可能需要用户选择
+      let totalRelationNodes = 0
+      let totalNodeUpdates = 0
+
+      // 随机选择3个目标节点
+      const randomNodes = [...availableNodes].sort(() => Math.random() - 0.5).slice(0, 3)
+
+      for (const targetNode of randomNodes) {
+        try {
+          const result = await objectAIService.generateRelationNodes(
+            context,
+            selectedNode.id,
+            targetNode.id,
+            effectivePrompt,
+            nodes
+          )
+
+          // 添加生成的关系节点到对象数据
+          result.relationNodes.forEach((relationNode) => {
+            stores.object.addObjectNode(chat.id, relationNode)
+          })
+
+          // 更新源节点和目标节点的连接
+          result.nodeUpdates.forEach((update) => {
+            stores.object.addNodeConnection(chat.id, update.nodeId, update.connection)
+          })
+
+          totalRelationNodes += result.relationNodes.length
+          totalNodeUpdates += result.nodeUpdates.length
+        } catch (error) {
+          console.error(`生成与${targetNode.name}的关系失败:`, error)
         }
-      })
+      }
 
-      message.success(`成功生成了 ${references.length} 个引用关系`)
+      message.success(
+        `成功生成了 ${totalRelationNodes} 个关系节点，更新了 ${totalNodeUpdates} 个节点连接`
+      )
       setPrompt('')
     } catch (error) {
-      console.error('生成引用关系失败:', error)
-      message.error('生成引用关系失败，请稍后重试')
+      console.error('生成关系节点失败:', error)
+      message.error('生成关系节点失败，请稍后重试')
     } finally {
       setIsGenerating(false)
     }
@@ -673,8 +605,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return handleGenerateDescription
       case 'properties':
         return handleGenerateProperties
-      case 'references':
-        return handleGenerateReferences
+      case 'relations':
+        return handleGenerateRelations
       default:
         return handleGenerate
     }
@@ -698,10 +630,10 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
 提示：可以直接点击"生成属性"按钮，使用默认提示词
 按 Ctrl+Enter 快速生成`
-      case 'references':
-        return `描述您希望生成的引用关系...
+      case 'relations':
+        return `描述您希望生成的关系节点...
 
-提示：可以直接点击"生成引用关系"按钮，使用默认提示词
+提示：可以直接点击"生成关系节点"按钮，使用默认提示词
 按 Ctrl+Enter 快速生成`
       default:
         return ''
@@ -719,8 +651,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return '生成描述'
       case 'properties':
         return '生成属性'
-      case 'references':
-        return '生成引用关系'
+      case 'relations':
+        return '生成关系节点'
       default:
         return '生成'
     }
@@ -782,8 +714,8 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                 children: null
               },
               {
-                key: 'references',
-                label: '生成引用关系',
+                key: 'relations',
+                label: '生成关系节点',
                 children: null
               }
             ]}

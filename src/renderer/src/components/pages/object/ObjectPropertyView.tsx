@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { Button, Typography, Card, Input, Space, Tooltip, Empty, Collapse } from 'antd'
 import { InfoCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
-import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types'
-import { useAppContext } from '../../../store/AppContext'
+import { ObjectChat } from '../../../types/type'
+import { useAppStores } from '../../../stores'
 import PropertyTableEditor from './PropertyTableEditor'
-import ReferenceEditor from './ReferenceEditor'
+import ConnectionEditor from './ConnectionEditor'
+import RelationManager from './RelationManager'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -14,12 +15,12 @@ interface ObjectPropertyViewProps {
 }
 
 const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
-  const { state, dispatch } = useAppContext()
+  const stores = useAppStores()
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
 
   // 从状态中获取对象聊天数据
-  const chat = state.pages.find((p) => p.id === chatId) as ObjectChat | undefined
+  const chat = stores.pages.findPageById(chatId) as ObjectChat | undefined
 
   if (!chat || chat.type !== 'object') {
     return <div>数据加载错误</div>
@@ -51,14 +52,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       }
 
       // 更新节点
-      dispatch({
-        type: 'UPDATE_OBJECT_NODE',
-        payload: {
-          chatId: chat.id,
-          nodeId: selectedNode.id,
-          updates: { [editingField]: parsedValue }
-        }
-      })
+      stores.object.updateObjectNode(chat.id, selectedNode.id, { [editingField]: parsedValue })
 
       setEditingField(null)
       setEditValue('')
@@ -77,38 +71,32 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
   const handlePropertiesSave = (properties: { [key: string]: any }) => {
     if (!selectedNode) return
 
-    dispatch({
-      type: 'UPDATE_OBJECT_NODE',
-      payload: {
-        chatId: chat.id,
-        nodeId: selectedNode.id,
-        updates: { properties }
-      }
-    })
+    stores.object.updateObjectNode(chat.id, selectedNode.id, { properties })
   }
 
-  // 保存引用
-  const handleReferencesSave = (references: any[]) => {
+  // 保存连接
+  const handleConnectionsSave = (connections: any[]) => {
     if (!selectedNode) return
 
-    dispatch({
-      type: 'UPDATE_OBJECT_NODE',
-      payload: {
-        chatId: chat.id,
-        nodeId: selectedNode.id,
-        updates: { references }
-      }
-    })
+    stores.object.updateObjectNode(chat.id, selectedNode.id, { connections })
   }
 
-  // AI生成引用关系
-  const handleGenerateReferences = async () => {
+  // 创建关系节点
+  const handleCreateRelation = async (
+    sourceNodeId: string,
+    targetNodeId: string,
+    prompt: string
+  ) => {
     if (!selectedNode) return
 
-    // 这里可以调用AI生成引用关系的逻辑
-    // 为了简化，这里先跳转到AI生成器的references选项卡
-    // 用户可以在AI生成器中进行生成
-    console.log('AI生成引用关系功能需要在AI生成器中实现')
+    // 这里需要调用AI服务生成关系节点
+    console.log('创建关系节点:', { sourceNodeId, targetNodeId, prompt })
+    // 后续在AI生成器中实现
+  }
+
+  // 删除节点
+  const handleDeleteNode = (nodeId: string) => {
+    stores.object.deleteObjectNode(chat.id, nodeId)
   }
 
   // 格式化显示值
@@ -117,7 +105,14 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
       return 'null'
     }
     if (typeof value === 'object') {
-      return JSON.stringify(value, null, 2)
+      try {
+        return JSON.stringify(value, null, 2)
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes('circular')) {
+          return '[Object with circular reference]'
+        }
+        return '[Object - Unable to stringify]'
+      }
     }
     return String(value)
   }
@@ -224,6 +219,7 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
 
           <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
             {renderPropertyItem('名称', selectedNode.name, 'name', true)}
+            {renderPropertyItem('类型', selectedNode.type, 'type', true)}
             {renderPropertyItem('描述', selectedNode.description, 'description', true)}
           </div>
         </Card>
@@ -239,16 +235,25 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
           />
         </Card>
 
-        {/* 引用关系 */}
-        <Card size="small" style={{ marginBottom: '16px' }}>
-          <ReferenceEditor
-            references={selectedNode.references || []}
+        {/* 节点连接 */}
+        <div style={{ marginBottom: '16px' }}>
+          <ConnectionEditor
+            connections={selectedNode.connections || []}
             allNodes={nodes}
             currentNodeId={selectedNode.id}
-            onSave={handleReferencesSave}
-            onGenerateAI={handleGenerateReferences}
+            onSave={handleConnectionsSave}
           />
-        </Card>
+        </div>
+
+        {/* 关系管理 */}
+        <div style={{ marginBottom: '16px' }}>
+          <RelationManager
+            allNodes={nodes}
+            currentNodeId={selectedNode.id}
+            onCreateRelation={handleCreateRelation}
+            onDeleteNode={handleDeleteNode}
+          />
+        </div>
 
         {/* 元数据 */}
         {selectedNode.metadata && (
@@ -259,8 +264,8 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
             <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
               {renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
               {renderPropertyItem('来源', selectedNode.metadata.source)}
-              {selectedNode.metadata.lastModified &&
-                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.lastModified))}
+              {selectedNode.metadata.updatedAt &&
+                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.updatedAt))}
             </div>
           </Card>
         )}

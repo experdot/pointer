@@ -67,9 +67,7 @@ class AIHandler {
               role: msg.role,
               content: msg.content
             })),
-            stream: true,
-            temperature: 0.7,
-            max_tokens: 2000
+            stream: true
           }),
           signal: abortController.signal
         }
@@ -226,9 +224,7 @@ class AIHandler {
             messages: request.messages.map((msg) => ({
               role: msg.role,
               content: msg.content
-            })),
-            temperature: 0.7,
-            max_tokens: 2000
+            }))
           })
         }
       )

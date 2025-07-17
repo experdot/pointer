@@ -1,7 +1,6 @@
 import React from 'react'
 import { ConfigProvider, theme, App as AntdApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { AppProvider } from './store/AppContext'
 import Layout from './components/Layout'
 import './App.css'
 
@@ -25,9 +24,7 @@ function AppContent(): React.JSX.Element {
 
 function App(): React.JSX.Element {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AppContent />
   )
 }
 

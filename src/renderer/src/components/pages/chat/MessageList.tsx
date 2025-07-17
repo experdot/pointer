@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react'
-import { ChatMessage, LLMConfig } from '../../../types'
+import { ChatMessage, LLMConfig } from '../../../types/type'
 import MessageItem from './MessageItem'
 import WelcomeMessage from './WelcomeMessage'
 import { MessageTree } from './messageTree'

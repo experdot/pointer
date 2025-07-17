@@ -1,8 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { App } from 'antd'
 import { v4 as uuidv4 } from 'uuid'
-import { useAppContext } from '../../../store/AppContext'
-import { ChatMessage, LLMConfig, AITask } from '../../../types'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useSettingsStore } from '../../../stores/settingsStore'
+import { useMessagesStore } from '../../../stores/messagesStore'
+import { useAITasksStore } from '../../../stores/aiTasksStore'
+import { ChatMessage, LLMConfig, AITask } from '../../../types/type'
 import { createAIService } from '../../../services/aiService'
 import { MessageTree } from './messageTree'
 
@@ -23,16 +26,25 @@ interface ChatLogicProps {
 }
 
 export default function ChatLogic({ chatId, children }: ChatLogicProps) {
-  const { state, dispatch } = useAppContext()
+  const { pages } = usePagesStore()
+  const { settings } = useSettingsStore()
+  const {
+    addMessageToParent,
+    updateMessageContent,
+    updateMessageReasoning,
+    completeMessageStreaming,
+    clearStreamingMessage,
+    toggleMessageFavorite,
+    removeMessage
+  } = useMessagesStore()
+  const { addTask, updateTask, removeTask } = useAITasksStore()
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(
-    state.settings.defaultLLMId
-  )
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(settings.defaultLLMId)
   // 使用 Map 管理多个并行的 AI 服务实例
   const [activeAIServices, setActiveAIServices] = useState<Map<string, any>>(new Map())
   const { message } = App.useApp()
 
-  const chat = state.pages.find((c) => c.id === chatId)
+  const chat = pages.find((c) => c.id === chatId)
 
   // 创建消息树实例
   const messageTree = useMemo(() => {
@@ -41,19 +53,16 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
   }, [chat?.messages])
 
   // Helper function to clear streaming message
-  const clearStreamingMessage = useCallback(() => {
-    dispatch({
-      type: 'CLEAR_STREAMING_MESSAGE',
-      payload: { chatId }
-    })
-  }, [chatId, dispatch])
+  const clearStreamingMessageHelper = useCallback(() => {
+    clearStreamingMessage(chatId)
+  }, [chatId, clearStreamingMessage])
 
   const getLLMConfig = useCallback(
     (modelId?: string): LLMConfig | null => {
-      const targetModelId = modelId || selectedModel || state.settings.defaultLLMId
-      return state.settings.llmConfigs?.find((config) => config.id === targetModelId) || null
+      const targetModelId = modelId || selectedModel || settings.defaultLLMId
+      return settings.llmConfigs?.find((config) => config.id === targetModelId) || null
     },
-    [selectedModel, state.settings.defaultLLMId, state.settings.llmConfigs]
+    [selectedModel, settings.defaultLLMId, settings.llmConfigs]
   )
 
   const handleModelChange = useCallback((modelId: string) => {
@@ -61,7 +70,13 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
   }, [])
 
   const sendAIMessage = useCallback(
-    async (messages: ChatMessage[], llmConfig: LLMConfig, parentId?: string, taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat', taskContext?: any): Promise<string> => {
+    async (
+      messages: ChatMessage[],
+      llmConfig: LLMConfig,
+      parentId?: string,
+      taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat',
+      taskContext?: any
+    ): Promise<string> => {
       const aiService = createAIService(llmConfig)
       const messageId = uuidv4()
 
@@ -74,7 +89,14 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         requestId: aiService.id, // 使用AI服务的requestId
         type: taskType,
         status: 'running',
-        title: taskType === 'chat' ? '发送消息' : taskType === 'retry' ? '重试消息' : taskType === 'edit_resend' ? '编辑重发' : '模型切换',
+        title:
+          taskType === 'chat'
+            ? '发送消息'
+            : taskType === 'retry'
+              ? '重试消息'
+              : taskType === 'edit_resend'
+                ? '编辑重发'
+                : '模型切换',
         description: `使用模型 ${llmConfig.name} 生成回复`,
         chatId,
         messageId,
@@ -83,10 +105,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         context: taskContext
       }
 
-      dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
+      addTask(task)
 
       return new Promise((resolve, reject) => {
         const streamingTimestamp = Date.now()
@@ -102,10 +121,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           parentId
         }
 
-        dispatch({
-          type: 'ADD_MESSAGE_TO_PARENT',
-          payload: { chatId, message: initialAiMessage, parentId }
-        })
+        addMessageToParent(chatId, initialAiMessage, parentId)
 
         let streamingContent = ''
         let streamingReasoning = ''
@@ -114,50 +130,22 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           onChunk: (chunk: string) => {
             streamingContent += chunk
             // 更新现有消息的内容
-            dispatch({
-              type: 'UPDATE_MESSAGE_CONTENT',
-              payload: {
-                chatId,
-                messageId,
-                content: streamingContent
-              }
-            })
+            updateMessageContent(chatId, messageId, streamingContent)
           },
           onReasoning: (reasoning_content: string) => {
             streamingReasoning += reasoning_content
             // 实时更新reasoning内容
-            dispatch({
-              type: 'UPDATE_MESSAGE_REASONING',
-              payload: {
-                chatId,
-                messageId,
-                reasoning_content: streamingReasoning
-              }
-            })
+            updateMessageReasoning(chatId, messageId, streamingReasoning)
           },
           onComplete: (fullResponse: string, reasoning_content?: string) => {
             const finalContent = fullResponse || streamingContent
             const finalReasoning = reasoning_content || streamingReasoning || undefined
             // 标记消息为完成状态
-            dispatch({
-              type: 'COMPLETE_MESSAGE_STREAMING_WITH_REASONING',
-              payload: {
-                chatId,
-                messageId,
-                content: finalContent,
-                reasoning_content: finalReasoning
-              }
-            })
+            completeMessageStreaming(chatId, messageId, finalContent, finalReasoning)
             // 更新任务状态为完成
-            dispatch({
-              type: 'UPDATE_AI_TASK',
-              payload: {
-                taskId: messageId,
-                updates: {
-                  status: 'completed',
-                  endTime: Date.now()
-                }
-              }
+            updateTask(messageId, {
+              status: 'completed',
+              endTime: Date.now()
             })
             // 从活跃服务列表中移除
             setActiveAIServices((prev) => {
@@ -169,21 +157,12 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           },
           onError: (error: Error) => {
             // 删除出错的消息
-            dispatch({
-              type: 'REMOVE_MESSAGE',
-              payload: { chatId, messageId }
-            })
+            removeMessage(chatId, messageId)
             // 更新任务状态为失败
-            dispatch({
-              type: 'UPDATE_AI_TASK',
-              payload: {
-                taskId: messageId,
-                updates: {
-                  status: 'failed',
-                  endTime: Date.now(),
-                  error: error.message
-                }
-              }
+            updateTask(messageId, {
+              status: 'failed',
+              endTime: Date.now(),
+              error: error.message
             })
             // 从活跃服务列表中移除
             setActiveAIServices((prev) => {
@@ -196,7 +175,16 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         })
       })
     },
-    [chatId, dispatch]
+    [
+      chatId,
+      addTask,
+      addMessageToParent,
+      updateMessageContent,
+      updateMessageReasoning,
+      completeMessageStreaming,
+      updateTask,
+      removeMessage
+    ]
   )
 
   const handleSendMessage = useCallback(
@@ -210,7 +198,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       }
 
       // Clear any existing streaming message
-      clearStreamingMessage()
+      clearStreamingMessageHelper()
 
       const userMessage: ChatMessage = {
         id: uuidv4(),
@@ -232,18 +220,13 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         parentId: parentId || null
       }
 
-      dispatch({
-        type: 'ADD_MESSAGE_TO_PARENT',
-        payload: { chatId, message: userMessageWithParent, parentId }
-      })
+      addMessageToParent(chatId, userMessageWithParent, parentId)
 
       // Update chat title if it's the first message
       if (chat && currentMessages.length === 0) {
         const title = content.trim().slice(0, 50) + (content.trim().length > 50 ? '...' : '')
-        dispatch({
-          type: 'UPDATE_CHAT',
-          payload: { id: chatId, updates: { title } }
-        })
+        const { updatePage } = usePagesStore.getState()
+        updatePage(chatId, { title })
       }
 
       setIsLoading(true)
@@ -265,7 +248,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         setIsLoading(false)
       }
     },
-    [isLoading, getLLMConfig, chatId, chat, dispatch, sendAIMessage, clearStreamingMessage]
+    [isLoading, getLLMConfig, chatId, chat, sendAIMessage, clearStreamingMessageHelper, addMessageToParent]
   )
 
   const handleRetryMessage = useCallback(
@@ -279,7 +262,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       }
 
       // Clear any existing streaming message
-      clearStreamingMessage()
+      clearStreamingMessageHelper()
 
       // 找到要重试的消息
       const messageToRetry = chat.messages.find((msg) => msg.id === messageId)
@@ -324,35 +307,21 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         setIsLoading(false)
       }
     },
-    [
-      chat,
-      isLoading,
-      getLLMConfig,
-      chatId,
-      dispatch,
-      sendAIMessage,
-      clearStreamingMessage,
-      messageTree
-    ]
+    [chat, isLoading, getLLMConfig, chatId, sendAIMessage, clearStreamingMessageHelper, messageTree]
   )
 
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!chat) return
 
+      const { updatePage } = usePagesStore.getState()
       const updatedMessages = chat.messages.map((msg) =>
         msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
       )
 
-      dispatch({
-        type: 'UPDATE_CHAT',
-        payload: {
-          id: chatId,
-          updates: { messages: updatedMessages }
-        }
-      })
+      updatePage(chatId, { messages: updatedMessages })
     },
-    [chat, chatId, dispatch]
+    [chat, chatId]
   )
 
   const handleEditAndResendMessage = useCallback(
@@ -366,7 +335,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       }
 
       // Clear any existing streaming message
-      clearStreamingMessage()
+      clearStreamingMessageHelper()
 
       // 找到要编辑的消息
       const targetMessage = chat.messages.find((msg) => msg.id === messageId)
@@ -386,10 +355,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           }
 
           // 添加编辑后的用户消息
-          dispatch({
-            type: 'ADD_MESSAGE_TO_PARENT',
-            payload: { chatId, message: editedUserMessage, parentId: targetMessage.parentId }
-          })
+          addMessageToParent(chatId, editedUserMessage, targetMessage.parentId)
 
           // 获取到编辑消息父节点为止的消息历史
           const currentPath = chat.currentPath || messageTree.getCurrentPath()
@@ -455,10 +421,10 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       isLoading,
       getLLMConfig,
       chatId,
-      dispatch,
       sendAIMessage,
-      clearStreamingMessage,
-      messageTree
+      clearStreamingMessageHelper,
+      messageTree,
+      addMessageToParent
     ]
   )
 
@@ -466,33 +432,23 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
     (messageId: string) => {
       if (!chat) return
 
-      const updatedMessages = chat.messages.map((msg) =>
-        msg.id === messageId ? { ...msg, isFavorited: !msg.isFavorited } : msg
-      )
-
-      dispatch({
-        type: 'UPDATE_CHAT',
-        payload: {
-          id: chatId,
-          updates: { messages: updatedMessages }
-        }
-      })
+      toggleMessageFavorite(chatId, messageId)
     },
-    [chat, chatId, dispatch]
+    [chat, chatId, toggleMessageFavorite]
   )
 
   const handleModelChangeForMessage = useCallback(
     async (messageId: string, newModelId: string) => {
       if (!chat || isLoading) return
 
-      const llmConfig = state.settings.llmConfigs?.find((config) => config.id === newModelId)
+      const llmConfig = settings.llmConfigs?.find((config) => config.id === newModelId)
       if (!llmConfig) {
         message.error('所选模型配置不存在')
         return
       }
 
       // Clear any existing streaming message
-      clearStreamingMessage()
+      clearStreamingMessageHelper()
 
       // 找到要更改模型的消息
       const targetMessage = chat.messages.find((msg) => msg.id === messageId)
@@ -536,10 +492,9 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       chat,
       isLoading,
       chatId,
-      dispatch,
       sendAIMessage,
-      state.settings.llmConfigs,
-      clearStreamingMessage,
+      settings.llmConfigs,
+      clearStreamingMessageHelper,
       messageTree
     ]
   )
@@ -549,20 +504,14 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
     activeAIServices.forEach((aiService, messageId) => {
       aiService.stopStreaming()
       // 更新对应的任务状态
-      dispatch({
-        type: 'UPDATE_AI_TASK',
-        payload: {
-          taskId: messageId,
-          updates: {
-            status: 'cancelled',
-            endTime: Date.now()
-          }
-        }
+      updateTask(messageId, {
+        status: 'cancelled',
+        endTime: Date.now()
       })
     })
     setActiveAIServices(new Map())
     setIsLoading(false)
-  }, [activeAIServices, dispatch])
+  }, [activeAIServices, updateTask])
 
   return children({
     isLoading,

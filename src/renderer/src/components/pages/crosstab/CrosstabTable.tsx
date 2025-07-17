@@ -1,19 +1,16 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Card, Typography, Button, Tooltip, Space, Tag, Dropdown } from 'antd'
-import { 
-  TableOutlined, 
-  FullscreenOutlined, 
+import {
+  TableOutlined,
+  FullscreenOutlined,
   FullscreenExitOutlined,
   PlayCircleOutlined,
   LoadingOutlined,
   DeleteOutlined,
   CommentOutlined
 } from '@ant-design/icons'
-import { CrosstabMetadata, CrosstabMultiDimensionData } from '../../../types'
-import { 
-  generateAxisCombinations, 
-  generateDimensionPath, 
-} from './CrosstabUtils'
+import { CrosstabMetadata, CrosstabMultiDimensionData } from '../../../types/type'
+import { generateAxisCombinations, generateDimensionPath } from './CrosstabUtils'
 import './crosstab-table.css'
 
 const { Text } = Typography
@@ -58,7 +55,10 @@ export default function CrosstabTable({
   // 初始化选中的值维度
   useEffect(() => {
     if (metadata && metadata.valueDimensions.length > 0) {
-      if (!selectedValueDimension || !metadata.valueDimensions.find(d => d.id === selectedValueDimension)) {
+      if (
+        !selectedValueDimension ||
+        !metadata.valueDimensions.find((d) => d.id === selectedValueDimension)
+      ) {
         setSelectedValueDimension(metadata.valueDimensions[0].id)
       }
     }
@@ -75,16 +75,16 @@ export default function CrosstabTable({
 
     // 生成网格数据
     const gridData: { [key: string]: string } = {}
-    
+
     verticalCombinations.forEach((vCombination) => {
       const vPath = generateDimensionPath(vCombination)
       horizontalCombinations.forEach((hCombination) => {
         const hPath = generateDimensionPath(hCombination)
         const cellKey = `${hPath}|${vPath}`
         const cellData = tableData[cellKey]
-        
+
         // 数据处理逻辑
-        
+
         if (cellData && selectedValueDimension) {
           gridData[cellKey] = cellData[selectedValueDimension] || ''
         } else if (cellData && !selectedValueDimension && metadata.valueDimensions.length > 0) {
@@ -169,9 +169,7 @@ export default function CrosstabTable({
     const menuItems: any[] = [
       {
         key: 'generate',
-        icon: React.createElement(
-          isGeneratingRow === vPath ? LoadingOutlined : PlayCircleOutlined
-        ),
+        icon: React.createElement(isGeneratingRow === vPath ? LoadingOutlined : PlayCircleOutlined),
         label: hasRowData ? '重新生成此行' : '生成此行',
         onClick: () => onGenerateRow && onGenerateRow(vPath),
         disabled: isGeneratingRow !== null
@@ -247,7 +245,7 @@ export default function CrosstabTable({
           </Space>
         </div>
       )}
-      
+
       {/* 全屏按钮 */}
       <Tooltip title={isFullscreen ? '退出全屏' : '全屏显示'}>
         <Button
@@ -265,7 +263,7 @@ export default function CrosstabTable({
   const colDimensions = metadata.horizontalDimensions.length
   const gridCols = colDimensions + horizontalCombinations.length
   const gridRows = rowDimensions + verticalCombinations.length
-  
+
   // 调试信息
   console.log('Grid layout params:', {
     rowDimensions,
@@ -282,7 +280,7 @@ export default function CrosstabTable({
       extra={extraContent}
       className={`tab-card table-card ${isFullscreen ? 'fullscreen-card' : ''}`}
     >
-      <div 
+      <div
         className="crosstab-grid"
         style={{
           display: 'grid',
@@ -309,32 +307,31 @@ export default function CrosstabTable({
             justifyContent: 'center'
           }}
         >
-          <span style={{ fontSize: '10px', color: '#999', transform: 'rotate(-45deg)' }}>
-            维度
-          </span>
+          <span style={{ fontSize: '10px', color: '#999', transform: 'rotate(-45deg)' }}>维度</span>
         </div>
 
-                {/* 列头区域 */}
+        {/* 列头区域 */}
         {(() => {
           const renderedHeaders = new Set<string>()
           const headerElements: React.ReactNode[] = []
-          
+
           // 为每个维度层级生成表头
           for (let dimIndex = 0; dimIndex < metadata.horizontalDimensions.length; dimIndex++) {
             const dimension = metadata.horizontalDimensions[dimIndex]
             const remainingDimensions = metadata.horizontalDimensions.slice(dimIndex + 1)
             const isLastDimension = dimIndex === metadata.horizontalDimensions.length - 1
-            
+
             if (isLastDimension) {
               // 叶子节点：为每个具体的组合生成表头
               horizontalCombinations.forEach((hCombination, colIndex) => {
                 const value = hCombination[dimIndex]
                 const headerKey = `${dimIndex}-${colIndex}-${value}`
                 const hPath = generateDimensionPath(hCombination)
-                const hasColumnData = Object.keys(tableData).some(cellKey => 
-                  cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
+                const hasColumnData = Object.keys(tableData).some(
+                  (cellKey) =>
+                    cellKey.startsWith(hPath + '|') && Object.keys(tableData[cellKey]).length > 0
                 )
-                
+
                 headerElements.push(
                   <div
                     key={headerKey}
@@ -365,16 +362,16 @@ export default function CrosstabTable({
             } else {
               // 非叶子节点：为每个维度值生成合并的表头
               const spanCount = remainingDimensions.reduce((acc, dim) => acc * dim.values.length, 1)
-              
+
               dimension.values.forEach((value, valueIndex) => {
                 const headerKey = `${dimIndex}-${value}`
-                
+
                 if (!renderedHeaders.has(headerKey)) {
                   renderedHeaders.add(headerKey)
-                  
+
                   // 计算起始列位置
                   const startCol = colDimensions + 1 + valueIndex * spanCount
-                  
+
                   headerElements.push(
                     <div
                       key={headerKey}
@@ -395,9 +392,7 @@ export default function CrosstabTable({
               })
             }
           }
-          
 
-          
           return headerElements
         })()}
 
@@ -405,13 +400,13 @@ export default function CrosstabTable({
         {(() => {
           const renderedHeaders = new Set<string>()
           const headerElements: React.ReactNode[] = []
-          
+
           // 为每个维度层级生成表头
           for (let dimIndex = 0; dimIndex < metadata.verticalDimensions.length; dimIndex++) {
             const dimension = metadata.verticalDimensions[dimIndex]
             const remainingDimensions = metadata.verticalDimensions.slice(dimIndex + 1)
             const isLastDimension = dimIndex === metadata.verticalDimensions.length - 1
-            
+
             if (isLastDimension) {
               // 叶子节点：为每个具体的组合生成表头
               verticalCombinations.forEach((vCombination, rowIndex) => {
@@ -423,7 +418,7 @@ export default function CrosstabTable({
                   const cellKey = `${hPath}|${vPath}`
                   return tableData[cellKey] && Object.keys(tableData[cellKey]).length > 0
                 })
-                
+
                 headerElements.push(
                   <div
                     key={headerKey}
@@ -454,16 +449,16 @@ export default function CrosstabTable({
             } else {
               // 非叶子节点：为每个维度值生成合并的表头
               const spanCount = remainingDimensions.reduce((acc, dim) => acc * dim.values.length, 1)
-              
+
               dimension.values.forEach((value, valueIndex) => {
                 const headerKey = `${dimIndex}-${value}`
-                
+
                 if (!renderedHeaders.has(headerKey)) {
                   renderedHeaders.add(headerKey)
-                  
+
                   // 计算起始行位置
                   const startRow = rowDimensions + 1 + valueIndex * spanCount
-                  
+
                   headerElements.push(
                     <div
                       key={headerKey}
@@ -484,16 +479,14 @@ export default function CrosstabTable({
               })
             }
           }
-          
 
-          
           return headerElements
         })()}
 
         {/* 数据单元格区域 */}
         {verticalCombinations.map((vCombination, rowIndex) => {
           const vPath = generateDimensionPath(vCombination)
-          
+
           return horizontalCombinations.map((hCombination, colIndex) => {
             const hPath = generateDimensionPath(hCombination)
             const cellKey = `${hPath}|${vPath}`

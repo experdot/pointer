@@ -1,4 +1,4 @@
-import { ChatMessage, LLMConfig } from '../types'
+import { ChatMessage, LLMConfig } from '../types/type'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface StreamingResponse {

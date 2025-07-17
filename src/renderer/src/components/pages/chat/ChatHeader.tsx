@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { Button, Dropdown, Modal, Checkbox, Space, App } from 'antd'
 import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { ChatMessage } from '../../../types'
+import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
 
 interface ChatHeaderProps {

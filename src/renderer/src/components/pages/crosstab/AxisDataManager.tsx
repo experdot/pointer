@@ -1,15 +1,5 @@
 import React, { useState } from 'react'
-import { 
-  Card, 
-  Button, 
-  Input, 
-  Space, 
-  Popconfirm, 
-  Typography, 
-  List, 
-  Tooltip,
-  message
-} from 'antd'
+import { Card, Button, Input, Space, Popconfirm, Typography, List, Tooltip, message } from 'antd'
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -19,9 +9,21 @@ import {
   SaveOutlined,
   CloseOutlined
 } from '@ant-design/icons'
-import { CrosstabMetadata, CrosstabAxisDimension } from '../../../types'
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CrosstabMetadata, CrosstabAxisDimension } from '../../../types/type'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -29,7 +31,11 @@ const { Text } = Typography
 
 interface AxisDataManagerProps {
   metadata: CrosstabMetadata | null
-  onUpdateDimension: (dimensionId: string, dimensionType: 'horizontal' | 'vertical', updates: Partial<CrosstabAxisDimension>) => void
+  onUpdateDimension: (
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical',
+    updates: Partial<CrosstabAxisDimension>
+  ) => void
   onGenerateDimensionValues: (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => void
   isGeneratingDimensionValues?: { [dimensionId: string]: boolean }
 }
@@ -59,14 +65,9 @@ const SortableItem: React.FC<SortableItemProps> = ({
   editingValue,
   setEditingValue
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -107,12 +108,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
             </Space>
           ) : (
             <Space>
-              <Button
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={onEdit}
-              />
+              <Button type="text" size="small" icon={<EditOutlined />} onClick={onEdit} />
               <Popconfirm
                 title="确定要删除这个值吗？"
                 onConfirm={onDelete}
@@ -133,9 +129,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
         <List.Item.Meta
           title={
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ marginRight: 8, color: '#666', fontSize: '12px' }}>
-                {index + 1}.
-              </span>
+              <span style={{ marginRight: 8, color: '#666', fontSize: '12px' }}>{index + 1}.</span>
               {isEditing ? (
                 <Input
                   size="small"
@@ -162,7 +156,10 @@ export default function AxisDataManager({
   onGenerateDimensionValues,
   isGeneratingDimensionValues
 }: AxisDataManagerProps) {
-  const [editingItem, setEditingItem] = useState<{ dimensionId: string; valueIndex: number } | null>(null)
+  const [editingItem, setEditingItem] = useState<{
+    dimensionId: string
+    valueIndex: number
+  } | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [newValueInputs, setNewValueInputs] = useState<{ [dimensionId: string]: string }>({})
 
@@ -173,15 +170,23 @@ export default function AxisDataManager({
     })
   )
 
-  const handleDragEnd = (event: any, dimensionId: string, dimensionType: 'horizontal' | 'vertical') => {
+  const handleDragEnd = (
+    event: any,
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical'
+  ) => {
     const { active, over } = event
 
     if (active.id !== over.id) {
       const currentDimension = getDimensionById(dimensionId, dimensionType)
       if (currentDimension) {
-        const oldIndex = currentDimension.values.findIndex((_, index) => `${dimensionId}-${index}` === active.id)
-        const newIndex = currentDimension.values.findIndex((_, index) => `${dimensionId}-${index}` === over.id)
-        
+        const oldIndex = currentDimension.values.findIndex(
+          (_, index) => `${dimensionId}-${index}` === active.id
+        )
+        const newIndex = currentDimension.values.findIndex(
+          (_, index) => `${dimensionId}-${index}` === over.id
+        )
+
         const newValues = arrayMove(currentDimension.values, oldIndex, newIndex)
         onUpdateDimension(dimensionId, dimensionType, { values: newValues })
       }
@@ -193,7 +198,11 @@ export default function AxisDataManager({
     setEditingValue(currentValue)
   }
 
-  const handleEditSave = (dimensionId: string, dimensionType: 'horizontal' | 'vertical', valueIndex: number) => {
+  const handleEditSave = (
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical',
+    valueIndex: number
+  ) => {
     if (editingValue.trim()) {
       const currentDimension = getDimensionById(dimensionId, dimensionType)
       if (currentDimension) {
@@ -212,7 +221,11 @@ export default function AxisDataManager({
     setEditingValue('')
   }
 
-  const handleDeleteDimensionValue = (dimensionId: string, dimensionType: 'horizontal' | 'vertical', valueIndex: number) => {
+  const handleDeleteDimensionValue = (
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical',
+    valueIndex: number
+  ) => {
     const currentDimension = getDimensionById(dimensionId, dimensionType)
     if (currentDimension) {
       const newValues = currentDimension.values.filter((_, index) => index !== valueIndex)
@@ -221,26 +234,36 @@ export default function AxisDataManager({
     }
   }
 
-  const handleAddDimensionValue = (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => {
+  const handleAddDimensionValue = (
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical'
+  ) => {
     const newValue = newValueInputs[dimensionId]
     if (newValue && newValue.trim()) {
       const currentDimension = getDimensionById(dimensionId, dimensionType)
       if (currentDimension) {
         const newValues = [...currentDimension.values, newValue.trim()]
         onUpdateDimension(dimensionId, dimensionType, { values: newValues })
-        setNewValueInputs(prev => ({ ...prev, [dimensionId]: '' }))
+        setNewValueInputs((prev) => ({ ...prev, [dimensionId]: '' }))
         message.success('添加成功')
       }
     }
   }
 
-  const getDimensionById = (dimensionId: string, dimensionType: 'horizontal' | 'vertical'): CrosstabAxisDimension | null => {
+  const getDimensionById = (
+    dimensionId: string,
+    dimensionType: 'horizontal' | 'vertical'
+  ): CrosstabAxisDimension | null => {
     if (!metadata) return null
-    const dimensions = dimensionType === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
-    return dimensions.find(dim => dim.id === dimensionId) || null
+    const dimensions =
+      dimensionType === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
+    return dimensions.find((dim) => dim.id === dimensionId) || null
   }
 
-  const renderDimensionValues = (dimension: CrosstabAxisDimension, dimensionType: 'horizontal' | 'vertical') => {
+  const renderDimensionValues = (
+    dimension: CrosstabAxisDimension,
+    dimensionType: 'horizontal' | 'vertical'
+  ) => {
     const isGenerating = isGeneratingDimensionValues?.[dimension.id] || false
 
     return (
@@ -267,11 +290,16 @@ export default function AxisDataManager({
                       id={`${dimension.id}-${index}`}
                       value={value}
                       index={index}
-                      isEditing={editingItem?.dimensionId === dimension.id && editingItem?.valueIndex === index}
+                      isEditing={
+                        editingItem?.dimensionId === dimension.id &&
+                        editingItem?.valueIndex === index
+                      }
                       onEdit={() => handleEditStart(dimension.id, index, value)}
                       onSave={() => handleEditSave(dimension.id, dimensionType, index)}
                       onCancel={handleEditCancel}
-                      onDelete={() => handleDeleteDimensionValue(dimension.id, dimensionType, index)}
+                      onDelete={() =>
+                        handleDeleteDimensionValue(dimension.id, dimensionType, index)
+                      }
                       editingValue={editingValue}
                       setEditingValue={setEditingValue}
                     />
@@ -292,7 +320,9 @@ export default function AxisDataManager({
             size="small"
             placeholder="添加新值"
             value={newValueInputs[dimension.id] || ''}
-            onChange={(e) => setNewValueInputs(prev => ({ ...prev, [dimension.id]: e.target.value }))}
+            onChange={(e) =>
+              setNewValueInputs((prev) => ({ ...prev, [dimension.id]: e.target.value }))
+            }
             onPressEnter={() => handleAddDimensionValue(dimension.id, dimensionType)}
           />
           <Button
@@ -320,7 +350,10 @@ export default function AxisDataManager({
     )
   }
 
-  const renderDimensionCard = (dimension: CrosstabAxisDimension, dimensionType: 'horizontal' | 'vertical') => {
+  const renderDimensionCard = (
+    dimension: CrosstabAxisDimension,
+    dimensionType: 'horizontal' | 'vertical'
+  ) => {
     return (
       <Card
         key={dimension.id}
@@ -363,10 +396,7 @@ export default function AxisDataManager({
     }
 
     return (
-      <Card
-        title={`${title}数据 (${dimensions.length}个维度)`}
-        className="axis-card"
-      >
+      <Card title={`${title}数据 (${dimensions.length}个维度)`} className="axis-card">
         <div className="dimensions-container">
           {dimensions.map((dimension) => renderDimensionCard(dimension, dimensionType))}
         </div>

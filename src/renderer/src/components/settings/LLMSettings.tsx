@@ -23,10 +23,10 @@ import {
   MoreOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
-import { LLMConfig } from '../../types'
+import { LLMConfig } from '../../types/type'
 import { v4 as uuidv4 } from 'uuid'
 import { createAIService } from '../../services/aiService'
-import { useSettings } from '../../store/hooks/useSettings'
+import { useSettingsStore } from '../../stores/settingsStore'
 
 const { Text } = Typography
 
@@ -169,7 +169,8 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
 }
 
 export default function LLMSettings() {
-  const { settings, addLLMConfig, updateLLMConfig, deleteLLMConfig, setDefaultLLM } = useSettings()
+  const { settings, addLLMConfig, updateLLMConfig, deleteLLMConfig, setDefaultLLM } =
+    useSettingsStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConfig, setEditingConfig] = useState<LLMConfig | undefined>()
   const { message, modal } = App.useApp()
