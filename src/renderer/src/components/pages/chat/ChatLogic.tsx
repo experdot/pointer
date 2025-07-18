@@ -530,10 +530,46 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         status: 'cancelled',
         endTime: Date.now()
       })
+
+      // 在清除流式消息状态之前，先保存已生成的内容
+      const { getStreamingMessage } = useMessagesStore.getState()
+      const streamingMessage = getStreamingMessage(chatId, messageId)
+
+      if (streamingMessage) {
+        // 保存流式消息的内容到实际的消息中
+        const { updatePage } = usePagesStore.getState()
+        const page = usePagesStore.getState().findPageById(chatId)
+        if (page && page.type === 'regular' && page.messages) {
+          const updatedMessages = page.messages.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  content: streamingMessage.content || msg.content,
+                  reasoning_content: streamingMessage.reasoning_content || msg.reasoning_content,
+                  isStreaming: false
+                }
+              : msg
+          )
+          updatePage(chatId, { messages: updatedMessages })
+        }
+      } else {
+        // 如果没有流式消息，仅清除isStreaming状态
+        const { updatePage } = usePagesStore.getState()
+        const page = usePagesStore.getState().findPageById(chatId)
+        if (page && page.type === 'regular' && page.messages) {
+          const updatedMessages = page.messages.map((msg) =>
+            msg.id === messageId ? { ...msg, isStreaming: false } : msg
+          )
+          updatePage(chatId, { messages: updatedMessages })
+        }
+      }
+
+      // 最后清除流式消息状态
+      clearStreamingMessage(chatId, messageId)
     })
     setActiveAIServices(new Map())
     setIsLoading(false)
-  }, [activeAIServices, updateTask])
+  }, [activeAIServices, updateTask, chatId, clearStreamingMessage])
 
   return children({
     isLoading,
