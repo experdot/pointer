@@ -298,6 +298,12 @@ export const useSearchStore = create<SearchState & SearchActions>()(
         return get().searchResults.length
       }
     })),
-    createPersistConfig('search-store', 1)
+    createPersistConfig('search-store', 1, (state) => ({
+      searchQuery: state.searchQuery,
+      searchResults: state.searchResults,
+      isSearching: state.isSearching,
+      showSearchResults: state.showSearchResults,
+      searchOptions: state.searchOptions
+    }))
   )
 )

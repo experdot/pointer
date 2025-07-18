@@ -302,6 +302,9 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         })
       }
     })),
-    createPersistConfig('tabs-store', 1)
+    createPersistConfig('tabs-store', 1, (state) => ({
+      openTabs: state.openTabs,
+      activeTabId: state.activeTabId
+    }))
   )
 )

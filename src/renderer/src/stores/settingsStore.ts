@@ -197,6 +197,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         }
       }
     })),
-    createPersistConfig('settings-store', 1)
+    createPersistConfig('settings-store', 1, (state) => ({
+      settings: state.settings
+    }))
   )
 )

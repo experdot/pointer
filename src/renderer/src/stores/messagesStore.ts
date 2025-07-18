@@ -359,6 +359,8 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
         }
       }
     })),
-    createPersistConfig('messages-store', 1)
+    createPersistConfig('messages-store', 1, (state) => ({
+      // messagesStore 只提供方法，没有状态数据
+    }))
   )
 )

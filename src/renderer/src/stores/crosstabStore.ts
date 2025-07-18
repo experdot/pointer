@@ -200,6 +200,8 @@ export const useCrosstabStore = create<CrosstabState & CrosstabActions>()(
         return false
       }
     })),
-    createPersistConfig('crosstab-store', 1)
+    createPersistConfig('crosstab-store', 1, (state) => ({
+      // crosstabStore 只提供方法，没有状态数据
+    }))
   )
 )

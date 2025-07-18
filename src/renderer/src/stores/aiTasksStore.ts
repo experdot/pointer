@@ -230,6 +230,8 @@ export const useAITasksStore = create<AITasksState & AITasksActions>()(
         return get().aiTasks.filter((t) => t.status === 'running' || t.status === 'pending').length
       }
     })),
-    createPersistConfig('ai-tasks-store', 1)
+    createPersistConfig('ai-tasks-store', 1, (state) => ({
+      aiTasks: state.aiTasks
+    }))
   )
 )

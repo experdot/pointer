@@ -646,6 +646,8 @@ export const useObjectStore = create<ObjectState & ObjectActions>()(
         return false
       }
     })),
-    createPersistConfig('object-store', 1)
+    createPersistConfig('object-store', 1, (state) => ({
+      // objectStore 只提供方法，没有状态数据
+    }))
   )
 )

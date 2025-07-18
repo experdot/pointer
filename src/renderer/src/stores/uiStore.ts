@@ -211,6 +211,14 @@ export const useUIStore = create<UIState & UIActions>()(
         })
       }
     })),
-    createPersistConfig('ui-store', 1)
+    createPersistConfig('ui-store', 1, (state) => ({
+      selectedNodeId: state.selectedNodeId,
+      selectedNodeType: state.selectedNodeType,
+      checkedNodeIds: state.checkedNodeIds,
+      sidebarCollapsed: state.sidebarCollapsed,
+      sidebarWidth: state.sidebarWidth,
+      collapsedMessages: state.collapsedMessages,
+      allMessagesCollapsed: state.allMessagesCollapsed
+    }))
   )
 )

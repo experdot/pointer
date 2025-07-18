@@ -2,8 +2,18 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { Page, PageFolder, PageLineage } from '../types/type'
-import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
-import { removeFromArray, createNewFolder, updateFolderById, createNewCrosstabChat } from './helpers/helpers'
+import {
+  createPagesPersistConfig,
+  handleStoreError,
+  pagesStorage,
+  foldersStorage
+} from './persistence/storeConfig'
+import {
+  removeFromArray,
+  createNewFolder,
+  updateFolderById,
+  createNewCrosstabChat
+} from './helpers/helpers'
 import { v4 as uuidv4 } from 'uuid'
 import { useUIStore } from './uiStore'
 
@@ -91,11 +101,15 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             const pageIndex = state.pages.findIndex((p) => p.id === id)
             if (pageIndex !== -1) {
-              state.pages[pageIndex] = {
+              const updatedPage = {
                 ...state.pages[pageIndex],
                 ...updates,
                 updatedAt: Date.now()
               }
+              state.pages[pageIndex] = updatedPage
+
+              // 同时更新 IndexedDB 中的单个页面记录
+              pagesStorage.savePage(updatedPage)
             }
           })
         } catch (error) {
@@ -108,6 +122,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             state.pages = state.pages.filter((p) => p.id !== id)
           })
+
+          // 同时从 IndexedDB 中删除单个页面记录
+          pagesStorage.deletePage(id)
         } catch (error) {
           handleStoreError('pagesStore', 'deletePage', error)
         }
@@ -118,6 +135,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             state.pages = state.pages.filter((p) => !chatIds.includes(p.id))
           })
+
+          // 同时从 IndexedDB 中删除多个页面记录
+          chatIds.forEach((id) => pagesStorage.deletePage(id))
         } catch (error) {
           handleStoreError('pagesStore', 'deleteMultiplePages', error)
         }
@@ -128,12 +148,16 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             const pageIndex = state.pages.findIndex((p) => p.id === chatId)
             if (pageIndex !== -1) {
-              state.pages[pageIndex] = {
+              const updatedPage = {
                 ...state.pages[pageIndex],
                 folderId: targetFolderId,
                 order: newOrder ?? state.pages[pageIndex].order,
                 updatedAt: Date.now()
               }
+              state.pages[pageIndex] = updatedPage
+
+              // 同时更新 IndexedDB 中的单个页面记录
+              pagesStorage.savePage(updatedPage)
             }
           })
         } catch (error) {
@@ -145,17 +169,24 @@ export const usePagesStore = create<PagesState & PagesActions>()(
         try {
           set((state) => {
             const baseOrder = Date.now()
+            const updatedPages: any[] = []
+
             state.pages = state.pages.map((page) => {
               const newIndex = chatIds.indexOf(page.id)
               if (newIndex !== -1 && page.folderId === folderId) {
-                return {
+                const updatedPage = {
                   ...page,
                   order: baseOrder + newIndex,
                   updatedAt: Date.now()
                 }
+                updatedPages.push(updatedPage)
+                return updatedPage
               }
               return page
             })
+
+            // 批量更新 IndexedDB 中的页面记录
+            updatedPages.forEach((page) => pagesStorage.savePage(page))
           })
         } catch (error) {
           handleStoreError('pagesStore', 'reorderPagesInFolder', error)
@@ -168,7 +199,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             const pageIndex = state.pages.findIndex((p) => p.id === pageId)
             if (pageIndex !== -1) {
-              state.pages[pageIndex] = {
+              const updatedPage = {
                 ...state.pages[pageIndex],
                 lineage: {
                   ...state.pages[pageIndex].lineage,
@@ -176,6 +207,10 @@ export const usePagesStore = create<PagesState & PagesActions>()(
                 },
                 updatedAt: Date.now()
               }
+              state.pages[pageIndex] = updatedPage
+
+              // 同时更新 IndexedDB 中的单个页面记录
+              pagesStorage.savePage(updatedPage)
             }
           })
         } catch (error) {
@@ -189,7 +224,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             const pageIndex = state.pages.findIndex((p) => p.id === sourcePageId)
             if (pageIndex !== -1 && state.pages[pageIndex].lineage) {
               const page = state.pages[pageIndex]
-              state.pages[pageIndex] = {
+              const updatedPage = {
                 ...page,
                 lineage: {
                   ...page.lineage!,
@@ -197,6 +232,10 @@ export const usePagesStore = create<PagesState & PagesActions>()(
                 },
                 updatedAt: Date.now()
               }
+              state.pages[pageIndex] = updatedPage
+
+              // 同时更新 IndexedDB 中的单个页面记录
+              pagesStorage.savePage(updatedPage)
             }
           })
         } catch (error) {
@@ -211,6 +250,10 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             state.folders.push(newFolder)
           })
+
+          // 同时保存到 IndexedDB
+          foldersStorage.saveFolder(newFolder)
+
           return newFolder
         } catch (error) {
           handleStoreError('pagesStore', 'createFolder', error)
@@ -223,10 +266,14 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             const folderIndex = state.folders.findIndex((f) => f.id === id)
             if (folderIndex !== -1) {
-              state.folders[folderIndex] = {
+              const updatedFolder = {
                 ...state.folders[folderIndex],
                 ...updates
               }
+              state.folders[folderIndex] = updatedFolder
+
+              // 同时更新 IndexedDB 中的单个文件夹记录
+              foldersStorage.saveFolder(updatedFolder)
             }
           })
         } catch (error) {
@@ -252,6 +299,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
               page.folderId === id ? { ...page, folderId: folderToDelete?.parentId } : page
             )
           })
+
+          // 同时从 IndexedDB 中删除文件夹记录
+          foldersStorage.deleteFolder(id)
         } catch (error) {
           handleStoreError('pagesStore', 'deleteFolder', error)
         }
@@ -262,11 +312,15 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             const folderIndex = state.folders.findIndex((f) => f.id === folderId)
             if (folderIndex !== -1) {
-              state.folders[folderIndex] = {
+              const updatedFolder = {
                 ...state.folders[folderIndex],
                 parentId: targetParentId,
                 order: newOrder
               }
+              state.folders[folderIndex] = updatedFolder
+
+              // 同时更新 IndexedDB 中的文件夹记录
+              foldersStorage.saveFolder(updatedFolder)
             }
           })
         } catch (error) {
@@ -312,6 +366,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             state.pages.push(newPage)
           })
 
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(newPage)
+
           // 使用tabsStore打开标签页
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -335,6 +392,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             state.pages.push(newPage)
           })
+
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(newPage)
 
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -368,6 +428,9 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           set((state) => {
             state.pages.push(newPage)
           })
+
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(newPage)
 
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -456,7 +519,7 @@ ${params.cellContent}
             // 更新源页面的generatedPageIds
             const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
             if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
-              state.pages[sourcePageIndex] = {
+              const updatedSourcePage = {
                 ...state.pages[sourcePageIndex],
                 lineage: {
                   ...state.pages[sourcePageIndex].lineage!,
@@ -466,8 +529,15 @@ ${params.cellContent}
                   ]
                 }
               }
+              state.pages[sourcePageIndex] = updatedSourcePage
+
+              // 同时更新 IndexedDB 中的源页面记录
+              pagesStorage.savePage(updatedSourcePage)
             }
           })
+
+          // 同时保存新页面到 IndexedDB
+          pagesStorage.savePage(newPage)
 
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -541,7 +611,7 @@ ${params.nodeContext}
             // 更新源页面的generatedPageIds
             const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
             if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
-              state.pages[sourcePageIndex] = {
+              const updatedSourcePage = {
                 ...state.pages[sourcePageIndex],
                 lineage: {
                   ...state.pages[sourcePageIndex].lineage!,
@@ -551,8 +621,15 @@ ${params.nodeContext}
                   ]
                 }
               }
+              state.pages[sourcePageIndex] = updatedSourcePage
+
+              // 同时更新 IndexedDB 中的源页面记录
+              pagesStorage.savePage(updatedSourcePage)
             }
           })
+
+          // 同时保存新页面到 IndexedDB
+          pagesStorage.savePage(newPage)
 
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -602,7 +679,7 @@ ${params.nodeContext}
             // 更新源页面的generatedPageIds
             const sourcePageIndex = state.pages.findIndex((p) => p.id === params.sourcePageId)
             if (sourcePageIndex !== -1 && state.pages[sourcePageIndex].lineage) {
-              state.pages[sourcePageIndex] = {
+              const updatedSourcePage = {
                 ...state.pages[sourcePageIndex],
                 lineage: {
                   ...state.pages[sourcePageIndex].lineage!,
@@ -612,8 +689,15 @@ ${params.nodeContext}
                   ]
                 }
               }
+              state.pages[sourcePageIndex] = updatedSourcePage
+
+              // 同时更新 IndexedDB 中的源页面记录
+              pagesStorage.savePage(updatedSourcePage)
             }
           })
+
+          // 同时保存新页面到 IndexedDB
+          pagesStorage.savePage(newPage)
 
           const { setSelectedNode } = useUIStore.getState()
           setSelectedNode(newPage.id, 'chat')
@@ -631,24 +715,34 @@ ${params.nodeContext}
           state.pages = []
           state.folders = []
         })
+
+        // 同时清除 IndexedDB 中的数据
+        pagesStorage.clearAllPages()
+        foldersStorage.clearAllFolders()
       },
 
       importPages: (pages) => {
         set((state) => {
           state.pages = [...state.pages, ...pages]
         })
+
+        // 同时保存到 IndexedDB
+        pages.forEach((page) => pagesStorage.savePage(page))
       },
 
       importFolders: (folders) => {
         set((state) => {
           state.folders = [...state.folders, ...folders]
         })
+
+        // 同时保存到 IndexedDB
+        folders.forEach((folder) => foldersStorage.saveFolder(folder))
       },
 
       exportPages: () => {
         return get().pages
       }
     })),
-    createPersistConfig('pages-store', 1)
+    createPagesPersistConfig('pages-store', 1)
   )
 )
