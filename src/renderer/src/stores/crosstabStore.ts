@@ -48,7 +48,19 @@ export const useCrosstabStore = create<CrosstabState & CrosstabActions>()(
           const page = usePagesStore.getState().findPageById(chatId)
 
           if (page && page.type === 'crosstab') {
-            const updatedCrosstabData = { ...page.crosstabData, ...data }
+            let updatedCrosstabData = { ...page.crosstabData }
+            
+            // 特殊处理tableData的合并，避免对象不可扩展的问题
+            if (data.tableData && page.crosstabData.tableData) {
+              updatedCrosstabData = {
+                ...updatedCrosstabData,
+                ...data,
+                tableData: { ...page.crosstabData.tableData, ...data.tableData }
+              }
+            } else {
+              updatedCrosstabData = { ...updatedCrosstabData, ...data }
+            }
+            
             updatePage(chatId, { crosstabData: updatedCrosstabData })
           }
         } catch (error) {

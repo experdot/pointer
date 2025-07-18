@@ -432,10 +432,10 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       let completedCells = 0
       const totalCells = horizontalCombinations.length * verticalCombinations.length
 
-      // 维护本地的tableData状态，避免异步状态更新问题
-      const currentTableData = { ...chat.crosstabData.tableData }
+      // 收集所有生成的数据，最后一次性更新
+      const newTableData: { [key: string]: { [key: string]: string } } = {}
 
-      // 为每个交叉点生成值
+      // 为每个交叉点生成值（串行执行）
       for (const hCombination of horizontalCombinations) {
         for (const vCombination of verticalCombinations) {
           const hPath = generateDimensionPath(hCombination)
@@ -529,11 +529,13 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
               validatedCellValues[dim.id] = processedCellValues[dim.id] || ''
             })
 
-            // 更新本地tableData状态
-            currentTableData[cellKey] = validatedCellValues
+            // 将生成的数据添加到收集器中
+            newTableData[cellKey] = validatedCellValues
 
-            // 立即更新当前单元格数据到UI
-            stores.crosstab.updateCrosstabData(chat.id, { tableData: currentTableData })
+            // 每生成1个单元格就更新一次UI，实时显示变化
+            const currentTableData = stores.crosstab.getCrosstabData(chat.id)?.tableData || {}
+            const updatedTableData = { ...currentTableData, ...newTableData }
+            stores.crosstab.updateCrosstabData(chat.id, { tableData: updatedTableData })
 
             completedCells++
           } catch (error) {
@@ -546,6 +548,11 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           }
         }
       }
+
+      // 最终更新，确保所有数据都已保存
+      const finalTableData = stores.crosstab.getCrosstabData(chat.id)?.tableData || {}
+      const finalUpdatedTableData = { ...finalTableData, ...newTableData }
+      stores.crosstab.updateCrosstabData(chat.id, { tableData: finalUpdatedTableData })
 
       message.success(`表格数据生成完成 (${completedCells}/${totalCells})`)
     } catch (error) {

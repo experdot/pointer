@@ -674,7 +674,13 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           .replace('[DIMENSION_NAME]', dimension.name)
           .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
 
-        const aiService = createAIService(llmConfig)
+        const modelConfig = getModelConfigForLLM(llmConfig.id)
+        if (!modelConfig) {
+          message.error('请先在设置中配置模型参数')
+          return
+        }
+
+        const aiService = createAIService(llmConfig, modelConfig)
         const result = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
             [{ id: 'temp', role: 'user', content: prompt, timestamp: Date.now() }],
