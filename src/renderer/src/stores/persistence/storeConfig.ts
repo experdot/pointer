@@ -21,7 +21,7 @@ const OBJECT_STORES = {
 const debounceTimers = new Map<string, NodeJS.Timeout>()
 
 // 防抖函数
-const debounce = (key: string, fn: () => void, delay: number = 500) => {
+const debounce = (key: string, fn: () => void, delay: number = 100) => {
   if (debounceTimers.has(key)) {
     clearTimeout(debounceTimers.get(key)!)
   }
@@ -190,7 +190,7 @@ class PagesStorage {
       async () => {
         await indexedDBStorage.setItem(this.storeName, page.id, page)
       },
-      300
+      100
     )
   }
 
@@ -232,7 +232,7 @@ class FoldersStorage {
       async () => {
         await indexedDBStorage.setItem(this.storeName, folder.id, folder)
       },
-      300
+      100
     )
   }
 
@@ -290,7 +290,7 @@ export const createPagesPersistConfig = (storeName: string, version: number = 1)
             console.error(`Error saving ${name} to IndexedDB:`, error)
           }
         },
-        300
+        100
       )
     },
     removeItem: async (name: string) => {
@@ -333,7 +333,7 @@ export const createPersistConfig = <T>(
             console.error(`Error saving ${name} to IndexedDB:`, error)
           }
         },
-        300
+        100
       )
     },
     removeItem: async (name: string) => {

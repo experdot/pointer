@@ -65,7 +65,10 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }
 
   const handleCollapseAll = () => {
-    collapseAllMessages(chatId, chat.messages.map((msg) => msg.id))
+    collapseAllMessages(
+      chatId,
+      chat.messages.map((msg) => msg.id)
+    )
   }
 
   const handleExpandAll = () => {
@@ -170,6 +173,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onToggleMessageTree={handleToggleMessageTree}
                 />
                 <MessageList
+                  chatId={chatId}
                   messages={chat.messages}
                   currentPath={chat.currentPath}
                   isLoading={isLoading}

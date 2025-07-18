@@ -20,6 +20,7 @@ import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
 import { Markdown } from '../../common/markdown/Markdown'
 import { captureDivToClipboard } from '@renderer/utils/exporter'
+import { useStreamingMessage } from '../../../stores/messagesStore'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -27,6 +28,7 @@ const { Option } = Select
 
 interface MessageItemProps {
   message: ChatMessage
+  chatId: string // 添加chatId prop用于订阅流式消息状态
   isLoading?: boolean
   isLastMessage?: boolean
   llmConfigs?: LLMConfig[]
@@ -49,6 +51,7 @@ interface MessageItemProps {
 
 export default function MessageItem({
   message,
+  chatId,
   isLoading = false,
   isLastMessage = false,
   llmConfigs = [],
@@ -70,10 +73,19 @@ export default function MessageItem({
   const [reasoningExpanded, setReasoningExpanded] = useState<string[]>([])
   const messageRef = useRef<HTMLDivElement>(null)
 
+  // 订阅流式消息状态
+  const streamingMessage = useStreamingMessage(chatId, message.id)
+
+  // 获取当前应该显示的内容和推理内容
+  const currentContent = streamingMessage?.content || message.content
+  const currentReasoningContent = streamingMessage?.reasoning_content || message.reasoning_content
+  const isCurrentlyStreaming =
+    message.isStreaming || (streamingMessage && streamingMessage.content !== message.content)
+
   // 根据消息流状态控制思考过程的展开/折叠
   useEffect(() => {
-    if (message.reasoning_content) {
-      if (message.isStreaming && !message.content) {
+    if (currentReasoningContent) {
+      if (isCurrentlyStreaming && !currentContent) {
         // 思考过程输出时自动展开（还没有最终回答内容）
         setReasoningExpanded(['reasoning_content'])
       } else {
@@ -81,7 +93,7 @@ export default function MessageItem({
         setReasoningExpanded([])
       }
     }
-  }, [message.isStreaming, message.reasoning_content, message.content])
+  }, [isCurrentlyStreaming, currentReasoningContent, currentContent])
 
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('zh-CN', {
@@ -91,7 +103,7 @@ export default function MessageItem({
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content)
+    navigator.clipboard.writeText(currentContent)
   }
 
   const handleCopyAsImage = async () => {
@@ -105,11 +117,11 @@ export default function MessageItem({
 
   const handleEdit = () => {
     setIsEditing(true)
-    setEditContent(message.content)
+    setEditContent(currentContent)
   }
 
   const handleSaveEdit = () => {
-    if (editContent.trim() !== message.content) {
+    if (editContent.trim() !== currentContent) {
       onEdit?.(message.id, editContent.trim())
     }
     setIsEditing(false)
@@ -122,7 +134,7 @@ export default function MessageItem({
 
   const handleCancelEdit = () => {
     setIsEditing(false)
-    setEditContent(message.content)
+    setEditContent(currentContent)
   }
 
   const handleToggleFavorite = () => {
@@ -238,7 +250,7 @@ export default function MessageItem({
         {!isCollapsed && (
           <>
             {/* 推理模型思考过程展示 */}
-            {message.reasoning_content && (
+            {currentReasoningContent && (
               <Card size="small" className="message-reasoning-card" style={{ marginBottom: 8 }}>
                 <Collapse
                   size="small"
@@ -269,7 +281,7 @@ export default function MessageItem({
                             cursor: 'text'
                           }}
                         >
-                          <Markdown content={message.reasoning_content ?? ''} />
+                          <Markdown content={currentReasoningContent ?? ''} />
                         </div>
                       )
                     }
@@ -324,21 +336,21 @@ export default function MessageItem({
                     cursor: 'text'
                   }}
                 >
-                  <Markdown content={message.content ?? ''} />
+                  <Markdown content={currentContent ?? ''} />
                 </div>
               )}
             </Card>
           </>
         )}
 
-        {/* 折叠状态显示 */}
+        {/* 折叠状态下的预览 */}
         {isCollapsed && (
           <Card size="small" className="message-card message-collapsed">
             <div className="message-preview">
               <Text type="secondary" className="message-preview-text">
-                {getPreviewText(message.content)}
+                {getPreviewText(currentContent)}
               </Text>
-              {message.reasoning_content && (
+              {currentReasoningContent && (
                 <Text type="secondary" className="message-preview-reasoning">
                   <BulbOutlined style={{ marginRight: 4 }} />
                   含思考过程
@@ -356,7 +368,7 @@ export default function MessageItem({
                 size="small"
                 icon={<CopyOutlined />}
                 onClick={handleCopy}
-                disabled={message.isStreaming}
+                disabled={isCurrentlyStreaming}
               />
             </Tooltip>
             <Tooltip title="复制为图片">
@@ -365,7 +377,7 @@ export default function MessageItem({
                 size="small"
                 icon={<PictureOutlined />}
                 onClick={handleCopyAsImage}
-                disabled={message.isStreaming}
+                disabled={isCurrentlyStreaming}
               />
             </Tooltip>
             <Tooltip title="收藏">
@@ -375,17 +387,17 @@ export default function MessageItem({
                 icon={message.isFavorited ? <StarFilled /> : <StarOutlined />}
                 onClick={handleToggleFavorite}
                 className={message.isFavorited ? 'favorited' : ''}
-                disabled={message.isStreaming}
+                disabled={isCurrentlyStreaming}
               />
             </Tooltip>
-            {onEdit && (
+            {!isEditing && (
               <Tooltip title="编辑">
                 <Button
                   type="text"
                   size="small"
                   icon={<EditOutlined />}
                   onClick={handleEdit}
-                  disabled={message.isStreaming}
+                  disabled={isCurrentlyStreaming}
                 />
               </Tooltip>
             )}
@@ -396,7 +408,7 @@ export default function MessageItem({
                   size="small"
                   icon={<RedoOutlined />}
                   onClick={handleRetry}
-                  disabled={isLoading || message.isStreaming}
+                  disabled={isLoading || isCurrentlyStreaming}
                 />
               </Tooltip>
             )}

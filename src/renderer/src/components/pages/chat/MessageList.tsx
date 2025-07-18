@@ -5,6 +5,7 @@ import WelcomeMessage from './WelcomeMessage'
 import { MessageTree } from './messageTree'
 
 interface MessageListProps {
+  chatId: string // 添加chatId prop
   messages: ChatMessage[]
   currentPath?: string[]
   isLoading?: boolean
@@ -26,6 +27,7 @@ interface MessageListProps {
 }
 
 export default function MessageList({
+  chatId,
   messages,
   currentPath = [],
   isLoading = false,
@@ -144,6 +146,7 @@ export default function MessageList({
             isLoading={isLoading}
             isLastMessage={index === displayMessages.length - 1 && !streamingContent}
             llmConfigs={llmConfigs}
+            chatId={chatId} // 传递chatId
             // 分支导航props - 所有消息都使用兄弟分支导航
             hasChildBranches={messageTree.hasSiblingBranches(message.id)}
             branchIndex={messageTree.getCurrentSiblingBranchIndex(message.id)}

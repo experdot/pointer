@@ -35,7 +35,11 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
     completeMessageStreaming,
     clearStreamingMessage,
     toggleMessageFavorite,
-    removeMessage
+    removeMessage,
+    // 使用新的优化版本的流式消息处理方法
+    updateStreamingMessageContent,
+    updateStreamingMessageReasoning,
+    completeStreamingMessage
   } = useMessagesStore()
   const { addTask, updateTask, removeTask } = useAITasksStore()
   const [isLoading, setIsLoading] = useState(false)
@@ -133,19 +137,19 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         aiService.sendMessage(messages, {
           onChunk: (chunk: string) => {
             streamingContent += chunk
-            // 更新现有消息的内容
-            updateMessageContent(chatId, messageId, streamingContent)
+            // 使用优化版本的流式消息更新方法，避免频繁更新整个页面
+            updateStreamingMessageContent(chatId, messageId, streamingContent)
           },
           onReasoning: (reasoning_content: string) => {
             streamingReasoning += reasoning_content
-            // 实时更新reasoning内容
-            updateMessageReasoning(chatId, messageId, streamingReasoning)
+            // 使用优化版本的流式消息更新方法，避免频繁更新整个页面
+            updateStreamingMessageReasoning(chatId, messageId, streamingReasoning)
           },
           onComplete: (fullResponse: string, reasoning_content?: string) => {
             const finalContent = fullResponse || streamingContent
             const finalReasoning = reasoning_content || streamingReasoning || undefined
-            // 标记消息为完成状态
-            completeMessageStreaming(chatId, messageId, finalContent, finalReasoning)
+            // 使用优化版本完成流式消息，只在最后更新页面
+            completeStreamingMessage(chatId, messageId, finalContent, finalReasoning)
             // 更新任务状态为完成
             updateTask(messageId, {
               status: 'completed',
@@ -162,6 +166,8 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
           onError: (error: Error) => {
             // 删除出错的消息
             removeMessage(chatId, messageId)
+            // 清除流式消息状态
+            clearStreamingMessage(chatId, messageId)
             // 更新任务状态为失败
             updateTask(messageId, {
               status: 'failed',
@@ -187,7 +193,11 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       updateMessageReasoning,
       completeMessageStreaming,
       updateTask,
-      removeMessage
+      removeMessage,
+      updateStreamingMessageContent,
+      updateStreamingMessageReasoning,
+      completeStreamingMessage,
+      clearStreamingMessage
     ]
   )
 
