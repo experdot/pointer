@@ -100,6 +100,7 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
           <ModelSelector
             llmConfigs={llmConfigs}
             selectedModel={selectedModel}
+            defaultLLMId={defaultModelId}
             onChange={onModelChange}
             disabled={disabled || loading}
             size="small"

@@ -4,7 +4,6 @@ export interface LLMConfig {
   apiHost: string
   apiKey: string
   modelName: string
-  isDefault: boolean
   createdAt: number
 }
 
@@ -150,7 +149,7 @@ export interface CrosstabData {
   steps: CrosstabStep[]
 }
 
-export interface CrosstabChat extends Page {
+export interface CrosstabChat extends PageBase {
   type: 'crosstab'
   crosstabData: CrosstabData
 }

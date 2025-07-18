@@ -11,6 +11,7 @@ import {
   Tag,
   Empty,
   Dropdown,
+  Select,
   App
 } from 'antd'
 import {
@@ -64,7 +65,6 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
         apiHost: values.apiHost,
         apiKey: values.apiKey,
         modelName: values.modelName,
-        isDefault: config?.isDefault || false,
         createdAt: config?.createdAt || Date.now()
       }
 
@@ -88,7 +88,6 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
         apiHost: values.apiHost,
         apiKey: values.apiKey,
         modelName: values.modelName,
-        isDefault: false,
         createdAt: Date.now()
       }
 
@@ -192,7 +191,7 @@ export default function LLMSettings() {
 
   const handleDeleteConfig = (config: LLMConfig) => {
     const currentConfigs = settings.llmConfigs || []
-    const isDefaultConfig = config.isDefault
+    const isDefaultConfig = settings.defaultLLMId === config.id
     const isLastConfig = currentConfigs.length === 1
 
     const title = isDefaultConfig ? '删除默认配置' : '删除配置'
@@ -219,17 +218,22 @@ export default function LLMSettings() {
 
   const handleCopyConfig = (config: LLMConfig) => {
     const currentConfigs = settings.llmConfigs || []
-    const hasDefaultConfig = currentConfigs.some((c) => c.isDefault)
+    const hasDefaultConfig = settings.defaultLLMId
 
     const newConfig: LLMConfig = {
       ...config,
       id: uuidv4(),
       name: `${config.name} (副本)`,
-      isDefault: !hasDefaultConfig, // 如果没有默认配置，则设为默认
       createdAt: Date.now()
     }
 
     addLLMConfig(newConfig)
+
+    // 如果没有默认配置，则将新配置设为默认
+    if (!hasDefaultConfig) {
+      setDefaultLLM(newConfig.id)
+    }
+
     message.success('配置已复制')
   }
 
@@ -238,40 +242,44 @@ export default function LLMSettings() {
     message.success('已设为默认配置')
   }
 
-  const getDropdownItems = (config: LLMConfig) => [
-    {
-      key: 'edit',
-      label: '编辑',
-      icon: <EditOutlined />,
-      onClick: () => {
-        setEditingConfig(config)
-        setModalOpen(true)
+  const getDropdownItems = (config: LLMConfig) => {
+    const isDefault = settings.defaultLLMId === config.id
+
+    return [
+      {
+        key: 'edit',
+        label: '编辑',
+        icon: <EditOutlined />,
+        onClick: () => {
+          setEditingConfig(config)
+          setModalOpen(true)
+        }
+      },
+      {
+        key: 'copy',
+        label: '复制',
+        icon: <CopyOutlined />,
+        onClick: () => handleCopyConfig(config)
+      },
+      {
+        key: 'setDefault',
+        label: isDefault ? '已是默认' : '设为默认',
+        icon: isDefault ? <StarFilled /> : <StarOutlined />,
+        disabled: isDefault,
+        onClick: () => handleSetDefault(config.id)
+      },
+      {
+        type: 'divider' as const
+      },
+      {
+        key: 'delete',
+        label: '删除',
+        icon: <DeleteOutlined />,
+        danger: true,
+        onClick: () => handleDeleteConfig(config)
       }
-    },
-    {
-      key: 'copy',
-      label: '复制',
-      icon: <CopyOutlined />,
-      onClick: () => handleCopyConfig(config)
-    },
-    {
-      key: 'setDefault',
-      label: config.isDefault ? '已是默认' : '设为默认',
-      icon: config.isDefault ? <StarFilled /> : <StarOutlined />,
-      disabled: config.isDefault,
-      onClick: () => handleSetDefault(config.id)
-    },
-    {
-      type: 'divider' as const
-    },
-    {
-      key: 'delete',
-      label: '删除',
-      icon: <DeleteOutlined />,
-      danger: true,
-      onClick: () => handleDeleteConfig(config)
-    }
-  ]
+    ]
+  }
 
   return (
     <Card
@@ -305,38 +313,60 @@ export default function LLMSettings() {
           </Button>
         </Empty>
       ) : (
-        <List
-          dataSource={settings.llmConfigs}
-          renderItem={(config) => (
-            <List.Item
-              actions={[
-                <Dropdown key="more" menu={{ items: getDropdownItems(config) }} trigger={['click']}>
-                  <Button type="text" icon={<MoreOutlined />} />
-                </Dropdown>
-              ]}
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <Text strong>默认模型：</Text>
+            <Select
+              value={settings.defaultLLMId}
+              onChange={handleSetDefault}
+              style={{ width: 200, marginLeft: 8 }}
+              placeholder="选择默认模型"
             >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <Text strong>{config.name}</Text>
-                    {config.isDefault && (
-                      <Tag color="gold" icon={<StarFilled />}>
-                        默认
-                      </Tag>
-                    )}
-                  </Space>
-                }
-                description={
-                  <Space direction="vertical" size="small">
-                    <Text type="secondary">Host: {config.apiHost}</Text>
-                    <Text type="secondary">Model: {config.modelName}</Text>
-                    <Text type="secondary">API Key: {config.apiKey.slice(0, 8)}...</Text>
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
+              {settings.llmConfigs.map((config) => (
+                <Select.Option key={config.id} value={config.id}>
+                  {config.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+
+          <List
+            dataSource={settings.llmConfigs}
+            renderItem={(config) => (
+              <List.Item
+                actions={[
+                  <Dropdown
+                    key="more"
+                    menu={{ items: getDropdownItems(config) }}
+                    trigger={['click']}
+                  >
+                    <Button type="text" icon={<MoreOutlined />} />
+                  </Dropdown>
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Text strong>{config.name}</Text>
+                      {settings.defaultLLMId === config.id && (
+                        <Tag color="gold" icon={<StarFilled />}>
+                          默认
+                        </Tag>
+                      )}
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" size="small">
+                      <Text type="secondary">Host: {config.apiHost}</Text>
+                      <Text type="secondary">Model: {config.modelName}</Text>
+                      <Text type="secondary">API Key: {config.apiKey.slice(0, 8)}...</Text>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </div>
       )}
 
       <LLMConfigForm

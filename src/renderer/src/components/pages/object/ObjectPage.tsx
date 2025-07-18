@@ -266,6 +266,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
             <ModelSelector
               llmConfigs={stores.settings.settings.llmConfigs || []}
               selectedModel={selectedModel}
+              defaultLLMId={stores.settings.settings.defaultLLMId}
               onChange={handleModelChange}
               size="small"
             />

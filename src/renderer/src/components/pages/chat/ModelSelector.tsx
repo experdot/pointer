@@ -8,6 +8,7 @@ const { Text } = Typography
 interface ModelSelectorProps {
   llmConfigs: LLMConfig[]
   selectedModel?: string
+  defaultLLMId?: string
   onChange: (modelId: string) => void
   disabled?: boolean
   size?: 'small' | 'middle' | 'large'
@@ -16,6 +17,7 @@ interface ModelSelectorProps {
 export default function ModelSelector({
   llmConfigs,
   selectedModel,
+  defaultLLMId,
   onChange,
   disabled = false,
   size = 'middle'
@@ -35,7 +37,7 @@ export default function ModelSelector({
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {config.isDefault && (
+          {defaultLLMId === config.id && (
             <Tag color="gold" icon={<StarFilled />}>
               默认
             </Tag>

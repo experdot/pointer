@@ -981,6 +981,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             <ModelSelector
               llmConfigs={settings.llmConfigs || []}
               selectedModel={selectedModel}
+              defaultLLMId={settings.defaultLLMId}
               onChange={handleModelChange}
               size="small"
             />

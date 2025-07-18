@@ -74,14 +74,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               state.settings.defaultLLMId = config.id
             }
 
-            // 如果设置为默认，将其他配置的默认标志置为false
-            if (config.isDefault) {
-              state.settings.llmConfigs.forEach((c) => {
-                c.isDefault = false
-              })
-              state.settings.defaultLLMId = config.id
-            }
-
             state.settings.llmConfigs.push(config)
           })
         } catch (error) {
@@ -95,17 +87,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
             const configIndex = state.settings.llmConfigs.findIndex((c) => c.id === id)
             if (configIndex !== -1) {
               const updatedConfig = { ...state.settings.llmConfigs[configIndex], ...updates }
-
-              // 如果设置为默认，将其他配置的默认标志置为false
-              if (updates.isDefault) {
-                state.settings.llmConfigs.forEach((c, index) => {
-                  if (index !== configIndex) {
-                    c.isDefault = false
-                  }
-                })
-                state.settings.defaultLLMId = id
-              }
-
               state.settings.llmConfigs[configIndex] = updatedConfig
             }
           })
@@ -117,15 +98,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       deleteLLMConfig: (id) => {
         try {
           set((state) => {
-            const configToDelete = state.settings.llmConfigs.find((c) => c.id === id)
             state.settings.llmConfigs = state.settings.llmConfigs.filter((c) => c.id !== id)
 
             // 如果删除的是默认配置，选择新的默认配置
             if (state.settings.defaultLLMId === id) {
               if (state.settings.llmConfigs.length > 0) {
-                const newDefault = state.settings.llmConfigs[0]
-                newDefault.isDefault = true
-                state.settings.defaultLLMId = newDefault.id
+                state.settings.defaultLLMId = state.settings.llmConfigs[0].id
               } else {
                 state.settings.defaultLLMId = undefined
               }
@@ -139,10 +117,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       setDefaultLLM: (id) => {
         try {
           set((state) => {
-            // 将所有配置的默认标志置为false
-            state.settings.llmConfigs.forEach((c) => {
-              c.isDefault = c.id === id
-            })
             state.settings.defaultLLMId = id
           })
         } catch (error) {
@@ -159,7 +133,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         if (settings.defaultLLMId) {
           return settings.llmConfigs.find((c) => c.id === settings.defaultLLMId)
         }
-        return settings.llmConfigs.find((c) => c.isDefault) || settings.llmConfigs[0]
+        return settings.llmConfigs[0]
       },
 
       // 外观设置
