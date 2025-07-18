@@ -149,6 +149,13 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         return
       }
 
+      // 获取对应的 ModelConfig
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+
       setLoading(true)
       setCurrentProcessingStep(stepIndex)
 
@@ -167,7 +174,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
 
             // 创建AI任务
             const metadataTaskId = uuidv4()
-            const aiService = createAIService(llmConfig)
+            const aiService = createAIService(llmConfig, modelConfig)
             setCurrentAIService(aiService) // 保存AI服务实例
             setCurrentTaskId(metadataTaskId) // 保存任务ID
             const metadataTask: AITask = {
@@ -262,7 +269,8 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       message,
       onStepComplete,
       stores.crosstab,
-      stores.aiTasks
+      stores.aiTasks,
+      stores.settings
     ]
   )
 
@@ -276,6 +284,13 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       const llmConfig = getLLMConfig()
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
+        return
+      }
+
+      // 获取对应的 ModelConfig
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
         return
       }
 
@@ -299,7 +314,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
           .replace('[DIMENSION_NAME]', dimension.name)
           .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
 
-        const aiService = createAIService(llmConfig)
+        const aiService = createAIService(llmConfig, modelConfig)
         setDimensionAIServices((prev) => ({ ...prev, [dimensionId]: aiService })) // 保存AI服务实例
         const taskId = uuidv4()
         setDimensionTaskIds((prev) => ({ ...prev, [dimensionId]: taskId })) // 保存任务ID
@@ -368,7 +383,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
         setGenerateDimensionValuesLoading((prev) => ({ ...prev, [dimensionId]: false }))
       }
     },
-    [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, message]
+    [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, stores.settings, message]
   )
 
   const handleGenerateTableData = useCallback(async () => {
@@ -400,6 +415,13 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       return
     }
 
+    // 获取对应的 ModelConfig
+    const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+    if (!modelConfig) {
+      message.error('请先在设置中配置模型参数')
+      return
+    }
+
     setGenerateTableDataLoading(true)
 
     try {
@@ -426,7 +448,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
             .replace('[VERTICAL_PATH]', vPath)
             .replace('[VALUE_DIMENSIONS]', JSON.stringify(valueDimensions, null, 2))
 
-          const aiService = createAIService(llmConfig)
+          const aiService = createAIService(llmConfig, modelConfig)
           setTableDataAIService(aiService) // 保存AI服务实例（注意：这里只保存最后一个，实际应用中可能需要保存所有）
           const taskId = uuidv4()
           setTableDataTaskIds((prev) => [...prev, taskId]) // 保存任务ID
@@ -534,7 +556,7 @@ export default function StepFlow({ chat, userInput, onStepComplete, getLLMConfig
       setTableDataTaskIds([]) // 清理任务ID
       setGenerateTableDataLoading(false)
     }
-  }, [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, message])
+  }, [chat.id, chat.crosstabData.metadata, getLLMConfig, stores.crosstab, stores.settings, message])
 
   // 检查是否可以生成表格数据
   const canGenerateTableData =

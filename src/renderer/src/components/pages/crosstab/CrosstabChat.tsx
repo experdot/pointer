@@ -38,7 +38,7 @@ interface CrosstabChatProps {
 
 export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const { pages, createAndOpenChat } = usePagesStore()
-  const { settings } = useSettingsStore()
+  const { settings, getModelConfigForLLM } = useSettingsStore()
   const { updateCrosstabData, updateCrosstabStep, completeCrosstabStep } = useCrosstabStore()
   const { addTask, updateTask } = useAITasksStore()
   const [userInput, setUserInput] = useState('')
@@ -101,7 +101,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const verticalCombinations = generateAxisCombinations(
           chat.crosstabData.metadata.verticalDimensions
         )
-        const aiService = createAIService(llmConfig)
+        const modelConfig = getModelConfigForLLM(llmConfig.id)
+        if (!modelConfig) {
+          message.error('请先在设置中配置模型参数')
+          return
+        }
+        const aiService = createAIService(llmConfig, modelConfig)
 
         const updatedTableData = { ...chat.crosstabData.tableData }
 
@@ -252,7 +257,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const horizontalCombinations = generateAxisCombinations(
           chat.crosstabData.metadata.horizontalDimensions
         )
-        const aiService = createAIService(llmConfig)
+        const modelConfig = getModelConfigForLLM(llmConfig.id)
+        if (!modelConfig) {
+          message.error('请先在设置中配置模型参数')
+          return
+        }
+        const aiService = createAIService(llmConfig, modelConfig)
 
         const updatedTableData = { ...chat.crosstabData.tableData }
 
@@ -382,7 +392,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       setIsGeneratingCell(cellKey)
 
       const taskId = uuidv4()
-      const aiService = createAIService(llmConfig)
+      const modelConfig = getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
 
       const task: AITask = {
         id: taskId,
@@ -704,7 +719,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     setIsGeneratingTopicSuggestions(true)
 
     const taskId = uuidv4()
-    const aiService = createAIService(llmConfig)
+    const modelConfig = getModelConfigForLLM(llmConfig.id)
+    if (!modelConfig) {
+      message.error('请先在设置中配置模型参数')
+      return
+    }
+    const aiService = createAIService(llmConfig, modelConfig)
 
     const task: AITask = {
       id: taskId,
@@ -807,7 +827,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       setIsGeneratingDimensionSuggestions((prev) => ({ ...prev, [dimensionId]: true }))
 
       const taskId = uuidv4()
-      const aiService = createAIService(llmConfig)
+      const modelConfig = getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
 
       // 查找维度
       const allDimensions = [

@@ -140,7 +140,12 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
         stores.object.addObjectGenerationRecord(chat.id, generationRecord)
 
         // 创建AI服务
-        const aiService = createAIService(llmConfig)
+        const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+        if (!modelConfig) {
+          message.error('请先在设置中配置模型参数')
+          return
+        }
+        const aiService = createAIService(llmConfig, modelConfig)
 
         // 创建 dispatch 适配器以兼容 ObjectAIService
         const dispatchAdapter = (action: any) => {

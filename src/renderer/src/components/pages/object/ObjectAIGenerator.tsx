@@ -128,7 +128,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
 
     setIsLoadingRecommendations(true)
     try {
-      const aiService = createAIService(llmConfig)
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const objectAIService = createObjectAIService(
         llmConfig,
         aiService,
@@ -359,7 +364,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return
       }
 
-      const aiService = createAIService(llmConfig)
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const objectAIService = createObjectAIService(
         llmConfig,
         aiService,
@@ -423,7 +433,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return
       }
 
-      const aiService = createAIService(llmConfig)
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const objectAIService = createObjectAIService(
         llmConfig,
         aiService,
@@ -465,7 +480,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return
       }
 
-      const aiService = createAIService(llmConfig)
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const objectAIService = createObjectAIService(
         llmConfig,
         aiService,
@@ -510,7 +530,12 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
         return
       }
 
-      const aiService = createAIService(llmConfig)
+      const modelConfig = stores.settings.getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        message.error('请先在设置中配置模型参数')
+        return
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const objectAIService = createObjectAIService(
         llmConfig,
         aiService,
