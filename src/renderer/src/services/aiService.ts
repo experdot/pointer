@@ -1,4 +1,4 @@
-import { ChatMessage, LLMConfig } from '../types/type'
+import { ChatMessage, LLMConfig, ModelConfig } from '../types/type'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface StreamingResponse {
@@ -10,11 +10,13 @@ export interface StreamingResponse {
 
 export class AIService {
   private llmConfig: LLMConfig
+  private modelConfig: ModelConfig
   private requestId: string
   private isAborted: boolean = false
 
-  constructor(llmConfig: LLMConfig) {
+  constructor(llmConfig: LLMConfig, modelConfig: ModelConfig) {
     this.llmConfig = llmConfig
+    this.modelConfig = modelConfig
     this.requestId = uuidv4()
   }
 
@@ -85,6 +87,7 @@ export class AIService {
       await window.api.ai.sendMessageStreaming({
         requestId: this.requestId,
         config: this.llmConfig,
+        modelConfig: this.modelConfig,
         messages: messages
       })
     } catch (error) {
@@ -107,6 +110,7 @@ export class AIService {
       const result = await window.api.ai.sendMessage({
         requestId: this.requestId,
         config: this.llmConfig,
+        modelConfig: this.modelConfig,
         messages: messages
       })
 
@@ -137,6 +141,6 @@ export class AIService {
 }
 
 // 工厂函数
-export function createAIService(llmConfig: LLMConfig): AIService {
-  return new AIService(llmConfig)
+export function createAIService(llmConfig: LLMConfig, modelConfig: ModelConfig): AIService {
+  return new AIService(llmConfig, modelConfig)
 }

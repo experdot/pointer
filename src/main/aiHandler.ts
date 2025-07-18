@@ -7,6 +7,12 @@ export interface LLMConfig {
   modelName: string
 }
 
+export interface ModelConfig {
+  systemPrompt: string
+  topP: number
+  temperature: number
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
@@ -15,6 +21,7 @@ export interface ChatMessage {
 export interface AIRequest {
   requestId: string
   config: LLMConfig
+  modelConfig: ModelConfig
   messages: ChatMessage[]
   streaming?: boolean
 }
@@ -53,6 +60,32 @@ class AIHandler {
       const abortController = new AbortController()
       this.abortControllers.set(request.requestId, abortController)
 
+      // 准备消息数组，如果有systemPrompt，插入system消息
+      const apiMessages = request.messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      let modelConfig = request.modelConfig
+      if (!request.modelConfig) {
+        modelConfig = {
+          systemPrompt: '',
+          topP: 1,
+          temperature: 1
+        }
+      }
+
+      // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
+      if (
+        modelConfig.systemPrompt &&
+        (apiMessages.length === 0 || apiMessages[0].role !== 'system')
+      ) {
+        apiMessages.unshift({
+          role: 'system',
+          content: modelConfig.systemPrompt
+        })
+      }
+
       const response = await fetch(
         `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
         {
@@ -63,11 +96,10 @@ class AIHandler {
           },
           body: JSON.stringify({
             model: request.config.modelName,
-            messages: request.messages.map((msg) => ({
-              role: msg.role,
-              content: msg.content
-            })),
-            stream: true
+            messages: apiMessages,
+            stream: true,
+            temperature: modelConfig.temperature,
+            top_p: modelConfig.topP
           }),
           signal: abortController.signal
         }
@@ -211,6 +243,32 @@ class AIHandler {
     request: AIRequest
   ): Promise<{ success: boolean; content?: string; reasoning_content?: string; error?: string }> {
     try {
+      // 准备消息数组，如果有systemPrompt，插入system消息
+      const apiMessages = request.messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      let modelConfig = request.modelConfig
+      if (!request.modelConfig) {
+        modelConfig = {
+          systemPrompt: '',
+          topP: 1,
+          temperature: 1
+        }
+      }
+
+      // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
+      if (
+        modelConfig.systemPrompt &&
+        (apiMessages.length === 0 || apiMessages[0].role !== 'system')
+      ) {
+        apiMessages.unshift({
+          role: 'system',
+          content: modelConfig.systemPrompt
+        })
+      }
+
       const response = await fetch(
         `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
         {
@@ -221,10 +279,9 @@ class AIHandler {
           },
           body: JSON.stringify({
             model: request.config.modelName,
-            messages: request.messages.map((msg) => ({
-              role: msg.role,
-              content: msg.content
-            }))
+            messages: apiMessages,
+            temperature: modelConfig.temperature,
+            top_p: modelConfig.topP
           })
         }
       )

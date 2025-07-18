@@ -27,7 +27,7 @@ interface ChatLogicProps {
 
 export default function ChatLogic({ chatId, children }: ChatLogicProps) {
   const { pages } = usePagesStore()
-  const { settings } = useSettingsStore()
+  const { settings, getModelConfigForLLM } = useSettingsStore()
   const {
     addMessageToParent,
     updateMessageContent,
@@ -77,7 +77,11 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
       taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat',
       taskContext?: any
     ): Promise<string> => {
-      const aiService = createAIService(llmConfig)
+      const modelConfig = getModelConfigForLLM(llmConfig.id)
+      if (!modelConfig) {
+        console.warn('未找到模型配置', llmConfig.id)
+      }
+      const aiService = createAIService(llmConfig, modelConfig)
       const messageId = uuidv4()
 
       // 将AI服务实例添加到活跃服务列表中
@@ -248,7 +252,15 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         setIsLoading(false)
       }
     },
-    [isLoading, getLLMConfig, chatId, chat, sendAIMessage, clearStreamingMessageHelper, addMessageToParent]
+    [
+      isLoading,
+      getLLMConfig,
+      chatId,
+      chat,
+      sendAIMessage,
+      clearStreamingMessageHelper,
+      addMessageToParent
+    ]
   )
 
   const handleRetryMessage = useCallback(
@@ -302,7 +314,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         // AI消息已经在sendAIMessage的onComplete中添加了
       } catch (error) {
         console.error('Retry message failed:', error)
-        message.error('重试失败，请检查网络连接和配置')
+        message.error('重试失败，请检查网络连接和配置：' + error)
       } finally {
         setIsLoading(false)
       }
@@ -411,7 +423,7 @@ export default function ChatLogic({ chatId, children }: ChatLogicProps) {
         }
       } catch (error) {
         console.error('Edit and resend failed:', error)
-        message.error('编辑并重发失败，请检查网络连接和配置')
+        message.error('编辑并重发失败，请检查网络连接和配置' + error)
       } finally {
         setIsLoading(false)
       }

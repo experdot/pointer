@@ -13,6 +13,9 @@ import {
   Dropdown,
   Select,
   App,
+  Slider,
+  Row,
+  Col,
   Divider
 } from 'antd'
 import {
@@ -22,28 +25,26 @@ import {
   CopyOutlined,
   StarOutlined,
   StarFilled,
-  MoreOutlined,
-  ThunderboltOutlined
+  MoreOutlined
 } from '@ant-design/icons'
-import { LLMConfig } from '../../types/type'
+import { ModelConfig } from '../../types/type'
 import { v4 as uuidv4 } from 'uuid'
-import { createAIService } from '../../services/aiService'
 import { useSettingsStore } from '../../stores/settingsStore'
 
 const { Text } = Typography
+const { TextArea } = Input
 
-interface LLMConfigFormProps {
+interface ModelConfigFormProps {
   open: boolean
-  config?: LLMConfig
-  onSave: (config: LLMConfig) => void
+  config?: ModelConfig
+  onSave: (config: ModelConfig) => void
   onCancel: () => void
 }
 
-function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
+function ModelConfigForm({ open, config, onSave, onCancel }: ModelConfigFormProps) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const { message } = App.useApp()
-  const { settings } = useSettingsStore()
 
   // 当 config 变化时，更新表单值
   useEffect(() => {
@@ -52,6 +53,12 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
         form.setFieldsValue(config)
       } else {
         form.resetFields()
+        // 设置默认值
+        form.setFieldsValue({
+          systemPrompt: '你是一个有用的AI助手，请提供准确、有帮助的回答。',
+          temperature: 0.7,
+          topP: 0.9
+        })
       }
     }
   }, [open, config, form])
@@ -61,12 +68,12 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       setLoading(true)
       const values = await form.validateFields()
 
-      const newConfig: LLMConfig = {
+      const newConfig: ModelConfig = {
         id: config?.id || uuidv4(),
         name: values.name,
-        apiHost: values.apiHost,
-        apiKey: values.apiKey,
-        modelName: values.modelName,
+        systemPrompt: values.systemPrompt,
+        temperature: values.temperature,
+        topP: values.topP,
         createdAt: config?.createdAt || Date.now()
       }
 
@@ -79,53 +86,12 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
     }
   }
 
-  const testConnection = async () => {
-    try {
-      const values = await form.validateFields()
-      setLoading(true)
-
-      const tempConfig: LLMConfig = {
-        id: 'temp',
-        name: values.name,
-        apiHost: values.apiHost,
-        apiKey: values.apiKey,
-        modelName: values.modelName,
-        createdAt: Date.now()
-      }
-
-      const defaultModelConfig =
-        settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId) ||
-        settings.modelConfigs[0]
-      const aiService = createAIService(tempConfig, defaultModelConfig)
-      const isConnected = await aiService.testConnection()
-
-      console.log('isConnected', isConnected)
-      if (isConnected) {
-        message.success('连接测试成功')
-      } else {
-        message.error('连接测试失败，请检查配置')
-      }
-    } catch (error) {
-      message.error('连接测试失败，请检查配置')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <Modal
-      title={config ? '编辑LLM配置' : '新增LLM配置'}
+      title={config ? '编辑模型配置' : '新增模型配置'}
       open={open}
       onCancel={onCancel}
       footer={[
-        <Button
-          key="test"
-          icon={<ThunderboltOutlined />}
-          onClick={testConnection}
-          loading={loading}
-        >
-          测试连接
-        </Button>,
         <Button key="cancel" onClick={onCancel}>
           取消
         </Button>,
@@ -133,74 +99,101 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
           {config ? '更新' : '保存'}
         </Button>
       ]}
-      width={500}
+      width={600}
     >
-      <Form form={form} layout="vertical" initialValues={config}>
+      <Form form={form} layout="vertical">
         <Form.Item
           name="name"
           label="配置名称"
           rules={[{ required: true, message: '请输入配置名称' }]}
         >
-          <Input placeholder="例如: OpenAI GPT-4" />
+          <Input placeholder="例如: 创意写作助手" />
         </Form.Item>
 
         <Form.Item
-          name="apiHost"
-          label="API Host"
-          rules={[{ required: true, message: '请输入API Host' }]}
+          name="systemPrompt"
+          label="系统提示词"
+          rules={[{ required: true, message: '请输入系统提示词' }]}
         >
-          <Input placeholder="https://api.openai.com/v1" />
+          <TextArea
+            autoSize={{ minRows: 3, maxRows: 10 }}
+            placeholder="输入系统提示词，定义AI的角色和行为..."
+            showCount
+            maxLength={2000}
+          />
         </Form.Item>
 
-        <Form.Item
-          name="apiKey"
-          label="API Key"
-          rules={[{ required: true, message: '请输入API Key' }]}
-        >
-          <Input.Password placeholder="请输入API Key" />
-        </Form.Item>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              name="temperature"
+              label="温度 (Temperature)"
+              rules={[{ required: true, message: '请设置温度值' }]}
+            >
+              <Slider
+                min={0}
+                max={2}
+                step={0.1}
+                marks={{
+                  0: '0',
+                  0.5: '0.5',
+                  1: '1',
+                  1.5: '1.5',
+                  2: '2'
+                }}
+                tooltip={{ formatter: (value) => `${value}` }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              name="topP"
+              label="Top P"
+              rules={[{ required: true, message: '请设置Top P值' }]}
+            >
+              <Slider
+                min={0}
+                max={1}
+                step={0.1}
+                marks={{
+                  0: '0',
+                  0.5: '0.5',
+                  1: '1'
+                }}
+                tooltip={{ formatter: (value) => `${value}` }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
-        <Form.Item
-          name="modelName"
-          label="模型名称"
-          rules={[{ required: true, message: '请输入模型名称' }]}
-        >
-          <Input placeholder="gpt-4" />
-        </Form.Item>
-
-        <Form.Item
-          name="modelConfigId"
-          label="关联模型配置"
-          help="选择要关联的模型配置，如不选择则使用默认配置"
-        >
-          <Select placeholder="选择模型配置（可选）" allowClear>
-            {settings.modelConfigs.map((modelConfig) => (
-              <Select.Option key={modelConfig.id} value={modelConfig.id}>
-                {modelConfig.name}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <div style={{ marginTop: 16, padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            <strong>参数说明：</strong>
+            <br />
+            • Temperature: 控制输出的随机性，值越高越有创意，值越低越确定
+            <br />• Top P: 控制词汇选择的多样性，通常设置为0.9左右
+          </Text>
+        </div>
       </Form>
     </Modal>
   )
 }
 
-export default function LLMSettings() {
-  const { settings, addLLMConfig, updateLLMConfig, deleteLLMConfig, setDefaultLLM } =
+export default function ModelConfigSettings() {
+  const { settings, addModelConfig, updateModelConfig, deleteModelConfig, setDefaultModelConfig } =
     useSettingsStore()
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingConfig, setEditingConfig] = useState<LLMConfig | undefined>()
+  const [editingConfig, setEditingConfig] = useState<ModelConfig | undefined>()
   const { message, modal } = App.useApp()
 
-  const handleSaveConfig = (config: LLMConfig) => {
-    const existingConfig = settings.llmConfigs?.find((c) => c.id === config.id)
+  const handleSaveConfig = (config: ModelConfig) => {
+    const existingConfig = settings.modelConfigs?.find((c) => c.id === config.id)
 
     if (existingConfig) {
-      updateLLMConfig(config.id, config)
+      updateModelConfig(config.id, config)
       message.success('配置已更新')
     } else {
-      addLLMConfig(config)
+      addModelConfig(config)
       message.success('配置已添加')
     }
 
@@ -208,9 +201,9 @@ export default function LLMSettings() {
     setEditingConfig(undefined)
   }
 
-  const handleDeleteConfig = (config: LLMConfig) => {
-    const currentConfigs = settings.llmConfigs || []
-    const isDefaultConfig = settings.defaultLLMId === config.id
+  const handleDeleteConfig = (config: ModelConfig) => {
+    const currentConfigs = settings.modelConfigs || []
+    const isDefaultConfig = settings.defaultModelConfigId === config.id
     const isLastConfig = currentConfigs.length === 1
 
     const title = isDefaultConfig ? '删除默认配置' : '删除配置'
@@ -219,7 +212,7 @@ export default function LLMSettings() {
     if (isDefaultConfig && !isLastConfig) {
       content += '\n\n删除后，系统将自动选择另一个配置作为默认配置。'
     } else if (isLastConfig) {
-      content += '\n\n这是最后一个配置，删除后您将无法使用AI功能。'
+      content += '\n\n这是最后一个配置，删除后将使用内置默认配置。'
     }
 
     modal.confirm({
@@ -229,40 +222,31 @@ export default function LLMSettings() {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
-        deleteLLMConfig(config.id)
+        deleteModelConfig(config.id)
         message.success('配置已删除')
       }
     })
   }
 
-  const handleCopyConfig = (config: LLMConfig) => {
-    const currentConfigs = settings.llmConfigs || []
-    const hasDefaultConfig = settings.defaultLLMId
-
-    const newConfig: LLMConfig = {
+  const handleCopyConfig = (config: ModelConfig) => {
+    const newConfig: ModelConfig = {
       ...config,
       id: uuidv4(),
       name: `${config.name} (副本)`,
       createdAt: Date.now()
     }
 
-    addLLMConfig(newConfig)
-
-    // 如果没有默认配置，则将新配置设为默认
-    if (!hasDefaultConfig) {
-      setDefaultLLM(newConfig.id)
-    }
-
+    addModelConfig(newConfig)
     message.success('配置已复制')
   }
 
   const handleSetDefault = (id: string) => {
-    setDefaultLLM(id)
+    setDefaultModelConfig(id)
     message.success('已设为默认配置')
   }
 
-  const getDropdownItems = (config: LLMConfig) => {
-    const isDefault = settings.defaultLLMId === config.id
+  const getDropdownItems = (config: ModelConfig) => {
+    const isDefault = settings.defaultModelConfigId === config.id
 
     return [
       {
@@ -300,10 +284,14 @@ export default function LLMSettings() {
     ]
   }
 
+  const formatSystemPrompt = (prompt: string) => {
+    return prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt
+  }
+
   return (
     <Card
       size="small"
-      title="LLM配置管理"
+      title="模型配置管理"
       bordered={false}
       extra={
         <Button
@@ -318,8 +306,8 @@ export default function LLMSettings() {
         </Button>
       }
     >
-      {!settings.llmConfigs?.length ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无LLM配置">
+      {!settings.modelConfigs?.length ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无模型配置">
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -334,14 +322,14 @@ export default function LLMSettings() {
       ) : (
         <div>
           <div style={{ marginBottom: 16 }}>
-            <Text strong>默认模型：</Text>
+            <Text strong>默认配置：</Text>
             <Select
-              value={settings.defaultLLMId}
+              value={settings.defaultModelConfigId}
               onChange={handleSetDefault}
               style={{ width: 200, marginLeft: 8 }}
-              placeholder="选择默认模型"
+              placeholder="选择默认配置"
             >
-              {settings.llmConfigs.map((config) => (
+              {settings.modelConfigs.map((config) => (
                 <Select.Option key={config.id} value={config.id}>
                   {config.name}
                 </Select.Option>
@@ -349,9 +337,8 @@ export default function LLMSettings() {
             </Select>
           </div>
           <Divider />
-
           <List
-            dataSource={settings.llmConfigs}
+            dataSource={settings.modelConfigs}
             renderItem={(config) => (
               <List.Item
                 actions={[
@@ -368,7 +355,7 @@ export default function LLMSettings() {
                   title={
                     <Space>
                       <Text strong>{config.name}</Text>
-                      {settings.defaultLLMId === config.id && (
+                      {settings.defaultModelConfigId === config.id && (
                         <Tag color="gold" icon={<StarFilled />}>
                           默认
                         </Tag>
@@ -377,15 +364,11 @@ export default function LLMSettings() {
                   }
                   description={
                     <Space direction="vertical" size="small">
-                      <Text type="secondary">Host: {config.apiHost}</Text>
-                      <Text type="secondary">Model: {config.modelName}</Text>
-                      <Text type="secondary">API Key: {config.apiKey.slice(0, 8)}...</Text>
                       <Text type="secondary">
-                        关联配置:{' '}
-                        {config.modelConfigId
-                          ? settings.modelConfigs.find((mc) => mc.id === config.modelConfigId)
-                              ?.name || '已删除'
-                          : '使用默认配置'}
+                        系统提示词: {formatSystemPrompt(config.systemPrompt)}
+                      </Text>
+                      <Text type="secondary">
+                        温度: {config.temperature} | Top P: {config.topP}
                       </Text>
                     </Space>
                   }
@@ -396,7 +379,7 @@ export default function LLMSettings() {
         </div>
       )}
 
-      <LLMConfigForm
+      <ModelConfigForm
         open={modalOpen}
         config={editingConfig}
         onSave={handleSaveConfig}

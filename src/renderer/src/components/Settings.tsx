@@ -4,6 +4,7 @@ import { SettingOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons
 import { useSettingsStore } from '../stores/settingsStore'
 import AppearanceSettings from './settings/AppearanceSettings'
 import LLMSettings from './settings/LLMSettings'
+import ModelConfigSettings from './settings/ModelConfigSettings'
 import DataManagement from './settings/DataManagement'
 import SettingsDemo from './settings/SettingsDemo'
 
@@ -59,6 +60,11 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
       children: <LLMSettings />
     },
     {
+      key: 'model-config',
+      label: '模型配置',
+      children: <ModelConfigSettings />
+    },
+    {
       key: 'data',
       label: '数据管理',
       children: <DataManagement />
@@ -101,11 +107,7 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
   if (!open) return null
 
   if (embedded) {
-    return (
-      <div className="settings-embedded">
-        {settingsContent}
-      </div>
-    )
+    return <div className="settings-embedded">{settingsContent}</div>
   }
 
   return (

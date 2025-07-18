@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { Settings, LLMConfig } from '../types/type'
+import { Settings, LLMConfig, ModelConfig } from '../types/type'
 import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 import { INITIAL_SETTINGS } from './helpers/constants'
+import { createAIService } from '../services/aiService'
 
 export interface SettingsState {
   settings: Settings
@@ -22,6 +23,15 @@ export interface SettingsActions {
   getLLMConfig: (id: string) => LLMConfig | undefined
   getDefaultLLMConfig: () => LLMConfig | undefined
 
+  // ModelConfig管理
+  addModelConfig: (config: ModelConfig) => void
+  updateModelConfig: (id: string, updates: Partial<ModelConfig>) => void
+  deleteModelConfig: (id: string) => void
+  setDefaultModelConfig: (id: string) => void
+  getModelConfig: (id: string) => ModelConfig | undefined
+  getDefaultModelConfig: () => ModelConfig | undefined
+  getModelConfigForLLM: (llmId: string) => ModelConfig | undefined
+
   // 外观设置
   setFontSize: (size: 'small' | 'medium' | 'large') => void
 
@@ -29,6 +39,8 @@ export interface SettingsActions {
   exportSettings: () => Settings
   importSettings: (settings: Settings) => void
   validateLLMConfig: (config: Partial<LLMConfig>) => boolean
+  validateModelConfig: (config: Partial<ModelConfig>) => boolean
+  createAIServiceForLLM: (llmId: string) => any | null
 }
 
 const initialState: SettingsState = {
@@ -147,6 +159,95 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         }
       },
 
+      // ModelConfig管理
+      addModelConfig: (config) => {
+        try {
+          set((state) => {
+            // 如果是第一个配置，自动设为默认
+            if (state.settings.modelConfigs.length === 0) {
+              state.settings.defaultModelConfigId = config.id
+            }
+
+            state.settings.modelConfigs.push(config)
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'addModelConfig', error)
+        }
+      },
+
+      updateModelConfig: (id, updates) => {
+        try {
+          set((state) => {
+            const configIndex = state.settings.modelConfigs.findIndex((c) => c.id === id)
+            if (configIndex !== -1) {
+              const updatedConfig = { ...state.settings.modelConfigs[configIndex], ...updates }
+              state.settings.modelConfigs[configIndex] = updatedConfig
+            }
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'updateModelConfig', error)
+        }
+      },
+
+      deleteModelConfig: (id) => {
+        try {
+          set((state) => {
+            state.settings.modelConfigs = state.settings.modelConfigs.filter((c) => c.id !== id)
+
+            // 如果删除的是默认配置，选择新的默认配置
+            if (state.settings.defaultModelConfigId === id) {
+              if (state.settings.modelConfigs.length > 0) {
+                state.settings.defaultModelConfigId = state.settings.modelConfigs[0].id
+              } else {
+                state.settings.defaultModelConfigId = undefined
+              }
+            }
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'deleteModelConfig', error)
+        }
+      },
+
+      setDefaultModelConfig: (id) => {
+        try {
+          set((state) => {
+            state.settings.defaultModelConfigId = id
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'setDefaultModelConfig', error)
+        }
+      },
+
+      getModelConfig: (id) => {
+        return get().settings.modelConfigs.find((c) => c.id === id)
+      },
+
+      getDefaultModelConfig: () => {
+        const { settings } = get()
+        if (settings.defaultModelConfigId) {
+          return settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId)
+        }
+        return settings.modelConfigs[0]
+      },
+
+      getModelConfigForLLM: (llmId) => {
+        const { settings } = get()
+        const llmConfig = settings.llmConfigs.find((c) => c.id === llmId)
+
+        if (llmConfig?.modelConfigId) {
+          // LLM配置有关联的ModelConfig
+          return settings.modelConfigs.find((c) => c.id === llmConfig.modelConfigId)
+        }
+
+        // 没有关联，使用默认的ModelConfig
+        if (settings.defaultModelConfigId) {
+          return settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId)
+        }
+
+        // 返回第一个ModelConfig
+        return settings.modelConfigs[0]
+      },
+
       // 工具方法
       exportSettings: () => {
         return get().settings
@@ -168,6 +269,46 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         } catch (error) {
           handleStoreError('settingsStore', 'validateLLMConfig', error)
           return false
+        }
+      },
+
+      validateModelConfig: (config) => {
+        try {
+          return !!(
+            config.name &&
+            config.systemPrompt &&
+            typeof config.topP === 'number' &&
+            config.topP >= 0 &&
+            config.topP <= 1 &&
+            typeof config.temperature === 'number' &&
+            config.temperature >= 0 &&
+            config.temperature <= 2
+          )
+        } catch (error) {
+          handleStoreError('settingsStore', 'validateModelConfig', error)
+          return false
+        }
+      },
+
+      createAIServiceForLLM: (llmId) => {
+        try {
+          const { settings } = get()
+          const llmConfig = settings.llmConfigs.find((c) => c.id === llmId)
+
+          if (!llmConfig) {
+            return null
+          }
+
+          const modelConfig = get().getModelConfigForLLM(llmId)
+
+          if (!modelConfig) {
+            return null
+          }
+
+          return createAIService(llmConfig, modelConfig)
+        } catch (error) {
+          handleStoreError('settingsStore', 'createAIServiceForLLM', error)
+          return null
         }
       }
     })),

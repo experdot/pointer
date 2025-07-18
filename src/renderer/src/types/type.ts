@@ -1,3 +1,12 @@
+export interface ModelConfig {
+  id: string
+  name: string
+  systemPrompt: string
+  topP: number
+  temperature: number
+  createdAt: number
+}
+
 export interface LLMConfig {
   id: string
   name: string
@@ -5,6 +14,7 @@ export interface LLMConfig {
   apiKey: string
   modelName: string
   createdAt: number
+  modelConfigId?: string
 }
 
 export interface ChatMessage {
@@ -279,6 +289,8 @@ export interface Page extends PageBase {
 export interface Settings {
   llmConfigs: LLMConfig[]
   defaultLLMId?: string
+  modelConfigs: ModelConfig[]
+  defaultModelConfigId?: string
   fontSize: 'small' | 'medium' | 'large'
 }
 
