@@ -2,6 +2,7 @@ import React from 'react'
 import { ConfigProvider, theme, App as AntdApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import Layout from './components/Layout'
+import { ZustandAppProvider } from './stores/ZustandAppContext'
 import './App.css'
 
 function AppContent(): React.JSX.Element {
@@ -16,16 +17,16 @@ function AppContent(): React.JSX.Element {
       }}
     >
       <AntdApp>
-        <Layout />
+        <ZustandAppProvider>
+          <Layout />
+        </ZustandAppProvider>
       </AntdApp>
     </ConfigProvider>
   )
 }
 
 function App(): React.JSX.Element {
-  return (
-    <AppContent />
-  )
+  return <AppContent />
 }
 
 export default App
