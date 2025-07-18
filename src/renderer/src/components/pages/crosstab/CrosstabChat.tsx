@@ -552,15 +552,19 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     (columnPath: string, rowPath: string, cellContent: string, metadata: any) => {
       if (!chat || !metadata) return
 
-      // 创建新的聊天标题
-      const chatTitle = `分析: ${columnPath} × ${rowPath}`
-
-      // 使用 pagesStore 的方法创建新聊天
-      const newChatId = createAndOpenChat(chatTitle, chat.folderId)
+      // 使用 pagesStore 的专门方法创建包含上下文的聊天
+      const newChatId = usePagesStore.getState().createChatFromCell({
+        folderId: chat.folderId,
+        horizontalItem: columnPath,
+        verticalItem: rowPath,
+        cellContent,
+        metadata,
+        sourcePageId: chat.id
+      })
 
       message.success(`已创建新聊天窗口分析 "${columnPath} × ${rowPath}"`)
     },
-    [chat, createAndOpenChat, message]
+    [chat, message]
   )
 
   const handleStepComplete = useCallback(
