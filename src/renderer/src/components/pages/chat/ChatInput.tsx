@@ -1,6 +1,13 @@
 import React, { useRef, forwardRef, useImperativeHandle, useState } from 'react'
-import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown } from 'antd'
-import { SendOutlined, StopOutlined, SettingOutlined, QuestionCircleOutlined, BulbOutlined, DownOutlined } from '@ant-design/icons'
+import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown, Flex } from 'antd'
+import {
+  SendOutlined,
+  StopOutlined,
+  SettingOutlined,
+  QuestionCircleOutlined,
+  BulbOutlined,
+  DownOutlined
+} from '@ant-design/icons'
 import { LLMConfig } from '../../../types/type'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import ModelSelector from './ModelSelector'
@@ -43,7 +50,11 @@ function AutoQuestionControls({
   }
 
   const handleModeChange = (newMode: 'ai' | 'preset') => {
-    onChange?.(enabled, newMode, newMode === 'preset' ? (selectedListId || promptLists[0]?.id) : undefined)
+    onChange?.(
+      enabled,
+      newMode,
+      newMode === 'preset' ? selectedListId || promptLists[0]?.id : undefined
+    )
   }
 
   const handleListChange = (listId: string) => {
@@ -51,7 +62,7 @@ function AutoQuestionControls({
   }
 
   const getCurrentPromptList = () => {
-    return promptLists.find(list => list.id === selectedListId)
+    return promptLists.find((list) => list.id === selectedListId)
   }
 
   const modeOptions = [
@@ -76,7 +87,7 @@ function AutoQuestionControls({
   ]
 
   const dropdownMenu = {
-    items: modeOptions.map(option => ({
+    items: modeOptions.map((option) => ({
       key: option.key,
       label: option.label,
       onClick: () => handleModeChange(option.key as 'ai' | 'preset')
@@ -96,7 +107,7 @@ function AutoQuestionControls({
           <span style={{ fontSize: '12px' }}>自动提问</span>
         </Space>
       </Tooltip>
-      
+
       {enabled && (
         <>
           <Dropdown menu={dropdownMenu} trigger={['click']} disabled={disabled}>
@@ -115,7 +126,7 @@ function AutoQuestionControls({
               <DownOutlined />
             </Button>
           </Dropdown>
-          
+
           {mode === 'preset' && (
             <Select
               size="small"
@@ -238,25 +249,16 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
           />
         )}
 
-        <div className="chat-input-container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <ModelSelector
-              llmConfigs={llmConfigs}
-              selectedModel={selectedModel}
-              defaultLLMId={defaultModelId}
-              onChange={onModelChange}
-              disabled={disabled || loading}
-              size="small"
-            />
-            <AutoQuestionControls
-              enabled={autoQuestionEnabled}
-              mode={autoQuestionMode}
-              selectedListId={autoQuestionListId}
-              promptLists={settings.promptLists || []}
-              disabled={disabled || loading}
-              onChange={onAutoQuestionChange}
-            />
-          </div>
+        <div
+          className="chat-input-container"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 8,
+            flexWrap: 'wrap'
+          }}
+        >
           <TextArea
             ref={textAreaRef}
             placeholder={
@@ -272,20 +274,51 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             autoSize={{ minRows: 1, maxRows: 10 }}
             disabled={disabled || hasNoModels}
           />
-          {loading ? (
-            <Button type="primary" danger icon={<StopOutlined />} onClick={onStop}>
-              停止
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={onSend}
-              disabled={!value.trim() || disabled || !selectedModel || hasNoModels}
-            >
-              发送
-            </Button>
-          )}
+          <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
+            <Space>
+              {/* 模型选择器 */}
+              <div>
+                <ModelSelector
+                  llmConfigs={llmConfigs}
+                  selectedModel={selectedModel}
+                  defaultLLMId={defaultModelId}
+                  onChange={onModelChange}
+                  disabled={disabled}
+                  size="small"
+                />
+              </div>
+
+              {/* 自动提问控件 */}
+              <div>
+                <AutoQuestionControls
+                  enabled={autoQuestionEnabled}
+                  mode={autoQuestionMode}
+                  selectedListId={autoQuestionListId}
+                  promptLists={settings.promptLists || []}
+                  disabled={disabled}
+                  onChange={onAutoQuestionChange}
+                />
+              </div>
+            </Space>
+
+            {/* 发送/停止按钮 */}
+            <div style={{ justifySelf: 'flex-end' }}>
+              {loading ? (
+                <Button type="primary" danger icon={<StopOutlined />} onClick={onStop}>
+                  停止
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  onClick={onSend}
+                  disabled={!value.trim() || disabled || !selectedModel || hasNoModels}
+                >
+                  发送
+                </Button>
+              )}
+            </div>
+          </Flex>
         </div>
       </div>
     )
