@@ -417,7 +417,19 @@ export default function ChatLogic({
             return
           }
           
-          nextQuestion = promptList.prompts[currentCount]
+          nextQuestion = `针对以上探讨的关键信息，请完成以下任务：
+          ## 任务
+          ${promptList.name}
+
+          ## 任务描述
+          ${promptList.description}
+
+          ## 任务列表
+          ${promptList.prompts.map((prompt, index) => `${index + 1}. ${prompt}`).join('\n')}
+
+          ## 当前任务内容
+          请完成：${promptList.prompts[currentCount]}     
+          `
           console.log(`generateAndSendFollowUpQuestion - 预设模式，列表 "${promptList.name}" 使用提示词 ${currentCount + 1}/${promptList.prompts.length}: ${nextQuestion}`)
           
           // 直接发送预设的问题
