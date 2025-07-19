@@ -38,6 +38,14 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     const saved = localStorage.getItem('messageTreeWidth')
     return saved ? parseInt(saved, 10) : 300
   })
+  // 自动提问相关状态
+  const [autoQuestionEnabled, setAutoQuestionEnabled] = useState(false)
+  const [autoQuestionMode, setAutoQuestionMode] = useState<'ai' | 'preset'>('ai')
+  const [autoQuestionListId, setAutoQuestionListId] = useState<string | undefined>(() => {
+    // 确保有可用的提示词列表时才设置默认值
+    const lists = settings.promptLists || []
+    return lists.length > 0 ? (settings.defaultPromptListId || lists[0].id) : undefined
+  })
   const chatInputRef = useRef<ChatInputRef>(null)
 
   useImperativeHandle(ref, () => ({
@@ -111,6 +119,28 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     localStorage.setItem('messageTreeWidth', width.toString())
   }
 
+  const handleAutoQuestionChange = (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
+    console.log('ChatWindow handleAutoQuestionChange:', {
+      enabled,
+      mode,
+      listId,
+      currentEnabled: autoQuestionEnabled,
+      currentMode: autoQuestionMode,
+      currentListId: autoQuestionListId
+    })
+    
+    setAutoQuestionEnabled(enabled)
+    setAutoQuestionMode(mode)
+    if (listId) {
+      setAutoQuestionListId(listId)
+    } else if (mode === 'preset' && !listId && settings.promptLists?.length > 0) {
+      // 如果选择预设模式但没有指定listId，使用默认的
+      const defaultListId = settings.defaultPromptListId || settings.promptLists[0].id
+      setAutoQuestionListId(defaultListId)
+      console.log('ChatWindow 自动设置 defaultListId:', defaultListId)
+    }
+  }
+
   if (!chat) {
     return <div className="chat-window-error">聊天不存在</div>
   }
@@ -133,7 +163,12 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
       </div>
 
       <div className="chat-window-content">
-        <ChatLogic chatId={chatId}>
+        <ChatLogic 
+          chatId={chatId}
+          autoQuestionEnabled={autoQuestionEnabled}
+          autoQuestionMode={autoQuestionMode}
+          autoQuestionListId={autoQuestionListId}
+        >
           {({
             isLoading,
             selectedModel,
@@ -210,6 +245,11 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   defaultModelId={settings.defaultLLMId}
                   onModelChange={onModelChange}
                   onOpenSettings={handleOpenSettings}
+                  // 自动提问相关props
+                  autoQuestionEnabled={autoQuestionEnabled}
+                  autoQuestionMode={autoQuestionMode}
+                  autoQuestionListId={autoQuestionListId}
+                  onAutoQuestionChange={handleAutoQuestionChange}
                 />
               </div>
             </>

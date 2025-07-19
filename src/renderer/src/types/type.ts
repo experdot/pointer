@@ -286,12 +286,23 @@ export interface Page extends PageBase {
   objectData?: ObjectData
 }
 
+// 预设提示词列表配置
+export interface PromptListConfig {
+  id: string
+  name: string
+  description?: string
+  prompts: string[]
+  createdAt: number
+}
+
 export interface Settings {
   llmConfigs: LLMConfig[]
   defaultLLMId?: string
   modelConfigs: ModelConfig[]
   defaultModelConfigId?: string
   fontSize: 'small' | 'medium' | 'large'
+  promptLists: PromptListConfig[]
+  defaultPromptListId?: string
 }
 
 export interface SearchResult {

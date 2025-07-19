@@ -5,6 +5,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import AppearanceSettings from './settings/AppearanceSettings'
 import LLMSettings from './settings/LLMSettings'
 import ModelConfigSettings from './settings/ModelConfigSettings'
+import PromptListSettings from './settings/PromptListSettings'
 import DataManagement from './settings/DataManagement'
 import SettingsDemo from './settings/SettingsDemo'
 
@@ -63,6 +64,11 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
       key: 'model-config',
       label: '模型配置',
       children: <ModelConfigSettings />
+    },
+    {
+      key: 'prompt-lists',
+      label: '提示词列表',
+      children: <PromptListSettings />
     },
     {
       key: 'data',

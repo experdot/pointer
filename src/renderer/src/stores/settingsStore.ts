@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { Settings, LLMConfig, ModelConfig } from '../types/type'
+import { Settings, LLMConfig, ModelConfig, PromptListConfig } from '../types/type'
 import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 import { INITIAL_SETTINGS } from './helpers/constants'
 import { createAIService } from '../services/aiService'
@@ -34,6 +34,14 @@ export interface SettingsActions {
 
   // 外观设置
   setFontSize: (size: 'small' | 'medium' | 'large') => void
+
+  // 提示词列表管理
+  addPromptList: (config: PromptListConfig) => void
+  updatePromptList: (id: string, updates: Partial<PromptListConfig>) => void
+  deletePromptList: (id: string) => void
+  setDefaultPromptList: (id: string) => void
+  getPromptList: (id: string) => PromptListConfig | undefined
+  getDefaultPromptList: () => PromptListConfig | undefined
 
   // 工具方法
   exportSettings: () => Settings
@@ -157,6 +165,81 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         } catch (error) {
           handleStoreError('settingsStore', 'setFontSize', error)
         }
+      },
+
+      // 提示词列表管理
+      addPromptList: (config) => {
+        try {
+          set((state) => {
+            // 如果是第一个配置，自动设为默认
+            if (!state.settings.promptLists || state.settings.promptLists.length === 0) {
+              state.settings.defaultPromptListId = config.id
+            }
+
+            if (!state.settings.promptLists) {
+              state.settings.promptLists = []
+            }
+            state.settings.promptLists.push(config)
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'addPromptList', error)
+        }
+      },
+
+      updatePromptList: (id, updates) => {
+        try {
+          set((state) => {
+            if (state.settings.promptLists) {
+              const configIndex = state.settings.promptLists.findIndex((c) => c.id === id)
+              if (configIndex !== -1) {
+                state.settings.promptLists[configIndex] = {
+                  ...state.settings.promptLists[configIndex],
+                  ...updates
+                }
+              }
+            }
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'updatePromptList', error)
+        }
+      },
+
+      deletePromptList: (id) => {
+        try {
+          set((state) => {
+            if (state.settings.promptLists) {
+              state.settings.promptLists = state.settings.promptLists.filter((c) => c.id !== id)
+              
+              // 如果删除的是默认配置，重新选择默认
+              if (state.settings.defaultPromptListId === id) {
+                state.settings.defaultPromptListId = state.settings.promptLists.length > 0
+                  ? state.settings.promptLists[0].id
+                  : undefined
+              }
+            }
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'deletePromptList', error)
+        }
+      },
+
+      setDefaultPromptList: (id) => {
+        try {
+          set((state) => {
+            state.settings.defaultPromptListId = id
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'setDefaultPromptList', error)
+        }
+      },
+
+      getPromptList: (id) => {
+        return get().settings.promptLists?.find((config) => config.id === id)
+      },
+
+      getDefaultPromptList: () => {
+        const { settings } = get()
+        return settings.promptLists?.find((config) => config.id === settings.defaultPromptListId)
       },
 
       // ModelConfig管理
