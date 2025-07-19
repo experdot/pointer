@@ -62,6 +62,9 @@ export function useAIService(chatId: string): UseAIServiceReturn {
       const aiService = createAIService(llmConfig, modelConfig)
       const messageId = uuidv4()
 
+      // 设置 loading 状态为 true
+      setIsLoading(true)
+
       // 将AI服务实例添加到活跃服务列表中
       setActiveAIServices((prev) => new Map(prev).set(messageId, aiService))
 
@@ -128,10 +131,14 @@ export function useAIService(chatId: string): UseAIServiceReturn {
               endTime: Date.now()
             })
             
-            // 从活跃服务列表中移除
+            // 从活跃服务列表中移除并检查是否需要重置 loading 状态
             setActiveAIServices((prev) => {
               const newMap = new Map(prev)
               newMap.delete(messageId)
+              // 如果没有活跃的服务了，重置 loading 状态
+              if (newMap.size === 0) {
+                setIsLoading(false)
+              }
               return newMap
             })
 
@@ -150,10 +157,14 @@ export function useAIService(chatId: string): UseAIServiceReturn {
               error: error.message
             })
             
-            // 从活跃服务列表中移除
+            // 从活跃服务列表中移除并检查是否需要重置 loading 状态
             setActiveAIServices((prev) => {
               const newMap = new Map(prev)
               newMap.delete(messageId)
+              // 如果没有活跃的服务了，重置 loading 状态
+              if (newMap.size === 0) {
+                setIsLoading(false)
+              }
               return newMap
             })
             
@@ -177,6 +188,12 @@ export function useAIService(chatId: string): UseAIServiceReturn {
   )
 
   const stopGeneration = useCallback(() => {
+    // 如果没有活跃的服务，直接返回
+    if (activeAIServices.size === 0) {
+      setIsLoading(false)
+      return
+    }
+
     // 停止所有活跃的AI服务
     activeAIServices.forEach((aiService, messageId) => {
       aiService.stopStreaming()
@@ -220,6 +237,7 @@ export function useAIService(chatId: string): UseAIServiceReturn {
       clearStreamingMessage(chatId, messageId)
     })
     
+    // 清空活跃服务并重置 loading 状态
     setActiveAIServices(new Map())
     setIsLoading(false)
   }, [activeAIServices, updateTask, chatId, clearStreamingMessage])

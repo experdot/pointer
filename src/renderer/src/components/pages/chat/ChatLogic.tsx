@@ -115,12 +115,18 @@ export default function ChatLogic({
     setSelectedModel(modelId)
   }
 
+  const handleStopGeneration = useCallback(() => {
+    // 同时重置两个 loading 状态
+    setIsLoading(false)
+    aiService.stopGeneration()
+  }, [aiService, setIsLoading])
+
   return children({
     isLoading: isLoading || aiService.isLoading,
     selectedModel,
     onModelChange: handleModelChange,
     onSendMessage: messageOperations.handleSendMessage,
-    onStopGeneration: aiService.stopGeneration,
+    onStopGeneration: handleStopGeneration,
     onRetryMessage: messageOperations.handleRetryMessage,
     onEditMessage: messageOperations.handleEditMessage,
     onEditAndResendMessage: messageOperations.handleEditAndResendMessage,
