@@ -83,42 +83,46 @@ export default function MessageList({
   // 计算当前的流式内容，用于触发滚动
   const currentStreamingContent = lastMessageStreaming?.content || ''
 
-  // 检查是否已经滚动到底部
-  const isAtBottom = useCallback(() => {
+  // 检查是否距离底部较近
+  const isNearBottom = useCallback(() => {
     const container = messagesContainerRef.current
     if (!container) return true
     
-    const threshold = 20 // 20px 的阈值
+    const threshold = 100 // 100px 的阈值，仅用于判断是否接近底部以恢复自动滚动
     const { scrollTop, scrollHeight, clientHeight } = container
     return scrollHeight - scrollTop - clientHeight <= threshold
   }, [])
 
-  // 处理用户滚动事件
-  const handleScroll = useCallback(() => {
+  // 处理鼠标滚轮事件
+  const handleWheel = useCallback((event: WheelEvent) => {
     if (isInitialRender.current) return // 忽略初次渲染时的滚动事件
     
-    const atBottom = isAtBottom()
+    const deltaY = event.deltaY
     
-    if (atBottom && !isAutoScrollEnabled) {
-      // 用户滚动到底部，恢复自动滚动
-      setIsAutoScrollEnabled(true)
-    } else if (!atBottom && isAutoScrollEnabled) {
-      // 用户向上滚动，停止自动滚动
-      setIsAutoScrollEnabled(false)
+    if (deltaY < 0) {
+      // 向上滚动，停止自动滚动
+      if (isAutoScrollEnabled) {
+        setIsAutoScrollEnabled(false)
+      }
+    } else if (deltaY > 0) {
+      // 向下滚动，如果接近底部就恢复自动滚动
+      if (!isAutoScrollEnabled && isNearBottom()) {
+        setIsAutoScrollEnabled(true)
+      }
     }
-  }, [isAutoScrollEnabled, isAtBottom])
+  }, [isAutoScrollEnabled, isNearBottom])
 
-  // 添加和移除滚动事件监听器
+  // 添加和移除滚轮事件监听器
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
 
-    container.addEventListener('scroll', handleScroll, { passive: true })
+    container.addEventListener('wheel', handleWheel, { passive: true })
     
     return () => {
-      container.removeEventListener('scroll', handleScroll)
+      container.removeEventListener('wheel', handleWheel)
     }
-  }, [handleScroll])
+  }, [handleWheel])
 
   const scrollToBottom = (behavior: 'smooth' | 'instant' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior })
