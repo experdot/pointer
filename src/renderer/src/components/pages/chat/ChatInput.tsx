@@ -6,7 +6,8 @@ import {
   SettingOutlined,
   QuestionCircleOutlined,
   BulbOutlined,
-  DownOutlined
+  DownOutlined,
+  PlaySquareOutlined
 } from '@ant-design/icons'
 import { LLMConfig } from '../../../types/type'
 import { useSettingsStore } from '../../../stores/settingsStore'
@@ -166,6 +167,7 @@ interface ChatInputProps {
   autoQuestionMode?: 'ai' | 'preset'
   autoQuestionListId?: string
   onAutoQuestionChange?: (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => void
+  onTriggerFollowUpQuestion?: () => Promise<void>
 }
 
 export interface ChatInputRef {
@@ -189,7 +191,8 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
       autoQuestionEnabled = false,
       autoQuestionMode = 'ai',
       autoQuestionListId,
-      onAutoQuestionChange
+      onAutoQuestionChange,
+      onTriggerFollowUpQuestion
     },
     ref
   ) => {
@@ -295,10 +298,32 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                   mode={autoQuestionMode}
                   selectedListId={autoQuestionListId}
                   promptLists={settings.promptLists || []}
-                  disabled={disabled}
+                  disabled={false}
                   onChange={onAutoQuestionChange}
                 />
               </div>
+
+              {/* 立即追问按钮 */}
+              {autoQuestionEnabled && (
+                <Tooltip title={`立即触发一次${autoQuestionMode === 'ai' ? 'AI' : '预设列表'}追问`}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<PlaySquareOutlined />}
+                    onClick={async () => {
+                      try {
+                        await onTriggerFollowUpQuestion?.()
+                      } catch (error) {
+                        console.error('立即追问失败:', error)
+                      }
+                    }}
+                    disabled={disabled || loading}
+                    style={{ fontSize: '11px', color: '#1890ff' }}
+                  >
+                    立即追问
+                  </Button>
+                </Tooltip>
+              )}
             </Space>
 
             {/* 发送/停止按钮 */}

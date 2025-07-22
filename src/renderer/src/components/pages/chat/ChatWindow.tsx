@@ -180,7 +180,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onEditAndResendMessage,
             onToggleFavorite,
             onModelChangeForMessage,
-            onDeleteMessage
+            onDeleteMessage,
+            onTriggerFollowUpQuestion
           }) => (
             <>
               {/* 消息树侧边栏 */}
@@ -196,7 +197,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
               />
 
               {/* 聊天主内容区 */}
-              <div className="chat-main-content">
+              <div className="chat-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <ChatHeader
                   chatId={chatId}
                   chatTitle={chat.title}
@@ -228,7 +229,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onToggleMessageCollapse={handleToggleMessageCollapse}
                   // 设置相关props
                   onOpenSettings={handleOpenSettings}
-                  onDeleteMessage={onDeleteMessage}
                 />
                 <ChatInput
                   ref={chatInputRef}
@@ -253,6 +253,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   autoQuestionMode={autoQuestionMode}
                   autoQuestionListId={autoQuestionListId}
                   onAutoQuestionChange={handleAutoQuestionChange}
+                  onTriggerFollowUpQuestion={onTriggerFollowUpQuestion}
                 />
               </div>
             </>

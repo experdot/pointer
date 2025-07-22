@@ -22,6 +22,7 @@ interface ChatLogicProps {
     onToggleFavorite: (messageId: string) => void
     onModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
     onDeleteMessage: (messageId: string) => Promise<void>
+    onTriggerFollowUpQuestion: () => Promise<void>
   }) => React.ReactNode
 }
 
@@ -77,8 +78,7 @@ export default function ChatLogic({
       taskType,
       taskContext,
       async (messageId: string) => {
-        // 只在普通聊天任务完成后触发自动提问
-        if (autoQuestionEnabled && taskType === 'chat') {
+        if (autoQuestionEnabled) {
           try {
             setTimeout(async () => {
               await autoQuestion.generateAndSendFollowUpQuestion(messageId)
@@ -112,6 +112,54 @@ export default function ChatLogic({
     sendMessageRef.current = messageOperations.handleSendMessage
   }, [messageOperations.handleSendMessage])
 
+  // 获取最新的AI消息ID
+  const getLatestAIMessageId = useCallback(() => {
+    if (!chat?.messages) return null
+    
+    // 获取当前路径的消息
+    const currentPath = chat.currentPath || []
+    let messages: any[] = []
+    
+    if (currentPath.length > 0) {
+      // 使用当前路径
+      messages = currentPath
+        .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
+        .filter(Boolean)
+    } else {
+      // 使用消息树获取默认路径
+      messages = messageTree.getCurrentPathMessages()
+    }
+    
+    // 从后往前找最新的AI消息
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        return messages[i].id
+      }
+    }
+    
+    return null
+  }, [chat, messageTree])
+
+  // 立即触发追问
+  const handleTriggerFollowUpQuestion = useCallback(async () => {
+    if (!autoQuestionEnabled) {
+      console.warn('自动追问功能未开启')
+      return
+    }
+    
+    const latestAIMessageId = getLatestAIMessageId()
+    if (!latestAIMessageId) {
+      console.warn('未找到AI消息，无法触发追问')
+      return
+    }
+    
+    try {
+      await autoQuestion.generateAndSendFollowUpQuestion(latestAIMessageId)
+    } catch (error) {
+      console.error('立即触发追问失败:', error)
+    }
+  }, [autoQuestionEnabled, getLatestAIMessageId, autoQuestion])
+
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId)
   }
@@ -133,6 +181,7 @@ export default function ChatLogic({
     onEditAndResendMessage: messageOperations.handleEditAndResendMessage,
     onToggleFavorite: messageOperations.handleToggleFavorite,
     onModelChangeForMessage: messageOperations.handleModelChangeForMessage,
-    onDeleteMessage: messageOperations.handleDeleteMessage
+    onDeleteMessage: messageOperations.handleDeleteMessage,
+    onTriggerFollowUpQuestion: handleTriggerFollowUpQuestion
   })
 }
