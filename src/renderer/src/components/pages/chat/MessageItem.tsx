@@ -156,10 +156,6 @@ export default function MessageItem({
     onBranchNext?.(message.id)
   }
 
-  const getCurrentModel = () => {
-    return llmConfigs.find((config) => config.id === message.modelId)
-  }
-
   const handleToggleCollapse = () => {
     onToggleCollapse?.(message.id)
   }

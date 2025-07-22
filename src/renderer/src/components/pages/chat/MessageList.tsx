@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import MessageItem from './MessageItem'
 import WelcomeMessage from './WelcomeMessage'
 import { MessageTree } from './messageTree'
+import { useStreamingMessage } from '../../../stores/messagesStore'
 
 interface MessageListProps {
   chatId: string // 添加chatId prop
@@ -46,10 +47,14 @@ export default function MessageList({
   onOpenSettings
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef<number>(0)
   const prevStreamingContent = useRef<string>('')
   const prevCurrentPath = useRef<string[]>([])
   const isInitialRender = useRef<boolean>(true)
+  
+  // 控制是否自动滚动到底部
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
 
   // 使用传入的消息树（从父组件创建，避免重复创建）
   const messageTree = useMemo(() => {
@@ -69,13 +74,58 @@ export default function MessageList({
     }
   }, [messages, currentPath, messageTree])
 
+  // 获取最后一条消息的ID，用于订阅其流式内容
+  const lastMessageId = displayMessages.length > 0 ? displayMessages[displayMessages.length - 1].id : null
+  
+  // 只订阅最后一条消息的流式内容
+  const lastMessageStreaming = useStreamingMessage(chatId, lastMessageId || '')
+
+  // 计算当前的流式内容，用于触发滚动
+  const currentStreamingContent = lastMessageStreaming?.content || ''
+
+  // 检查是否已经滚动到底部
+  const isAtBottom = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return true
+    
+    const threshold = 20 // 20px 的阈值
+    const { scrollTop, scrollHeight, clientHeight } = container
+    return scrollHeight - scrollTop - clientHeight <= threshold
+  }, [])
+
+  // 处理用户滚动事件
+  const handleScroll = useCallback(() => {
+    if (isInitialRender.current) return // 忽略初次渲染时的滚动事件
+    
+    const atBottom = isAtBottom()
+    
+    if (atBottom && !isAutoScrollEnabled) {
+      // 用户滚动到底部，恢复自动滚动
+      setIsAutoScrollEnabled(true)
+    } else if (!atBottom && isAutoScrollEnabled) {
+      // 用户向上滚动，停止自动滚动
+      setIsAutoScrollEnabled(false)
+    }
+  }, [isAutoScrollEnabled, isAtBottom])
+
+  // 添加和移除滚动事件监听器
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
+
   const scrollToBottom = (behavior: 'smooth' | 'instant' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior })
   }
 
   useEffect(() => {
     const currentMessagesLength = messages.length
-    const currentStreamingContent = streamingContent || ''
     const currentPathString = JSON.stringify(currentPath)
     const prevPathString = JSON.stringify(prevCurrentPath.current)
 
@@ -93,22 +143,25 @@ export default function MessageList({
       (isInitialRender.current && currentMessagesLength > 0) ||
       pathChanged
 
-    if (shouldScroll) {
+    console.count('shouldScroll');
+    
+    // 只有在启用自动滚动时才执行滚动
+    if (shouldScroll && isAutoScrollEnabled) {
       // 初次渲染时直接跳转到底部，其他情况平滑滚动
       const behavior = isInitialRender.current ? 'instant' : 'smooth'
       scrollToBottom(behavior)
+    }
 
-      // 标记初次渲染已完成
-      if (isInitialRender.current) {
-        isInitialRender.current = false
-      }
+    // 标记初次渲染已完成
+    if (isInitialRender.current) {
+      isInitialRender.current = false
     }
 
     // 更新引用值
     prevMessagesLength.current = currentMessagesLength
     prevStreamingContent.current = currentStreamingContent
     prevCurrentPath.current = [...currentPath]
-  }, [messages.length, streamingContent, currentPath])
+  }, [messages.length, currentStreamingContent, currentPath, isAutoScrollEnabled])
 
   // 处理兄弟分支切换
   const handleSiblingBranchSwitch = (messageId: string, direction: 'previous' | 'next') => {
@@ -139,7 +192,7 @@ export default function MessageList({
   }
 
   return (
-    <div className="messages-container">
+    <div className="messages-container" ref={messagesContainerRef}>
       <div className="messages-list">
         {displayMessages.map((message, index) => (
           <MessageItem
