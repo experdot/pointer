@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { App } from 'antd'
 import { v4 as uuidv4 } from 'uuid'
 import { usePagesStore } from '../../../../stores/pagesStore'
+import { useSettingsStore } from '../../../../stores/settingsStore'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import { ChatMessage } from '../../../../types/type'
 import { MessageTree } from '../messageTree'
@@ -23,6 +24,7 @@ export interface UseMessageOperationsReturn {
   handleEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
   handleToggleFavorite: (messageId: string) => void
   handleModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
+  handleDeleteMessage: (messageId: string) => Promise<void>
 }
 
 export function useMessageOperations({
@@ -33,8 +35,9 @@ export function useMessageOperations({
   isLoading,
   setIsLoading
 }: UseMessageOperationsProps): UseMessageOperationsReturn {
-  const { addMessageToParent, toggleMessageFavorite } = useMessagesStore()
-  const { message } = App.useApp()
+  const { addMessageToParent, toggleMessageFavorite, deleteMessageAndChildren } = useMessagesStore()
+  const { settings } = useSettingsStore()
+  const { message, modal } = App.useApp()
 
   const handleSendMessage = useCallback(
     async (content: string, customModelId?: string, customParentId?: string) => {
@@ -287,7 +290,6 @@ export function useMessageOperations({
     async (messageId: string, newModelId: string) => {
       if (!chat || isLoading) return
 
-      const { settings } = usePagesStore.getState()
       const llmConfig = settings.llmConfigs?.find((config: any) => config.id === newModelId)
       if (!llmConfig) {
         message.error('所选模型配置不存在')
@@ -337,8 +339,63 @@ export function useMessageOperations({
       chatId,
       aiService,
       messageTree,
-      setIsLoading
+      setIsLoading,
+      settings
     ]
+  )
+
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!chat) return
+
+      // 找到要删除的消息
+      const messageToDelete = chat.messages?.find((msg: any) => msg.id === messageId)
+      if (!messageToDelete) return
+
+      // 计算要删除的消息总数（包括子分支）
+      const countChildrenRecursively = (msgId: string): number => {
+        let count = 1 // 当前消息
+        const msg = chat.messages?.find((m: any) => m.id === msgId)
+        if (msg?.children) {
+          msg.children.forEach((childId: string) => {
+            count += countChildrenRecursively(childId)
+          })
+        }
+        return count
+      }
+
+      const totalCount = countChildrenRecursively(messageId)
+      const hasChildren = totalCount > 1
+
+      // 显示确认对话框
+      const confirmText = hasChildren 
+        ? `确定要删除这条消息及其所有子分支吗？（共 ${totalCount} 条消息）` 
+        : '确定要删除这条消息吗？'
+      
+      const confirmed = await new Promise<boolean>((resolve) => {
+        modal.confirm({
+          title: '删除消息',
+          content: confirmText,
+          okText: '删除',
+          cancelText: '取消',
+          okType: 'danger',
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false)
+        })
+      })
+
+      if (!confirmed) return
+
+      try {
+        // 调用删除方法
+        deleteMessageAndChildren(chatId, messageId)
+        message.success(hasChildren ? `已删除 ${totalCount} 条消息` : '已删除消息')
+      } catch (error) {
+        console.error('Delete message failed:', error)
+        message.error('删除消息失败')
+      }
+    },
+    [chat, chatId, deleteMessageAndChildren, message, modal]
   )
 
   return {
@@ -347,6 +404,7 @@ export function useMessageOperations({
     handleEditMessage,
     handleEditAndResendMessage,
     handleToggleFavorite,
-    handleModelChangeForMessage
+    handleModelChangeForMessage,
+    handleDeleteMessage
   }
 } 

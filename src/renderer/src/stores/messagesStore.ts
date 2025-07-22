@@ -25,6 +25,7 @@ export interface MessagesActions {
   updateMessageContent: (chatId: string, messageId: string, content: string) => void
   updateMessageReasoning: (chatId: string, messageId: string, reasoning_content: string) => void
   removeMessage: (chatId: string, messageId: string) => void
+  deleteMessageAndChildren: (chatId: string, messageId: string) => void
   toggleMessageFavorite: (chatId: string, messageId: string) => void
 
   // 流式消息处理 - 优化版本
@@ -201,6 +202,98 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
             }
           } catch (error) {
             handleStoreError('messagesStore', 'removeMessage', error)
+          }
+        },
+
+        deleteMessageAndChildren: (chatId, messageId) => {
+          try {
+            const { updatePage } = usePagesStore.getState()
+            const page = usePagesStore.getState().findPageById(chatId)
+
+            if (page && page.type === 'regular' && page.messages) {
+              // 递归查找所有需要删除的消息ID（包括子分支）
+              const messagesToDelete = new Set<string>()
+              
+              const findChildrenRecursively = (currentMessageId: string) => {
+                messagesToDelete.add(currentMessageId)
+                const message = page.messages?.find(msg => msg.id === currentMessageId)
+                if (message && message.children) {
+                  message.children.forEach(childId => {
+                    findChildrenRecursively(childId)
+                  })
+                }
+              }
+
+              findChildrenRecursively(messageId)
+
+              // 过滤掉要删除的消息
+              const updatedMessages = page.messages?.filter(msg => !messagesToDelete.has(msg.id)) || []
+              
+              // 更新父消息的children数组（如果被删除的消息有父消息）
+              const messageToDelete = page.messages?.find(msg => msg.id === messageId)
+              let finalMessages = updatedMessages
+              
+              if (messageToDelete?.parentId) {
+                finalMessages = updatedMessages.map(msg => 
+                  msg.id === messageToDelete.parentId 
+                    ? {
+                        ...msg,
+                        children: (msg.children || []).filter(childId => childId !== messageId)
+                      }
+                    : msg
+                )
+              }
+
+              // 更新当前路径，移除已删除的消息
+              let newCurrentPath = page.currentPath || []
+              
+              // 如果当前路径包含被删除的消息，需要调整路径
+              if (messagesToDelete.has(newCurrentPath[newCurrentPath.length - 1])) {
+                // 找到被删除消息在路径中的位置
+                const deletedMessageIndex = newCurrentPath.findIndex(id => messagesToDelete.has(id))
+                if (deletedMessageIndex !== -1) {
+                  // 截取到被删除消息之前的路径
+                  newCurrentPath = newCurrentPath.slice(0, deletedMessageIndex)
+                  
+                  // 如果删除了路径中的消息，尝试找到同级的其他消息作为替代
+                  if (messageToDelete?.parentId && deletedMessageIndex > 0) {
+                    const parentId = newCurrentPath[newCurrentPath.length - 1]
+                    const parentMessage = finalMessages.find(msg => msg.id === parentId)
+                    if (parentMessage?.children && parentMessage.children.length > 0) {
+                      // 选择同级的第一个子消息继续路径
+                      newCurrentPath.push(parentMessage.children[0])
+                    }
+                  }
+                }
+              }
+
+              // 更新消息映射（如果存在）
+              let updatedMessageMap = page.messageMap
+              if (updatedMessageMap) {
+                const newMessageMap = { ...updatedMessageMap }
+                messagesToDelete.forEach(id => {
+                  delete newMessageMap[id]
+                })
+                
+                // 更新父消息在messageMap中的children
+                if (messageToDelete?.parentId && newMessageMap[messageToDelete.parentId]) {
+                  newMessageMap[messageToDelete.parentId] = {
+                    ...newMessageMap[messageToDelete.parentId],
+                    children: (newMessageMap[messageToDelete.parentId].children || []).filter(childId => childId !== messageId)
+                  }
+                }
+                
+                updatedMessageMap = newMessageMap
+              }
+
+              updatePage(chatId, { 
+                messages: finalMessages,
+                currentPath: newCurrentPath,
+                messageMap: updatedMessageMap
+              })
+            }
+          } catch (error) {
+            handleStoreError('messagesStore', 'deleteMessageAndChildren', error)
           }
         },
 

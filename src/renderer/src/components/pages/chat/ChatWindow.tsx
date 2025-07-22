@@ -179,7 +179,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onEditMessage,
             onEditAndResendMessage,
             onToggleFavorite,
-            onModelChangeForMessage
+            onModelChangeForMessage,
+            onDeleteMessage
           }) => (
             <>
               {/* 消息树侧边栏 */}
@@ -220,12 +221,14 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onEditAndResendMessage={onEditAndResendMessage}
                   onToggleFavorite={onToggleFavorite}
                   onModelChange={onModelChangeForMessage}
+                  onDeleteMessage={onDeleteMessage}
                   onSwitchBranch={handleSwitchBranch}
                   // 折叠相关props
                   collapsedMessages={collapsedMessagesForChat}
                   onToggleMessageCollapse={handleToggleMessageCollapse}
                   // 设置相关props
                   onOpenSettings={handleOpenSettings}
+                  onDeleteMessage={onDeleteMessage}
                 />
                 <ChatInput
                   ref={chatInputRef}

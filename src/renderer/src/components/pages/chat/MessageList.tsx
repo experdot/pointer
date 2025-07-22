@@ -17,6 +17,7 @@ interface MessageListProps {
   onEditAndResendMessage?: (messageId: string, newContent: string) => void
   onToggleFavorite?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
+  onDeleteMessage?: (messageId: string) => void
   onSwitchBranch?: (messageId: string, branchIndex: number) => void
   onStopGeneration?: () => void
   // 折叠相关
@@ -38,6 +39,7 @@ export default function MessageList({
   onEditAndResendMessage,
   onToggleFavorite,
   onModelChange,
+  onDeleteMessage,
   onSwitchBranch,
   collapsedMessages = [],
   onToggleMessageCollapse,
@@ -159,6 +161,7 @@ export default function MessageList({
             onEditAndResend={onEditAndResendMessage}
             onToggleFavorite={onToggleFavorite}
             onModelChange={onModelChange}
+            onDelete={onDeleteMessage}
             // 折叠相关
             isCollapsed={collapsedMessages.includes(message.id)}
             onToggleCollapse={onToggleMessageCollapse}

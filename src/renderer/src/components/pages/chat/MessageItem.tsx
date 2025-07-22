@@ -14,7 +14,8 @@ import {
   BulbOutlined,
   PictureOutlined,
   DownOutlined,
-  UpOutlined
+  UpOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
@@ -44,6 +45,7 @@ interface MessageItemProps {
   onEditAndResend?: (messageId: string, newContent: string) => void
   onToggleFavorite?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
+  onDelete?: (messageId: string) => void
   // 折叠相关
   isCollapsed?: boolean
   onToggleCollapse?: (messageId: string) => void
@@ -65,6 +67,7 @@ export default function MessageItem({
   onEditAndResend,
   onToggleFavorite,
   onModelChange,
+  onDelete,
   isCollapsed = false,
   onToggleCollapse
 }: MessageItemProps) {
@@ -159,6 +162,10 @@ export default function MessageItem({
 
   const handleToggleCollapse = () => {
     onToggleCollapse?.(message.id)
+  }
+
+  const handleDelete = () => {
+    onDelete?.(message.id)
   }
 
   // 生成折叠状态下的预览文本
@@ -409,6 +416,18 @@ export default function MessageItem({
                   icon={<RedoOutlined />}
                   onClick={handleRetry}
                   disabled={isLoading || isCurrentlyStreaming}
+                />
+              </Tooltip>
+            )}
+            {onDelete && (
+              <Tooltip title="删除">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={handleDelete}
+                  disabled={isCurrentlyStreaming}
+                  className="message-delete-btn"
                 />
               </Tooltip>
             )}

@@ -21,6 +21,7 @@ interface ChatLogicProps {
     onEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
     onToggleFavorite: (messageId: string) => void
     onModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
+    onDeleteMessage: (messageId: string) => Promise<void>
   }) => React.ReactNode
 }
 
@@ -131,6 +132,7 @@ export default function ChatLogic({
     onEditMessage: messageOperations.handleEditMessage,
     onEditAndResendMessage: messageOperations.handleEditAndResendMessage,
     onToggleFavorite: messageOperations.handleToggleFavorite,
-    onModelChangeForMessage: messageOperations.handleModelChangeForMessage
+    onModelChangeForMessage: messageOperations.handleModelChangeForMessage,
+    onDeleteMessage: messageOperations.handleDeleteMessage
   })
 }
