@@ -339,7 +339,10 @@ export default function MessageItem({
                     cursor: 'text'
                   }}
                 >
-                  <Markdown content={currentContent ?? ''} />
+                  <Markdown
+                    content={currentContent ?? ''}
+                    loading={isCurrentlyStreaming && !currentContent}
+                  />
                 </div>
               )}
             </Card>
