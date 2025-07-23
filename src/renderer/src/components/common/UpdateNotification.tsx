@@ -1,23 +1,19 @@
 import React, { useEffect, useRef } from 'react'
-import { Button, Space, App } from 'antd'
+import { Button, Space, App, Progress } from 'antd'
 import {
   CloudDownloadOutlined,
   InfoCircleOutlined,
   DownloadOutlined,
   CloseOutlined
 } from '@ant-design/icons'
-
-interface UpdateInfo {
-  version?: string
-  releaseDate?: string
-  releaseName?: string
-  releaseNotes?: string
-}
+import { useUpdateStore, UpdateInfo } from '../../stores/updateStore'
 
 export default function UpdateNotification() {
   const hasCheckedOnStartup = useRef(false)
   const startupTimerRef = useRef<NodeJS.Timeout | null>(null)
   const { notification } = App.useApp()
+
+  const updateStore = useUpdateStore()
 
   // 应用启动时自动检查更新（仅执行一次）
   useEffect(() => {
@@ -52,28 +48,38 @@ export default function UpdateNotification() {
     // 设置更新事件监听器
     const handleUpdateAvailable = (info: UpdateInfo) => {
       console.log('收到更新可用事件:', info)
+      updateStore.handleUpdateAvailable(info)
       showUpdateAvailableNotification(info)
     }
 
     const handleUpdateDownloaded = (info: UpdateInfo) => {
       console.log('收到更新下载完成事件:', info)
+      updateStore.handleUpdateDownloaded(info)
       showUpdateReadyNotification(info)
     }
 
     const handleUpdateError = (error: string) => {
       console.error('收到更新错误事件:', error)
+      updateStore.handleUpdateError(error)
       // 静默处理错误，避免过多通知打扰用户
       console.warn('Update check failed:', error)
     }
 
     const handleUpdateNotAvailable = (info: any) => {
       console.log('收到无更新事件:', info)
+      updateStore.handleUpdateNotAvailable(info)
       notification.info({
         message: '当前已是最新版本',
         description: `当前版本: ${info.version || '未知'}`,
         placement: 'topRight',
         duration: 3
       })
+    }
+
+    const handleDownloadProgress = (progress: any) => {
+      console.log('收到下载进度事件:', progress)
+      updateStore.handleDownloadProgress(progress)
+      updateDownloadProgressNotification(progress)
     }
 
     // 检查window.api是否存在
@@ -89,13 +95,14 @@ export default function UpdateNotification() {
     window.api.updater.onUpdateDownloaded(handleUpdateDownloaded)
     window.api.updater.onUpdateError(handleUpdateError)
     window.api.updater.onUpdateNotAvailable(handleUpdateNotAvailable)
+    window.api.updater.onDownloadProgress(handleDownloadProgress)
 
     // 清理监听器
     return () => {
       console.log('清理更新事件监听器')
       window.api.updater.removeAllUpdateListeners()
     }
-  }, [notification])
+  }, [notification, updateStore])
 
   // 启动时检查更新
   const checkForUpdatesOnStartup = async () => {
@@ -161,6 +168,15 @@ export default function UpdateNotification() {
 
     console.log('显示更新准备就绪通知:', info)
 
+    // 清理下载进度通知
+    if (updateStore.downloadNotificationKey) {
+      notification.destroy(updateStore.downloadNotificationKey)
+      updateStore.setDownloadNotificationKey(null)
+    }
+
+    // 重置隐藏状态，下次下载时可以再次显示进度
+    updateStore.setDownloadNotificationHidden(false)
+
     notification.success({
       key,
       message: '更新已下载',
@@ -194,26 +210,103 @@ export default function UpdateNotification() {
     })
   }
 
+  // 更新下载进度通知
+  const updateDownloadProgressNotification = (progress: any) => {
+    // 如果用户选择隐藏下载进度通知，就不显示
+    if (updateStore.downloadNotificationHidden) {
+      return
+    }
+
+    const key = updateStore.downloadNotificationKey || `downloading-${Date.now()}`
+
+    if (!updateStore.downloadNotificationKey) {
+      updateStore.setDownloadNotificationKey(key)
+    }
+
+    const formatBytes = (bytes: number) => {
+      if (bytes === 0) return '0 Bytes'
+      const k = 1024
+      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    }
+
+    const formatSpeed = (bytesPerSecond: number) => {
+      return formatBytes(bytesPerSecond) + '/s'
+    }
+
+    notification.info({
+      key,
+      message: '正在下载更新',
+      description: (
+        <div>
+          <Progress
+            percent={Math.round(progress.percent)}
+            size="small"
+            status="active"
+            format={() => `${Math.round(progress.percent)}%`}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '12px',
+              color: '#666',
+              marginTop: '8px'
+            }}
+          >
+            <span>
+              {formatBytes(progress.transferred)} / {formatBytes(progress.total)}
+            </span>
+            <span>{formatSpeed(progress.bytesPerSecond)}</span>
+          </div>
+        </div>
+      ),
+      icon: <CloudDownloadOutlined style={{ color: '#1890ff' }} />,
+      duration: 0,
+      btn: (
+        <Button
+          size="small"
+          onClick={() => {
+            notification.destroy(key)
+            updateStore.setDownloadNotificationKey(null)
+            updateStore.setDownloadNotificationHidden(true)
+          }}
+        >
+          隐藏
+        </Button>
+      )
+    })
+  }
+
   // 下载更新
   const downloadUpdate = async () => {
     try {
       console.log('开始下载更新...')
-      // 显示下载中通知
+      updateStore.setDownloading(true)
+
+      // 重置隐藏状态，显示新的下载进度
+      updateStore.setDownloadNotificationHidden(false)
+
+      // 显示初始下载通知
       const downloadKey = `downloading-${Date.now()}`
+      updateStore.setDownloadNotificationKey(downloadKey)
+
       notification.info({
         key: downloadKey,
-        message: '正在下载更新',
-        description: '更新包下载中，请稍候...',
+        message: '准备下载更新',
+        description: '正在启动下载...',
         icon: <CloudDownloadOutlined style={{ color: '#1890ff' }} />,
-        duration: 0
+        duration: 2
       })
 
       await window.api.updater.downloadUpdate()
-
-      // 下载开始后关闭通知，进度会通过其他监听器处理
-      notification.destroy(downloadKey)
     } catch (error) {
       console.error('下载更新失败:', error)
+      updateStore.setDownloading(false)
+      updateStore.setDownloadNotificationKey(null)
+      updateStore.setDownloadNotificationHidden(false)
+
       notification.error({
         message: '下载失败',
         description: '更新下载失败，请稍后重试或手动检查更新',

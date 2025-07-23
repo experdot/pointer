@@ -8,93 +8,73 @@ import {
   InfoCircleOutlined,
   DownloadOutlined
 } from '@ant-design/icons'
+import { useUpdateStore, UpdateInfo, DownloadProgress } from '../../stores/updateStore'
 
 const { Title, Text, Paragraph } = Typography
 
-interface UpdateInfo {
-  version?: string
-  releaseDate?: string
-  releaseName?: string
-  releaseNotes?: string
-}
-
-interface DownloadProgress {
-  bytesPerSecond: number
-  percent: number
-  transferred: number
-  total: number
-}
-
 export default function UpdateSettings() {
-  const [currentVersion, setCurrentVersion] = useState<string>('')
-  const [checkingForUpdates, setCheckingForUpdates] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [updateAvailable, setUpdateAvailable] = useState(false)
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
-  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
-  const [updateDownloaded, setUpdateDownloaded] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
-
+  const updateStore = useUpdateStore()
   const { message, modal } = App.useApp()
+
+  // 解构store状态
+  const {
+    currentVersion,
+    checkingForUpdates,
+    downloading,
+    updateAvailable,
+    updateInfo,
+    downloadProgress,
+    updateDownloaded,
+    error,
+    autoCheckEnabled
+  } = updateStore
 
   // 初始化时获取当前版本
   useEffect(() => {
     const getCurrentVersion = async () => {
       try {
         const version = await window.api.updater.getAppVersion()
-        setCurrentVersion(version)
+        updateStore.setCurrentVersion(version)
       } catch (error) {
         console.error('Failed to get app version:', error)
       }
     }
     getCurrentVersion()
-  }, [])
+  }, [updateStore])
 
   // 设置更新事件监听器
   useEffect(() => {
     // 更新可用
     window.api.updater.onUpdateAvailable((info) => {
       console.log('Update available:', info)
-      setUpdateAvailable(true)
-      setUpdateInfo(info)
-      setCheckingForUpdates(false)
-      setError(null)
+      updateStore.handleUpdateAvailable(info)
       message.success('发现新版本！')
     })
 
     // 没有更新
     window.api.updater.onUpdateNotAvailable((info) => {
       console.log('Update not available:', info)
-      setUpdateAvailable(false)
-      setUpdateInfo(null)
-      setCheckingForUpdates(false)
-      setError(null)
+      updateStore.handleUpdateNotAvailable(info)
       message.info('当前已是最新版本')
     })
 
     // 下载进度
     window.api.updater.onDownloadProgress((progress) => {
       console.log('Download progress:', progress)
-      setDownloadProgress(progress)
+      updateStore.handleDownloadProgress(progress)
     })
 
     // 更新下载完成
     window.api.updater.onUpdateDownloaded((info) => {
       console.log('Update downloaded:', info)
-      setUpdateDownloaded(true)
-      setDownloading(false)
-      setDownloadProgress(null)
+      updateStore.handleUpdateDownloaded(info)
       message.success('更新下载完成！')
     })
 
     // 更新错误
     window.api.updater.onUpdateError((errorMessage) => {
       console.error('Update error:', errorMessage)
-      setError(errorMessage)
-      setCheckingForUpdates(false)
-      setDownloading(false)
-      setDownloadProgress(null)
+      updateStore.handleUpdateError(errorMessage)
       message.error(`更新失败: ${errorMessage}`)
     })
 
@@ -102,13 +82,13 @@ export default function UpdateSettings() {
     return () => {
       window.api.updater.removeAllUpdateListeners()
     }
-  }, [message])
+  }, [message, updateStore])
 
   // 检查更新
   const handleCheckForUpdates = async () => {
     try {
-      setCheckingForUpdates(true)
-      setError(null)
+      updateStore.setCheckingForUpdates(true)
+      updateStore.setError(null)
 
       console.log('开始检查更新...')
 
@@ -126,15 +106,15 @@ export default function UpdateSettings() {
 
       // 等待2秒后如果还没有收到响应，给用户反馈
       setTimeout(() => {
-        if (checkingForUpdates) {
+        if (updateStore.checkingForUpdates) {
           console.log('等待更新服务器响应...')
         }
       }, 2000)
     } catch (error) {
       console.error('Check for updates failed:', error)
       const errorMessage = error instanceof Error ? error.message : '检查更新失败'
-      setError(errorMessage)
-      setCheckingForUpdates(false)
+      updateStore.setError(errorMessage)
+      updateStore.setCheckingForUpdates(false)
       message.error(`检查更新失败: ${errorMessage}`)
     }
   }
@@ -142,13 +122,13 @@ export default function UpdateSettings() {
   // 下载更新
   const handleDownloadUpdate = async () => {
     try {
-      setDownloading(true)
-      setError(null)
+      updateStore.setDownloading(true)
+      updateStore.setError(null)
       await window.api.updater.downloadUpdate()
     } catch (error) {
       console.error('Download update failed:', error)
-      setError(error instanceof Error ? error.message : '下载更新失败')
-      setDownloading(false)
+      updateStore.setError(error instanceof Error ? error.message : '下载更新失败')
+      updateStore.setDownloading(false)
       message.error('下载更新失败')
     }
   }
@@ -198,7 +178,11 @@ export default function UpdateSettings() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text>自动检查更新</Text>
-            <Switch checked={autoCheckEnabled} onChange={setAutoCheckEnabled} size="small" />
+            <Switch
+              checked={autoCheckEnabled}
+              onChange={updateStore.setAutoCheckEnabled}
+              size="small"
+            />
           </div>
         </Space>
       </Card>
@@ -210,7 +194,7 @@ export default function UpdateSettings() {
           description={error}
           type="error"
           closable
-          onClose={() => setError(null)}
+          onClose={() => updateStore.setError(null)}
           style={{ marginBottom: 16 }}
         />
       )}
