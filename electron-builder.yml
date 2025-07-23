@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.experdot.pointer
 productName: pointer
 directories:
   buildResources: build
@@ -13,6 +13,15 @@ asarUnpack:
   - resources/**
 win:
   executableName: pointer
+  # Windows 代码签名配置（生产环境使用）
+  # 取消注释并配置以下选项以启用代码签名：
+  # certificateFile: path/to/certificate.p12  # 证书文件路径
+  # certificatePassword: ${env.WIN_CSC_KEY_PASSWORD}  # 证书密码（通过环境变量）
+  # certificateSubjectName: "Your Company Name"  # 证书主题名称
+  # sign: true  # 启用签名
+  # signingHashAlgorithms: ['sha256']  # 签名算法
+  # timestampServer: 'http://timestamp.digicert.com'  # 时间戳服务器
+  verifyUpdateCodeSignature: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

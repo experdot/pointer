@@ -18,6 +18,8 @@ function setupAutoUpdater(): void {
     autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
     // 强制启用开发环境的更新检查
     autoUpdater.forceDevUpdateConfig = true
+    // 开发环境下跳过签名验证
+    autoUpdater.allowDowngrade = true
   }
 
   // 更新可用时的处理

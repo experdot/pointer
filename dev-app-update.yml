@@ -3,5 +3,8 @@ owner: experdot
 repo: pointer
 updaterCacheDirName: pointer-updater
 # 开发环境配置
-publisherName:
-  - 'experdot'
+# 临时注释掉 publisherName 以跳过签名验证
+# publisherName:
+#   - 'experdot'
+# 允许降级和跳过签名验证（仅用于开发环境）
+allowDowngrade: true
