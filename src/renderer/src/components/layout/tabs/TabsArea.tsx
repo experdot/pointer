@@ -12,14 +12,14 @@ import {
   TableOutlined,
   BlockOutlined
 } from '@ant-design/icons'
-import { usePagesStore } from '../stores/pagesStore'
-import { useTabsStore } from '../stores/tabsStore'
-import { useUIStore } from '../stores/uiStore'
-import { useSettingsStore } from '../stores/settingsStore'
-import { ChatWindow, ChatWindowRef } from './pages/chat/index'
-import { CrosstabChat } from './pages/crosstab/index'
-import { ObjectPage } from './pages/object/index'
-import Settings from './Settings'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useTabsStore } from '../../../stores/tabsStore'
+import { useUIStore } from '../../../stores/uiStore'
+import { useSettingsStore } from '../../../stores/settingsStore'
+import { ChatWindow, ChatWindowRef } from '../../pages/chat/index'
+import { CrosstabChat } from '../../pages/crosstab/index'
+import { ObjectPage } from '../../pages/object/index'
+import Settings from '../../settings/Settings'
 import './TabsArea.css'
 
 export default function TabsArea() {

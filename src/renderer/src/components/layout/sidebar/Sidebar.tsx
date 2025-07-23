@@ -1,14 +1,15 @@
 import React, { useState, useCallback } from 'react'
-import { usePagesStore } from '../stores/pagesStore'
-import { useTabsStore } from '../stores/tabsStore'
-import { useUIStore } from '../stores/uiStore'
-import ChatHistoryTree from './sidebar/ChatHistoryTree'
-import SidebarActions from './sidebar/SidebarActions'
-import Settings from './Settings'
-import GlobalSearch from './sidebar/GlobalSearch'
-import TaskMonitor from './sidebar/TaskMonitor'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useTabsStore } from '../../../stores/tabsStore'
+import { useUIStore } from '../../../stores/uiStore'
+import ChatHistoryTree from '../sidebar_items/chat/ChatHistoryTree'
+import SidebarActions from '../sidebar_items/SidebarActions'
+import Settings from '../../settings/Settings'
+import GlobalSearch from '../sidebar_items/search/GlobalSearch'
+import TaskMonitor from '../sidebar_items/task/TaskMonitor'
 import { Modal, App } from 'antd'
-import { ActivityBarTab } from './ActivityBar'
+import { ActivityBarTab } from '../activitybar/ActivityBar'
+import './sidebar.css'
 
 interface SidebarProps {
   collapsed: boolean
@@ -100,7 +101,7 @@ export default function Sidebar({
   // 批量删除选中的聊天
   const handleBatchDelete = useCallback(() => {
     // TODO
-  },[checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
+  }, [checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
 
   // 检查是否有选中的项目
   const hasCheckedItems = checkedNodeIds.length > 0

@@ -28,9 +28,9 @@ import {
   SwapOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons'
-import { useAITasksStore } from '../../stores/aiTasksStore'
-import { useSettingsStore } from '../../stores/settingsStore'
-import { AITask, AITaskStatus, AITaskType } from '../../types/type'
+import { useAITasksStore } from '../../../../stores/aiTasksStore'
+import { useSettingsStore } from '../../../../stores/settingsStore'
+import { AITask, AITaskStatus, AITaskType } from '../../../../types/type'
 
 const { Text, Title } = Typography
 
@@ -147,13 +147,7 @@ const formatCreatedTime = (timestamp: number) => {
 }
 
 export default function TaskMonitor() {
-  const {
-    aiTasks,
-    cancelTask,
-    removeTask,
-    clearCompletedTasks,
-    clearAllTasks
-  } = useAITasksStore()
+  const { aiTasks, cancelTask, removeTask, clearCompletedTasks, clearAllTasks } = useAITasksStore()
   const { settings } = useSettingsStore()
   const { modal, message } = App.useApp()
 

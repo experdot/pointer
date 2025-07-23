@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button, Badge, Tooltip } from 'antd'
 import { FolderOutlined, SearchOutlined, MonitorOutlined, SettingOutlined } from '@ant-design/icons'
-import { useAITasksStore } from '../stores/aiTasksStore'
+import { useAITasksStore } from '../../../stores/aiTasksStore'
 
 export type ActivityBarTab = 'explore' | 'search' | 'tasks' | 'settings'
 

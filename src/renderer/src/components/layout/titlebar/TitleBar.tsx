@@ -8,6 +8,7 @@ import {
   CloseOutlined,
   CopyOutlined 
 } from '@ant-design/icons'
+import './titlebar.css'
 
 interface TitleBarProps {
   title: string

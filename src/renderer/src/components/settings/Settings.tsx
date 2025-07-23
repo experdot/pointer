@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { Modal, Form, Tabs, Space, Button, App } from 'antd'
 import { SettingOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons'
-import { useSettingsStore } from '../stores/settingsStore'
-import AppearanceSettings from './settings/AppearanceSettings'
-import LLMSettings from './settings/LLMSettings'
-import ModelConfigSettings from './settings/ModelConfigSettings'
-import PromptListSettings from './settings/PromptListSettings'
-import DataManagement from './settings/DataManagement'
-import SettingsDemo from './settings/SettingsDemo'
+import { useSettingsStore } from '../../stores/settingsStore'
+import AppearanceSettings from './AppearanceSettings'
+import LLMSettings from './LLMSettings'
+import ModelConfigSettings from './ModelConfigSettings'
+import PromptListSettings from './PromptListSettings'
+import DataManagement from './DataManagement'
+import SettingsDemo from './SettingsDemo'
 
 interface SettingsProps {
   open: boolean

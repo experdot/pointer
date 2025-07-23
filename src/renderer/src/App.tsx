@@ -1,7 +1,7 @@
 import React from 'react'
 import { ConfigProvider, theme, App as AntdApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import Layout from './components/Layout'
+import Layout from './components/layout/Layout'
 import { ZustandAppProvider } from './stores/ZustandAppContext'
 import './App.css'
 

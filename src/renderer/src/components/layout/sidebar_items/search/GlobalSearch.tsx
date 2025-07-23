@@ -21,10 +21,10 @@ import {
   CloseOutlined,
   SettingOutlined
 } from '@ant-design/icons'
-import { useSearchStore } from '../../stores/searchStore'
-import { usePagesStore } from '../../stores/pagesStore'
-import { useTabsStore } from '../../stores/tabsStore'
-import { SearchResult, SearchOptions } from '../../types/type'
+import { useSearchStore } from '../../../../stores/searchStore'
+import { usePagesStore } from '../../../../stores/pagesStore'
+import { useTabsStore } from '../../../../stores/tabsStore'
+import { SearchResult, SearchOptions } from '../../../../types/type'
 import './search-styles.css'
 
 const { Text, Paragraph } = Typography

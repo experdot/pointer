@@ -7,7 +7,7 @@ import ChatLogic from './ChatLogic'
 import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
 import ChatInput, { ChatInputRef } from './ChatInput'
-import Settings from '../../Settings'
+import Settings from '../../settings/Settings'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import MessageTreeSidebar from './MessageTreeSidebar'
 import { MessageTree } from './messageTree'
@@ -44,7 +44,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const [autoQuestionListId, setAutoQuestionListId] = useState<string | undefined>(() => {
     // 确保有可用的提示词列表时才设置默认值
     const lists = settings.promptLists || []
-    return lists.length > 0 ? (settings.defaultPromptListId || lists[0].id) : undefined
+    return lists.length > 0 ? settings.defaultPromptListId || lists[0].id : undefined
   })
   const chatInputRef = useRef<ChatInputRef>(null)
 
@@ -128,7 +128,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
       currentMode: autoQuestionMode,
       currentListId: autoQuestionListId
     })
-    
+
     setAutoQuestionEnabled(enabled)
     setAutoQuestionMode(mode)
     if (listId) {
@@ -163,7 +163,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
       </div>
 
       <div className="chat-window-content">
-        <ChatLogic 
+        <ChatLogic
           chatId={chatId}
           autoQuestionEnabled={autoQuestionEnabled}
           autoQuestionMode={autoQuestionMode}
@@ -197,7 +197,10 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
               />
 
               {/* 聊天主内容区 */}
-              <div className="chat-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div
+                className="chat-content"
+                style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+              >
                 <ChatHeader
                   chatId={chatId}
                   chatTitle={chat.title}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react'
-import { useUIStore } from '../stores/uiStore'
+import { useUIStore } from '../../stores/uiStore'
 
 interface ResizeHandleProps {
   onResize?: (width: number) => void

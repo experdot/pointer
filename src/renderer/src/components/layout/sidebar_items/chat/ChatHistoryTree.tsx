@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { Tree, Modal, App } from 'antd'
 import type { DataNode, TreeProps } from 'antd/es/tree'
-import { usePagesStore } from '../../stores/pagesStore'
-import { useTabsStore } from '../../stores/tabsStore'
-import { useUIStore } from '../../stores/uiStore'
-import ChatHistoryTreeNode from './ChatHistoryTreeNode'
+import { usePagesStore } from '../../../../stores/pagesStore'
+import { useTabsStore } from '../../../../stores/tabsStore'
+import { useUIStore } from '../../../../stores/uiStore'
+import ChatHistoryTreeNode from '../ChatHistoryTreeNode'
 import './tree-styles.css'
 
 // 拖拽事件类型定义

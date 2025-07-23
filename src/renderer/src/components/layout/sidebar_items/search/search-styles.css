@@ -1,3 +1,10 @@
+/* Embedded Components Styles */
+.global-search-embedded .search-results-section {
+  flex: 1;
+  overflow-y: auto;
+  max-height: none;
+}
+
 .global-search-overlay {
   position: fixed;
   top: 0;

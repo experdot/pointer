@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Layout as AntLayout, Button, Tooltip } from 'antd'
-import { useUIStore } from '../stores/uiStore'
-import { useSearchStore } from '../stores/searchStore'
-import Sidebar from './Sidebar'
-import ActivityBar, { ActivityBarTab } from './ActivityBar'
-import TabsArea from './TabsArea'
+import { useUIStore } from '../../stores/uiStore'
+import { useSearchStore } from '../../stores/searchStore'
+import Sidebar from './sidebar/Sidebar'
+import ActivityBar, { ActivityBarTab } from './activitybar/ActivityBar'
+import TabsArea from './tabs/TabsArea'
 import ResizeHandle from './ResizeHandle'
-import Settings from './Settings'
-import GlobalSearch from './sidebar/GlobalSearch'
-import TitleBar from './TitleBar'
+import Settings from '../settings/Settings'
+import GlobalSearch from './sidebar_items/search/GlobalSearch'
+import TitleBar from './titlebar/TitleBar'
 
 const { Sider, Content } = AntLayout
 

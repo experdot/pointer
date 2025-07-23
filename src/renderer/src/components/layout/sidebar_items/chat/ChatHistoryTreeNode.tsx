@@ -11,7 +11,7 @@ import {
   FolderAddOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { Page, PageFolder } from '../../types/type'
+import { Page, PageFolder } from '../../../../types/type'
 
 const { Text } = Typography
 
