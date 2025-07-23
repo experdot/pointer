@@ -1,3 +1,7 @@
+.app-sider {
+  overflow: auto;
+}
+
 .sidebar-actions {
   display: flex;
   align-items: center;

@@ -14,3 +14,21 @@ body {
   justify-content: center;
   flex-direction: column;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.15);
+  &:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
