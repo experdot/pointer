@@ -41,7 +41,37 @@ const api = {
     content: string
     defaultPath: string
     filters?: Array<{ name: string; extensions: string[] }>
-  }) => ipcRenderer.invoke('save-file', options)
+  }) => ipcRenderer.invoke('save-file', options),
+
+  // 自动更新API
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+    onUpdateAvailable: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-available', (_, info) => callback(info))
+    },
+    onUpdateNotAvailable: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-not-available', (_, info) => callback(info))
+    },
+    onDownloadProgress: (callback: (progress: any) => void) => {
+      ipcRenderer.on('download-progress', (_, progress) => callback(progress))
+    },
+    onUpdateDownloaded: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-downloaded', (_, info) => callback(info))
+    },
+    onUpdateError: (callback: (error: string) => void) => {
+      ipcRenderer.on('update-error', (_, error) => callback(error))
+    },
+    removeAllUpdateListeners: () => {
+      ipcRenderer.removeAllListeners('update-available')
+      ipcRenderer.removeAllListeners('update-not-available')
+      ipcRenderer.removeAllListeners('download-progress')
+      ipcRenderer.removeAllListeners('update-downloaded')
+      ipcRenderer.removeAllListeners('update-error')
+    }
+  }
 }
 
 // 窗口控制方法

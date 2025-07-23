@@ -8,6 +8,7 @@ import ModelConfigSettings from './ModelConfigSettings'
 import PromptListSettings from './PromptListSettings'
 import DataManagement from './DataManagement'
 import SettingsDemo from './SettingsDemo'
+import UpdateSettings from './UpdateSettings'
 
 interface SettingsProps {
   open: boolean
@@ -69,6 +70,11 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
       key: 'prompt-lists',
       label: '提示词列表',
       children: <PromptListSettings />
+    },
+    {
+      key: 'update',
+      label: '应用更新',
+      children: <UpdateSettings />
     },
     {
       key: 'data',

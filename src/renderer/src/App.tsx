@@ -4,6 +4,7 @@ import zhCN from 'antd/locale/zh_CN'
 import Layout from './components/layout/Layout'
 import { ZustandAppProvider } from './stores/ZustandAppContext'
 import './App.css'
+import UpdateNotification from './components/common/UpdateNotification'
 
 function AppContent(): React.JSX.Element {
   return (
@@ -26,7 +27,12 @@ function AppContent(): React.JSX.Element {
 }
 
 function App(): React.JSX.Element {
-  return <AppContent />
+  return (
+    <div className="container">
+      <UpdateNotification />
+      <AppContent />
+    </div>
+  )
 }
 
 export default App

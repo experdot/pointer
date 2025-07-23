@@ -5,25 +5,30 @@ declare global {
     electron: ElectronAPI
     api: {
       ai: {
-        sendMessageStreaming: (request: any) => Promise<void>
-        sendMessage: (
-          request: any
-        ) => Promise<{
-          success: boolean
-          content?: string
-          reasoning_content?: string
-          error?: string
-        }>
-        testConnection: (config: any) => Promise<{ success: boolean; error?: string }>
+        sendMessageStreaming: (request: any) => Promise<any>
+        sendMessage: (request: any) => Promise<any>
+        testConnection: (config: any) => Promise<any>
         stopStreaming: (requestId: string) => Promise<void>
         onStreamData: (requestId: string, callback: (data: any) => void) => void
         removeStreamListener: (requestId: string) => void
       }
       saveFile: (options: {
         content: string
-        defaultPath?: string
+        defaultPath: string
         filters?: Array<{ name: string; extensions: string[] }>
-      }) => Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }>
+      }) => Promise<{ success: boolean; cancelled?: boolean; filePath?: string; error?: string }>
+      updater: {
+        checkForUpdates: () => Promise<any>
+        downloadUpdate: () => Promise<any>
+        quitAndInstall: () => Promise<void>
+        getAppVersion: () => Promise<string>
+        onUpdateAvailable: (callback: (info: any) => void) => void
+        onUpdateNotAvailable: (callback: (info: any) => void) => void
+        onDownloadProgress: (callback: (progress: any) => void) => void
+        onUpdateDownloaded: (callback: (info: any) => void) => void
+        onUpdateError: (callback: (error: string) => void) => void
+        removeAllUpdateListeners: () => void
+      }
     }
     electronWindow: {
       minimize: () => Promise<void>

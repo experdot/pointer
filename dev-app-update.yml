@@ -1,3 +1,7 @@
-provider: generic
-url: https://example.com/auto-updates
+provider: github
+owner: experdot
+repo: pointer
 updaterCacheDirName: pointer-updater
+# 开发环境配置
+publisherName:
+  - 'experdot'

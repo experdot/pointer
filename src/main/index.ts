@@ -3,8 +3,64 @@ import { join } from 'path'
 import { writeFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import windowStateKeeper from 'electron-window-state'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { aiHandler } from './aiHandler'
+
+// 配置自动更新
+function setupAutoUpdater(): void {
+  // 设置自动下载为false，我们想手动控制下载过程
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = true
+
+  // 在开发环境中启用自动更新，使用开发配置
+  if (is.dev) {
+    autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
+    // 强制启用开发环境的更新检查
+    autoUpdater.forceDevUpdateConfig = true
+  }
+
+  // 更新可用时的处理
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info)
+    // 通知渲染进程有更新可用
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('update-available', info)
+    })
+  })
+
+  // 没有更新时的处理
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('Update not available:', info)
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('update-not-available', info)
+    })
+  })
+
+  // 更新下载进度
+  autoUpdater.on('download-progress', (progressObj) => {
+    console.log('Download progress:', progressObj)
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('download-progress', progressObj)
+    })
+  })
+
+  // 更新下载完成
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info)
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('update-downloaded', info)
+    })
+  })
+
+  // 更新错误处理
+  autoUpdater.on('error', (error) => {
+    console.error('Update error:', error)
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('update-error', error.message)
+    })
+  })
+}
 
 function createWindow(): void {
   const mainWindowState = windowStateKeeper({
@@ -71,6 +127,53 @@ app.whenReady().then(() => {
 
   // Initialize AI handler
   aiHandler
+
+  // Setup auto updater
+  setupAutoUpdater()
+
+  // 更新相关的IPC处理程序
+  ipcMain.handle('check-for-updates', async () => {
+    try {
+      console.log('IPC: 开始检查更新')
+
+      // 在开发环境中，如果没有强制配置，给出明确的提示
+      if (is.dev && !autoUpdater.forceDevUpdateConfig) {
+        console.log('开发环境中跳过更新检查，需要设置 forceDevUpdateConfig')
+        throw new Error('开发环境中的更新检查已被跳过')
+      }
+
+      const result = await autoUpdater.checkForUpdates()
+      console.log('IPC: 更新检查完成', result)
+      return result
+    } catch (error) {
+      console.error('IPC: Check for updates error:', error)
+      // 确保错误被正确传递到渲染进程
+      throw error
+    }
+  })
+
+  ipcMain.handle('download-update', async () => {
+    try {
+      console.log('IPC: 开始下载更新')
+      const result = await autoUpdater.downloadUpdate()
+      console.log('IPC: 更新下载开始', result)
+      return result
+    } catch (error) {
+      console.error('IPC: Download update error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('quit-and-install', () => {
+    console.log('IPC: 退出并安装更新')
+    autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('get-app-version', () => {
+    const version = app.getVersion()
+    console.log('IPC: 获取应用版本', version)
+    return version
+  })
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
