@@ -18,6 +18,7 @@ function AppContent(): React.JSX.Element {
       }}
     >
       <AntdApp>
+        <UpdateNotification />
         <ZustandAppProvider>
           <Layout />
         </ZustandAppProvider>
@@ -29,7 +30,6 @@ function AppContent(): React.JSX.Element {
 function App(): React.JSX.Element {
   return (
     <div className="container">
-      <UpdateNotification />
       <AppContent />
     </div>
   )
