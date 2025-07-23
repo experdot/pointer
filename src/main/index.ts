@@ -2,14 +2,25 @@ import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { writeFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import windowStateKeeper from 'electron-window-state'
 import icon from '../../resources/icon.png?asset'
 import { aiHandler } from './aiHandler'
 
 function createWindow(): void {
+  const mainWindowState = windowStateKeeper({
+    defaultWidth: 960,
+    defaultHeight: 640,
+    fullScreen: false,
+    maximize: false
+  })
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    x: mainWindowState.x,
+    y: mainWindowState.y,
+    width: mainWindowState.width,
+    height: mainWindowState.height,
+    minWidth: 480,
+    minHeight: 320,
     show: false,
     autoHideMenuBar: true,
     frame: false, // 禁用默认边框，启用自定义标题栏
@@ -20,6 +31,11 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  mainWindowState.manage(mainWindow)
+  if (mainWindowState.isMaximized) {
+    mainWindow.maximize()
+  }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
