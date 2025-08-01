@@ -11,13 +11,8 @@ export default function SettingsPage({
   defaultActiveTab = 'appearance'
 }: SettingsPageProps) {
   return (
-    <div className="settings-page" style={{ height: '100%', padding: '16px' }}>
-      <Settings
-        open={true}
-        onClose={() => {}}
-        embedded={true}
-        defaultActiveTab={defaultActiveTab}
-      />
+    <div className="settings-page" style={{ height: '100%', padding: '4px' }}>
+      <Settings open={true} onClose={() => {}} defaultActiveTab={defaultActiveTab} />
     </div>
   )
 }
