@@ -30,7 +30,7 @@ import {
   parseExternalChatHistory,
   importSelectedChats,
   SelectableChatItem
-} from '../../utils/externalChatImporter'
+} from '../../utils/externalChatImporter/index'
 import { PageFolder } from '../../types/type'
 
 const { Text, Paragraph } = Typography
