@@ -45,14 +45,14 @@ export default function Settings({
       children: <PromptListSettings />
     },
     {
-      key: 'update',
-      label: '应用更新',
-      children: <UpdateSettings />
-    },
-    {
       key: 'data',
       label: '数据管理',
       children: <DataManagement />
+    },
+    {
+      key: 'update',
+      label: '应用更新',
+      children: <UpdateSettings />
     },
     {
       key: 'debug',

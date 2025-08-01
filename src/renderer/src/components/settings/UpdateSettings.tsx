@@ -309,6 +309,51 @@ export default function UpdateSettings() {
           </Text>
         </Space>
       </Card>
+
+      {/* 关于信息 */}
+      <Card size="small" style={{ marginTop: 16 }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text strong>关于应用</Text>
+          <Divider style={{ margin: '8px 0' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text type="secondary">应用名称</Text>
+            <Text>Pointer - AI聊天助手</Text>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text type="secondary">当前版本</Text>
+            <Text>{currentVersion || '获取中...'}</Text>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text type="secondary">构建框架</Text>
+            <Text>Electron + React + TypeScript</Text>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text type="secondary">许可证</Text>
+            <Text>MIT 开源许可证</Text>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text type="secondary">项目地址</Text>
+            <Button
+              type="link"
+              size="small"
+              style={{ padding: 0, height: 'auto' }}
+              onClick={() => window.open('https://github.com/experdot/pointer', '_blank')}
+            >
+              GitHub
+            </Button>
+          </div>
+
+          <Paragraph style={{ margin: '8px 0 0 0', fontSize: '12px' }} type="secondary">
+            一个探索性的AI聊天应用，提供智能对话、交叉表分析、对象管理等功能，
+            致力于提供更好的AI交互体验。
+          </Paragraph>
+        </Space>
+      </Card>
     </div>
   )
 }
