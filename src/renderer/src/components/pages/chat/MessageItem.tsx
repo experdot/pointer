@@ -204,7 +204,7 @@ export default function MessageItem({
           }}
         />
       </div>
-      <div className="message-content">
+      <div className={isEditing ? 'message-content message-content-editing' : 'message-content'}>
         <div className="message-header">
           <div className="message-title">
             <Text strong>{message.role === 'user' ? '您' : 'AI助手'}</Text>
