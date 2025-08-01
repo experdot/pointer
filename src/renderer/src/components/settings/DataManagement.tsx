@@ -7,7 +7,6 @@ import {
   Upload,
   Typography,
   Divider,
-  Popconfirm,
   App,
   Table,
   Checkbox,
@@ -77,8 +76,6 @@ export default function DataManagement() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-
-      message.success('所有数据导出成功')
     } catch (error) {
       message.error('导出失败')
     }
@@ -104,8 +101,6 @@ export default function DataManagement() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-
-      message.success('设置数据导出成功')
     } catch (error) {
       message.error('设置导出失败')
     }
@@ -131,8 +126,6 @@ export default function DataManagement() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-
-      message.success('聊天记录导出成功')
     } catch (error) {
       message.error('聊天记录导出失败')
     }
@@ -601,7 +594,7 @@ export default function DataManagement() {
             <Text strong>导入外部聊天历史</Text>
           </div>
           <Space direction="horizontal" size="small" style={{ marginBottom: '4px' }}>
-          <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
+            <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
               <Button icon={<SelectOutlined />} type="primary" ghost>
                 选择性导入
               </Button>
