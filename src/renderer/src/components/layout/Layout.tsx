@@ -68,7 +68,7 @@ export default function Layout() {
 
       <AntLayout className="app-main-layout">
         {/* ActivityBar */}
-        <Sider width={50} collapsedWidth={50} theme="light" className="app-activity-bar">
+        <Sider width={64} collapsedWidth={64} theme="light" className="app-activity-bar">
           <ActivityBar activeTab={activeTab} onTabChange={handleActivityTabChange} />
         </Sider>
 

@@ -4,6 +4,7 @@ import { FolderOutlined, SearchOutlined, MonitorOutlined, SettingOutlined } from
 import { useAITasksStore } from '../../../stores/aiTasksStore'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
+import './activitybar.css'
 
 export type ActivityBarTab = 'explore' | 'search' | 'tasks'
 
