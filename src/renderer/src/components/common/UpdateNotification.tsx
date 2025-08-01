@@ -49,6 +49,8 @@ export default function UpdateNotification() {
     const handleUpdateAvailable = (info: UpdateInfo) => {
       console.log('收到更新可用事件:', info)
       updateStore.handleUpdateAvailable(info)
+      // 重置启动检查标识（有更新可用时需要显示通知）
+      updateStore.setIsStartupCheck(false)
       showUpdateAvailableNotification(info)
     }
 
@@ -61,6 +63,8 @@ export default function UpdateNotification() {
     const handleUpdateError = (error: string) => {
       console.error('收到更新错误事件:', error)
       updateStore.handleUpdateError(error)
+      // 重置启动检查标识
+      updateStore.setIsStartupCheck(false)
       // 静默处理错误，避免过多通知打扰用户
       console.warn('Update check failed:', error)
     }
@@ -68,6 +72,15 @@ export default function UpdateNotification() {
     const handleUpdateNotAvailable = (info: any) => {
       console.log('收到无更新事件:', info)
       updateStore.handleUpdateNotAvailable(info)
+
+      // 如果是启动检查且已是最新版本，不显示通知
+      if (updateStore.isStartupCheck) {
+        console.log('启动检查：已是最新版本，不显示通知')
+        updateStore.setIsStartupCheck(false) // 重置标识
+        return
+      }
+
+      // 手动检查时显示通知
       notification.info({
         message: '当前已是最新版本',
         description: `当前版本: ${info.version || '未知'}`,
@@ -114,12 +127,17 @@ export default function UpdateNotification() {
         return
       }
 
+      // 标记为启动检查
+      updateStore.setIsStartupCheck(true)
+
       const result = await window.api.updater.checkForUpdates()
       console.log('启动检查更新结果:', result)
     } catch (error) {
       console.error('启动检查更新失败:', error)
       // 静默失败，不打扰用户
       console.warn('Startup update check failed:', error)
+      // 重置启动检查标识
+      updateStore.setIsStartupCheck(false)
     }
   }
 

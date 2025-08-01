@@ -33,6 +33,9 @@ export interface UpdateState {
   notificationShown: boolean
   downloadNotificationKey: string | null
   downloadNotificationHidden: boolean
+
+  // 检查类型标识（区分启动检查和手动检查）
+  isStartupCheck: boolean
 }
 
 export interface UpdateActions {
@@ -44,6 +47,7 @@ export interface UpdateActions {
   setUpdateDownloaded: (downloaded: boolean) => void
   setError: (error: string | null) => void
   setAutoCheckEnabled: (enabled: boolean) => void
+  setIsStartupCheck: (isStartup: boolean) => void
 
   // 更新信息管理
   setUpdateInfo: (info: UpdateInfo | null) => void
@@ -75,7 +79,8 @@ const initialState: UpdateState = {
   downloadProgress: null,
   notificationShown: false,
   downloadNotificationKey: null,
-  downloadNotificationHidden: false
+  downloadNotificationHidden: false,
+  isStartupCheck: false
 }
 
 export const useUpdateStore = create<UpdateState & UpdateActions>()(
@@ -136,6 +141,11 @@ export const useUpdateStore = create<UpdateState & UpdateActions>()(
         state.autoCheckEnabled = enabled
       }),
 
+    setIsStartupCheck: (isStartup) =>
+      set((state) => {
+        state.isStartupCheck = isStartup
+      }),
+
     // 更新信息管理
     setUpdateInfo: (info) =>
       set((state) => {
@@ -176,6 +186,7 @@ export const useUpdateStore = create<UpdateState & UpdateActions>()(
         state.notificationShown = false
         state.downloadNotificationKey = null
         state.downloadNotificationHidden = false
+        state.isStartupCheck = false
       }),
 
     handleUpdateAvailable: (info) =>

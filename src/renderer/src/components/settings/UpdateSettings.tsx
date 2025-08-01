@@ -89,6 +89,8 @@ export default function UpdateSettings() {
     try {
       updateStore.setCheckingForUpdates(true)
       updateStore.setError(null)
+      // 确保手动检查时不是启动检查
+      updateStore.setIsStartupCheck(false)
 
       console.log('开始检查更新...')
 
