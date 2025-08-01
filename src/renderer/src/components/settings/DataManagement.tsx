@@ -24,6 +24,9 @@ import {
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { usePagesStore } from '../../stores/pagesStore'
+import { clearAllStores } from '../../stores/useAppStores'
+import { clearStoreState } from '../../stores/persistence/storeConfig'
+import { useMessagesStore } from '../../stores/messagesStore'
 
 import {
   importExternalChatHistory,
@@ -210,7 +213,7 @@ export default function DataManagement() {
         }
         updatedFolders = [newFolder]
       }
-      
+
       // 保存到存储并更新状态
       usePagesStore.getState().importPages([...result.pages])
       usePagesStore.getState().importFolders([...updatedFolders])
@@ -290,10 +293,26 @@ export default function DataManagement() {
       okText: '确定重置',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => {
+      onOk: async () => {
         try {
-          // 清除localStorage中的所有数据 
-          usePagesStore.getState().clearAllPages()
+          // 第一步：清除内存中的所有存储状态
+          clearAllStores()
+
+          // 第二步：清除 messagesStore 中的流式消息状态
+          useMessagesStore.setState({ streamingMessages: {} })
+
+          // 第三步：清除 IndexedDB 中的所有持久化数据
+          await Promise.all([
+            clearStoreState('settings-store'),
+            clearStoreState('messages-store'),
+            clearStoreState('search-store'),
+            clearStoreState('tabs-store'),
+            clearStoreState('ui-store'),
+            clearStoreState('object-store'),
+            clearStoreState('crosstab-store'),
+            clearStoreState('ai-tasks-store')
+            // pages 和 folders 已经在 clearAllPages() 中处理了
+          ])
 
           message.success('数据已重置')
 
