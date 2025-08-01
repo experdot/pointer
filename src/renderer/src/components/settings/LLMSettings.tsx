@@ -116,7 +116,10 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
     <Modal
       title={config ? '编辑LLM配置' : '新增LLM配置'}
       open={open}
-      onCancel={onCancel}
+      onCancel={() => {
+        form.resetFields()
+        onCancel()
+      }}
       footer={[
         <Button
           key="test"
@@ -135,7 +138,7 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       ]}
       width={500}
     >
-      <Form form={form} layout="vertical" initialValues={config}>
+      <Form form={form} layout="vertical">
         <Form.Item
           name="name"
           label="配置名称"
