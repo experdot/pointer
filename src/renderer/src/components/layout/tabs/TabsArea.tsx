@@ -19,12 +19,17 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { ChatWindow, ChatWindowRef } from '../../pages/chat/index'
 import { CrosstabChat } from '../../pages/crosstab/index'
 import { ObjectPage } from '../../pages/object/index'
-import Settings from '../../settings/Settings'
+import SettingsPage from '../../pages/settings/SettingsPage'
 import './TabsArea.css'
 
 export default function TabsArea() {
-  const { pages, createAndOpenChat, createAndOpenCrosstabChat, createAndOpenObjectChat } =
-    usePagesStore()
+  const {
+    pages,
+    createAndOpenChat,
+    createAndOpenCrosstabChat,
+    createAndOpenObjectChat,
+    createAndOpenSettingsPage
+  } = usePagesStore()
   const {
     openTabs,
     activeTabId,
@@ -40,7 +45,6 @@ export default function TabsArea() {
   const {} = useUIStore()
   const { settings } = useSettingsStore()
   const chatWindowRefs = useRef<Map<string, ChatWindowRef>>(new Map())
-  const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [draggedTabId, setDraggedTabId] = React.useState<string | null>(null)
   const [dragOverTabId, setDragOverTabId] = React.useState<string | null>(null)
 
@@ -70,8 +74,9 @@ export default function TabsArea() {
 
   // 处理打开设置
   const handleOpenSettings = useCallback(() => {
-    setSettingsOpen(true)
-  }, [])
+    const settingsPageId = createAndOpenSettingsPage()
+    setActiveTab(settingsPageId)
+  }, [createAndOpenSettingsPage, setActiveTab])
 
   // 拖拽排序处理函数
   const handleDragStart = useCallback((event: React.DragEvent, chatId: string) => {
@@ -436,7 +441,6 @@ export default function TabsArea() {
             }
           />
         )}
-        <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
     )
   }
@@ -474,6 +478,8 @@ export default function TabsArea() {
               <TableOutlined className="message-icon" />
             ) : chat.type === 'object' ? (
               <BlockOutlined className="message-icon" />
+            ) : chat.type === 'settings' ? (
+              <SettingOutlined className="message-icon" />
             ) : (
               <MessageOutlined className="message-icon" />
             )}
@@ -494,6 +500,8 @@ export default function TabsArea() {
             <CrosstabChat chatId={chatId} />
           ) : chat.type === 'object' ? (
             <ObjectPage chatId={chatId} />
+          ) : chat.type === 'settings' ? (
+            <SettingsPage chatId={chatId} />
           ) : (
             <ChatWindow chatId={chatId} ref={(ref) => setChatWindowRef(chatId, ref)} />
           ),

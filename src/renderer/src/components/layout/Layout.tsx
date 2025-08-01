@@ -6,7 +6,6 @@ import Sidebar from './sidebar/Sidebar'
 import ActivityBar, { ActivityBarTab } from './activitybar/ActivityBar'
 import TabsArea from './tabs/TabsArea'
 import ResizeHandle from './ResizeHandle'
-import Settings from '../settings/Settings'
 import GlobalSearch from './sidebar_items/search/GlobalSearch'
 import TitleBar from './titlebar/TitleBar'
 
@@ -17,7 +16,6 @@ export default function Layout() {
   const { clearSearch } = useSearchStore()
   const [activeTab, setActiveTab] = useState<ActivityBarTab>('explore')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // 处理键盘快捷键
   useEffect(() => {
@@ -59,10 +57,6 @@ export default function Layout() {
     setSearchOpen(true)
   }
 
-  const handleSettingsOpen = () => {
-    setSettingsOpen(true)
-  }
-
   return (
     <div className="app-layout">
       {/* 自定义标题栏 */}
@@ -91,7 +85,7 @@ export default function Layout() {
             collapsed={sidebarCollapsed}
             activeTab={activeTab}
             onSearchOpen={handleSearchOpen}
-            onSettingsOpen={handleSettingsOpen}
+            onSettingsOpen={handleSearchOpen}
           />
           <ResizeHandle />
         </Sider>
@@ -103,7 +97,6 @@ export default function Layout() {
 
       {/* 全局模态框 */}
       <GlobalSearch visible={searchOpen} onClose={handleCloseSearch} />
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
 import { usePagesStore } from '../../../stores/pagesStore'
+import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
@@ -7,7 +8,6 @@ import ChatLogic from './ChatLogic'
 import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
 import ChatInput, { ChatInputRef } from './ChatInput'
-import Settings from '../../settings/Settings'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import MessageTreeSidebar from './MessageTreeSidebar'
 import { MessageTree } from './messageTree'
@@ -21,7 +21,8 @@ export interface ChatWindowRef {
 }
 
 const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) => {
-  const { pages } = usePagesStore()
+  const { pages, createAndOpenSettingsPage } = usePagesStore()
+  const { setActiveTab } = useTabsStore()
   const {
     collapsedMessages,
     allMessagesCollapsed,
@@ -32,7 +33,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const { settings } = useSettingsStore()
   const { updateCurrentPath } = useMessagesStore()
   const [inputValue, setInputValue] = useState('')
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [messageTreeCollapsed, setMessageTreeCollapsed] = useState(true)
   const [messageTreeWidth, setMessageTreeWidth] = useState(() => {
     const saved = localStorage.getItem('messageTreeWidth')
@@ -84,7 +84,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }
 
   const handleOpenSettings = () => {
-    setSettingsOpen(true)
+    const settingsPageId = createAndOpenSettingsPage()
+    setActiveTab(settingsPageId)
   }
 
   const handleToggleMessageTree = () => {
@@ -263,7 +264,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
           )}
         </ChatLogic>
       </div>
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 })

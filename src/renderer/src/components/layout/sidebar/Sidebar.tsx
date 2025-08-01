@@ -158,17 +158,7 @@ export default function Sidebar({
             </div>
           </div>
         )
-      case 'settings':
-        return (
-          <div className="sidebar-settings">
-            <div className="sidebar-header">
-              <h3>设置</h3>
-            </div>
-            <div className="sidebar-content">
-              <Settings open={true} onClose={() => {}} embedded={true} />
-            </div>
-          </div>
-        )
+
       default:
         return null
     }
