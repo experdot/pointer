@@ -425,7 +425,6 @@ export default function MessageItem({
                   size="small"
                   icon={<DeleteOutlined />}
                   onClick={handleDelete}
-                  disabled={isCurrentlyStreaming}
                   className="message-delete-btn"
                 />
               </Tooltip>
