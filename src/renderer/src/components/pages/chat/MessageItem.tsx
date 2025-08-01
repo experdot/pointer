@@ -204,7 +204,7 @@ export default function MessageItem({
           }}
         />
       </div>
-      <div className="message-content">
+      <div className={isEditing ? 'message-content message-content-editing' : 'message-content'}>
         <div className="message-header">
           <div className="message-title">
             <Text strong>{message.role === 'user' ? '您' : 'AI助手'}</Text>
@@ -249,8 +249,8 @@ export default function MessageItem({
           </div>
         </div>
 
-        {/* 消息内容区域 - 可折叠 */}
-        {!isCollapsed && (
+        {/* 消息内容区域 - 可折叠，但编辑状态优先级最高 */}
+        {(!isCollapsed || isEditing) && (
           <>
             {/* 推理模型思考过程展示 */}
             {currentReasoningContent && (
@@ -349,8 +349,8 @@ export default function MessageItem({
           </>
         )}
 
-        {/* 折叠状态下的预览 */}
-        {isCollapsed && (
+        {/* 折叠状态下的预览 - 编辑状态时不显示 */}
+        {isCollapsed && !isEditing && (
           <Card size="small" className="message-card message-collapsed">
             <div className="message-preview">
               <Text type="secondary" className="message-preview-text">
@@ -425,7 +425,6 @@ export default function MessageItem({
                   size="small"
                   icon={<DeleteOutlined />}
                   onClick={handleDelete}
-                  disabled={isCurrentlyStreaming}
                   className="message-delete-btn"
                 />
               </Tooltip>

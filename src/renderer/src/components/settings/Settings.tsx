@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
-import { Modal, Form, Tabs, Space, Button, App } from 'antd'
-import { SettingOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons'
+import React from 'react'
+import { Form, Tabs } from 'antd'
 import { useSettingsStore } from '../../stores/settingsStore'
 import AppearanceSettings from './AppearanceSettings'
 import LLMSettings from './LLMSettings'
@@ -13,42 +12,16 @@ import UpdateSettings from './UpdateSettings'
 interface SettingsProps {
   open: boolean
   onClose: () => void
-  embedded?: boolean
+  defaultActiveTab?: string
 }
 
-export default function Settings({ open, onClose, embedded = false }: SettingsProps) {
-  const { settings, updateSettings } = useSettingsStore()
+export default function Settings({
+  open,
+  onClose,
+  defaultActiveTab = 'appearance'
+}: SettingsProps) {
+  const { settings } = useSettingsStore()
   const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const { message } = App.useApp()
-
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      const values = await form.validateFields()
-
-      // 只更新表单相关的设置，保持LLM配置不变
-      const formSettings = {
-        fontSize: values.fontSize
-      }
-
-      updateSettings(formSettings)
-      message.success('设置已保存')
-      if (!embedded) {
-        onClose()
-      }
-    } catch (error) {
-      message.error('保存失败，请检查输入')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleReset = () => {
-    form.setFieldsValue({
-      fontSize: settings.fontSize
-    })
-  }
 
   const tabItems = [
     {
@@ -72,14 +45,14 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
       children: <PromptListSettings />
     },
     {
-      key: 'update',
-      label: '应用更新',
-      children: <UpdateSettings />
-    },
-    {
       key: 'data',
       label: '数据管理',
       children: <DataManagement />
+    },
+    {
+      key: 'update',
+      label: '应用更新',
+      children: <UpdateSettings />
     },
     {
       key: 'debug',
@@ -88,70 +61,81 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
     }
   ]
 
-  const settingsContent = (
-    <Form
-      form={form}
-      layout="vertical"
-      initialValues={{
-        fontSize: settings.fontSize
-      }}
-    >
-      <Tabs items={tabItems} />
-      {embedded && (
-        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-          <Button key="reset" onClick={handleReset} icon={<ReloadOutlined />}>
-            重置
-          </Button>
-          <Button
-            key="save"
-            type="primary"
-            loading={loading}
-            onClick={handleSave}
-            icon={<SaveOutlined />}
-          >
-            保存
-          </Button>
-        </div>
-      )}
-    </Form>
-  )
-
   if (!open) return null
 
-  if (embedded) {
-    return <div className="settings-embedded">{settingsContent}</div>
-  }
-
   return (
-    <Modal
-      title={
-        <Space>
-          <SettingOutlined />
-          应用设置
-        </Space>
-      }
-      open={open}
-      onCancel={onClose}
-      width={700}
-      footer={[
-        <Button key="reset" onClick={handleReset} icon={<ReloadOutlined />}>
-          重置
-        </Button>,
-        <Button key="cancel" onClick={onClose}>
-          取消
-        </Button>,
-        <Button
-          key="save"
-          type="primary"
-          loading={loading}
-          onClick={handleSave}
-          icon={<SaveOutlined />}
-        >
-          保存
-        </Button>
-      ]}
+    <div
+      className="settings-embedded"
+      style={{
+        height: '100%',
+        maxHeight: 'calc(100vh - 120px)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
     >
-      {settingsContent}
-    </Modal>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          fontSize: settings.fontSize
+        }}
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Tabs
+          items={tabItems}
+          defaultActiveKey={defaultActiveTab}
+          style={{
+            flex: 1,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+          tabBarStyle={{
+            flexShrink: 0,
+            marginBottom: 16
+          }}
+        />
+      </Form>
+      <style>{`
+        .settings-embedded .ant-tabs-content-holder {
+          overflow-y: auto !important;
+          flex: 1 !important;
+        }
+        
+        .settings-embedded .ant-tabs-tabpane {
+          height: 100% !important;
+          overflow-y: auto !important;
+          padding-right: 8px !important;
+        }
+        
+        /* 自定义滚动条样式 */
+        .settings-embedded .ant-tabs-content-holder::-webkit-scrollbar,
+        .settings-embedded .ant-tabs-tabpane::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .settings-embedded .ant-tabs-content-holder::-webkit-scrollbar-track,
+        .settings-embedded .ant-tabs-tabpane::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+        
+        .settings-embedded .ant-tabs-content-holder::-webkit-scrollbar-thumb,
+        .settings-embedded .ant-tabs-tabpane::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 3px;
+        }
+        
+        .settings-embedded .ant-tabs-content-holder::-webkit-scrollbar-thumb:hover,
+        .settings-embedded .ant-tabs-tabpane::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+      `}</style>
+    </div>
   )
 }

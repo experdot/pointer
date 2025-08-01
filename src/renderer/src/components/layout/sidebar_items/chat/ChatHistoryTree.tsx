@@ -287,9 +287,9 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
         .filter((folder) => folder.parentId === parentId)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
 
-      // 获取指定父级下的聊天
+      // 获取指定父级下的聊天（过滤掉设置页面）
       const chats = pages
-        .filter((chat) => chat.folderId === parentId)
+        .filter((chat) => chat.folderId === parentId && chat.type !== 'settings')
         .sort((a, b) => (a.order || 0) - (b.order || 0))
 
       // 添加文件夹

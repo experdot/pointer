@@ -187,7 +187,8 @@ export const useSearchStore = create<SearchState & SearchActions>()(
         }
 
         pages.forEach((chat) => {
-          if (!chat.messages || chat.messages.length === 0) return
+          // 过滤掉设置页面和没有消息的页面
+          if (chat.type === 'settings' || !chat.messages || chat.messages.length === 0) return
 
           chat.messages.forEach((message: ChatMessage) => {
             const content = message.content

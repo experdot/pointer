@@ -2,8 +2,11 @@ import React from 'react'
 import { Button, Badge, Tooltip } from 'antd'
 import { FolderOutlined, SearchOutlined, MonitorOutlined, SettingOutlined } from '@ant-design/icons'
 import { useAITasksStore } from '../../../stores/aiTasksStore'
+import { usePagesStore } from '../../../stores/pagesStore'
+import { useTabsStore } from '../../../stores/tabsStore'
+import './activitybar.css'
 
-export type ActivityBarTab = 'explore' | 'search' | 'tasks' | 'settings'
+export type ActivityBarTab = 'explore' | 'search' | 'tasks'
 
 interface ActivityBarProps {
   activeTab: ActivityBarTab
@@ -12,9 +15,17 @@ interface ActivityBarProps {
 
 export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps) {
   const { getRunningTasksCount } = useAITasksStore()
+  const { createAndOpenSettingsPage } = usePagesStore()
+  const { openTab } = useTabsStore()
 
   // 计算活跃任务数量
   const activeTaskCount = getRunningTasksCount()
+
+  // 处理设置按钮点击
+  const handleSettingsClick = () => {
+    const settingsPageId = createAndOpenSettingsPage('llm') // 默认打开LLM配置，因为这是用户最常需要的设置
+    openTab(settingsPageId)
+  }
 
   const items = [
     {
@@ -35,12 +46,6 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
       label: '任务监控',
       tooltip: '任务监控 - AI任务状态',
       badge: activeTaskCount > 0 ? activeTaskCount : undefined
-    },
-    {
-      key: 'settings' as ActivityBarTab,
-      icon: <SettingOutlined />,
-      label: '设置',
-      tooltip: '设置 - 应用程序设置'
     }
   ]
 
@@ -59,6 +64,17 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
           </Badge>
         </Tooltip>
       ))}
+
+      {/* 设置按钮独立处理 */}
+      <Tooltip title="设置 - 应用程序设置" placement="right">
+        <Button
+          type="text"
+          size="large"
+          icon={<SettingOutlined />}
+          className="activity-bar-button"
+          onClick={handleSettingsClick}
+        />
+      </Tooltip>
     </div>
   )
 }

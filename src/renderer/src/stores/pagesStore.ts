@@ -50,6 +50,7 @@ export interface PagesActions {
   createAndOpenChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
+  createAndOpenSettingsPage: (defaultActiveTab?: string) => string
 
   // 复杂页面创建功能
   createChatFromCell: (params: {
@@ -438,6 +439,59 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           return newPage.id
         } catch (error) {
           handleStoreError('pagesStore', 'createAndOpenObjectChat', error)
+          throw error
+        }
+      },
+
+      createAndOpenSettingsPage: (defaultActiveTab = 'appearance') => {
+        try {
+          // 检查是否已经存在设置页面，如果存在就更新tab并打开
+          const existingPage = get().pages.find((p) => p.type === 'settings')
+          if (existingPage) {
+            // 更新设置页面的默认tab
+            const updatedPage = {
+              ...existingPage,
+              data: { defaultActiveTab },
+              updatedAt: Date.now()
+            }
+            set((state) => {
+              const pageIndex = state.pages.findIndex((p) => p.id === existingPage.id)
+              if (pageIndex !== -1) {
+                state.pages[pageIndex] = updatedPage
+              }
+            })
+
+            // 同时更新 IndexedDB
+            pagesStorage.savePage(updatedPage)
+
+            const { setSelectedNode } = useUIStore.getState()
+            setSelectedNode(existingPage.id, 'chat')
+            return existingPage.id
+          }
+
+          const newPage: Page = {
+            id: uuidv4(),
+            title: '应用设置',
+            type: 'settings',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            pinned: true, // 设置页面默认固定
+            data: { defaultActiveTab }
+          }
+
+          set((state) => {
+            state.pages.push(newPage)
+          })
+
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(newPage)
+
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
+
+          return newPage.id
+        } catch (error) {
+          handleStoreError('pagesStore', 'createAndOpenSettingsPage', error)
           throw error
         }
       },

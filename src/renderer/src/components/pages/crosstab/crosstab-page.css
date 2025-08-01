@@ -239,7 +239,7 @@
 /* 轴数据容器样式 */
 .axis-data-container {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 24px;
   height: 100%;
 }
@@ -459,7 +459,7 @@
   }
 
   .axis-data-container {
-    flex-direction: row;
+    flex-direction: column;
     gap: 16px;
   }
 

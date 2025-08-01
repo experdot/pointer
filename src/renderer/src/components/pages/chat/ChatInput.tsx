@@ -275,7 +275,7 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             autoSize={{ minRows: 1, maxRows: 10 }}
-            disabled={disabled || hasNoModels}
+            disabled={hasNoModels}
           />
           <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
             <Space>

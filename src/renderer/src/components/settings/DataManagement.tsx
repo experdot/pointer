@@ -7,7 +7,6 @@ import {
   Upload,
   Typography,
   Divider,
-  Popconfirm,
   App,
   Table,
   Checkbox,
@@ -24,20 +23,23 @@ import {
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { usePagesStore } from '../../stores/pagesStore'
+import { clearAllStores } from '../../stores/useAppStores'
+import { clearStoreState } from '../../stores/persistence/storeConfig'
+import { useMessagesStore } from '../../stores/messagesStore'
 
 import {
   importExternalChatHistory,
   parseExternalChatHistory,
   importSelectedChats,
   SelectableChatItem
-} from '../../utils/externalChatImporter'
+} from '../../utils/externalChatImporter/index'
 import { PageFolder } from '../../types/type'
 
 const { Text, Paragraph } = Typography
 
 export default function DataManagement() {
   const { importSettings, exportSettings } = useSettingsStore()
-  const { pages, folders, importPages, clearAllPages } = usePagesStore()
+  const { pages, folders, importPages, importFolders, clearAllPages } = usePagesStore()
   const [importing, setImporting] = useState(false)
   const [importingExternal, setImportingExternal] = useState(false)
   const [selectiveImportModal, setSelectiveImportModal] = useState(false)
@@ -46,23 +48,86 @@ export default function DataManagement() {
   const [customFolderName, setCustomFolderName] = useState('')
   const { modal, message } = App.useApp()
 
-  const handleExport = () => {
+  // 生成精确到秒的时间戳用于文件名
+  const getTimestamp = () => {
+    const now = new Date()
+    return now.toISOString().replace(/[:.]/g, '-').slice(0, -5) // 移除毫秒和Z，替换冒号和点号
+  }
+
+  // 导出所有数据
+  const handleExportAll = () => {
     try {
-      const data = exportSettings()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const settings = exportSettings()
+      const allData = {
+        type: 'all-data',
+        settings,
+        pages,
+        folders,
+        version: '1.0.0',
+        exportTime: Date.now()
+      }
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
 
       link.href = url
-      link.download = `ai-chat-settings-${new Date().toISOString().split('T')[0]}.json`
+      link.download = `ai-chat-all-data-${getTimestamp()}.json`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-
-      message.success('数据导出成功')
     } catch (error) {
       message.error('导出失败')
+    }
+  }
+
+  // 单独导出设置
+  const handleExportSettings = () => {
+    try {
+      const settings = exportSettings()
+      const settingsData = {
+        type: 'settings-only',
+        settings,
+        version: '1.0.0',
+        exportTime: Date.now()
+      }
+      const blob = new Blob([JSON.stringify(settingsData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+
+      link.href = url
+      link.download = `ai-chat-settings-${getTimestamp()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      message.error('设置导出失败')
+    }
+  }
+
+  // 单独导出聊天记录
+  const handleExportChats = () => {
+    try {
+      const chatsData = {
+        type: 'chats-only',
+        pages,
+        folders,
+        version: '1.0.0',
+        exportTime: Date.now()
+      }
+      const blob = new Blob([JSON.stringify(chatsData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+
+      link.href = url
+      link.download = `ai-chat-history-${getTimestamp()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      message.error('聊天记录导出失败')
     }
   }
 
@@ -74,8 +139,58 @@ export default function DataManagement() {
       try {
         const content = e.target?.result as string
         const parsedData = JSON.parse(content)
-        importSettings(parsedData)
-        message.success('数据导入成功')
+
+        // 根据文件类型进行不同的处理
+        if (parsedData.type === 'all-data') {
+          // 完整数据导出
+          importSettings(parsedData.settings)
+
+          if (parsedData.pages && parsedData.pages.length > 0) {
+            importPages(parsedData.pages)
+          }
+
+          if (parsedData.folders && parsedData.folders.length > 0) {
+            importFolders(parsedData.folders)
+          }
+
+          message.success('所有数据导入成功（包含设置和聊天历史）')
+        } else if (parsedData.type === 'settings-only') {
+          // 只有设置数据
+          importSettings(parsedData.settings)
+          message.success('设置数据导入成功')
+        } else if (parsedData.type === 'chats-only') {
+          // 只有聊天记录数据
+          if (parsedData.pages && parsedData.pages.length > 0) {
+            importPages(parsedData.pages)
+          }
+
+          if (parsedData.folders && parsedData.folders.length > 0) {
+            importFolders(parsedData.folders)
+          }
+
+          message.success('聊天记录导入成功')
+        } else if (
+          parsedData.settings &&
+          parsedData.pages !== undefined &&
+          parsedData.folders !== undefined
+        ) {
+          // 兼容旧版本的完整数据格式（没有type字段）
+          importSettings(parsedData.settings)
+
+          if (parsedData.pages && parsedData.pages.length > 0) {
+            importPages(parsedData.pages)
+          }
+
+          if (parsedData.folders && parsedData.folders.length > 0) {
+            importFolders(parsedData.folders)
+          }
+
+          message.success('数据导入成功（包含设置和聊天历史）')
+        } else {
+          // 假设是旧格式的纯设置数据
+          importSettings(parsedData)
+          message.success('设置数据导入成功')
+        }
       } catch (error) {
         message.error('导入失败，文件格式错误')
       } finally {
@@ -210,7 +325,7 @@ export default function DataManagement() {
         }
         updatedFolders = [newFolder]
       }
-      
+
       // 保存到存储并更新状态
       usePagesStore.getState().importPages([...result.pages])
       usePagesStore.getState().importFolders([...updatedFolders])
@@ -282,23 +397,37 @@ export default function DataManagement() {
     }
   }
 
-  const handleReset = () => {
+  // 重置所有数据
+  const handleResetAll = () => {
     modal.confirm({
-      title: '确认重置',
+      title: '确认重置所有数据',
       icon: <ExclamationCircleOutlined />,
-      content: '这将清除所有设置和数据，此操作不可恢复。确定要继续吗？',
+      content: '这将清除所有设置和聊天数据，此操作不可恢复。确定要继续吗？',
       okText: '确定重置',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => {
+      onOk: async () => {
         try {
-          // 清除localStorage中的所有数据 
-          usePagesStore.getState().clearAllPages()
+          // 第一步：清除内存中的所有存储状态
+          clearAllStores()
 
-          message.success('数据已重置')
+          // 第二步：清除 messagesStore 中的流式消息状态
+          useMessagesStore.setState({ streamingMessages: {} })
 
-          // 立即重新加载页面以确保状态完全重置
-          window.location.reload()
+          // 第三步：清除 IndexedDB 中的所有持久化数据
+          await Promise.all([
+            clearStoreState('settings-store'),
+            clearStoreState('messages-store'),
+            clearStoreState('search-store'),
+            clearStoreState('tabs-store'),
+            clearStoreState('ui-store'),
+            clearStoreState('object-store'),
+            clearStoreState('crosstab-store'),
+            clearStoreState('ai-tasks-store')
+            // pages 和 folders 已经在 clearAllPages() 中处理了
+          ])
+
+          message.success('所有数据已重置')
         } catch (error) {
           console.error('重置失败:', error)
           message.error('重置失败')
@@ -307,10 +436,88 @@ export default function DataManagement() {
     })
   }
 
+  // 单独清空聊天记录
+  const handleResetChats = () => {
+    modal.confirm({
+      title: '确认清空聊天记录',
+      icon: <ExclamationCircleOutlined />,
+      content: '这将清除所有聊天历史和文件夹，但保留您的设置配置。此操作不可恢复，确定要继续吗？',
+      okText: '确定清空',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          // 清除聊天相关的存储
+          clearAllPages()
+
+          // 清除相关的持久化数据
+          await Promise.all([
+            clearStoreState('messages-store'),
+            clearStoreState('search-store'),
+            clearStoreState('tabs-store'),
+            clearStoreState('ui-store')
+          ])
+
+          // 重置消息存储的流式消息状态
+          useMessagesStore.setState({ streamingMessages: {} })
+
+          message.success('聊天记录已清空')
+        } catch (error) {
+          console.error('清空聊天记录失败:', error)
+          message.error('清空聊天记录失败')
+        }
+      }
+    })
+  }
+
+  // 单独重置设置
+  const handleResetSettings = () => {
+    modal.confirm({
+      title: '确认重置设置',
+      icon: <ExclamationCircleOutlined />,
+      content:
+        '这将重置所有LLM配置、模型配置和应用设置，但保留您的聊天记录。此操作不可恢复，确定要继续吗？',
+      okText: '确定重置',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          // 重置设置存储
+          const { resetSettings } = useSettingsStore.getState()
+          resetSettings()
+
+          // 清除设置相关的持久化数据
+          await clearStoreState('settings-store')
+
+          message.success('设置已重置')
+        } catch (error) {
+          console.error('重置设置失败:', error)
+          message.error('重置设置失败')
+        }
+      }
+    })
+  }
+
   const getCurrentDataSize = () => {
     try {
-      const data = exportSettings()
-      return `${(JSON.stringify(data).length / 1024).toFixed(2)} KB`
+      const settings = exportSettings()
+      const allData = {
+        type: 'all-data',
+        settings,
+        pages,
+        folders,
+        version: '1.0.0',
+        exportTime: Date.now()
+      }
+      const settingsSize = (
+        JSON.stringify({ type: 'settings-only', settings, version: '1.0.0' }).length / 1024
+      ).toFixed(2)
+      const chatsSize = (
+        JSON.stringify({ type: 'chats-only', pages, folders, version: '1.0.0' }).length / 1024
+      ).toFixed(2)
+      const totalSize = (JSON.stringify(allData).length / 1024).toFixed(2)
+
+      return `总计: ${totalSize} KB (设置: ${settingsSize} KB, 聊天: ${chatsSize} KB)`
     } catch {
       return '计算中...'
     }
@@ -334,18 +541,20 @@ export default function DataManagement() {
           <div style={{ marginBottom: '8px' }}>
             <Text strong>导出数据</Text>
           </div>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExport}
-            type="primary"
-            ghost
-            style={{ marginBottom: '4px' }}
-          >
-            导出所有数据
-          </Button>
+          <Space direction="horizontal" size="small" wrap style={{ marginBottom: '4px' }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExportAll} type="primary" ghost>
+              导出所有数据
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExportSettings} type="default">
+              仅导出设置
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExportChats} type="default">
+              仅导出聊天记录
+            </Button>
+          </Space>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              导出包括设置、LLM配置、聊天记录等所有数据
+              您可以选择导出所有数据，或者分别导出设置和聊天记录
             </Text>
           </div>
         </div>
@@ -374,7 +583,7 @@ export default function DataManagement() {
           </Upload>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              导入数据将覆盖当前所有设置，请确保备份重要数据
+              支持导入完整数据文件、设置文件或聊天记录文件，系统会自动识别文件类型进行相应处理
             </Text>
           </div>
         </div>
@@ -385,6 +594,11 @@ export default function DataManagement() {
             <Text strong>导入外部聊天历史</Text>
           </div>
           <Space direction="horizontal" size="small" style={{ marginBottom: '4px' }}>
+            <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
+              <Button icon={<SelectOutlined />} type="primary" ghost>
+                选择性导入
+              </Button>
+            </Upload>
             <Upload
               accept=".json"
               showUploadList={false}
@@ -393,11 +607,6 @@ export default function DataManagement() {
             >
               <Button icon={<ImportOutlined />} loading={importingExternal} type="default">
                 {importingExternal ? '导入中...' : '快速导入(50条限制)'}
-              </Button>
-            </Upload>
-            <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
-              <Button icon={<SelectOutlined />} type="primary" ghost>
-                选择性导入
               </Button>
             </Upload>
           </Space>
@@ -415,21 +624,20 @@ export default function DataManagement() {
           <div style={{ marginBottom: '8px' }}>
             <Text strong>重置数据</Text>
           </div>
-          <Popconfirm
-            title="确认重置所有数据？"
-            description="此操作将清除所有设置和聊天记录，且不可恢复"
-            onConfirm={handleReset}
-            okText="确认重置"
-            cancelText="取消"
-            okType="danger"
-          >
-            <Button icon={<DeleteOutlined />} danger type="default" style={{ marginBottom: '4px' }}>
+          <Space direction="horizontal" size="small" wrap style={{ marginBottom: '4px' }}>
+            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetAll}>
               重置所有数据
             </Button>
-          </Popconfirm>
+            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetSettings}>
+              仅清空设置
+            </Button>
+            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetChats}>
+              仅清空聊天记录
+            </Button>
+          </Space>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              将应用恢复到初始状态，清除所有用户数据
+              您可以选择重置所有数据，或者分别清空聊天记录、重置设置配置
             </Text>
           </div>
         </div>

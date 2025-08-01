@@ -66,7 +66,7 @@ export interface PageLineage {
 export interface PageBase {
   id: string
   title: string
-  type: 'regular' | 'crosstab' | 'object'
+  type: 'regular' | 'crosstab' | 'object' | 'settings'
 
   folderId?: string
   createdAt: number
@@ -265,9 +265,14 @@ export interface ObjectChat extends PageBase {
   objectData: ObjectData
 }
 
+// 设置页面类型
+export interface SettingsPage extends PageBase {
+  type: 'settings'
+}
+
 // 聊天类型 - 包含所有属性
 export interface Page extends PageBase {
-  type: 'regular' | 'crosstab' | 'object'
+  type: 'regular' | 'crosstab' | 'object' | 'settings'
 
   // RegularChat 的属性
   messages?: ChatMessage[]

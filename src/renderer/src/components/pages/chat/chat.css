@@ -135,9 +135,12 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-
 .user-message .message-content {
   align-items: flex-end;
+}
+
+.user-message .message-content.message-content-editing {
+  align-items: initial;
 }
 
 .user-message .message-card {
@@ -147,6 +150,10 @@
 
 .assistant-message .message-content {
   align-items: flex-start;
+}
+
+.assistant-message .message-content.message-content-editing {
+  align-items: initial;
 }
 
 .assistant-message .message-card {
@@ -323,7 +330,7 @@
 
 .message-preview-text {
   font-style: italic;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
 }
 
