@@ -3,12 +3,21 @@ import Settings from '../../settings/Settings'
 
 interface SettingsPageProps {
   chatId: string
+  defaultActiveTab?: string
 }
 
-export default function SettingsPage({ chatId }: SettingsPageProps) {
+export default function SettingsPage({
+  chatId,
+  defaultActiveTab = 'appearance'
+}: SettingsPageProps) {
   return (
     <div className="settings-page" style={{ height: '100%', padding: '16px' }}>
-      <Settings open={true} onClose={() => {}} embedded={true} />
+      <Settings
+        open={true}
+        onClose={() => {}}
+        embedded={true}
+        defaultActiveTab={defaultActiveTab}
+      />
     </div>
   )
 }

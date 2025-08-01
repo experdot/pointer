@@ -74,7 +74,7 @@ export default function TabsArea() {
 
   // 处理打开设置
   const handleOpenSettings = useCallback(() => {
-    const settingsPageId = createAndOpenSettingsPage()
+    const settingsPageId = createAndOpenSettingsPage('llm') // 配置模型按钮应该打开LLM配置
     setActiveTab(settingsPageId)
   }, [createAndOpenSettingsPage, setActiveTab])
 
@@ -501,7 +501,7 @@ export default function TabsArea() {
           ) : chat.type === 'object' ? (
             <ObjectPage chatId={chatId} />
           ) : chat.type === 'settings' ? (
-            <SettingsPage chatId={chatId} />
+            <SettingsPage chatId={chatId} defaultActiveTab={chat.data?.defaultActiveTab} />
           ) : (
             <ChatWindow chatId={chatId} ref={(ref) => setChatWindowRef(chatId, ref)} />
           ),

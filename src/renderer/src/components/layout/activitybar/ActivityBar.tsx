@@ -22,7 +22,7 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
 
   // 处理设置按钮点击
   const handleSettingsClick = () => {
-    const settingsPageId = createAndOpenSettingsPage()
+    const settingsPageId = createAndOpenSettingsPage('llm') // 默认打开LLM配置，因为这是用户最常需要的设置
     openTab(settingsPageId)
   }
 

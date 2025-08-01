@@ -84,7 +84,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }
 
   const handleOpenSettings = () => {
-    const settingsPageId = createAndOpenSettingsPage()
+    const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
     setActiveTab(settingsPageId)
   }
 

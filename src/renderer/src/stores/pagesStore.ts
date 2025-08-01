@@ -50,7 +50,7 @@ export interface PagesActions {
   createAndOpenChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
-  createAndOpenSettingsPage: () => string
+  createAndOpenSettingsPage: (defaultActiveTab?: string) => string
 
   // 复杂页面创建功能
   createChatFromCell: (params: {
@@ -443,11 +443,27 @@ export const usePagesStore = create<PagesState & PagesActions>()(
         }
       },
 
-      createAndOpenSettingsPage: () => {
+      createAndOpenSettingsPage: (defaultActiveTab = 'appearance') => {
         try {
-          // 检查是否已经存在设置页面，如果存在就直接打开
+          // 检查是否已经存在设置页面，如果存在就更新tab并打开
           const existingPage = get().pages.find((p) => p.type === 'settings')
           if (existingPage) {
+            // 更新设置页面的默认tab
+            const updatedPage = {
+              ...existingPage,
+              data: { defaultActiveTab },
+              updatedAt: Date.now()
+            }
+            set((state) => {
+              const pageIndex = state.pages.findIndex((p) => p.id === existingPage.id)
+              if (pageIndex !== -1) {
+                state.pages[pageIndex] = updatedPage
+              }
+            })
+
+            // 同时更新 IndexedDB
+            pagesStorage.savePage(updatedPage)
+
             const { setSelectedNode } = useUIStore.getState()
             setSelectedNode(existingPage.id, 'chat')
             return existingPage.id
@@ -459,7 +475,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             type: 'settings',
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            pinned: true // 设置页面默认固定
+            pinned: true, // 设置页面默认固定
+            data: { defaultActiveTab }
           }
 
           set((state) => {

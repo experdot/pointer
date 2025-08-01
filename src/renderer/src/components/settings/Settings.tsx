@@ -14,9 +14,15 @@ interface SettingsProps {
   open: boolean
   onClose: () => void
   embedded?: boolean
+  defaultActiveTab?: string
 }
 
-export default function Settings({ open, onClose, embedded = false }: SettingsProps) {
+export default function Settings({
+  open,
+  onClose,
+  embedded = false,
+  defaultActiveTab = 'appearance'
+}: SettingsProps) {
   const { settings, updateSettings } = useSettingsStore()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
@@ -96,7 +102,7 @@ export default function Settings({ open, onClose, embedded = false }: SettingsPr
         fontSize: settings.fontSize
       }}
     >
-      <Tabs items={tabItems} />
+      <Tabs items={tabItems} defaultActiveKey={defaultActiveTab} />
       {embedded && (
         <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
           <Button key="reset" onClick={handleReset} icon={<ReloadOutlined />}>
