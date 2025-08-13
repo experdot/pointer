@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
+import React, { useState, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
@@ -63,36 +63,36 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }, [chat?.messages])
 
   // 处理分支切换（所有消息都使用兄弟分支切换）
-  const handleSwitchBranch = (messageId: string, branchIndex: number) => {
+  const handleSwitchBranch = useCallback((messageId: string, branchIndex: number) => {
     const newPath = messageTree.switchToSiblingBranch(messageId, branchIndex)
     updateCurrentPath(chatId, newPath)
-  }
+  }, [messageTree, updateCurrentPath, chatId])
 
-  const handleToggleMessageCollapse = (messageId: string) => {
+  const handleToggleMessageCollapse = useCallback((messageId: string) => {
     toggleMessageCollapse(chatId, messageId)
-  }
+  }, [toggleMessageCollapse, chatId])
 
-  const handleCollapseAll = () => {
+  const handleCollapseAll = useCallback(() => {
     collapseAllMessages(
       chatId,
       chat.messages.map((msg) => msg.id)
     )
-  }
+  }, [collapseAllMessages, chatId, chat?.messages])
 
-  const handleExpandAll = () => {
+  const handleExpandAll = useCallback(() => {
     expandAllMessages(chatId)
-  }
+  }, [expandAllMessages, chatId])
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = useCallback(() => {
     const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
     setActiveTab(settingsPageId)
-  }
+  }, [createAndOpenSettingsPage, setActiveTab])
 
-  const handleToggleMessageTree = () => {
+  const handleToggleMessageTree = useCallback(() => {
     setMessageTreeCollapsed(!messageTreeCollapsed)
-  }
+  }, [messageTreeCollapsed])
 
-  const handleMessageTreeNodeSelect = (messageId: string) => {
+  const handleMessageTreeNodeSelect = useCallback((messageId: string) => {
     // 构建到选中消息的路径
     const path: string[] = []
     let currentMsg = chat?.messages.find((msg) => msg.id === messageId)
@@ -108,19 +108,19 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
 
     // 更新当前路径
     updateCurrentPath(chatId, path)
-  }
+  }, [chat?.messages, updateCurrentPath, chatId])
 
-  const handleMessageTreePathChange = (path: string[]) => {
+  const handleMessageTreePathChange = useCallback((path: string[]) => {
     // 更新当前路径
     updateCurrentPath(chatId, path)
-  }
+  }, [updateCurrentPath, chatId])
 
-  const handleMessageTreeWidthChange = (width: number) => {
+  const handleMessageTreeWidthChange = useCallback((width: number) => {
     setMessageTreeWidth(width)
     localStorage.setItem('messageTreeWidth', width.toString())
-  }
+  }, [])
 
-  const handleAutoQuestionChange = (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
+  const handleAutoQuestionChange = useCallback((enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
     console.log('ChatWindow handleAutoQuestionChange:', {
       enabled,
       mode,
@@ -140,7 +140,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
       setAutoQuestionListId(defaultListId)
       console.log('ChatWindow 自动设置 defaultListId:', defaultListId)
     }
-  }
+  }, [settings.promptLists, settings.defaultPromptListId])
 
   if (!chat) {
     return <div className="chat-window-error">聊天不存在</div>
@@ -238,7 +238,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   ref={chatInputRef}
                   value={inputValue}
                   onChange={setInputValue}
-                  onSend={async () => {
+                  onSend={useCallback(async () => {
                     if (inputValue.trim()) {
                       setInputValue('') // 立即清空输入框
                       await onSendMessage(inputValue)
@@ -247,7 +247,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                         chatInputRef.current?.focus()
                       }, 0)
                     }
-                  }}
+                  }, [inputValue, onSendMessage])}
                   onStop={onStopGeneration}
                   disabled={isLoading}
                   loading={isLoading}

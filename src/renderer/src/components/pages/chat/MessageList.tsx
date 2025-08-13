@@ -28,7 +28,7 @@ interface MessageListProps {
   onOpenSettings?: () => void
 }
 
-export default function MessageList({
+const MessageList = React.memo(function MessageList({
   chatId,
   messages,
   currentPath = [],
@@ -229,4 +229,25 @@ export default function MessageList({
       </div>
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键属性变化时重新渲染
+  return (
+    prevProps.messages === nextProps.messages &&
+    prevProps.currentPath === nextProps.currentPath &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.collapsedMessages === nextProps.collapsedMessages &&
+    prevProps.llmConfigs === nextProps.llmConfigs &&
+    // 对于回调函数，我们假设它们是稳定的（在父组件中使用 useCallback）
+    prevProps.onRetryMessage === nextProps.onRetryMessage &&
+    prevProps.onEditMessage === nextProps.onEditMessage &&
+    prevProps.onEditAndResendMessage === nextProps.onEditAndResendMessage &&
+    prevProps.onToggleFavorite === nextProps.onToggleFavorite &&
+    prevProps.onModelChange === nextProps.onModelChange &&
+    prevProps.onDeleteMessage === nextProps.onDeleteMessage &&
+    prevProps.onSwitchBranch === nextProps.onSwitchBranch &&
+    prevProps.onToggleMessageCollapse === nextProps.onToggleMessageCollapse &&
+    prevProps.onOpenSettings === nextProps.onOpenSettings
+  )
+})
+
+export default MessageList

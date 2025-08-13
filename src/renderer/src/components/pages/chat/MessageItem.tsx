@@ -51,7 +51,7 @@ interface MessageItemProps {
   onToggleCollapse?: (messageId: string) => void
 }
 
-export default function MessageItem({
+const MessageItem = React.memo(function MessageItem({
   message,
   chatId,
   isLoading = false,
@@ -434,4 +434,30 @@ export default function MessageItem({
       </div>
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，避免不必要的重渲染
+  // 注意：对于正在流式输出的消息，我们需要重新渲染
+  if (prevProps.message.id !== nextProps.message.id) return false
+  
+  // 如果消息内容或流式状态发生变化，需要重新渲染
+  if (prevProps.message.content !== nextProps.message.content ||
+      prevProps.message.reasoning_content !== nextProps.message.reasoning_content ||
+      prevProps.message.isStreaming !== nextProps.message.isStreaming ||
+      prevProps.message.isFavorited !== nextProps.message.isFavorited ||
+      prevProps.message.modelId !== nextProps.message.modelId) {
+    return false
+  }
+  
+  // 检查其他重要属性
+  return (
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.isLastMessage === nextProps.isLastMessage &&
+    prevProps.isCollapsed === nextProps.isCollapsed &&
+    prevProps.hasChildBranches === nextProps.hasChildBranches &&
+    prevProps.branchIndex === nextProps.branchIndex &&
+    prevProps.branchCount === nextProps.branchCount &&
+    prevProps.llmConfigs === nextProps.llmConfigs
+  )
+})
+
+export default MessageItem

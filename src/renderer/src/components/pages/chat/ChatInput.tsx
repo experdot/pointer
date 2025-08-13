@@ -1,4 +1,4 @@
-import React, { useRef, forwardRef, useImperativeHandle, useState } from 'react'
+import React, { useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react'
 import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown, Flex } from 'antd'
 import {
   SendOutlined,
@@ -174,7 +174,7 @@ export interface ChatInputRef {
   focus: () => void
 }
 
-const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
+const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
   (
     {
       value,
@@ -205,12 +205,16 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
       }
     }))
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         onSend()
       }
-    }
+    }, [onSend])
+    
+    const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(e.target.value)
+    }, [onChange])
 
     const hasNoModels = !llmConfigs || llmConfigs.length === 0
     const hasNoSelectedModel = !selectedModel
@@ -272,7 +276,7 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                   : '输入消息... (Enter发送，Shift+Enter换行)'
             }
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             autoSize={{ minRows: 1, maxRows: 10 }}
             disabled={hasNoModels}
@@ -348,6 +352,6 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
       </div>
     )
   }
-)
+))
 
 export default ChatInput
