@@ -189,7 +189,7 @@ const MessageList = React.memo(function MessageList({
 
   if (!messages || (messages?.length === 0 && !streamingContent)) {
     return (
-      <div className="messages-container">
+      <div className="messages-container" ref={messagesContainerRef}>
         <WelcomeMessage onOpenSettings={onOpenSettings} />
       </div>
     )
