@@ -241,13 +241,13 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onSend={useCallback(async () => {
                     if (inputValue.trim()) {
                       setInputValue('') // 立即清空输入框
-                      await onSendMessage(inputValue)
+                      await onSendMessage(inputValue, selectedModel)
                       // 在下一个tick中聚焦，确保界面更新完成
                       setTimeout(() => {
                         chatInputRef.current?.focus()
                       }, 0)
                     }
-                  }, [inputValue, onSendMessage])}
+                  }, [inputValue, onSendMessage, selectedModel])}
                   onStop={onStopGeneration}
                   disabled={isLoading}
                   loading={isLoading}
