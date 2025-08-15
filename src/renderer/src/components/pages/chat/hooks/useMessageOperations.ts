@@ -15,6 +15,7 @@ export interface UseMessageOperationsProps {
   messageTree: MessageTree
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+  selectedModel?: string
 }
 
 export interface UseMessageOperationsReturn {
@@ -33,7 +34,8 @@ export function useMessageOperations({
   aiService,
   messageTree,
   isLoading,
-  setIsLoading
+  setIsLoading,
+  selectedModel
 }: UseMessageOperationsProps): UseMessageOperationsReturn {
   const { addMessageToParent, toggleMessageFavorite, deleteMessageAndChildren } = useMessagesStore()
   const { settings } = useSettingsStore()
@@ -116,15 +118,17 @@ export function useMessageOperations({
     async (messageId: string) => {
       if (!chat || isLoading) return
 
-      const llmConfig = aiService.getLLMConfig()
+      // 找到要重试的消息
+      const messageToRetry = chat.messages.find((msg: any) => msg.id === messageId)
+      if (!messageToRetry) return
+
+      // 使用原消息的模型ID
+      const modelIdToUse = messageToRetry.modelId
+      const llmConfig = aiService.getLLMConfig(modelIdToUse)
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
         return
       }
-
-      // 找到要重试的消息
-      const messageToRetry = chat.messages.find((msg: any) => msg.id === messageId)
-      if (!messageToRetry) return
 
       // 在树状结构中，重试意味着从父消息重新生成一个新的分支
       const currentPath = chat.currentPath || messageTree.getCurrentPath()
@@ -182,15 +186,17 @@ export function useMessageOperations({
     async (messageId: string, newContent: string) => {
       if (!chat || isLoading) return
 
-      const llmConfig = aiService.getLLMConfig()
+      // 找到要编辑的消息
+      const targetMessage = chat.messages.find((msg: any) => msg.id === messageId)
+      if (!targetMessage) return
+
+      // 如果是用户消息，使用当前选中的模型；如果是AI消息，使用原消息的模型
+      const modelIdToUse = targetMessage.role === 'user' ? selectedModel : targetMessage.modelId
+      const llmConfig = aiService.getLLMConfig(modelIdToUse)
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
         return
       }
-
-      // 找到要编辑的消息
-      const targetMessage = chat.messages.find((msg: any) => msg.id === messageId)
-      if (!targetMessage) return
 
       setIsLoading(true)
 
@@ -274,7 +280,8 @@ export function useMessageOperations({
       chatId,
       messageTree,
       addMessageToParent,
-      setIsLoading
+      setIsLoading,
+      selectedModel
     ]
   )
 

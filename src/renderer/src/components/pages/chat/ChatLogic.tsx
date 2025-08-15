@@ -104,7 +104,8 @@ export default function ChatLogic({
     aiService: enhancedAIService,
     messageTree,
     isLoading,
-    setIsLoading
+    setIsLoading,
+    selectedModel
   })
 
   // 设置 sendMessage 引用，确保自动追问也使用增强的消息发送
