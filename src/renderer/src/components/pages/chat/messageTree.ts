@@ -340,42 +340,24 @@ export class MessageTree {
     }
 
     const targetSibling = siblings[siblingBranchIndex]
-    const messageIndex = this.currentPath.indexOf(messageId)
-
-    // 检查是否是根消息的兄弟分支切换
     const sourceMessage = this.messageMap.get(messageId)
-    if (sourceMessage && !sourceMessage.parentId) {
-      // 根消息的兄弟分支切换：直接从目标兄弟消息开始构建新路径
-      const newPath = [targetSibling.id]
-
-      // 继续沿着这个分支向下，选择最新的子分支
-      let traverseMessage = targetSibling
-      while (traverseMessage.children && traverseMessage.children.length > 0) {
-        const childId = traverseMessage.children.reduce((latest, childId) => {
-          const child = this.messageMap.get(childId)
-          const latestChild = this.messageMap.get(latest)
-          return child && latestChild && child.timestamp > latestChild.timestamp ? childId : latest
-        })
-
-        const childMessage = this.messageMap.get(childId)
-        if (childMessage) {
-          newPath.push(childMessage.id)
-          traverseMessage = childMessage
-        } else {
-          break
-        }
-      }
-
-      this.currentPath = newPath
-      return newPath
-    }
-
-    if (messageIndex === -1) {
+    
+    if (!sourceMessage) {
       return this.currentPath
     }
 
-    // 构建新路径：保留到目标兄弟节点之前的路径，然后替换当前消息为目标兄弟消息
-    const newPath = [...this.currentPath.slice(0, messageIndex), targetSibling.id]
+    // 构建从根到目标兄弟消息的路径
+    const pathToParent: string[] = []
+    let currentMsg: ChatMessage | undefined = sourceMessage.parentId ? this.messageMap.get(sourceMessage.parentId) : undefined
+    
+    // 从父消息回溯到根
+    while (currentMsg) {
+      pathToParent.unshift(currentMsg.id)
+      currentMsg = currentMsg.parentId ? this.messageMap.get(currentMsg.parentId) : undefined
+    }
+    
+    // 新路径 = 到父节点的路径 + 目标兄弟节点
+    const newPath = [...pathToParent, targetSibling.id]
 
     // 继续沿着这个分支向下，选择最新的子分支
     let currentMessage = targetSibling
