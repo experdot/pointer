@@ -19,7 +19,11 @@ export interface UseMessageOperationsProps {
 }
 
 export interface UseMessageOperationsReturn {
-  handleSendMessage: (content: string, customModelId?: string, customParentId?: string) => Promise<void>
+  handleSendMessage: (
+    content: string,
+    customModelId?: string,
+    customParentId?: string
+  ) => Promise<void>
   handleRetryMessage: (messageId: string) => Promise<void>
   handleEditMessage: (messageId: string, newContent: string) => Promise<void>
   handleEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
@@ -88,9 +92,16 @@ export function useMessageOperations({
       setIsLoading(true)
 
       try {
-        // Use the messages we just calculated instead of relying on state
-        const allMessages = [...currentMessages, userMessageWithParent]
-        await aiService.sendAIMessage(allMessages, llmConfig, userMessageWithParent.id, 'chat', {
+        // 获取当前分支路径上的消息，而不是全部消息
+        const currentPath = chat?.currentPath || messageTree.getCurrentPath()
+        const currentPathMessages = currentPath
+          .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
+          .filter(Boolean) as ChatMessage[]
+
+        // 构建要发送给AI的消息历史（当前分支 + 新用户消息）
+        const messagesToSend = [...currentPathMessages, userMessageWithParent]
+
+        await aiService.sendAIMessage(messagesToSend, llmConfig, userMessageWithParent.id, 'chat', {
           chat: {
             messageContent: content.trim(),
             parentMessageId: parentId
@@ -103,15 +114,7 @@ export function useMessageOperations({
         setIsLoading(false)
       }
     },
-    [
-      isLoading,
-      aiService,
-      chatId,
-      chat,
-      addMessageToParent,
-      messageTree,
-      setIsLoading
-    ]
+    [isLoading, aiService, chatId, chat, addMessageToParent, messageTree, setIsLoading]
   )
 
   const handleRetryMessage = useCallback(
@@ -235,12 +238,18 @@ export function useMessageOperations({
           }
 
           // 生成新的AI回复
-          await aiService.sendAIMessage(messagesToSend, llmConfig, editedUserMessage.id, 'edit_resend', {
-            editResend: {
-              originalMessageId: messageId,
-              newContent: newContent
+          await aiService.sendAIMessage(
+            messagesToSend,
+            llmConfig,
+            editedUserMessage.id,
+            'edit_resend',
+            {
+              editResend: {
+                originalMessageId: messageId,
+                newContent: newContent
+              }
             }
-          })
+          )
         } else {
           // 对于AI消息，从其父消息重新生成
           const currentPath = chat.currentPath || messageTree.getCurrentPath()
@@ -259,12 +268,18 @@ export function useMessageOperations({
           }
 
           // 生成新的AI回复作为兄弟分支
-          await aiService.sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId, 'edit_resend', {
-            editResend: {
-              originalMessageId: messageId,
-              newContent: newContent
+          await aiService.sendAIMessage(
+            messagesToSend,
+            llmConfig,
+            targetMessage.parentId,
+            'edit_resend',
+            {
+              editResend: {
+                originalMessageId: messageId,
+                newContent: newContent
+              }
             }
-          })
+          )
         }
       } catch (error) {
         console.error('Edit and resend failed:', error)
@@ -327,12 +342,18 @@ export function useMessageOperations({
 
       try {
         // 使用新模型生成AI回复作为兄弟分支
-        await aiService.sendAIMessage(messagesToSend, llmConfig, targetMessage.parentId, 'model_change', {
-          modelChange: {
-            originalMessageId: messageId,
-            newModelId: newModelId
+        await aiService.sendAIMessage(
+          messagesToSend,
+          llmConfig,
+          targetMessage.parentId,
+          'model_change',
+          {
+            modelChange: {
+              originalMessageId: messageId,
+              newModelId: newModelId
+            }
           }
-        })
+        )
       } catch (error) {
         console.error('Model change failed:', error)
         message.error('切换模型失败，请检查网络连接和配置')
@@ -340,15 +361,7 @@ export function useMessageOperations({
         setIsLoading(false)
       }
     },
-    [
-      chat,
-      isLoading,
-      chatId,
-      aiService,
-      messageTree,
-      setIsLoading,
-      settings
-    ]
+    [chat, isLoading, chatId, aiService, messageTree, setIsLoading, settings]
   )
 
   const handleDeleteMessage = useCallback(
@@ -375,10 +388,10 @@ export function useMessageOperations({
       const hasChildren = totalCount > 1
 
       // 显示确认对话框
-      const confirmText = hasChildren 
-        ? `确定要删除这条消息及其所有子分支吗？（共 ${totalCount} 条消息）` 
+      const confirmText = hasChildren
+        ? `确定要删除这条消息及其所有子分支吗？（共 ${totalCount} 条消息）`
         : '确定要删除这条消息吗？'
-      
+
       const confirmed = await new Promise<boolean>((resolve) => {
         modal.confirm({
           title: '删除消息',
@@ -414,4 +427,4 @@ export function useMessageOperations({
     handleModelChangeForMessage,
     handleDeleteMessage
   }
-} 
+}
