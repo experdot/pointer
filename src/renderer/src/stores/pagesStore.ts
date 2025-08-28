@@ -247,7 +247,17 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       // 文件夹管理
       createFolder: (name, parentId) => {
         try {
-          const newFolder = createNewFolder(name, parentId)
+          // 获取同级文件夹的最大order值
+          const siblingFolders = get().folders.filter(f => f.parentId === parentId)
+          const maxOrder = siblingFolders.length > 0 
+            ? Math.max(...siblingFolders.map(f => f.order || 0))
+            : 0
+          
+          const newFolder = {
+            ...createNewFolder(name, parentId),
+            order: maxOrder + 1000 // 新文件夹添加到最后
+          }
+          
           set((state) => {
             state.folders.push(newFolder)
           })
@@ -349,12 +359,21 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       // 页面创建和打开
       createAndOpenChat: (title, folderId, lineage) => {
         try {
+          const timestamp = Date.now()
+          
+          // 获取同文件夹下的最大order值
+          const siblingPages = get().pages.filter(p => p.folderId === folderId)
+          const maxOrder = siblingPages.length > 0 
+            ? Math.max(...siblingPages.map(p => p.order || 0))
+            : 0
+          
           const newPage: Page = {
             id: uuidv4(),
             title,
             type: 'regular',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            order: maxOrder + 1000, // 新节点添加到最后
             folderId,
             messages: [],
             messageMap: {},
@@ -383,10 +402,17 @@ export const usePagesStore = create<PagesState & PagesActions>()(
 
       createAndOpenCrosstabChat: (title, folderId, lineage) => {
         try {
+          // 获取同文件夹下的最大order值
+          const siblingPages = get().pages.filter(p => p.folderId === folderId)
+          const maxOrder = siblingPages.length > 0 
+            ? Math.max(...siblingPages.map(p => p.order || 0))
+            : 0
+          
           const newPage: Page = {
             title,
             folderId,
             ...createNewCrosstabChat(title, folderId, lineage),
+            order: maxOrder + 1000, // 新节点添加到最后
             ...(lineage && { lineage })
           }
 
@@ -409,12 +435,21 @@ export const usePagesStore = create<PagesState & PagesActions>()(
 
       createAndOpenObjectChat: (title, folderId, lineage) => {
         try {
+          const timestamp = Date.now()
+          
+          // 获取同文件夹下的最大order值
+          const siblingPages = get().pages.filter(p => p.folderId === folderId)
+          const maxOrder = siblingPages.length > 0 
+            ? Math.max(...siblingPages.map(p => p.order || 0))
+            : 0
+          
           const newPage: Page = {
             id: uuidv4(),
             title,
             type: 'object',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            order: maxOrder + 1000, // 新节点添加到最后
             folderId,
             objectData: {
               rootNodeId: '',
