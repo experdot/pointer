@@ -3,14 +3,17 @@
 }
 
 /* Ant Design Tree 样式覆盖 */
+.chat-history-tree .ant-tree-switcher {
+  align-self: center;
+}
 .chat-history-tree .ant-tree-treenode {
   width: 100%;
+  align-items: center;
 }
 
 .chat-history-tree .ant-tree-node-content-wrapper {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
 .chat-history-tree .ant-tree-title {
@@ -37,6 +40,7 @@
   min-width: 0;
   gap: 8px;
   overflow: hidden;
+  height: 24px;
 }
 
 .tree-node-title {
