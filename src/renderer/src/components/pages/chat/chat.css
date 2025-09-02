@@ -161,22 +161,6 @@
   border-color: #d9d9d9;
 }
 
-.chat-input-area {
-  border-top: 1px solid #f0f0f0;
-  padding: 16px;
-  background: #fafafa;
-}
-
-.chat-input-container {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.chat-input-container .ant-input {
-  flex: 1;
-}
-
 .chat-window-error {
   height: 100%;
   display: flex;
@@ -358,11 +342,13 @@
 
 .chat-input-container {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.chat-input-container .ant-input {
-  flex: 1;
+/* TextArea 自适应高度 */
+.chat-input-container textarea.ant-input {
+  overflow-y: auto !important;
 }
 
 /* Model Selector */
@@ -479,27 +465,4 @@
 .welcome-content .config-steps ol li {
   margin-bottom: 4px;
   line-height: 1.5;
-}
-
-/* Chat Input Warning Alerts */
-.chat-input-area .ant-alert {
-  border-radius: 6px;
-}
-
-.chat-input-area .ant-alert-warning {
-  background: #fff7e6;
-  border-color: #ffd591;
-}
-
-.chat-input-area .ant-alert-info {
-  background: #e6f7ff;
-  border-color: #91d5ff;
-}
-
-/* Disabled input styling */
-.chat-input-container .ant-input[disabled] {
-  background: #f5f5f5;
-  border-color: #d9d9d9;
-  color: #bfbfbf;
-  cursor: not-allowed;
 }

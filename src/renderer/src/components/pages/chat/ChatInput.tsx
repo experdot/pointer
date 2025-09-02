@@ -256,16 +256,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
           />
         )}
 
-        <div
-          className="chat-input-container"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: 8,
-            flexWrap: 'wrap'
-          }}
-        >
+        <div className="chat-input-container">
           <TextArea
             ref={textAreaRef}
             placeholder={
