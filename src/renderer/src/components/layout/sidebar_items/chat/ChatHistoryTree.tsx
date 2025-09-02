@@ -41,6 +41,9 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     clearCheckedNodes
   } = useUIStore()
   const { modal } = App.useApp()
+  
+  // 添加编辑状态管理
+  const [editingNodeKey, setEditingNodeKey] = useState<string | null>(null)
 
   // 解析节点键，获取节点类型和ID
   const parseNodeKey = useCallback(
@@ -345,6 +348,9 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 onDelete={() => handleDeleteFolder(folder.id)}
                 onCreate={(type) => handleNodeCreate(folder.id, type)}
                 onSaveEdit={handleSaveEdit}
+                isEditing={editingNodeKey === `folder-${folder.id}`}
+                onStartEdit={() => setEditingNodeKey(`folder-${folder.id}`)}
+                onEndEdit={() => setEditingNodeKey(null)}
               />
             ),
             checkable: false,
@@ -362,6 +368,9 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 onDelete={() => handleDeleteChat(chat.id)}
                 onChatClick={onChatClick}
                 onSaveEdit={handleSaveEdit}
+                isEditing={editingNodeKey === `chat-${chat.id}`}
+                onStartEdit={() => setEditingNodeKey(`chat-${chat.id}`)}
+                onEndEdit={() => setEditingNodeKey(null)}
               />
             ),
             isLeaf: true
@@ -475,7 +484,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       className="chat-history-tree"
       showIcon
       blockNode
-      draggable
+      draggable={!editingNodeKey}
       checkable={false}
       multiple
       expandedKeys={expandedKeys}

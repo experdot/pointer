@@ -24,6 +24,8 @@ interface ChatHistoryTreeNodeProps {
   onCreate?: (type: 'folder' | 'chat') => void
   onChatClick?: (chatId: string) => void
   onSaveEdit?: (nodeId: string, nodeType: 'folder' | 'chat', newValue: string) => void
+  onStartEdit?: () => void
+  onEndEdit?: () => void
 }
 
 export default function ChatHistoryTreeNode({
@@ -34,7 +36,9 @@ export default function ChatHistoryTreeNode({
   onDelete,
   onCreate,
   onChatClick,
-  onSaveEdit
+  onSaveEdit,
+  onStartEdit,
+  onEndEdit
 }: ChatHistoryTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
@@ -56,6 +60,7 @@ export default function ChatHistoryTreeNode({
     const currentName = getName()
     setEditValue(currentName)
     setIsInlineEditing(true)
+    onStartEdit?.()
   }
 
   const handleSaveEdit = () => {
@@ -63,11 +68,13 @@ export default function ChatHistoryTreeNode({
       onSaveEdit(data.id, type, editValue.trim())
     }
     setIsInlineEditing(false)
+    onEndEdit?.()
   }
 
   const handleCancelEdit = () => {
     setIsInlineEditing(false)
     setEditValue('')
+    onEndEdit?.()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -187,6 +194,13 @@ export default function ChatHistoryTreeNode({
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      draggable={false}
+      onMouseDown={(e) => {
+        // 阻止编辑状态下的拖动
+        if (isInlineEditing) {
+          e.stopPropagation()
+        }
+      }}
     >
       <div className="tree-node-content">
         <div className="tree-node-icon">{getIcon()}</div>
@@ -201,8 +215,12 @@ export default function ChatHistoryTreeNode({
               size="small"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleSaveEdit}
+              onBlur={(e) => {
+                handleSaveEdit()
+              }}
               onKeyDown={handleKeyDown}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               autoFocus
               style={{ width: '100%' }}
             />
