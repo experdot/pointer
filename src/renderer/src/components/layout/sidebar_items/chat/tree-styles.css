@@ -40,7 +40,7 @@
   min-width: 0;
   gap: 8px;
   overflow: hidden;
-  height: 24px;
+  min-height: 24px;
 }
 
 .tree-node-title {
