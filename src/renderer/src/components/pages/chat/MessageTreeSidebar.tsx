@@ -72,7 +72,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     if (!targetMessageId && currentPath.length > 0) {
       targetMessageId = currentPath[currentPath.length - 1]
     }
-    
+
     if (!targetMessageId) return []
 
     // 构建从根节点到目标节点的完整路径
@@ -94,7 +94,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
 
     const fullPath = buildFullPath(targetMessageId)
     const nodes: PathNodeData[] = []
-    
+
     fullPath.forEach((messageId, index) => {
       const message = messageMap.get(messageId)
       if (!message) return
@@ -105,14 +105,13 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
         const parent = messageMap.get(message.parentId)
         if (parent && parent.children) {
           siblings = parent.children
-            .map(id => messageMap.get(id))
+            .map((id) => messageMap.get(id))
             .filter(Boolean)
-            .filter(sibling => sibling!.id !== messageId) as ChatMessage[]
+            .filter((sibling) => sibling!.id !== messageId) as ChatMessage[]
         }
       } else {
         // 根节点的兄弟节点是其他根节点
-        siblings = messages
-          .filter(msg => !msg.parentId && msg.id !== messageId)
+        siblings = messages.filter((msg) => !msg.parentId && msg.id !== messageId)
       }
 
       nodes.push({
@@ -175,7 +174,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     // 如果选中的节点在当前路径中，需要保持到叶子节点的完整路径
     if (currentPath.includes(messageId)) {
       // 找到选中节点在当前路径中的位置
-      const selectedIndex = currentPath.findIndex(id => id === messageId)
+      const selectedIndex = currentPath.findIndex((id) => id === messageId)
       if (selectedIndex !== -1) {
         // 从根节点到选中节点的路径 + 选中节点之后的原路径
         const beforeSelected = pathToSelected
@@ -187,7 +186,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     // 如果不在当前路径中，或者是叶子节点，则需要延续到第一个子节点的路径
     let extendedPath = [...pathToSelected]
     let lastNode = messageMap.get(messageId)
-    
+
     // 如果该节点有子节点，默认选择第一个子节点并延续路径
     while (lastNode && lastNode.children && lastNode.children.length > 0) {
       const firstChild = messageMap.get(lastNode.children[0])
@@ -204,7 +203,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
 
   // 处理兄弟节点的展开/收起
   const toggleSiblings = (messageId: string) => {
-    setExpandedSiblings(prev => {
+    setExpandedSiblings((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(messageId)) {
         newSet.delete(messageId)
@@ -486,8 +485,8 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                     )}
                   </div>
                   <div className="path-node-preview">
-                    <Text 
-                      type={selectedMessageId === node.messageId ? 'success' : 'secondary'} 
+                    <Text
+                      type={selectedMessageId === node.messageId ? 'success' : 'secondary'}
                       style={{ fontSize: '11px' }}
                     >
                       {node.message.content.slice(0, 50)}
@@ -498,7 +497,10 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
 
                 {/* 兄弟节点列表 */}
                 {node.showSiblings && node.siblings && (
-                  <div className="siblings-list" style={{ paddingLeft: `${(node.depth + 1) * 12 + 16}px` }}>
+                  <div
+                    className="siblings-list"
+                    style={{ paddingLeft: `${(node.depth + 1) * 12 + 16}px` }}
+                  >
                     {node.siblings.map((sibling) => (
                       <div
                         key={sibling.id}
@@ -526,8 +528,8 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                           </div>
                         </div>
                         <div className="sibling-node-preview">
-                          <Text 
-                            type={selectedMessageId === sibling.id ? 'success' : 'secondary'} 
+                          <Text
+                            type={selectedMessageId === sibling.id ? 'success' : 'secondary'}
                             style={{ fontSize: '11px' }}
                           >
                             {sibling.content.slice(0, 50)}

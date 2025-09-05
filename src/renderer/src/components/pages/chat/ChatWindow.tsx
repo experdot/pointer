@@ -1,4 +1,11 @@
-import React, { useState, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react'
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+  useCallback
+} from 'react'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
@@ -65,14 +72,20 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }, [chat?.messages])
 
   // 处理分支切换（所有消息都使用兄弟分支切换）
-  const handleSwitchBranch = useCallback((messageId: string, branchIndex: number) => {
-    const newPath = messageTree.switchToSiblingBranch(messageId, branchIndex)
-    updateCurrentPath(chatId, newPath)
-  }, [messageTree, updateCurrentPath, chatId])
+  const handleSwitchBranch = useCallback(
+    (messageId: string, branchIndex: number) => {
+      const newPath = messageTree.switchToSiblingBranch(messageId, branchIndex)
+      updateCurrentPath(chatId, newPath)
+    },
+    [messageTree, updateCurrentPath, chatId]
+  )
 
-  const handleToggleMessageCollapse = useCallback((messageId: string) => {
-    toggleMessageCollapse(chatId, messageId)
-  }, [toggleMessageCollapse, chatId])
+  const handleToggleMessageCollapse = useCallback(
+    (messageId: string) => {
+      toggleMessageCollapse(chatId, messageId)
+    },
+    [toggleMessageCollapse, chatId]
+  )
 
   const handleCollapseAll = useCallback(() => {
     collapseAllMessages(
@@ -94,92 +107,101 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     setMessageTreeCollapsed(!messageTreeCollapsed)
   }, [messageTreeCollapsed])
 
-  const handleMessageTreeNodeSelect = useCallback((messageId: string) => {
-    if (!chat?.messages) return
+  const handleMessageTreeNodeSelect = useCallback(
+    (messageId: string) => {
+      if (!chat?.messages) return
 
-    // 设置选中的消息ID，用于滚动
-    setSelectedMessageId(messageId)
+      // 设置选中的消息ID，用于滚动
+      setSelectedMessageId(messageId)
 
-    const messageMap = new Map<string, ChatMessage>()
-    chat.messages.forEach((msg) => {
-      messageMap.set(msg.id, msg)
-    })
+      const messageMap = new Map<string, ChatMessage>()
+      chat.messages.forEach((msg) => {
+        messageMap.set(msg.id, msg)
+      })
 
-    // 构建从根节点到选中节点的路径
-    const pathToSelected: string[] = []
-    let currentMsg = messageMap.get(messageId)
-    while (currentMsg) {
-      pathToSelected.unshift(currentMsg.id)
-      if (currentMsg.parentId) {
-        currentMsg = messageMap.get(currentMsg.parentId)
-      } else {
-        break
+      // 构建从根节点到选中节点的路径
+      const pathToSelected: string[] = []
+      let currentMsg = messageMap.get(messageId)
+      while (currentMsg) {
+        pathToSelected.unshift(currentMsg.id)
+        if (currentMsg.parentId) {
+          currentMsg = messageMap.get(currentMsg.parentId)
+        } else {
+          break
+        }
       }
-    }
 
-    // 如果选中的节点在当前路径中，需要保持到叶子节点的完整路径
-    if (chat.currentPath && chat.currentPath.includes(messageId)) {
-      // 找到选中节点在当前路径中的位置
-      const selectedIndex = chat.currentPath.findIndex(id => id === messageId)
-      if (selectedIndex !== -1) {
-        // 从根节点到选中节点的路径 + 选中节点之后的原路径
-        const afterSelected = chat.currentPath.slice(selectedIndex + 1)
-        const newPath = [...pathToSelected, ...afterSelected]
-        updateCurrentPath(chatId, newPath)
-        return
+      // 如果选中的节点在当前路径中，需要保持到叶子节点的完整路径
+      if (chat.currentPath && chat.currentPath.includes(messageId)) {
+        // 找到选中节点在当前路径中的位置
+        const selectedIndex = chat.currentPath.findIndex((id) => id === messageId)
+        if (selectedIndex !== -1) {
+          // 从根节点到选中节点的路径 + 选中节点之后的原路径
+          const afterSelected = chat.currentPath.slice(selectedIndex + 1)
+          const newPath = [...pathToSelected, ...afterSelected]
+          updateCurrentPath(chatId, newPath)
+          return
+        }
       }
-    }
 
-    // 如果不在当前路径中，则需要延续到第一个子节点的路径
-    let extendedPath = [...pathToSelected]
-    let lastNode = messageMap.get(messageId)
-    
-    // 如果该节点有子节点，默认选择第一个子节点并延续路径
-    while (lastNode && lastNode.children && lastNode.children.length > 0) {
-      const firstChild = messageMap.get(lastNode.children[0])
-      if (firstChild) {
-        extendedPath.push(firstChild.id)
-        lastNode = firstChild
-      } else {
-        break
+      // 如果不在当前路径中，则需要延续到第一个子节点的路径
+      let extendedPath = [...pathToSelected]
+      let lastNode = messageMap.get(messageId)
+
+      // 如果该节点有子节点，默认选择第一个子节点并延续路径
+      while (lastNode && lastNode.children && lastNode.children.length > 0) {
+        const firstChild = messageMap.get(lastNode.children[0])
+        if (firstChild) {
+          extendedPath.push(firstChild.id)
+          lastNode = firstChild
+        } else {
+          break
+        }
       }
-    }
 
-    // 更新当前路径
-    updateCurrentPath(chatId, extendedPath)
-  }, [chat?.messages, chat?.currentPath, updateCurrentPath, chatId])
+      // 更新当前路径
+      updateCurrentPath(chatId, extendedPath)
+    },
+    [chat?.messages, chat?.currentPath, updateCurrentPath, chatId]
+  )
 
-  const handleMessageTreePathChange = useCallback((path: string[]) => {
-    // 更新当前路径
-    updateCurrentPath(chatId, path)
-  }, [updateCurrentPath, chatId])
+  const handleMessageTreePathChange = useCallback(
+    (path: string[]) => {
+      // 更新当前路径
+      updateCurrentPath(chatId, path)
+    },
+    [updateCurrentPath, chatId]
+  )
 
   const handleMessageTreeWidthChange = useCallback((width: number) => {
     setMessageTreeWidth(width)
     localStorage.setItem('messageTreeWidth', width.toString())
   }, [])
 
-  const handleAutoQuestionChange = useCallback((enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
-    console.log('ChatWindow handleAutoQuestionChange:', {
-      enabled,
-      mode,
-      listId,
-      currentEnabled: autoQuestionEnabled,
-      currentMode: autoQuestionMode,
-      currentListId: autoQuestionListId
-    })
+  const handleAutoQuestionChange = useCallback(
+    (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
+      console.log('ChatWindow handleAutoQuestionChange:', {
+        enabled,
+        mode,
+        listId,
+        currentEnabled: autoQuestionEnabled,
+        currentMode: autoQuestionMode,
+        currentListId: autoQuestionListId
+      })
 
-    setAutoQuestionEnabled(enabled)
-    setAutoQuestionMode(mode)
-    if (listId) {
-      setAutoQuestionListId(listId)
-    } else if (mode === 'preset' && !listId && settings.promptLists?.length > 0) {
-      // 如果选择预设模式但没有指定listId，使用默认的
-      const defaultListId = settings.defaultPromptListId || settings.promptLists[0].id
-      setAutoQuestionListId(defaultListId)
-      console.log('ChatWindow 自动设置 defaultListId:', defaultListId)
-    }
-  }, [settings.promptLists, settings.defaultPromptListId])
+      setAutoQuestionEnabled(enabled)
+      setAutoQuestionMode(mode)
+      if (listId) {
+        setAutoQuestionListId(listId)
+      } else if (mode === 'preset' && !listId && settings.promptLists?.length > 0) {
+        // 如果选择预设模式但没有指定listId，使用默认的
+        const defaultListId = settings.defaultPromptListId || settings.promptLists[0].id
+        setAutoQuestionListId(defaultListId)
+        console.log('ChatWindow 自动设置 defaultListId:', defaultListId)
+      }
+    },
+    [settings.promptLists, settings.defaultPromptListId]
+  )
 
   if (!chat) {
     return <div className="chat-window-error">聊天不存在</div>
