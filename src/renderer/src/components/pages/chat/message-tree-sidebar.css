@@ -240,93 +240,60 @@
   color: #999;
 }
 
-/* 消息树样式 */
-.message-tree {
-  padding: 12px;
-}
-
-.message-tree .ant-tree {
-  background: transparent;
-}
-
-.message-tree .ant-tree-list {
-  width: 100%;
-}
-
-.message-tree .ant-tree-list-holder {
-  width: 100%;
-}
-
-.message-tree .ant-tree-list-holder-inner {
-  width: 100%;
-}
-
-.message-tree .ant-tree-node-content-wrapper {
-  padding: 2px 0;
-  border-radius: 4px;
-  transition: all 0.2s;
-  width: 100% !important;
+/* 消息路径列表样式 */
+.message-path-list {
+  padding: 8px;
   display: flex;
-  align-items: stretch;
-  flex: 1;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.message-tree .ant-tree-node-content-wrapper:hover {
-  background-color: #f0f0f0;
+.path-node-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.message-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
-  background-color: #e6f7ff;
-}
-
-.message-tree .ant-tree-treenode {
-  padding: 2px 0;
-  width: 100%;
-}
-
-.message-tree .ant-tree-switcher {
-  width: 18px;
-  height: 20px;
-  line-height: 20px;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-
-.message-tree .ant-tree-switcher .ant-tree-switcher-icon {
-  font-size: 10px;
-}
-
-.message-tree .ant-tree-indent-unit {
-  width: 18px;
-}
-
-/* 树节点内容 */
-.message-tree .tree-node-content {
-  padding: 6px 8px;
-  border-radius: 4px;
-  min-height: 40px;
+/* 路径节点样式 */
+.path-node {
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-height: 50px;
   position: relative;
   cursor: pointer;
   overflow: hidden;
   width: 100%;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  gap: 4px;
+  gap: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.message-tree .tree-node-header {
+.path-node:hover {
+  background: #fafafa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.path-node.selected {
+  background: #e6f7ff;
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+}
+
+.path-node-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
   width: 100%;
-  min-height: 18px;
+  min-height: 20px;
 }
 
-.message-tree .tree-node-icon {
-  width: 16px;
-  height: 16px;
+.path-node-icon {
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -335,12 +302,12 @@
   flex-shrink: 0;
 }
 
-.message-tree .tree-node-icon .anticon {
-  font-size: 10px;
+.path-node-icon .anticon {
+  font-size: 11px;
   color: #666;
 }
 
-.message-tree .tree-node-info {
+.path-node-info {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -350,109 +317,100 @@
   gap: 8px;
 }
 
-.message-tree .tree-node-role {
-  font-size: 11px;
+.path-node-role {
+  font-size: 12px;
   font-weight: 500;
   color: #333;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-.message-tree .tree-node-time {
-  font-size: 10px;
+.path-node-time {
+  font-size: 11px;
   color: #999;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
-.message-tree .tree-node-preview {
-  margin-top: 6px;
-  line-height: 1.2;
+.path-node-preview {
+  line-height: 1.3;
   width: 100%;
 }
 
-.message-tree .tree-node-preview .ant-typography {
+.path-node-preview .ant-typography {
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.4;
   display: block;
   width: 100%;
 }
 
-.message-tree .tree-node-branch-indicator {
+/* 兄弟分支切换按钮 */
+.siblings-toggle {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
-  gap: 2px;
-  border-radius: 2px;
-  padding: 2px 4px;
-  font-size: 10px;
-  z-index: 1;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.siblings-toggle:hover {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.siblings-toggle .anticon {
+  font-size: 12px;
 }
 
 /* 用户消息节点样式 */
-.message-tree .tree-node-content[data-role='user'] {
-  border-left: 3px solid #52c41a;
-  background: rgba(82, 196, 26, 0.02);
+.path-node[data-role='user'] {
+  border-left: 4px solid #52c41a;
 }
 
-.message-tree .tree-node-content[data-role='user'] .tree-node-icon {
+.path-node[data-role='user'] .path-node-icon {
   background: #52c41a;
 }
 
-.message-tree .tree-node-content[data-role='user'] .tree-node-icon .anticon {
+.path-node[data-role='user'] .path-node-icon .anticon {
   color: #fff;
 }
 
 /* AI消息节点样式 */
-.message-tree .tree-node-content[data-role='assistant'] {
-  border-left: 3px solid #1890ff;
-  background: rgba(24, 144, 255, 0.02);
+.path-node[data-role='assistant'] {
+  border-left: 4px solid #1890ff;
 }
 
-.message-tree .tree-node-content[data-role='assistant'] .tree-node-icon {
+.path-node[data-role='assistant'] .path-node-icon {
   background: #1890ff;
 }
 
-.message-tree .tree-node-content[data-role='assistant'] .tree-node-icon .anticon {
+.path-node[data-role='assistant'] .path-node-icon .anticon {
   color: #fff;
 }
 
-/* 当前路径高亮 */
-.message-tree .tree-node-content.current-path {
-  background: rgba(24, 144, 255, 0.1);
-  border-left-color: #1890ff;
-  border-left-width: 4px;
-}
-
-.message-tree .tree-node-content.current-path .tree-node-preview .ant-typography {
-  color: #1890ff;
-  font-weight: 500;
-}
-
 /* 收藏消息样式 */
-.message-tree .tree-node-content.favorited {
+.path-node.favorited {
+  border-right: 4px solid #ffc107;
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.path-node.favorited:hover {
   background: rgba(255, 193, 7, 0.08);
-  border-right: 3px solid #ffc107;
-  box-shadow: 0 1px 3px rgba(255, 193, 7, 0.2);
 }
 
-.message-tree .tree-node-content.favorited .tree-node-preview .ant-typography {
-  color: #d48806;
-  font-weight: 500;
-}
-
-.message-tree .tree-node-content.favorited:hover {
-  background: rgba(255, 193, 7, 0.12);
-  box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+.path-node.favorited.selected {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
 }
 
 /* 收藏图标样式 */
-.message-tree .tree-node-role .favorite-icon {
+.path-node-role .favorite-icon {
   color: #ffc107;
-  font-size: 10px;
-  margin-left: 2px;
+  font-size: 11px;
   animation: star-pulse 2s infinite;
   flex-shrink: 0;
 }
@@ -472,20 +430,150 @@
   }
 }
 
-/* 收藏消息在当前路径中的样式 */
-.message-tree .tree-node-content.current-path.favorited {
-  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
-  border-left-color: #1890ff;
-  border-left-width: 4px;
-  border-right: 3px solid #ffc107;
+/* 兄弟节点列表样式 */
+.siblings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  border-left: 2px solid #e8e8e8;
+  position: relative;
 }
 
-.message-tree .tree-node-content.current-path.favorited .tree-node-preview .ant-typography {
-  background: linear-gradient(135deg, #1890ff 0%, #d48806 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 600;
+.sibling-node {
+  padding: 6px 10px;
+  border-radius: 4px;
+  min-height: 40px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+}
+
+.sibling-node:hover {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  transform: translateX(2px);
+}
+
+.sibling-node.selected {
+  background: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.sibling-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 16px;
+}
+
+.sibling-node-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.sibling-node-icon .anticon {
+  font-size: 10px;
+  color: #666;
+}
+
+.sibling-node-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sibling-node-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sibling-node-time {
+  font-size: 10px;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.sibling-node-preview {
+  line-height: 1.2;
+  width: 100%;
+}
+
+.sibling-node-preview .ant-typography {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  display: block;
+  width: 100%;
+}
+
+/* 兄弟节点角色样式 */
+.sibling-node[data-role='user'] {
+  border-left: 3px solid #52c41a;
+}
+
+.sibling-node[data-role='user'] .sibling-node-icon {
+  background: #52c41a;
+}
+
+.sibling-node[data-role='user'] .sibling-node-icon .anticon {
+  color: #fff;
+}
+
+.sibling-node[data-role='assistant'] {
+  border-left: 3px solid #1890ff;
+}
+
+.sibling-node[data-role='assistant'] .sibling-node-icon {
+  background: #1890ff;
+}
+
+.sibling-node[data-role='assistant'] .sibling-node-icon .anticon {
+  color: #fff;
+}
+
+/* 兄弟节点收藏样式 */
+.sibling-node.favorited {
+  border-right: 3px solid #ffc107;
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.sibling-node.favorited:hover {
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.sibling-node.favorited.selected {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
+}
+
+.sibling-node-role .favorite-icon {
+  color: #ffc107;
+  font-size: 10px;
+  animation: star-pulse 2s infinite;
+  flex-shrink: 0;
 }
 
 /* 聊天窗口布局 */
@@ -548,20 +636,14 @@
   transition: width 0.3s ease;
 }
 
-.message-tree .tree-node-content {
-  transition: all 0.2s ease;
-}
-
-.message-tree .tree-node-content:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
 /* 空状态 */
-.message-tree .tree-empty {
+.tree-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100px;
   color: #999;
   font-size: 12px;
+  padding: 20px;
+  text-align: center;
 }

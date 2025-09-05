@@ -13,6 +13,7 @@ interface MessageListProps {
   streamingContent?: string
   streamingTimestamp?: number
   llmConfigs?: LLMConfig[]
+  selectedMessageId?: string | null // 新增：选中的消息ID，用于滚动定位
   onRetryMessage?: (messageId: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
   onEditAndResendMessage?: (messageId: string, newContent: string) => void
@@ -35,6 +36,7 @@ const MessageList = React.memo(function MessageList({
   isLoading = false,
   streamingContent,
   llmConfigs = [],
+  selectedMessageId,
   onRetryMessage,
   onEditMessage,
   onEditAndResendMessage,
@@ -48,9 +50,11 @@ const MessageList = React.memo(function MessageList({
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const prevMessagesLength = useRef<number>(0)
   const prevStreamingContent = useRef<string>('')
   const prevCurrentPath = useRef<string[]>([])
+  const prevSelectedMessageId = useRef<string | null>(null)
   const isInitialRender = useRef<boolean>(true)
   
   // 控制是否自动滚动到底部
@@ -128,6 +132,14 @@ const MessageList = React.memo(function MessageList({
     messagesEndRef.current?.scrollIntoView({ behavior })
   }
 
+  // 滚动到指定的消息
+  const scrollToMessage = (messageId: string, behavior: 'smooth' | 'instant' = 'smooth') => {
+    const messageElement = messageRefs.current.get(messageId)
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior, block: 'center' })
+    }
+  }
+
   useEffect(() => {
     const currentMessagesLength = messages.length
     const currentPathString = JSON.stringify(currentPath)
@@ -135,25 +147,36 @@ const MessageList = React.memo(function MessageList({
 
     // 检查路径是否发生变化（排除初次渲染）
     const pathChanged = !isInitialRender.current && currentPathString !== prevPathString
+    
+    // 检查选中消息是否发生变化
+    const selectedMessageChanged = !isInitialRender.current && selectedMessageId !== prevSelectedMessageId.current
 
-    // 只在以下情况下滚动到底部：
-    // 1. 消息总数增加（有新消息）
-    // 2. 流式内容发生变化（正在接收AI回复）
-    // 3. 初次渲染且有消息
-    // 4. 当前路径发生变化（用户点击消息树切换分支）
-    const shouldScroll =
+    // 只在以下情况下滚动：
+    // 1. 消息总数增加（有新消息）- 滚动到底部
+    // 2. 流式内容发生变化（正在接收AI回复）- 滚动到底部
+    // 3. 初次渲染且有消息 - 滚动到底部
+    // 4. 当前路径发生变化（用户点击消息树切换分支）- 滚动到底部
+    // 5. 选中消息发生变化（用户点击消息树中的特定消息）- 滚动到选中消息
+    const shouldScrollToBottom =
       currentMessagesLength > prevMessagesLength.current ||
       currentStreamingContent !== prevStreamingContent.current ||
       (isInitialRender.current && currentMessagesLength > 0) ||
-      pathChanged
+      (pathChanged && !selectedMessageChanged)
+
+    const shouldScrollToMessage = selectedMessageChanged && selectedMessageId
 
     console.count('shouldScroll');
     
     // 只有在启用自动滚动时才执行滚动
-    if (shouldScroll && isAutoScrollEnabled) {
-      // 初次渲染时直接跳转到底部，其他情况平滑滚动
-      const behavior = isInitialRender.current ? 'instant' : 'smooth'
-      scrollToBottom(behavior)
+    if (isAutoScrollEnabled) {
+      if (shouldScrollToMessage) {
+        // 滚动到选中的消息
+        scrollToMessage(selectedMessageId!, 'smooth')
+      } else if (shouldScrollToBottom) {
+        // 滚动到底部
+        const behavior = isInitialRender.current ? 'instant' : 'smooth'
+        scrollToBottom(behavior)
+      }
     }
 
     // 标记初次渲染已完成
@@ -165,7 +188,8 @@ const MessageList = React.memo(function MessageList({
     prevMessagesLength.current = currentMessagesLength
     prevStreamingContent.current = currentStreamingContent
     prevCurrentPath.current = [...currentPath]
-  }, [messages.length, currentStreamingContent, currentPath, isAutoScrollEnabled])
+    prevSelectedMessageId.current = selectedMessageId
+  }, [messages.length, currentStreamingContent, currentPath, selectedMessageId, isAutoScrollEnabled])
 
   // 处理兄弟分支切换
   const handleSiblingBranchSwitch = (messageId: string, direction: 'previous' | 'next') => {
@@ -199,30 +223,40 @@ const MessageList = React.memo(function MessageList({
     <div className="messages-container" ref={messagesContainerRef}>
       <div className="messages-list">
         {displayMessages.map((message, index) => (
-          <MessageItem
+          <div 
             key={message.id}
-            message={message}
-            isLoading={isLoading}
-            isLastMessage={index === displayMessages.length - 1 && !streamingContent}
-            llmConfigs={llmConfigs}
-            chatId={chatId} // 传递chatId
-            // 分支导航props - 所有消息都使用兄弟分支导航
-            hasChildBranches={messageTree.hasSiblingBranches(message.id)}
-            branchIndex={messageTree.getCurrentSiblingBranchIndex(message.id)}
-            branchCount={messageTree.getSiblingBranchCount(message.id)}
-            onBranchPrevious={(messageId) => handleSiblingBranchSwitch(messageId, 'previous')}
-            onBranchNext={(messageId) => handleSiblingBranchSwitch(messageId, 'next')}
-            // 原有的回调
-            onRetry={onRetryMessage}
-            onEdit={onEditMessage}
-            onEditAndResend={onEditAndResendMessage}
-            onToggleFavorite={onToggleFavorite}
-            onModelChange={onModelChange}
-            onDelete={onDeleteMessage}
-            // 折叠相关
-            isCollapsed={collapsedMessages.includes(message.id)}
-            onToggleCollapse={onToggleMessageCollapse}
-          />
+            ref={(el) => {
+              if (el) {
+                messageRefs.current.set(message.id, el)
+              } else {
+                messageRefs.current.delete(message.id)
+              }
+            }}
+          >
+            <MessageItem
+              message={message}
+              isLoading={isLoading}
+              isLastMessage={index === displayMessages.length - 1 && !streamingContent}
+              llmConfigs={llmConfigs}
+              chatId={chatId} // 传递chatId
+              // 分支导航props - 所有消息都使用兄弟分支导航
+              hasChildBranches={messageTree.hasSiblingBranches(message.id)}
+              branchIndex={messageTree.getCurrentSiblingBranchIndex(message.id)}
+              branchCount={messageTree.getSiblingBranchCount(message.id)}
+              onBranchPrevious={(messageId) => handleSiblingBranchSwitch(messageId, 'previous')}
+              onBranchNext={(messageId) => handleSiblingBranchSwitch(messageId, 'next')}
+              // 原有的回调
+              onRetry={onRetryMessage}
+              onEdit={onEditMessage}
+              onEditAndResend={onEditAndResendMessage}
+              onToggleFavorite={onToggleFavorite}
+              onModelChange={onModelChange}
+              onDelete={onDeleteMessage}
+              // 折叠相关
+              isCollapsed={collapsedMessages.includes(message.id)}
+              onToggleCollapse={onToggleMessageCollapse}
+            />
+          </div>
         ))}
 
         <div ref={messagesEndRef} />

@@ -11,6 +11,7 @@ import ChatInput, { ChatInputRef } from './ChatInput'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import MessageTreeSidebar from './MessageTreeSidebar'
 import { MessageTree } from './messageTree'
+import { ChatMessage } from '../../../types/type'
 
 interface ChatWindowProps {
   chatId: string
@@ -38,6 +39,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     const saved = localStorage.getItem('messageTreeWidth')
     return saved ? parseInt(saved, 10) : 300
   })
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   // 自动提问相关状态
   const [autoQuestionEnabled, setAutoQuestionEnabled] = useState(false)
   const [autoQuestionMode, setAutoQuestionMode] = useState<'ai' | 'preset'>('ai')
@@ -93,22 +95,59 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   }, [messageTreeCollapsed])
 
   const handleMessageTreeNodeSelect = useCallback((messageId: string) => {
-    // 构建到选中消息的路径
-    const path: string[] = []
-    let currentMsg = chat?.messages.find((msg) => msg.id === messageId)
+    if (!chat?.messages) return
 
+    // 设置选中的消息ID，用于滚动
+    setSelectedMessageId(messageId)
+
+    const messageMap = new Map<string, ChatMessage>()
+    chat.messages.forEach((msg) => {
+      messageMap.set(msg.id, msg)
+    })
+
+    // 构建从根节点到选中节点的路径
+    const pathToSelected: string[] = []
+    let currentMsg = messageMap.get(messageId)
     while (currentMsg) {
-      path.unshift(currentMsg.id)
+      pathToSelected.unshift(currentMsg.id)
       if (currentMsg.parentId) {
-        currentMsg = chat?.messages.find((msg) => msg.id === currentMsg!.parentId)
+        currentMsg = messageMap.get(currentMsg.parentId)
+      } else {
+        break
+      }
+    }
+
+    // 如果选中的节点在当前路径中，需要保持到叶子节点的完整路径
+    if (chat.currentPath && chat.currentPath.includes(messageId)) {
+      // 找到选中节点在当前路径中的位置
+      const selectedIndex = chat.currentPath.findIndex(id => id === messageId)
+      if (selectedIndex !== -1) {
+        // 从根节点到选中节点的路径 + 选中节点之后的原路径
+        const afterSelected = chat.currentPath.slice(selectedIndex + 1)
+        const newPath = [...pathToSelected, ...afterSelected]
+        updateCurrentPath(chatId, newPath)
+        return
+      }
+    }
+
+    // 如果不在当前路径中，则需要延续到第一个子节点的路径
+    let extendedPath = [...pathToSelected]
+    let lastNode = messageMap.get(messageId)
+    
+    // 如果该节点有子节点，默认选择第一个子节点并延续路径
+    while (lastNode && lastNode.children && lastNode.children.length > 0) {
+      const firstChild = messageMap.get(lastNode.children[0])
+      if (firstChild) {
+        extendedPath.push(firstChild.id)
+        lastNode = firstChild
       } else {
         break
       }
     }
 
     // 更新当前路径
-    updateCurrentPath(chatId, path)
-  }, [chat?.messages, updateCurrentPath, chatId])
+    updateCurrentPath(chatId, extendedPath)
+  }, [chat?.messages, chat?.currentPath, updateCurrentPath, chatId])
 
   const handleMessageTreePathChange = useCallback((path: string[]) => {
     // 更新当前路径
@@ -221,6 +260,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   streamingContent={chat.streamingMessage?.content}
                   streamingTimestamp={chat.streamingMessage?.timestamp}
                   llmConfigs={settings.llmConfigs || []}
+                  selectedMessageId={selectedMessageId}
                   onRetryMessage={onRetryMessage}
                   onEditMessage={onEditMessage}
                   onEditAndResendMessage={onEditAndResendMessage}
