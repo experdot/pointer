@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Dropdown, Modal, Checkbox, Space, App } from 'antd'
+import { Button, Dropdown, Space, App } from 'antd'
 import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
 import { formatExactDateTime } from '../../../utils/timeFormatter'
+import ExportModal, { ExportSettings } from './ExportModal'
 
 interface ChatHeaderProps {
   chatId: string
@@ -18,6 +19,8 @@ interface ChatHeaderProps {
   // 消息树相关
   messageTreeCollapsed?: boolean
   onToggleMessageTree?: () => void
+  // LLM配置
+  llmConfigs?: Array<{ id: string; name: string }>
 }
 
 export default function ChatHeader({
@@ -27,11 +30,11 @@ export default function ChatHeader({
   onCollapseAll,
   onExpandAll,
   messageTreeCollapsed = false,
-  onToggleMessageTree
+  onToggleMessageTree,
+  llmConfigs = []
 }: ChatHeaderProps) {
   const [isExportModalVisible, setIsExportModalVisible] = useState(false)
-  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
-  const [selectMode, setSelectMode] = useState<'all' | 'current-path' | 'custom'>('current-path')
+  const [selectMode, setSelectMode] = useState<'all' | 'current-path'>('current-path')
   const { message } = App.useApp()
 
   // 创建消息树实例
@@ -56,7 +59,6 @@ export default function ChatHeader({
       label: '导出当前对话路径',
       onClick: () => {
         setSelectMode('current-path')
-        setSelectedMessageIds(currentPathMessages.map((msg) => msg.id))
         setIsExportModalVisible(true)
       }
     },
@@ -65,22 +67,12 @@ export default function ChatHeader({
       label: '导出所有消息',
       onClick: () => {
         setSelectMode('all')
-        setSelectedMessageIds(messages.map((msg) => msg.id))
-        setIsExportModalVisible(true)
-      }
-    },
-    {
-      key: 'custom-select',
-      label: '自定义选择',
-      onClick: () => {
-        setSelectMode('custom')
-        setSelectedMessageIds([])
         setIsExportModalVisible(true)
       }
     }
   ]
 
-  const handleExport = async () => {
+  const handleExport = async (selectedMessageIds: string[], exportSettings: ExportSettings) => {
     if (selectedMessageIds.length === 0) {
       message.warning('请选择要导出的消息')
       return
@@ -100,11 +92,20 @@ export default function ChatHeader({
 
       selectedMessages.forEach((msg, index) => {
         const role = msg.role === 'user' ? '用户' : 'AI助手'
-        const timestamp = formatExactDateTime(msg.timestamp)
-        const model = msg.modelId ? ` (${msg.modelId})` : ''
+        const timestamp = exportSettings.includeTimestamp ? formatExactDateTime(msg.timestamp) : ''
+        const getModelDisplayName = (modelId?: string) => {
+          if (!modelId) return ''
+          const config = llmConfigs.find(config => config.id === modelId)
+          return config?.name || modelId
+        }
+        const model = exportSettings.includeModelName && msg.modelId ? ` (${getModelDisplayName(msg.modelId)})` : ''
 
         exportContent += `## ${index + 1}. ${role}${model}\n`
-        exportContent += `时间: ${timestamp}\n\n`
+        if (exportSettings.includeTimestamp) {
+          exportContent += `时间: ${timestamp}\n\n`
+        } else {
+          exportContent += '\n'
+        }
 
         if (msg.reasoning_content) {
           exportContent += `**思考过程:**\n${msg.reasoning_content}\n\n`
@@ -131,7 +132,6 @@ export default function ChatHeader({
       if (result.success) {
         message.success(`导出成功: ${result.filePath}`)
         setIsExportModalVisible(false)
-        setSelectedMessageIds([])
       } else if (result.cancelled) {
         // 用户取消了保存
       } else {
@@ -143,20 +143,6 @@ export default function ChatHeader({
     }
   }
 
-  const handleMessageToggle = (messageId: string) => {
-    setSelectedMessageIds((prev) =>
-      prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]
-    )
-  }
-
-  const handleSelectAll = () => {
-    const availableMessages = selectMode === 'all' ? messages : currentPathMessages
-    setSelectedMessageIds(availableMessages.map((msg) => msg.id))
-  }
-
-  const handleSelectNone = () => {
-    setSelectedMessageIds([])
-  }
 
   return (
     <>
@@ -210,64 +196,16 @@ export default function ChatHeader({
         </div>
       </div>
 
-      <Modal
-        title="导出聊天记录"
-        open={isExportModalVisible}
-        onOk={handleExport}
-        onCancel={() => {
-          setIsExportModalVisible(false)
-          setSelectedMessageIds([])
-        }}
-        width={800}
-        okText="导出"
-        cancelText="取消"
-      >
-        <div className="export-modal-content">
-          <div className="export-mode-info">
-            <p>
-              {selectMode === 'current-path' && '当前对话路径模式：显示当前选择的对话分支'}
-              {selectMode === 'all' && '所有消息模式：显示聊天中的所有消息'}
-              {selectMode === 'custom' && '自定义模式：手动选择要导出的消息'}
-            </p>
-          </div>
-
-          <div className="export-actions">
-            <Space>
-              <Button size="small" onClick={handleSelectAll}>
-                全选
-              </Button>
-              <Button size="small" onClick={handleSelectNone}>
-                取消全选
-              </Button>
-              <span>已选择: {selectedMessageIds.length} 条消息</span>
-            </Space>
-          </div>
-
-          <div className="export-message-list">
-            {(selectMode === 'all' ? messages : currentPathMessages).map((msg, index) => {
-              const isSelected = selectedMessageIds.includes(msg.id)
-              const role = msg.role === 'user' ? '用户' : 'AI助手'
-              const timestamp = formatExactDateTime(msg.timestamp)
-              const preview = msg.content.slice(0, 100) + (msg.content.length > 100 ? '...' : '')
-
-              return (
-                <div key={msg.id} className="export-message-item">
-                  <Checkbox checked={isSelected} onChange={() => handleMessageToggle(msg.id)}>
-                    <div className="message-preview">
-                      <div className="message-header">
-                        <span className="message-role">{role}</span>
-                        <span className="message-time">{timestamp}</span>
-                        {msg.modelId && <span className="message-model">({msg.modelId})</span>}
-                      </div>
-                      <div className="message-content-preview">{preview}</div>
-                    </div>
-                  </Checkbox>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </Modal>
+      <ExportModal
+        visible={isExportModalVisible}
+        onClose={() => setIsExportModalVisible(false)}
+        chatTitle={chatTitle}
+        messages={messages}
+        currentPathMessages={currentPathMessages}
+        selectMode={selectMode}
+        onExport={handleExport}
+        llmConfigs={llmConfigs}
+      />
     </>
   )
 }
