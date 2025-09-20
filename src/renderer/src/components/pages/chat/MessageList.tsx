@@ -2,8 +2,10 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import MessageItem from './MessageItem'
 import WelcomeMessage from './WelcomeMessage'
+import MessageSearch from './MessageSearch'
 import { MessageTree } from './messageTree'
 import { useStreamingMessage } from '../../../stores/messagesStore'
+import { useMessageSearch } from '../../../hooks/useMessageSearch'
 
 interface MessageListProps {
   chatId: string // 添加chatId prop
@@ -59,6 +61,20 @@ const MessageList = React.memo(function MessageList({
   
   // 控制是否自动滚动到底部
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
+
+  // 搜索功能
+  const searchHook = useMessageSearch(messages)
+  const {
+    searchQuery,
+    currentMatchIndex,
+    totalMatches,
+    isSearchVisible,
+    showSearch,
+    hideSearch,
+    search,
+    getCurrentMatch,
+    getHighlightInfo
+  } = searchHook
 
   // 使用传入的消息树（从父组件创建，避免重复创建）
   const messageTree = useMemo(() => {
@@ -122,11 +138,32 @@ const MessageList = React.memo(function MessageList({
     if (!container) return
 
     container.addEventListener('wheel', handleWheel, { passive: true })
-    
+
     return () => {
       container.removeEventListener('wheel', handleWheel)
     }
   }, [handleWheel])
+
+  // 添加键盘事件监听器
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+F 打开搜索
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault()
+        showSearch()
+      }
+      // Esc 关闭搜索
+      else if (event.key === 'Escape' && isSearchVisible) {
+        hideSearch()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showSearch, hideSearch, isSearchVisible])
 
   const scrollToBottom = (behavior: 'smooth' | 'instant' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior })
@@ -139,6 +176,20 @@ const MessageList = React.memo(function MessageList({
       messageElement.scrollIntoView({ behavior, block: 'center' })
     }
   }
+
+  // 处理搜索导航
+  const handleSearch = useCallback((query: string, currentIndex: number, direction: 'next' | 'previous') => {
+    search(query, currentIndex, direction)
+
+    // 强制触发重新渲染以立即显示高亮
+    setTimeout(() => {
+      // 滚动到当前匹配的消息
+      const currentMatch = getCurrentMatch()
+      if (currentMatch) {
+        scrollToMessage(currentMatch.messageId, 'smooth')
+      }
+    }, 50)
+  }, [search, getCurrentMatch])
 
   useEffect(() => {
     const currentMessagesLength = messages.length
@@ -179,6 +230,12 @@ const MessageList = React.memo(function MessageList({
       // 只有在启用自动滚动时才自动滚动到底部
       const behavior = isInitialRender.current ? 'instant' : 'smooth'
       scrollToBottom(behavior)
+    }
+
+    // 搜索结果变化时滚动到当前匹配项
+    const currentMatch = getCurrentMatch()
+    if (currentMatch && searchQuery) {
+      scrollToMessage(currentMatch.messageId, 'smooth')
     }
 
     // 标记初次渲染已完成
@@ -223,9 +280,24 @@ const MessageList = React.memo(function MessageList({
 
   return (
     <div className="messages-container" ref={messagesContainerRef}>
+      {/* 搜索组件 */}
+      {isSearchVisible && (
+        <MessageSearch
+          isVisible={isSearchVisible}
+          onClose={() => {
+            hideSearch()
+            // 立即清空搜索查询，确保高亮被清除
+            search('', 0, 'next')
+          }}
+          onSearch={handleSearch}
+          currentIndex={currentMatchIndex}
+          totalMatches={totalMatches}
+        />
+      )}
+
       <div className="messages-list">
         {displayMessages.map((message, index) => (
-          <div 
+          <div
             key={message.id}
             ref={(el) => {
               if (el) {
@@ -257,6 +329,10 @@ const MessageList = React.memo(function MessageList({
               // 折叠相关
               isCollapsed={collapsedMessages.includes(message.id)}
               onToggleCollapse={onToggleMessageCollapse}
+              // 搜索相关
+              searchQuery={searchQuery}
+              getCurrentMatch={getCurrentMatch}
+              getHighlightInfo={getHighlightInfo}
             />
           </div>
         ))}
@@ -264,25 +340,6 @@ const MessageList = React.memo(function MessageList({
         <div ref={messagesEndRef} />
       </div>
     </div>
-  )
-}, (prevProps, nextProps) => {
-  // 自定义比较函数，只在关键属性变化时重新渲染
-  return (
-    prevProps.messages === nextProps.messages &&
-    prevProps.currentPath === nextProps.currentPath &&
-    prevProps.isLoading === nextProps.isLoading &&
-    prevProps.collapsedMessages === nextProps.collapsedMessages &&
-    prevProps.llmConfigs === nextProps.llmConfigs &&
-    // 对于回调函数，我们假设它们是稳定的（在父组件中使用 useCallback）
-    prevProps.onRetryMessage === nextProps.onRetryMessage &&
-    prevProps.onEditMessage === nextProps.onEditMessage &&
-    prevProps.onEditAndResendMessage === nextProps.onEditAndResendMessage &&
-    prevProps.onToggleFavorite === nextProps.onToggleFavorite &&
-    prevProps.onModelChange === nextProps.onModelChange &&
-    prevProps.onDeleteMessage === nextProps.onDeleteMessage &&
-    prevProps.onSwitchBranch === nextProps.onSwitchBranch &&
-    prevProps.onToggleMessageCollapse === nextProps.onToggleMessageCollapse &&
-    prevProps.onOpenSettings === nextProps.onOpenSettings
   )
 })
 

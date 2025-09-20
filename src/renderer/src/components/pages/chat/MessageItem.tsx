@@ -20,6 +20,7 @@ import {
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
 import { Markdown } from '../../common/markdown/Markdown'
+import SearchableMarkdown from '../../common/markdown/SearchableMarkdown'
 import { captureDivToClipboard } from '@renderer/utils/exporter'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import RelativeTime from '../../common/RelativeTime'
@@ -50,6 +51,10 @@ interface MessageItemProps {
   // 折叠相关
   isCollapsed?: boolean
   onToggleCollapse?: (messageId: string) => void
+  // 搜索相关
+  searchQuery?: string
+  getCurrentMatch?: () => { messageId: string; startIndex: number; endIndex: number } | null
+  getHighlightInfo?: (text: string, messageId: string) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
 }
 
 const MessageItem = React.memo(function MessageItem({
@@ -70,7 +75,10 @@ const MessageItem = React.memo(function MessageItem({
   onModelChange,
   onDelete,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  searchQuery,
+  getCurrentMatch,
+  getHighlightInfo
 }: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -334,9 +342,13 @@ const MessageItem = React.memo(function MessageItem({
                     cursor: 'text'
                   }}
                 >
-                  <Markdown
+                  <SearchableMarkdown
                     content={currentContent ?? ''}
                     loading={isCurrentlyStreaming && !currentContent}
+                    searchQuery={searchQuery}
+                    messageId={message.id}
+                    getCurrentMatch={getCurrentMatch}
+                    getHighlightInfo={getHighlightInfo}
                   />
                 </div>
               )}
@@ -433,7 +445,7 @@ const MessageItem = React.memo(function MessageItem({
   // 自定义比较函数，避免不必要的重渲染
   // 注意：对于正在流式输出的消息，我们需要重新渲染
   if (prevProps.message.id !== nextProps.message.id) return false
-  
+
   // 如果消息内容或流式状态发生变化，需要重新渲染
   if (prevProps.message.content !== nextProps.message.content ||
       prevProps.message.reasoning_content !== nextProps.message.reasoning_content ||
@@ -442,7 +454,12 @@ const MessageItem = React.memo(function MessageItem({
       prevProps.message.modelId !== nextProps.message.modelId) {
     return false
   }
-  
+
+  // 如果搜索查询改变，需要重新渲染
+  if (prevProps.searchQuery !== nextProps.searchQuery) {
+    return false
+  }
+
   // 检查其他重要属性
   return (
     prevProps.isLoading === nextProps.isLoading &&

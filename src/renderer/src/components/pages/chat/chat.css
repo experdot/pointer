@@ -478,3 +478,88 @@
   margin-bottom: 4px;
   line-height: 1.5;
 }
+
+/* Message Search Styles */
+.message-search-container {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 16px;
+}
+
+.message-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  min-width: 280px;
+}
+
+.message-search-input {
+  flex: 1;
+}
+
+.message-search-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-results-info {
+  font-size: 12px;
+  min-width: 40px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Search Highlight Styles */
+.search-highlight {
+  background-color: #ffeb3b !important;
+  color: #000 !important;
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.search-highlight.current-match {
+  background-color: #ff6b35 !important;
+  color: #fff !important;
+  font-weight: 500;
+  box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.3);
+}
+
+/* Ensure search highlights work in markdown content */
+.markdown-body .search-highlight {
+  background-color: #ffeb3b !important;
+  color: #000 !important;
+}
+
+.markdown-body .search-highlight.current-match {
+  background-color: #ff6b35 !important;
+  color: #fff !important;
+}
+
+/* 确保搜索高亮在各种上下文中都能正确显示 */
+.ant-typography .search-highlight,
+.ant-card .search-highlight,
+pre .search-highlight,
+code .search-highlight {
+  background-color: #ffeb3b !important;
+  color: #000 !important;
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+}
+
+.ant-typography .search-highlight.current-match,
+.ant-card .search-highlight.current-match,
+pre .search-highlight.current-match,
+code .search-highlight.current-match {
+  background-color: #ff6b35 !important;
+  color: #fff !important;
+}
