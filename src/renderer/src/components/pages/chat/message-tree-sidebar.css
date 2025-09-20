@@ -161,6 +161,24 @@
   font-size: 10px;
 }
 
+/* 路径导航按钮样式 - 与收藏导航按钮保持一致 */
+.path-nav-btn {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border-radius: 3px !important;
+  transition: all 0.2s !important;
+}
+
+.path-nav-btn:hover {
+  background-color: #f0f0f0 !important;
+  color: #1890ff !important;
+}
+
+.path-nav-btn .anticon {
+  font-size: 10px !important;
+}
+
 /* 折叠状态下的统计信息 */
 .tree-sidebar-content-collapsed {
   padding: 8px 4px;
@@ -225,6 +243,7 @@
 .favorited-navigation-collapsed .nav-btn-collapsed .anticon {
   font-size: 8px;
 }
+
 
 /* 侧边栏内容 */
 .tree-sidebar-content {

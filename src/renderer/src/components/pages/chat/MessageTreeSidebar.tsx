@@ -11,7 +11,9 @@ import {
   UpOutlined,
   DownOutlined,
   RightOutlined,
-  DownOutlined as CollapseIcon
+  DownOutlined as CollapseIcon,
+  VerticalAlignTopOutlined,
+  VerticalAlignBottomOutlined
 } from '@ant-design/icons'
 import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
@@ -272,6 +274,27 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     }
   }
 
+  // 导航到第一条/最后一条消息
+  const navigateToFirstOrLast = (position: 'first' | 'last') => {
+    if (pathNodes.length === 0) return
+
+    let targetMessageId: string
+    if (position === 'first') {
+      targetMessageId = pathNodes[0].messageId
+    } else {
+      targetMessageId = pathNodes[pathNodes.length - 1].messageId
+    }
+
+    if (onNodeSelect) {
+      onNodeSelect(targetMessageId)
+    }
+
+    if (onPathChange) {
+      const newPath = buildPathToMessage(targetMessageId)
+      onPathChange(newPath)
+    }
+  }
+
   // Resize 功能
   const MIN_WIDTH = 200
   const MAX_WIDTH = 600
@@ -361,6 +384,30 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                 </div>
               </div>
             )}
+            {pathNodes.length > 0 && (
+              <>
+                <div className="stat-item">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<VerticalAlignTopOutlined />}
+                    onClick={() => navigateToFirstOrLast('first')}
+                    title="回到顶部"
+                    className="nav-btn-collapsed"
+                  />
+                </div>
+                <div className="stat-item">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<VerticalAlignBottomOutlined />}
+                    onClick={() => navigateToFirstOrLast('last')}
+                    title="回到底部"
+                    className="nav-btn-collapsed"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -433,6 +480,28 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                 />
               </div>
             </div>
+          )}
+          {pathNodes.length > 0 && (
+            <>
+              <Tooltip title="回到顶部">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<VerticalAlignTopOutlined />}
+                  onClick={() => navigateToFirstOrLast('first')}
+                  className="nav-btn path-nav-btn"
+                />
+              </Tooltip>
+              <Tooltip title="回到底部">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<VerticalAlignBottomOutlined />}
+                  onClick={() => navigateToFirstOrLast('last')}
+                  className="nav-btn path-nav-btn"
+                />
+              </Tooltip>
+            </>
           )}
         </Space>
       </div>

@@ -167,16 +167,18 @@ const MessageList = React.memo(function MessageList({
 
     console.count('shouldScroll');
     
-    // 只有在启用自动滚动时才执行滚动
-    if (isAutoScrollEnabled) {
-      if (shouldScrollToMessage) {
-        // 滚动到选中的消息
-        scrollToMessage(selectedMessageId!, 'smooth')
-      } else if (shouldScrollToBottom) {
-        // 滚动到底部
-        const behavior = isInitialRender.current ? 'instant' : 'smooth'
-        scrollToBottom(behavior)
+    // 用户主动选择消息时强制滚动，不受自动滚动状态限制
+    if (shouldScrollToMessage) {
+      // 滚动到选中的消息（强制执行，不受自动滚动状态影响）
+      scrollToMessage(selectedMessageId!, 'smooth')
+      // 用户主动导航时，恢复自动滚动功能
+      if (!isAutoScrollEnabled) {
+        setIsAutoScrollEnabled(true)
       }
+    } else if (isAutoScrollEnabled && shouldScrollToBottom) {
+      // 只有在启用自动滚动时才自动滚动到底部
+      const behavior = isInitialRender.current ? 'instant' : 'smooth'
+      scrollToBottom(behavior)
     }
 
     // 标记初次渲染已完成
