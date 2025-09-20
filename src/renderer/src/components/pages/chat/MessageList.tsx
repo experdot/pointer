@@ -180,16 +180,7 @@ const MessageList = React.memo(function MessageList({
   // 处理搜索导航
   const handleSearch = useCallback((query: string, currentIndex: number, direction: 'next' | 'previous') => {
     search(query, currentIndex, direction)
-
-    // 强制触发重新渲染以立即显示高亮
-    setTimeout(() => {
-      // 滚动到当前匹配的消息
-      const currentMatch = getCurrentMatch()
-      if (currentMatch) {
-        scrollToMessage(currentMatch.messageId, 'smooth')
-      }
-    }, 50)
-  }, [search, getCurrentMatch])
+  }, [search])
 
   useEffect(() => {
     const currentMessagesLength = messages.length
@@ -202,6 +193,9 @@ const MessageList = React.memo(function MessageList({
     // 检查选中消息是否发生变化
     const selectedMessageChanged = !isInitialRender.current && selectedMessageId !== prevSelectedMessageId.current
 
+    // 如果正在搜索，不进行自动滚动
+    const isSearching = isSearchVisible && searchQuery
+
     // 只在以下情况下滚动：
     // 1. 消息总数增加（有新消息）- 滚动到底部
     // 2. 流式内容发生变化（正在接收AI回复）- 滚动到底部
@@ -209,15 +203,15 @@ const MessageList = React.memo(function MessageList({
     // 4. 当前路径发生变化（用户点击消息树切换分支）- 滚动到底部
     // 5. 选中消息发生变化（用户点击消息树中的特定消息）- 滚动到选中消息
     const shouldScrollToBottom =
-      currentMessagesLength > prevMessagesLength.current ||
-      currentStreamingContent !== prevStreamingContent.current ||
-      (isInitialRender.current && currentMessagesLength > 0) ||
-      (pathChanged && !selectedMessageChanged)
+      !isSearching && (
+        currentMessagesLength > prevMessagesLength.current ||
+        currentStreamingContent !== prevStreamingContent.current ||
+        (isInitialRender.current && currentMessagesLength > 0) ||
+        (pathChanged && !selectedMessageChanged)
+      )
 
     const shouldScrollToMessage = selectedMessageChanged && selectedMessageId
 
-    console.count('shouldScroll');
-    
     // 用户主动选择消息时强制滚动，不受自动滚动状态限制
     if (shouldScrollToMessage) {
       // 滚动到选中的消息（强制执行，不受自动滚动状态影响）
@@ -232,12 +226,6 @@ const MessageList = React.memo(function MessageList({
       scrollToBottom(behavior)
     }
 
-    // 搜索结果变化时滚动到当前匹配项
-    const currentMatch = getCurrentMatch()
-    if (currentMatch && searchQuery) {
-      scrollToMessage(currentMatch.messageId, 'smooth')
-    }
-
     // 标记初次渲染已完成
     if (isInitialRender.current) {
       isInitialRender.current = false
@@ -248,7 +236,43 @@ const MessageList = React.memo(function MessageList({
     prevStreamingContent.current = currentStreamingContent
     prevCurrentPath.current = [...currentPath]
     prevSelectedMessageId.current = selectedMessageId
-  }, [messages.length, currentStreamingContent, currentPath, selectedMessageId, isAutoScrollEnabled])
+  }, [messages.length, currentStreamingContent, currentPath, selectedMessageId, isAutoScrollEnabled, isSearchVisible, searchQuery])
+
+  // 单独处理搜索滚动
+  useEffect(() => {
+    if (!searchQuery || !isSearchVisible) return
+
+    // 搜索结果变化时滚动到当前匹配项
+    const currentMatch = getCurrentMatch()
+    if (currentMatch) {
+      // 使用短延时确保高亮已经应用
+      const timeoutId = setTimeout(() => {
+        // 优先查找具体的高亮元素
+        // 首先尝试使用更精确的选择器
+        let currentHighlight = document.querySelector(
+          `.search-highlight.current-match[data-message-id="${currentMatch.messageId}"][data-match-index="${currentMatch.matchIndex || 0}"]`
+        )
+
+        // 如果没找到，尝试查找任何当前高亮
+        if (!currentHighlight) {
+          currentHighlight = document.querySelector('.search-highlight.current-match')
+        }
+
+        if (currentHighlight) {
+          // 滚动到具体的高亮元素
+          currentHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } else {
+          // 如果没找到高亮元素，至少滚动到消息
+          const messageElement = messageRefs.current.get(currentMatch.messageId)
+          if (messageElement) {
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+      }, 200) // 稍微增加延时确保DOM更新完成
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [searchQuery, currentMatchIndex, isSearchVisible, getCurrentMatch])
 
   // 处理兄弟分支切换
   const handleSiblingBranchSwitch = (messageId: string, direction: 'previous' | 'next') => {
@@ -333,6 +357,7 @@ const MessageList = React.memo(function MessageList({
               searchQuery={searchQuery}
               getCurrentMatch={getCurrentMatch}
               getHighlightInfo={getHighlightInfo}
+              currentMatchIndex={currentMatchIndex}
             />
           </div>
         ))}

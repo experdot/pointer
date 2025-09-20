@@ -55,6 +55,7 @@ interface MessageItemProps {
   searchQuery?: string
   getCurrentMatch?: () => { messageId: string; startIndex: number; endIndex: number } | null
   getHighlightInfo?: (text: string, messageId: string) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
+  currentMatchIndex?: number
 }
 
 const MessageItem = React.memo(function MessageItem({
@@ -78,7 +79,8 @@ const MessageItem = React.memo(function MessageItem({
   onToggleCollapse,
   searchQuery,
   getCurrentMatch,
-  getHighlightInfo
+  getHighlightInfo,
+  currentMatchIndex
 }: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -349,6 +351,7 @@ const MessageItem = React.memo(function MessageItem({
                     messageId={message.id}
                     getCurrentMatch={getCurrentMatch}
                     getHighlightInfo={getHighlightInfo}
+                    currentMatchIndex={currentMatchIndex}
                   />
                 </div>
               )}
@@ -455,8 +458,9 @@ const MessageItem = React.memo(function MessageItem({
     return false
   }
 
-  // 如果搜索查询改变，需要重新渲染
-  if (prevProps.searchQuery !== nextProps.searchQuery) {
+  // 如果搜索查询改变或currentMatchIndex改变，需要重新渲染
+  if (prevProps.searchQuery !== nextProps.searchQuery ||
+      prevProps.currentMatchIndex !== nextProps.currentMatchIndex) {
     return false
   }
 

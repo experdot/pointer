@@ -3,10 +3,11 @@ import { ChatMessage } from '../types/type'
 
 interface SearchMatch {
   messageId: string
-  matchIndex: number
+  matchIndex: number // 在消息内的索引
   startIndex: number
   endIndex: number
   content: string
+  globalIndex?: number // 全局唯一索引
 }
 
 interface UseMessageSearchResult {
@@ -33,11 +34,13 @@ export const useMessageSearch = (messages: ChatMessage[]): UseMessageSearchResul
 
     const allMatches: SearchMatch[] = []
     const query = searchQuery.toLowerCase()
+    let globalIndex = 0
 
-    messages.forEach((message) => {
+    // 按消息顺序遍历，保持匹配结果的顺序
+    messages.forEach((message, messageIndex) => {
       const content = message.content.toLowerCase()
       let startIndex = 0
-      let matchIndex = 0
+      let matchIndexInMessage = 0
 
       while (true) {
         const index = content.indexOf(query, startIndex)
@@ -45,13 +48,14 @@ export const useMessageSearch = (messages: ChatMessage[]): UseMessageSearchResul
 
         allMatches.push({
           messageId: message.id,
-          matchIndex,
+          matchIndex: matchIndexInMessage, // 在消息内的索引
           startIndex: index,
           endIndex: index + query.length,
-          content: message.content.slice(index, index + query.length)
+          content: message.content.slice(index, index + query.length),
+          globalIndex: globalIndex++ // 全局唯一索引
         })
 
-        matchIndex++
+        matchIndexInMessage++
         startIndex = index + 1
       }
     })
