@@ -14,51 +14,26 @@ dayjs.locale('zh-cn')
 export const formatRelativeTime = (timestamp: number): string => {
   const now = dayjs()
   const target = dayjs(timestamp)
-  const diffMs = now.diff(target)
-  const diffMinutes = Math.floor(diffMs / (1000 * 60))
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  const diffMonths = now.diff(target, 'month')
-  const diffYears = now.diff(target, 'year')
 
-  // 小于1分钟
-  if (diffMinutes < 1) {
-    return '刚刚'
+  // 检查是否是今天
+  if (now.isSame(target, 'day')) {
+    // 当天显示具体时间（精确到秒）
+    return target.format('HH:mm:ss')
   }
 
-  // 小于1小时
-  if (diffMinutes < 60) {
-    return `${diffMinutes}分钟前`
+  // 检查是否是昨天
+  if (now.subtract(1, 'day').isSame(target, 'day')) {
+    return `昨天 ${target.format('HH:mm')}`
   }
 
-  // 小于1天
-  if (diffHours < 24) {
-    return `${diffHours}小时前`
+  // 检查是否是今年
+  if (now.isSame(target, 'year')) {
+    // 同年显示月日和时间
+    return target.format('MM月DD日 HH:mm')
   }
 
-  // 1天
-  if (diffDays === 1) {
-    return '1天前'
-  }
-
-  // 小于7天
-  if (diffDays < 7) {
-    return `${diffDays}天前`
-  }
-
-  // 小于1个月
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7)
-    return `${weeks}周前`
-  }
-
-  // 小于1年
-  if (diffMonths < 12) {
-    return `${diffMonths}个月前`
-  }
-
-  // 1年或以上
-  return `${diffYears}年前`
+  // 不同年份显示完整日期时间
+  return target.format('YYYY年MM月DD日 HH:mm')
 }
 
 /**
