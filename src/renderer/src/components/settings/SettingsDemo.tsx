@@ -156,7 +156,7 @@ export default function SettingsDemo() {
               <p>• 设置会在每次修改后立即保存到本地存储</p>
               <p>• 聊天记录会在发送消息后自动保存</p>
               <p>• 应用启动时会自动加载之前保存的所有数据</p>
-              <p>• 数据存储在浏览器的localStorage中</p>
+              <p>• 数据存储在浏览器的localStorage、IndexedDB中</p>
             </div>
           }
           type="info"
