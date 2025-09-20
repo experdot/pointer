@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { Tree, Modal, App } from 'antd'
 import type { DataNode, TreeProps } from 'antd/es/tree'
+import type { DirectoryTreeProps } from 'antd/es/tree'
 import { usePagesStore } from '../../../../stores/pagesStore'
 import { useTabsStore } from '../../../../stores/tabsStore'
 import { useUIStore } from '../../../../stores/uiStore'
@@ -44,6 +45,24 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
   
   // 添加编辑状态管理
   const [editingNodeKey, setEditingNodeKey] = useState<string | null>(null)
+
+  // 添加虚拟滚动高度状态
+  const [virtualHeight, setVirtualHeight] = useState(800)
+  const treeContainerRef = useRef<HTMLDivElement>(null)
+
+  // 动态计算虚拟滚动高度
+  useEffect(() => {
+    const calculateHeight = () => {
+      if (treeContainerRef.current) {
+        const containerHeight = window.innerHeight - treeContainerRef.current.offsetTop - 100
+        setVirtualHeight(Math.max(400, Math.min(containerHeight, 1200)))
+      }
+    }
+
+    calculateHeight()
+    window.addEventListener('resize', calculateHeight)
+    return () => window.removeEventListener('resize', calculateHeight)
+  }, [])
 
   // 解析节点键，获取节点类型和ID
   const parseNodeKey = useCallback(
@@ -308,9 +327,14 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     [parseNodeKey, folders, pages, movePage, moveFolder]
   )
 
-  // 递归构建文件夹树
+  // 创建节点映射缓存
+  const nodeCache = useMemo(() => new Map<string, DataNode>(), [])
+
+  // 递归构建文件夹树 - 优化版本
   const buildFolderTree = useCallback(
     (parentId?: string): DataNode[] => {
+      const cacheKey = parentId || 'root'
+
       // 获取指定父级下的文件夹
       const childFolders = folders
         .filter((folder) => folder.parentId === parentId)
@@ -336,10 +360,17 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       const result: DataNode[] = allItems.map(item => {
         if (item.type === 'folder') {
           const folder = item.data as typeof folders[0]
-          const folderChildren = buildFolderTree(folder.id)
+          const nodeKey = `folder-${folder.id}`
 
-          return {
-            key: `folder-${folder.id}`,
+          // 检查文件夹是否有子节点
+          const hasChildren = folders.some(f => f.parentId === folder.id) ||
+                             pages.some(p => p.folderId === folder.id && p.type !== 'settings')
+
+          // 只在展开时递归构建子节点
+          const folderChildren = folder.expanded ? buildFolderTree(folder.id) : undefined
+
+          const node: DataNode = {
+            key: nodeKey,
             title: (
               <ChatHistoryTreeNode
                 type="folder"
@@ -348,18 +379,24 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 onDelete={() => handleDeleteFolder(folder.id)}
                 onCreate={(type) => handleNodeCreate(folder.id, type)}
                 onSaveEdit={handleSaveEdit}
-                isEditing={editingNodeKey === `folder-${folder.id}`}
-                onStartEdit={() => setEditingNodeKey(`folder-${folder.id}`)}
+                isEditing={editingNodeKey === nodeKey}
+                onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
               />
             ),
             checkable: false,
-            children: folderChildren
+            children: folderChildren,
+            isLeaf: !hasChildren
           }
+
+          nodeCache.set(nodeKey, node)
+          return node
         } else {
           const chat = item.data as typeof pages[0]
-          return {
-            key: `chat-${chat.id}`,
+          const nodeKey = `chat-${chat.id}`
+
+          const node: DataNode = {
+            key: nodeKey,
             title: (
               <ChatHistoryTreeNode
                 type="chat"
@@ -368,13 +405,16 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 onDelete={() => handleDeleteChat(chat.id)}
                 onChatClick={onChatClick}
                 onSaveEdit={handleSaveEdit}
-                isEditing={editingNodeKey === `chat-${chat.id}`}
-                onStartEdit={() => setEditingNodeKey(`chat-${chat.id}`)}
+                isEditing={editingNodeKey === nodeKey}
+                onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
               />
             ),
             isLeaf: true
           }
+
+          nodeCache.set(nodeKey, node)
+          return node
         }
       })
 
@@ -383,19 +423,33 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     [
       folders,
       pages,
+      onChatClick,
+      editingNodeKey,
+      nodeCache,
       handleNodeEdit,
       handleDeleteFolder,
       handleDeleteChat,
       handleNodeCreate,
-      handleSaveEdit,
-      onChatClick
+      handleSaveEdit
     ]
   )
 
-  // Build tree data
+  // 使用 useMemo 缓存树数据，只在关键数据变化时重新构建
+  const treeData = useMemo(() => {
+    // 清空缓存以确保数据一致性
+    nodeCache.clear()
+    return buildFolderTree()
+  }, [
+    // 只在数据结构发生实质性变化时重新构建
+    folders.map(f => `${f.id}-${f.name}-${f.parentId}-${f.order}-${f.expanded}`).join(','),
+    pages.map(p => `${p.id}-${p.title}-${p.folderId}-${p.order}`).join(','),
+    editingNodeKey
+  ])
+
+  // Build tree data - 保留兼容性
   const buildTreeData = useCallback((): DataNode[] => {
-    return buildFolderTree() // 从根级别开始构建
-  }, [buildFolderTree])
+    return treeData
+  }, [treeData])
 
   const handleTreeSelect = useCallback(
     (
@@ -477,21 +531,27 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     ]
   )
 
-  const expandedKeys = folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`)
+  const expandedKeys = useMemo(
+    () => folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`),
+    [folders]
+  )
 
   return (
-    <Tree
-      className="chat-history-tree"
-      showIcon
-      blockNode
-      draggable={!editingNodeKey}
-      checkable={false}
-      multiple
-      expandedKeys={expandedKeys}
-      selectedKeys={checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
-      treeData={buildTreeData()}
-      onSelect={handleTreeSelect}
-      onDrop={handleDrop}
+    <div ref={treeContainerRef} style={{ height: '100%' }}>
+      <Tree
+        className="chat-history-tree"
+        showIcon
+        blockNode
+        draggable={!editingNodeKey}
+        checkable={false}
+        multiple
+        virtual
+        height={virtualHeight}
+        expandedKeys={expandedKeys}
+        selectedKeys={checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
+        treeData={treeData}
+        onSelect={handleTreeSelect}
+        onDrop={handleDrop}
       allowDrop={({ dropNode, dragNode, dropPosition }) => {
         const dragNodeInfo = parseNodeKey(dragNode.key)
         const dropNodeInfo = parseNodeKey(dropNode.key)
@@ -509,7 +569,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
         return true
       }}
-      onExpand={(expandedKeys) => {
+      onExpand={useCallback((expandedKeys: React.Key[]) => {
         // Update folder expanded state
         folders.forEach((folder) => {
           const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
@@ -517,7 +577,8 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
             updateFolder(folder.id, { expanded: isExpanded })
           }
         })
-      }}
-    />
+      }, [folders, updateFolder])}
+      />
+    </div>
   )
 }

@@ -28,7 +28,7 @@ interface ChatHistoryTreeNodeProps {
   onEndEdit?: () => void
 }
 
-export default function ChatHistoryTreeNode({
+const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   type,
   data,
   isEditing,
@@ -281,4 +281,24 @@ export default function ChatHistoryTreeNode({
       )}
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键属性变化时重新渲染
+  return (
+    prevProps.type === nextProps.type &&
+    prevProps.data.id === nextProps.data.id &&
+    (prevProps.type === 'folder'
+      ? (prevProps.data as PageFolder).name === (nextProps.data as PageFolder).name &&
+        (prevProps.data as PageFolder).expanded === (nextProps.data as PageFolder).expanded
+      : (prevProps.data as Page).title === (nextProps.data as Page).title) &&
+    prevProps.isEditing === nextProps.isEditing &&
+    // 检查聊天状态是否变化
+    (prevProps.type !== 'chat' || (
+      (prevProps.data as Page).messages?.length === (nextProps.data as Page).messages?.length &&
+      !!(prevProps.data as Page).streamingMessage === !!(nextProps.data as Page).streamingMessage &&
+      (prevProps.data as Page).messages?.some((msg) => msg.isStreaming) ===
+      (nextProps.data as Page).messages?.some((msg) => msg.isStreaming)
+    ))
+  )
+})
+
+export default ChatHistoryTreeNode
