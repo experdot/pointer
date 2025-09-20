@@ -257,17 +257,6 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
         <div className="tree-node-actions">
           {type === 'folder' && onCreate && (
             <>
-              <Tooltip title="新建聊天">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onCreate('chat')
-                  }}
-                />
-              </Tooltip>
               <Tooltip title="新建文件夹">
                 <Button
                   type="text"
@@ -276,6 +265,17 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
                   onClick={(e) => {
                     e.stopPropagation()
                     onCreate('folder')
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title="新建聊天">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCreate('chat')
                   }}
                 />
               </Tooltip>

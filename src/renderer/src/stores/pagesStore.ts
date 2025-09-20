@@ -247,14 +247,22 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       // 文件夹管理
       createFolder: (name, parentId, order) => {
         try {
-          // 如果没有指定order，获取同级文件夹的最大order值
+          // 如果没有指定order，获取同级文件夹的最小order值
           let finalOrder = order
           if (finalOrder === undefined) {
             const siblingFolders = get().folders.filter(f => f.parentId === parentId)
-            const maxOrder = siblingFolders.length > 0
-              ? Math.max(...siblingFolders.map(f => f.order || 0))
-              : 0
-            finalOrder = maxOrder + 1000 // 新文件夹添加到最后
+            const siblingPages = get().pages.filter(p => p.folderId === parentId && p.type !== 'settings')
+
+            // 获取所有同级项的最小order值
+            const allOrders = [
+              ...siblingFolders.map(f => f.order || 0),
+              ...siblingPages.map(p => p.order || 0)
+            ]
+
+            const minOrder = allOrders.length > 0
+              ? Math.min(...allOrders)
+              : 1000
+            finalOrder = minOrder - 1000 // 新文件夹添加到最前面
           }
 
           const newFolder = {
@@ -365,14 +373,22 @@ export const usePagesStore = create<PagesState & PagesActions>()(
         try {
           const timestamp = Date.now()
 
-          // 如果没有指定order，获取同文件夹下的最大order值
+          // 如果没有指定order，获取同文件夹下的最小order值
           let finalOrder = order
           if (finalOrder === undefined) {
-            const siblingPages = get().pages.filter(p => p.folderId === folderId)
-            const maxOrder = siblingPages.length > 0
-              ? Math.max(...siblingPages.map(p => p.order || 0))
-              : 0
-            finalOrder = maxOrder + 1000 // 新节点添加到最后
+            const siblingFolders = get().folders.filter(f => f.parentId === folderId)
+            const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+
+            // 获取所有同级项的最小order值
+            const allOrders = [
+              ...siblingFolders.map(f => f.order || 0),
+              ...siblingPages.map(p => p.order || 0)
+            ]
+
+            const minOrder = allOrders.length > 0
+              ? Math.min(...allOrders)
+              : 1000
+            finalOrder = minOrder - 1000 // 新聊天添加到最前面
           }
 
           const newPage: Page = {
@@ -410,17 +426,25 @@ export const usePagesStore = create<PagesState & PagesActions>()(
 
       createAndOpenCrosstabChat: (title, folderId, lineage) => {
         try {
-          // 获取同文件夹下的最大order值
-          const siblingPages = get().pages.filter(p => p.folderId === folderId)
-          const maxOrder = siblingPages.length > 0 
-            ? Math.max(...siblingPages.map(p => p.order || 0))
-            : 0
+          // 获取同文件夹下的最小order值
+          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
+          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+
+          // 获取所有同级项的最小order值
+          const allOrders = [
+            ...siblingFolders.map(f => f.order || 0),
+            ...siblingPages.map(p => p.order || 0)
+          ]
+
+          const minOrder = allOrders.length > 0
+            ? Math.min(...allOrders)
+            : 1000
           
           const newPage: Page = {
             title,
             folderId,
             ...createNewCrosstabChat(title, folderId, lineage),
-            order: maxOrder + 1000, // 新节点添加到最后
+            order: minOrder - 1000, // 新节点添加到最前面
             ...(lineage && { lineage })
           }
 
@@ -444,12 +468,20 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       createAndOpenObjectChat: (title, folderId, lineage) => {
         try {
           const timestamp = Date.now()
-          
-          // 获取同文件夹下的最大order值
-          const siblingPages = get().pages.filter(p => p.folderId === folderId)
-          const maxOrder = siblingPages.length > 0 
-            ? Math.max(...siblingPages.map(p => p.order || 0))
-            : 0
+
+          // 获取同文件夹下的最小order值
+          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
+          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+
+          // 获取所有同级项的最小order值
+          const allOrders = [
+            ...siblingFolders.map(f => f.order || 0),
+            ...siblingPages.map(p => p.order || 0)
+          ]
+
+          const minOrder = allOrders.length > 0
+            ? Math.min(...allOrders)
+            : 1000
           
           const newPage: Page = {
             id: uuidv4(),
@@ -457,7 +489,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             type: 'object',
             createdAt: timestamp,
             updatedAt: timestamp,
-            order: maxOrder + 1000, // 新节点添加到最后
+            order: minOrder - 1000, // 新节点添加到最前面
             folderId,
             objectData: {
               rootNodeId: '',

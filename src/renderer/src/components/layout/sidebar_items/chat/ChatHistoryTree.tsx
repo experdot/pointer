@@ -110,30 +110,17 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
   const handleNodeCreate = useCallback(
     (parentId: string | undefined, nodeType: 'folder' | 'chat') => {
-      // 获取父文件夹下的所有子项，以便计算正确的order值（放在第一项）
-      const childFolders = folders.filter((folder) => folder.parentId === parentId)
-      const childChats = pages.filter((chat) => chat.folderId === parentId && chat.type !== 'settings')
-
-      // 计算最小的order值，使新项排在第一位
-      let minOrder = 0
-      if (childFolders.length > 0 || childChats.length > 0) {
-        const allOrders = [
-          ...childFolders.map(f => f.order || 0),
-          ...childChats.map(c => c.order || 0)
-        ]
-        minOrder = Math.min(...allOrders) - 1000
-      }
-
+      // 不传order参数，让store函数自己处理，确保逻辑一致
       if (nodeType === 'folder') {
         const { createFolder } = usePagesStore.getState()
-        createFolder('新建文件夹', parentId, minOrder)
+        createFolder('新建文件夹', parentId)
       } else {
-        // 使用全局的创建聊天逻辑，但指定特定的父文件夹和order
+        // 使用全局的创建聊天逻辑，让store函数自己处理order
         const { createAndOpenChat } = usePagesStore.getState()
-        createAndOpenChat('新建聊天', parentId, minOrder, undefined)
+        createAndOpenChat('新建聊天', parentId)
       }
     },
-    [folders, pages]
+    []
   )
 
   const handleClearFolder = useCallback(
