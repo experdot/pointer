@@ -6,7 +6,7 @@ import Sidebar from './sidebar/Sidebar'
 import ActivityBar, { ActivityBarTab } from './activitybar/ActivityBar'
 import TabsArea from './tabs/TabsArea'
 import ResizeHandle from './ResizeHandle'
-import GlobalSearch from './sidebar_items/search/GlobalSearch'
+import { GlobalSearch } from './sidebar_items/search'
 import TitleBar from './titlebar/TitleBar'
 
 const { Sider, Content } = AntLayout

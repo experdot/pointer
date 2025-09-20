@@ -98,6 +98,7 @@ export interface RegularChat extends PageBase {
   messageMap?: { [messageId: string]: ChatMessage } // 消息ID到消息的映射
   currentPath?: string[] // 当前选择的消息路径（从根到叶子）
   rootMessageId?: string // 根消息ID
+  selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
 
   streamingMessage?: {
     content: string
@@ -279,6 +280,7 @@ export interface Page extends PageBase {
   messageMap?: { [messageId: string]: ChatMessage }
   currentPath?: string[]
   rootMessageId?: string
+  selectedMessageId?: string
   streamingMessage?: {
     content: string
     timestamp: number

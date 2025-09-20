@@ -3,6 +3,44 @@ import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
 import { usePagesStore } from './pagesStore'
+import { ChatMessage } from '../types/type'
+
+// 构建到指定消息的路径
+function buildPathToMessage(messages: ChatMessage[], targetMessageId: string): string[] {
+  const messageMap = new Map<string, ChatMessage>()
+  messages.forEach(msg => messageMap.set(msg.id, msg))
+
+  const targetMessage = messageMap.get(targetMessageId)
+  if (!targetMessage) return []
+
+  // 构建从根到目标消息的路径
+  const path: string[] = []
+  let currentMsg: ChatMessage | undefined = targetMessage
+
+  while (currentMsg) {
+    path.unshift(currentMsg.id)
+    if (currentMsg.parentId) {
+      currentMsg = messageMap.get(currentMsg.parentId)
+    } else {
+      break
+    }
+  }
+
+  // 如果目标消息有子节点，继续延伸到第一个子节点
+  let lastNode = targetMessage
+  while (lastNode.children && lastNode.children.length > 0) {
+    const firstChildId = lastNode.children[0]
+    const firstChild = messageMap.get(firstChildId)
+    if (firstChild) {
+      path.push(firstChildId)
+      lastNode = firstChild
+    } else {
+      break
+    }
+  }
+
+  return path
+}
 
 export interface TabsState {
   openTabs: string[]
@@ -11,7 +49,7 @@ export interface TabsState {
 
 export interface TabsActions {
   // 标签页基本操作
-  openTab: (chatId: string) => void
+  openTab: (chatId: string, messageId?: string) => void
   closeTab: (chatId: string) => void
   closeOtherTabs: (chatId: string) => void
   closeTabsToRight: (chatId: string) => void
@@ -43,16 +81,28 @@ export const useTabsStore = create<TabsState & TabsActions>()(
       ...initialState,
 
       // 标签页基本操作
-      openTab: (chatId) => {
+      openTab: (chatId, messageId?) => {
         try {
           const { openTabs } = get()
-          const { findPageById } = usePagesStore.getState()
+          const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
 
           // 如果标签页已经打开，只需激活它
           if (openTabs.includes(chatId)) {
             set((state) => {
               state.activeTabId = chatId
             })
+
+            // 如果提供了 messageId，更新页面的当前路径
+            if (messageId) {
+              const page = findPageById(chatId)
+              if (page && page.type === 'regular' && page.messages) {
+                // 构建到该消息的路径
+                const path = buildPathToMessage(page.messages, messageId)
+                if (path.length > 0) {
+                  updatePageCurrentPath(chatId, path, messageId)
+                }
+              }
+            }
             return
           }
 
@@ -84,6 +134,19 @@ export const useTabsStore = create<TabsState & TabsActions>()(
             state.openTabs = newOpenTabs
             state.activeTabId = chatId
           })
+
+          // 如果提供了 messageId，更新页面的当前路径
+          if (messageId) {
+            const page = findPageById(chatId)
+            if (page && page.type === 'regular' && page.messages) {
+              // 构建到该消息的路径
+              const path = buildPathToMessage(page.messages, messageId)
+              if (path.length > 0) {
+                const { updatePageCurrentPath } = usePagesStore.getState()
+                updatePageCurrentPath(chatId, path, messageId)
+              }
+            }
+          }
         } catch (error) {
           handleStoreError('tabsStore', 'openTab', error)
         }

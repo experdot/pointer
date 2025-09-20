@@ -65,6 +65,18 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
 
   const chat = pages.find((c) => c.id === chatId)
 
+  // 初始化时设置selectedMessageId
+  React.useEffect(() => {
+    if (chat?.selectedMessageId) {
+      setSelectedMessageId(chat.selectedMessageId)
+      // 清除selectedMessageId，避免重复滚动
+      setTimeout(() => {
+        const { updatePage } = usePagesStore.getState()
+        updatePage(chatId, { selectedMessageId: undefined })
+      }, 1000)
+    }
+  }, [chat?.selectedMessageId, chatId])
+
   // 创建消息树实例
   const messageTree = useMemo(() => {
     if (!chat) return new MessageTree()

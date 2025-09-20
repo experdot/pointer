@@ -25,6 +25,7 @@ export interface PagesState {
 export interface PagesActions {
   // 页面管理
   updatePage: (id: string, updates: Partial<Page>) => void
+  updatePageCurrentPath: (id: string, path: string[], messageId?: string) => void
   deletePage: (id: string) => void
   deleteMultiplePages: (chatIds: string[]) => void
   movePage: (chatId: string, targetFolderId?: string, newOrder?: number) => void
@@ -115,6 +116,31 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           })
         } catch (error) {
           handleStoreError('pagesStore', 'updatePage', error)
+        }
+      },
+
+      updatePageCurrentPath: (id, path, messageId?) => {
+        try {
+          set((state) => {
+            const pageIndex = state.pages.findIndex((p) => p.id === id)
+            if (pageIndex !== -1) {
+              const page = state.pages[pageIndex]
+              if (page.type === 'regular') {
+                const updatedPage = {
+                  ...page,
+                  currentPath: path,
+                  selectedMessageId: messageId || (path.length > 0 ? path[path.length - 1] : undefined),
+                  updatedAt: Date.now()
+                }
+                state.pages[pageIndex] = updatedPage
+
+                // 同时更新 IndexedDB 中的单个页面记录
+                pagesStorage.savePage(updatedPage)
+              }
+            }
+          })
+        } catch (error) {
+          handleStoreError('pagesStore', 'updatePageCurrentPath', error)
         }
       },
 
