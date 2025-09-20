@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons'
 import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
+import RelativeTime from '../../common/RelativeTime'
 import './message-tree-sidebar.css'
 
 const { Text } = Typography
@@ -463,10 +464,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                         {node.message.isFavorited && <StarFilled className="favorite-icon" />}
                       </div>
                       <div className="path-node-time">
-                        {new Date(node.message.timestamp).toLocaleTimeString('zh-CN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        <RelativeTime timestamp={node.message.timestamp} />
                       </div>
                     </div>
                     {/* 兄弟分支按钮 */}
@@ -520,10 +518,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                               {sibling.isFavorited && <StarFilled className="favorite-icon" />}
                             </div>
                             <div className="sibling-node-time">
-                              {new Date(sibling.timestamp).toLocaleTimeString('zh-CN', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              <RelativeTime timestamp={sibling.timestamp} />
                             </div>
                           </div>
                         </div>

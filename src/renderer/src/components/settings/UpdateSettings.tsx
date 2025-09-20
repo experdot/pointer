@@ -9,6 +9,7 @@ import {
   DownloadOutlined
 } from '@ant-design/icons'
 import { useUpdateStore, UpdateInfo, DownloadProgress } from '../../stores/updateStore'
+import { formatDateOnly } from '../../utils/timeFormatter'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -215,7 +216,7 @@ export default function UpdateSettings() {
 
             {updateInfo.releaseDate && (
               <Text type="secondary">
-                发布日期: {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                发布日期: {formatDateOnly(new Date(updateInfo.releaseDate).getTime())}
               </Text>
             )}
 

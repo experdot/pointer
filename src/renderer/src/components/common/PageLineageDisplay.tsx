@@ -16,6 +16,7 @@ import {
 import { usePagesStore } from '../../stores/pagesStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useTabsStore } from '../../stores/tabsStore'
+import RelativeTime from './RelativeTime'
 
 const { Text, Paragraph } = Typography
 
@@ -248,7 +249,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
               {lineage.generatedAt && (
                 <div style={{ marginLeft: '16px' }}>
                   <Text type="secondary" style={{ fontSize: size === 'small' ? '11px' : '12px' }}>
-                    生成时间：{new Date(lineage.generatedAt).toLocaleString('zh-CN')}
+                    生成时间：<RelativeTime timestamp={lineage.generatedAt} />
                   </Text>
                 </div>
               )}

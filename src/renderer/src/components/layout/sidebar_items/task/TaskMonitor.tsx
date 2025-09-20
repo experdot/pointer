@@ -31,6 +31,7 @@ import {
 import { useAITasksStore } from '../../../../stores/aiTasksStore'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 import { AITask, AITaskStatus, AITaskType } from '../../../../types/type'
+import RelativeTime from '../../../common/RelativeTime'
 
 const { Text, Title } = Typography
 
@@ -107,44 +108,6 @@ const formatDuration = (startTime: number, endTime?: number) => {
   return `${seconds}秒`
 }
 
-// 格式化创建时间
-const formatCreatedTime = (timestamp: number) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMinutes = Math.floor(diffMs / (1000 * 60))
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  // 如果是今天
-  if (diffDays === 0) {
-    if (diffHours === 0) {
-      if (diffMinutes === 0) {
-        return '刚刚'
-      }
-      return `${diffMinutes}分钟前`
-    }
-    return `${diffHours}小时前`
-  }
-
-  // 如果是昨天
-  if (diffDays === 1) {
-    return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-  }
-
-  // 如果是更早的日期
-  if (diffDays < 7) {
-    return `${diffDays}天前`
-  }
-
-  // 超过一周，显示具体日期
-  return date.toLocaleString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 export default function TaskMonitor() {
   const { aiTasks, cancelTask, removeTask, clearCompletedTasks, clearAllTasks } = useAITasksStore()
@@ -495,7 +458,7 @@ export default function TaskMonitor() {
               </div>
               <div style={{ marginTop: 2 }}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  创建时间: {formatCreatedTime(task.startTime)}
+                  创建时间: <RelativeTime timestamp={task.startTime} />
                 </Text>
               </div>
               {task.progress && (
@@ -735,16 +698,14 @@ export default function TaskMonitor() {
                 </Descriptions.Item>
               )}
               <Descriptions.Item label="创建时间">
-                {formatCreatedTime(selectedTask.startTime)} (
-                {new Date(selectedTask.startTime).toLocaleString('zh-CN')})
+                <RelativeTime timestamp={selectedTask.startTime} />
               </Descriptions.Item>
               <Descriptions.Item label="持续时间">
                 {formatDuration(selectedTask.startTime, selectedTask.endTime)}
               </Descriptions.Item>
               {selectedTask.endTime && (
                 <Descriptions.Item label="结束时间">
-                  {formatCreatedTime(selectedTask.endTime)} (
-                  {new Date(selectedTask.endTime).toLocaleString('zh-CN')})
+                  <RelativeTime timestamp={selectedTask.endTime} />
                 </Descriptions.Item>
               )}
               {selectedTask.chatId && (

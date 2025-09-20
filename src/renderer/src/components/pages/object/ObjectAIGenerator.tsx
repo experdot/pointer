@@ -13,6 +13,7 @@ import { ObjectChat, ObjectNode as ObjectNodeType } from '../../../types/type'
 import { useAppStores } from '../../../stores'
 import { createAIService } from '../../../services/aiService'
 import { createObjectAIService } from './ObjectAIService'
+import RelativeTime from '../../common/RelativeTime'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -91,20 +92,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     return recommendations?.timestamp || null
   }
 
-  // 格式化推荐时间
-  const formatRecommendationTime = (timestamp: number): string => {
-    const now = Date.now()
-    const diff = now - timestamp
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-
-    if (minutes < 1) return '刚刚'
-    if (minutes < 60) return `${minutes}分钟前`
-    if (hours < 24) return `${hours}小时前`
-    if (days < 30) return `${days}天前`
-    return new Date(timestamp).toLocaleDateString('zh-CN')
-  }
 
   // 获取生成历史
   const generationHistory = chat.objectData.generationHistory || []
@@ -616,10 +603,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     }
   }
 
-  // 格式化时间
-  const formatTime = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleString('zh-CN')
-  }
 
   // 获取当前功能的处理函数
   const getCurrentHandler = () => {
@@ -827,7 +810,7 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
                   <div style={{ textAlign: 'right', marginTop: '8px' }}>
                     <Text type="secondary" style={{ fontSize: '11px' }}>
                       <ClockCircleOutlined style={{ marginRight: '4px' }} />
-                      {formatRecommendationTime(getCurrentRecommendationTimestamp()!)}
+                      <RelativeTime timestamp={getCurrentRecommendationTimestamp()!} />
                     </Text>
                   </div>
                 )}

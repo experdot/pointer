@@ -25,6 +25,7 @@ import { useSearchStore } from '../../../../stores/searchStore'
 import { usePagesStore } from '../../../../stores/pagesStore'
 import { useTabsStore } from '../../../../stores/tabsStore'
 import { SearchResult, SearchOptions } from '../../../../types/type'
+import RelativeTime from '../../../common/RelativeTime'
 import './search-styles.css'
 
 const { Text, Paragraph } = Typography
@@ -243,7 +244,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
                   {chatTitle}
                 </Text>
                 <Text type="secondary" className="message-time">
-                  {new Date(message.timestamp).toLocaleString()}
+                  <RelativeTime timestamp={message.timestamp} />
                 </Text>
               </div>
               <Tag color={message.role === 'user' ? 'green' : 'blue'}>

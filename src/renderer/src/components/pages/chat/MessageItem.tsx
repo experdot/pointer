@@ -22,6 +22,7 @@ import BranchNavigator from './BranchNavigator'
 import { Markdown } from '../../common/markdown/Markdown'
 import { captureDivToClipboard } from '@renderer/utils/exporter'
 import { useStreamingMessage } from '../../../stores/messagesStore'
+import RelativeTime from '../../common/RelativeTime'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -98,12 +99,6 @@ const MessageItem = React.memo(function MessageItem({
     }
   }, [isCurrentlyStreaming, currentReasoningContent, currentContent])
 
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(currentContent)
@@ -245,7 +240,7 @@ const MessageItem = React.memo(function MessageItem({
             />
           </div>
           <div className="message-time">
-            <Text type="secondary">{formatTimestamp(message.timestamp)}</Text>
+            <RelativeTime timestamp={message.timestamp} />
           </div>
         </div>
 

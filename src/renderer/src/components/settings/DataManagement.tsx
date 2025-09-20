@@ -26,6 +26,7 @@ import { usePagesStore } from '../../stores/pagesStore'
 import { clearAllStores } from '../../stores/useAppStores'
 import { clearStoreState } from '../../stores/persistence/storeConfig'
 import { useMessagesStore } from '../../stores/messagesStore'
+import RelativeTime from '../common/RelativeTime'
 
 import {
   importExternalChatHistory,
@@ -384,7 +385,7 @@ export default function DataManagement() {
       dataIndex: 'createTime',
       key: 'createTime',
       width: 120,
-      render: (createTime: number) => new Date(createTime).toLocaleDateString()
+      render: (createTime: number) => <RelativeTime timestamp={createTime} />
     }
   ]
 

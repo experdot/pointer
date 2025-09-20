@@ -6,6 +6,7 @@ import { useAppStores } from '../../../stores'
 import PropertyTableEditor from './PropertyTableEditor'
 import ConnectionEditor from './ConnectionEditor'
 import RelationManager from './RelationManager'
+import RelativeTime from '../../common/RelativeTime'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -117,10 +118,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     return String(value)
   }
 
-  // 格式化时间
-  const formatTime = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleString('zh-CN')
-  }
 
   // 渲染属性项
   const renderPropertyItem = (label: string, value: any, field?: string, isEditable = false) => (
@@ -262,10 +259,10 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
               元数据
             </Title>
             <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
-              {renderPropertyItem('创建时间', formatTime(selectedNode.metadata.createdAt))}
+              {renderPropertyItem('创建时间', <RelativeTime timestamp={selectedNode.metadata.createdAt} />)}
               {renderPropertyItem('来源', selectedNode.metadata.source)}
               {selectedNode.metadata.updatedAt &&
-                renderPropertyItem('修改时间', formatTime(selectedNode.metadata.updatedAt))}
+                renderPropertyItem('修改时间', <RelativeTime timestamp={selectedNode.metadata.updatedAt} />)}
             </div>
           </Card>
         )}

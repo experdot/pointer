@@ -4,6 +4,7 @@ import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant
 import type { MenuProps } from 'antd'
 import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
+import { formatExactDateTime } from '../../../utils/timeFormatter'
 
 interface ChatHeaderProps {
   chatId: string
@@ -93,13 +94,13 @@ export default function ChatHeader({
 
       // 生成导出内容
       let exportContent = `# ${chatTitle || '聊天记录'}\n\n`
-      exportContent += `导出时间: ${new Date().toLocaleString()}\n`
+      exportContent += `导出时间: ${formatExactDateTime(Date.now())}\n`
       exportContent += `消息数量: ${selectedMessages.length}\n\n`
       exportContent += '---\n\n'
 
       selectedMessages.forEach((msg, index) => {
         const role = msg.role === 'user' ? '用户' : 'AI助手'
-        const timestamp = new Date(msg.timestamp).toLocaleString()
+        const timestamp = formatExactDateTime(msg.timestamp)
         const model = msg.modelId ? ` (${msg.modelId})` : ''
 
         exportContent += `## ${index + 1}. ${role}${model}\n`
@@ -246,7 +247,7 @@ export default function ChatHeader({
             {(selectMode === 'all' ? messages : currentPathMessages).map((msg, index) => {
               const isSelected = selectedMessageIds.includes(msg.id)
               const role = msg.role === 'user' ? '用户' : 'AI助手'
-              const timestamp = new Date(msg.timestamp).toLocaleString()
+              const timestamp = formatExactDateTime(msg.timestamp)
               const preview = msg.content.slice(0, 100) + (msg.content.length > 100 ? '...' : '')
 
               return (
