@@ -101,14 +101,13 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
       let currentMatchIndexInMessage = -1
       if (currentMatch?.messageId === messageId && allMatches.length > 0) {
         // 这个消息包含当前匹配
-        // 使用matchIndex（消息内的索引）来确定高亮哪个
-        const targetMatchIndex = currentMatch.matchIndex || 0
+        // 使用startIndex来找到对应的匹配项
+        const matchIndex = allMatches.findIndex(m => m.globalStart === currentMatch.startIndex)
 
-        // 确保索引在有效范围内
-        if (targetMatchIndex < allMatches.length) {
-          currentMatchIndexInMessage = targetMatchIndex
+        if (matchIndex !== -1) {
+          currentMatchIndexInMessage = matchIndex
         } else {
-          // 如果索引超出范围，高亮第一个
+          // 如果找不到精确匹配，高亮第一个
           currentMatchIndexInMessage = 0
         }
       }
