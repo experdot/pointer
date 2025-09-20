@@ -11,7 +11,7 @@ import RehypeHighlight from 'rehype-highlight'
 import mermaid from 'mermaid'
 
 import React from 'react'
-import { useRef, useState, RefObject, useEffect, useMemo } from 'react'
+import { useRef, useState, RefObject, useEffect, useMemo, ReactElement } from 'react'
 
 import LoadingIcon from './three-dots.svg'
 import { useDebouncedCallback } from 'use-debounce'
@@ -58,6 +58,72 @@ export function Mermaid(props: { code: string }) {
       onClick={() => viewSvgInNewWindow()}
     >
       {props.code}
+    </div>
+  )
+}
+
+export function TableWrapper(props: { children: ReactElement }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [isCopied, setIsCopied] = useState(false)
+  const [tableMarkdown, setTableMarkdown] = useState('')
+
+  useEffect(() => {
+    if (ref.current) {
+      const table = ref.current.querySelector('table')
+      if (table) {
+        const markdown = convertTableToMarkdown(table)
+        setTableMarkdown(markdown)
+      }
+    }
+  }, [props.children])
+
+  const convertTableToMarkdown = (table: HTMLTableElement): string => {
+    const rows: string[][] = []
+    const thead = table.querySelector('thead')
+    const tbody = table.querySelector('tbody')
+
+    if (thead) {
+      const headerRow = thead.querySelector('tr')
+      if (headerRow) {
+        const headers = Array.from(headerRow.querySelectorAll('th')).map(
+          (th) => th.textContent?.trim() || ''
+        )
+        rows.push(headers)
+        rows.push(headers.map(() => '---'))
+      }
+    }
+
+    if (tbody) {
+      const bodyRows = tbody.querySelectorAll('tr')
+      bodyRows.forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll('td')).map(
+          (td) => td.textContent?.trim() || ''
+        )
+        rows.push(cells)
+      })
+    }
+
+    return rows.map((row) => '| ' + row.join(' | ') + ' |').join('\n')
+  }
+
+  const handleCopy = async () => {
+    if (tableMarkdown) {
+      const success = await copyToClipboard(tableMarkdown)
+      if (success) {
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+      }
+    }
+  }
+
+  return (
+    <div className="table-wrapper" ref={ref}>
+      <span
+        className={`copy-table-button ${isCopied ? 'copied' : ''}`}
+        onClick={handleCopy}
+        title={isCopied ? '已复制!' : '复制表格'}
+      ></span>
+      {props.children}
     </div>
   )
 }
@@ -164,7 +230,8 @@ function _MarkDownContent(props: { content: string }) {
           const isInternal = /^\/#/i.test(href)
           const target = isInternal ? '_self' : (aProps.target ?? '_blank')
           return <a {...aProps} target={target} />
-        }
+        },
+        table: (tableProps) => <TableWrapper>{<table {...tableProps} />}</TableWrapper>
       }}
     >
       {escapedContent}
