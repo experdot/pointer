@@ -110,32 +110,104 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
 
   const handleNodeCreate = useCallback(
     (parentId: string | undefined, nodeType: 'folder' | 'chat') => {
-      // Create a new node with default name and trigger edit
+      // 获取父文件夹下的所有子项，以便计算正确的order值（放在第一项）
+      const childFolders = folders.filter((folder) => folder.parentId === parentId)
+      const childChats = pages.filter((chat) => chat.folderId === parentId && chat.type !== 'settings')
+
+      // 计算最小的order值，使新项排在第一位
+      let minOrder = 0
+      if (childFolders.length > 0 || childChats.length > 0) {
+        const allOrders = [
+          ...childFolders.map(f => f.order || 0),
+          ...childChats.map(c => c.order || 0)
+        ]
+        minOrder = Math.min(...allOrders) - 1000
+      }
+
       if (nodeType === 'folder') {
         const { createFolder } = usePagesStore.getState()
-        createFolder('新建文件夹', parentId)
+        createFolder('新建文件夹', parentId, minOrder)
       } else {
-        // 使用全局的创建聊天逻辑，但指定特定的父文件夹
+        // 使用全局的创建聊天逻辑，但指定特定的父文件夹和order
         const { createAndOpenChat } = usePagesStore.getState()
-        createAndOpenChat('新建聊天', parentId)
+        createAndOpenChat('新建聊天', parentId, minOrder, undefined)
       }
     },
-    []
+    [folders, pages]
+  )
+
+  const handleClearFolder = useCallback(
+    (folderId: string) => {
+      modal.confirm({
+        title: '清空文件夹',
+        content: '确定要清空这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
+        okText: '确定',
+        cancelText: '取消',
+        okType: 'danger',
+        onOk() {
+          // 递归删除文件夹内的所有内容，但保留文件夹本身
+          const clearFolderContents = (parentId: string) => {
+            // 获取当前状态
+            const currentState = usePagesStore.getState()
+
+            // 获取该文件夹下的所有聊天
+            const chatsToDelete = currentState.pages.filter(p => p.folderId === parentId && p.type !== 'settings')
+
+            // 获取该文件夹下的所有子文件夹
+            const subFolders = currentState.folders.filter(f => f.parentId === parentId)
+
+            // 先递归清理子文件夹的内容
+            subFolders.forEach(subFolder => {
+              clearFolderContents(subFolder.id)
+            })
+
+            // 删除所有子文件夹
+            subFolders.forEach(subFolder => {
+              currentState.deleteFolder(subFolder.id)
+            })
+
+            // 删除所有聊天
+            chatsToDelete.forEach(chat => {
+              currentState.deletePage(chat.id)
+            })
+          }
+
+          clearFolderContents(folderId)
+        }
+      })
+    },
+    [modal]
   )
 
   const handleDeleteFolder = useCallback(
     (folderId: string) => {
       modal.confirm({
         title: '删除文件夹',
-        content: '确定要删除这个文件夹吗？文件夹中的聊天会移动到根目录。',
+        content: '确定要删除这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
         okText: '确定',
         cancelText: '取消',
+        okType: 'danger',
         onOk() {
+          // 递归删除文件夹及其所有内容
+          const deleteRecursive = (parentId: string) => {
+            // 删除该文件夹下的所有聊天
+            const chatsToDelete = pages.filter(p => p.folderId === parentId && p.type !== 'settings')
+            chatsToDelete.forEach(chat => deletePage(chat.id))
+
+            // 递归删除子文件夹
+            const subFolders = folders.filter(f => f.parentId === parentId)
+            subFolders.forEach(subFolder => {
+              deleteRecursive(subFolder.id)
+              deleteFolder(subFolder.id)
+            })
+          }
+
+          deleteRecursive(folderId)
           deleteFolder(folderId)
         }
       })
     },
-    [deleteFolder, modal]
+    [folders, pages, deleteFolder, deletePage, modal]
   )
 
   const handleDeleteChat = useCallback(
@@ -377,6 +449,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 data={folder}
                 onEdit={() => handleNodeEdit(folder.id, 'folder')}
                 onDelete={() => handleDeleteFolder(folder.id)}
+                onClear={() => handleClearFolder(folder.id)}
                 onCreate={(type) => handleNodeCreate(folder.id, type)}
                 onSaveEdit={handleSaveEdit}
                 isEditing={editingNodeKey === nodeKey}
@@ -428,6 +501,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       nodeCache,
       handleNodeEdit,
       handleDeleteFolder,
+      handleClearFolder,
       handleDeleteChat,
       handleNodeCreate,
       handleSaveEdit

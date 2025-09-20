@@ -35,7 +35,7 @@ export interface PagesActions {
   addGeneratedPage: (sourcePageId: string, generatedPageId: string) => void
 
   // 文件夹管理
-  createFolder: (name: string, parentId?: string) => PageFolder
+  createFolder: (name: string, parentId?: string, order?: number) => PageFolder
   updateFolder: (id: string, updates: Partial<PageFolder>) => void
   deleteFolder: (id: string) => void
   moveFolder: (folderId: string, newOrder: number, targetParentId?: string) => void
@@ -47,7 +47,7 @@ export interface PagesActions {
   getFoldersByParentId: (parentId?: string) => PageFolder[]
 
   // 页面创建和打开
-  createAndOpenChat: (title: string, folderId?: string, lineage?: PageLineage) => string
+  createAndOpenChat: (title: string, folderId?: string, order?: number, lineage?: PageLineage) => string
   createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenSettingsPage: (defaultActiveTab?: string) => string
@@ -245,17 +245,21 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       },
 
       // 文件夹管理
-      createFolder: (name, parentId) => {
+      createFolder: (name, parentId, order) => {
         try {
-          // 获取同级文件夹的最大order值
-          const siblingFolders = get().folders.filter(f => f.parentId === parentId)
-          const maxOrder = siblingFolders.length > 0 
-            ? Math.max(...siblingFolders.map(f => f.order || 0))
-            : 0
-          
+          // 如果没有指定order，获取同级文件夹的最大order值
+          let finalOrder = order
+          if (finalOrder === undefined) {
+            const siblingFolders = get().folders.filter(f => f.parentId === parentId)
+            const maxOrder = siblingFolders.length > 0
+              ? Math.max(...siblingFolders.map(f => f.order || 0))
+              : 0
+            finalOrder = maxOrder + 1000 // 新文件夹添加到最后
+          }
+
           const newFolder = {
             ...createNewFolder(name, parentId),
-            order: maxOrder + 1000 // 新文件夹添加到最后
+            order: finalOrder
           }
           
           set((state) => {
@@ -357,23 +361,27 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       },
 
       // 页面创建和打开
-      createAndOpenChat: (title, folderId, lineage) => {
+      createAndOpenChat: (title, folderId, order, lineage) => {
         try {
           const timestamp = Date.now()
-          
-          // 获取同文件夹下的最大order值
-          const siblingPages = get().pages.filter(p => p.folderId === folderId)
-          const maxOrder = siblingPages.length > 0 
-            ? Math.max(...siblingPages.map(p => p.order || 0))
-            : 0
-          
+
+          // 如果没有指定order，获取同文件夹下的最大order值
+          let finalOrder = order
+          if (finalOrder === undefined) {
+            const siblingPages = get().pages.filter(p => p.folderId === folderId)
+            const maxOrder = siblingPages.length > 0
+              ? Math.max(...siblingPages.map(p => p.order || 0))
+              : 0
+            finalOrder = maxOrder + 1000 // 新节点添加到最后
+          }
+
           const newPage: Page = {
             id: uuidv4(),
             title,
             type: 'regular',
             createdAt: timestamp,
             updatedAt: timestamp,
-            order: maxOrder + 1000, // 新节点添加到最后
+            order: finalOrder,
             folderId,
             messages: [],
             messageMap: {},

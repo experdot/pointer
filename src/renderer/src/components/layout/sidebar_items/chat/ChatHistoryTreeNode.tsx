@@ -21,6 +21,7 @@ interface ChatHistoryTreeNodeProps {
   isEditing?: boolean
   onEdit?: () => void
   onDelete?: () => void
+  onClear?: () => void
   onCreate?: (type: 'folder' | 'chat') => void
   onChatClick?: (chatId: string) => void
   onSaveEdit?: (nodeId: string, nodeType: 'folder' | 'chat', newValue: string) => void
@@ -34,6 +35,7 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   isEditing,
   onEdit,
   onDelete,
+  onClear,
   onCreate,
   onChatClick,
   onSaveEdit,
@@ -89,12 +91,6 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
     if (type === 'folder') {
       return [
         {
-          key: 'rename',
-          label: '重命名',
-          icon: <EditOutlined />,
-          onClick: () => startInlineEdit()
-        },
-        {
           key: 'addChat',
           label: '新建聊天',
           icon: <MessageOutlined />,
@@ -107,7 +103,23 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           onClick: () => onCreate?.('folder')
         },
         {
+          key: 'rename',
+          label: '重命名',
+          icon: <EditOutlined />,
+          onClick: () => startInlineEdit()
+        },
+        {
           type: 'divider'
+        },
+        {
+          key: 'clear',
+          label: '清空文件夹',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            onClear?.()
+          }
         },
         {
           key: 'delete',
