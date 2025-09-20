@@ -17,6 +17,7 @@ interface ExportModalProps {
 export interface ExportSettings {
   includeModelName: boolean
   includeTimestamp: boolean
+  includeReasoningContent: boolean
 }
 
 export default function ExportModal({
@@ -32,7 +33,8 @@ export default function ExportModal({
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([])
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     includeModelName: true,
-    includeTimestamp: true
+    includeTimestamp: true,
+    includeReasoningContent: false
   })
 
   const { message } = App.useApp()
@@ -110,6 +112,14 @@ export default function ExportModal({
             }
           >
             包含时间戳
+          </Checkbox>
+          <Checkbox
+            checked={exportSettings.includeReasoningContent}
+            onChange={(e) =>
+              setExportSettings(prev => ({ ...prev, includeReasoningContent: e.target.checked }))
+            }
+          >
+            包含思考过程
           </Checkbox>
         </Space>
       </div>

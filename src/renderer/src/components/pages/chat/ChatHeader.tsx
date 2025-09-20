@@ -107,7 +107,7 @@ export default function ChatHeader({
           exportContent += '\n'
         }
 
-        if (msg.reasoning_content) {
+        if (exportSettings.includeReasoningContent && msg.reasoning_content) {
           exportContent += `**思考过程:**\n${msg.reasoning_content}\n\n`
         }
 
@@ -116,7 +116,9 @@ export default function ChatHeader({
       })
 
       // 使用 Electron 的文件系统API保存文件
-      const fileName = `${chatTitle || '聊天记录'}_${new Date().toISOString().slice(0, 10)}.txt`
+      const now = new Date()
+      const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+      const fileName = `${chatTitle || '聊天记录'}_${timeString}.txt`
 
       // 调用主进程保存文件
       const result = await window.api.saveFile({
