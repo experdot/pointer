@@ -11,7 +11,8 @@ import {
   Input,
   Checkbox,
   Space,
-  Tooltip
+  Tooltip,
+  Pagination
 } from 'antd'
 import type { InputRef } from 'antd'
 import {
@@ -54,6 +55,8 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
   const inputRef = useRef<InputRef>(null)
   const [inputValue, setInputValue] = useState('')
   const [showOptions, setShowOptions] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
 
   // 执行搜索
   const performSearch = useCallback(
@@ -78,6 +81,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
           const results = searchMessages(pages, query, searchOptions)
           setSearchResults(results)
           setIsSearching(false)
+          setCurrentPage(1) // 重置分页
         } catch (error) {
           console.error('搜索失败:', error)
           setSearchResults([])
@@ -99,6 +103,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       if (!value.trim()) {
         setSearchResults([])
         setIsSearching(false)
+        setCurrentPage(1)
         if (searchTimeout) {
           clearTimeout(searchTimeout)
         }
@@ -126,6 +131,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
     setInputValue('')
     setSearchResults([])
     setIsSearching(false)
+    setCurrentPage(1)
     if (searchTimeout) {
       clearTimeout(searchTimeout)
     }
@@ -150,6 +156,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
             const results = searchMessages(pages, value, searchOptions)
             setSearchResults(results)
             setIsSearching(false)
+            setCurrentPage(1)
           } catch (error) {
             console.error('搜索失败:', error)
             setSearchResults([])
@@ -175,6 +182,18 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
     [searchOptions, inputValue, performSearch]
   )
 
+  // 处理分页变化
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
+
+  // 计算当前页的数据
+  const getCurrentPageData = useCallback(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    return searchResults.slice(startIndex, endIndex)
+  }, [searchResults, currentPage, pageSize])
+
   // 组件卸载时清理
   useEffect(() => {
     return () => {
@@ -199,6 +218,7 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       setInputValue('')
       setSearchResults([])
       setIsSearching(false)
+      setCurrentPage(1)
       if (searchTimeout) {
         clearTimeout(searchTimeout)
       }
@@ -337,25 +357,31 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
       ) : inputValue && searchResults.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到相关结果" />
       ) : searchResults.length > 0 ? (
-        <>
+        <div className="search-results-with-pagination">
           <div className="search-results-header">
             <Text type="secondary">找到 {searchResults.length} 条结果</Text>
           </div>
-          <List
-            className="search-results-list"
-            dataSource={searchResults}
-            renderItem={renderSearchResult}
-            pagination={
-              searchResults.length > 10
-                ? {
-                    pageSize: 10,
-                    size: 'small',
-                    showSizeChanger: false
-                  }
-                : false
-            }
-          />
-        </>
+          <div className="search-results-list-container">
+            <List
+              className="search-results-list"
+              dataSource={getCurrentPageData()}
+              renderItem={renderSearchResult}
+              pagination={false}
+            />
+          </div>
+          {searchResults.length > pageSize && (
+            <div className="search-pagination">
+              <Pagination
+                current={currentPage}
+                total={searchResults.length}
+                pageSize={pageSize}
+                size="small"
+                showSizeChanger={false}
+                onChange={handlePageChange}
+              />
+            </div>
+          )}
+        </div>
       ) : (
         <div className="search-placeholder">
           <SearchOutlined className="search-placeholder-icon" />
@@ -368,8 +394,50 @@ export default function GlobalSearch({ visible, onClose, embedded = false }: Glo
   if (embedded) {
     return (
       <div className="global-search-embedded">
-        {searchContent}
-        {searchResultsSection}
+        <div className="search-top">
+          {searchContent}
+          {searchResults.length > 0 && (
+            <div className="search-results-header">
+              <Text type="secondary">找到 {searchResults.length} 条结果</Text>
+            </div>
+          )}
+        </div>
+
+        <div className="search-middle">
+          {isSearching ? (
+            <div className="search-loading">
+              <Spin size="large" />
+              <Text type="secondary">搜索中...</Text>
+            </div>
+          ) : inputValue && searchResults.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到相关结果" />
+          ) : searchResults.length > 0 ? (
+            <List
+              className="search-results-list"
+              dataSource={getCurrentPageData()}
+              renderItem={renderSearchResult}
+              pagination={false}
+            />
+          ) : (
+            <div className="search-placeholder">
+              <SearchOutlined className="search-placeholder-icon" />
+              <Text type="secondary">输入关键词搜索所有聊天记录</Text>
+            </div>
+          )}
+        </div>
+
+        {searchResults.length > pageSize && (
+          <div className="search-bottom">
+            <Pagination
+              current={currentPage}
+              total={searchResults.length}
+              pageSize={pageSize}
+              size="small"
+              showSizeChanger={false}
+              onChange={handlePageChange}
+            />
+          </div>
+        )}
       </div>
     )
   }

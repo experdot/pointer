@@ -1,8 +1,25 @@
 /* Embedded Components Styles */
-.global-search-embedded .search-results-section {
+.global-search-embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.search-top {
+  flex-shrink: 0;
+}
+
+.search-middle {
   flex: 1;
   overflow-y: auto;
-  max-height: none;
+  min-height: 0;
+}
+
+.search-bottom {
+  flex-shrink: 0;
+  padding: 16px 0;
+  text-align: center;
+  border-top: 1px solid #f0f0f0;
 }
 
 .global-search-overlay {
@@ -46,7 +63,20 @@
 
 .search-results-section {
   max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-results-section .search-results-list-container {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+}
+
+.search-results-section .search-pagination {
+  flex-shrink: 0;
+  margin-top: 16px;
+  text-align: center;
 }
 
 .search-loading {
@@ -56,6 +86,7 @@
   justify-content: center;
   padding: 40px 20px;
   gap: 16px;
+  height: 100%;
 }
 
 .search-placeholder {
@@ -65,6 +96,7 @@
   justify-content: center;
   padding: 40px 20px;
   gap: 16px;
+  height: 100%;
 }
 
 .search-placeholder-icon {
@@ -73,6 +105,7 @@
 }
 
 .search-results-header {
+  flex-shrink: 0;
   margin-bottom: 12px;
   padding: 0 8px;
 }

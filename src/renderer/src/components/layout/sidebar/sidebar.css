@@ -30,12 +30,20 @@
   justify-content: space-between;
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
 
 .sidebar-content {
   flex: 1;
   padding: 8px;
   overflow-y: auto;
+  min-height: 0;
+}
+
+.sidebar-search .sidebar-content {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
 }
 
 .sidebar-collapsed {
@@ -45,4 +53,12 @@
   padding: 16px 8px;
   background: #fafafa;
   border-right: 1px solid #f0f0f0;
+}
+
+.sidebar-explore,
+.sidebar-search,
+.sidebar-tasks {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
