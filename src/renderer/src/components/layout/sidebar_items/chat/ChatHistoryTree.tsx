@@ -516,7 +516,12 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
   }, [
     // 只在数据结构发生实质性变化时重新构建
     folders.map(f => `${f.id}-${f.name}-${f.parentId}-${f.order}-${f.expanded}`).join(','),
-    pages.map(p => `${p.id}-${p.title}-${p.folderId}-${p.order}`).join(','),
+    pages.map(p => {
+      // 对于聊天页面，需要包含消息状态以便正确更新状态指示器
+      const streamingCount = p.messages?.filter(msg => msg.isStreaming)?.length || 0
+      const hasStreamingMessage = !!p.streamingMessage
+      return `${p.id}-${p.title}-${p.folderId}-${p.order}-${p.messages?.length || 0}-${streamingCount}-${hasStreamingMessage}`
+    }).join(','),
     editingNodeKey
   ])
 

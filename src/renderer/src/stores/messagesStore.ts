@@ -110,7 +110,7 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
               let updatedMessages = [...(page.messages || [])]
               const messageMap = { ...(page.messageMap || {}) }
 
-              // 更新消息映射
+              // 更新消息映射，确保 isStreaming 状态正确
               messageMap[newMessage.id] = newMessage
 
               // 更新父消息的子消息列表
@@ -371,7 +371,24 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                     : msg
                 ) || []
 
-              updatePage(chatId, { messages: updatedMessages })
+              // 同步更新 messageMap
+              let updatedMessageMap = page.messageMap
+              if (updatedMessageMap && updatedMessageMap[messageId]) {
+                updatedMessageMap = {
+                  ...updatedMessageMap,
+                  [messageId]: {
+                    ...updatedMessageMap[messageId],
+                    content,
+                    reasoning_content,
+                    isStreaming: false
+                  }
+                }
+              }
+
+              updatePage(chatId, {
+                messages: updatedMessages,
+                messageMap: updatedMessageMap
+              })
             }
 
             // 清除流式消息状态
@@ -456,8 +473,23 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                     : msg
                 ) || []
 
+              // 同步更新 messageMap
+              let updatedMessageMap = page.messageMap
+              if (updatedMessageMap && updatedMessageMap[messageId]) {
+                updatedMessageMap = {
+                  ...updatedMessageMap,
+                  [messageId]: {
+                    ...updatedMessageMap[messageId],
+                    content,
+                    reasoning_content,
+                    isStreaming: false
+                  }
+                }
+              }
+
               updatePage(chatId, {
                 messages: updatedMessages,
+                messageMap: updatedMessageMap,
                 streamingMessage: undefined
               })
             }
@@ -484,8 +516,23 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                     : msg
                 ) || []
 
+              // 同步更新 messageMap
+              let updatedMessageMap = page.messageMap
+              if (updatedMessageMap && updatedMessageMap[messageId]) {
+                updatedMessageMap = {
+                  ...updatedMessageMap,
+                  [messageId]: {
+                    ...updatedMessageMap[messageId],
+                    content,
+                    reasoning_content,
+                    isStreaming: false
+                  }
+                }
+              }
+
               updatePage(chatId, {
                 messages: updatedMessages,
+                messageMap: updatedMessageMap,
                 streamingMessage: undefined
               })
             }

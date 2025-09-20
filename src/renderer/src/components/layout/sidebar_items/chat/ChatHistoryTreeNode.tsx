@@ -295,22 +295,48 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   )
 }, (prevProps, nextProps) => {
   // 自定义比较函数，只在关键属性变化时重新渲染
-  return (
-    prevProps.type === nextProps.type &&
-    prevProps.data.id === nextProps.data.id &&
-    (prevProps.type === 'folder'
-      ? (prevProps.data as PageFolder).name === (nextProps.data as PageFolder).name &&
-        (prevProps.data as PageFolder).expanded === (nextProps.data as PageFolder).expanded
-      : (prevProps.data as Page).title === (nextProps.data as Page).title) &&
-    prevProps.isEditing === nextProps.isEditing &&
-    // 检查聊天状态是否变化
-    (prevProps.type !== 'chat' || (
-      (prevProps.data as Page).messages?.length === (nextProps.data as Page).messages?.length &&
-      !!(prevProps.data as Page).streamingMessage === !!(nextProps.data as Page).streamingMessage &&
-      (prevProps.data as Page).messages?.some((msg) => msg.isStreaming) ===
-      (nextProps.data as Page).messages?.some((msg) => msg.isStreaming)
-    ))
-  )
+  if (
+    prevProps.type !== nextProps.type ||
+    prevProps.data.id !== nextProps.data.id ||
+    prevProps.isEditing !== nextProps.isEditing
+  ) {
+    return false
+  }
+
+  if (prevProps.type === 'folder') {
+    const prevFolder = prevProps.data as PageFolder
+    const nextFolder = nextProps.data as PageFolder
+    return prevFolder.name === nextFolder.name && prevFolder.expanded === nextFolder.expanded
+  } else {
+    const prevPage = prevProps.data as Page
+    const nextPage = nextProps.data as Page
+
+    // 检查标题是否变化
+    if (prevPage.title !== nextPage.title) {
+      return false
+    }
+
+    // 检查消息数量是否变化
+    if (prevPage.messages?.length !== nextPage.messages?.length) {
+      return false
+    }
+
+    // 检查 streamingMessage 状态是否变化
+    if (!!(prevPage.streamingMessage) !== !!(nextPage.streamingMessage)) {
+      return false
+    }
+
+    // 检查是否有任何消息的 isStreaming 状态发生变化
+    // 需要更精确的比较：计算实际的流式消息数量
+    const prevStreamingCount = prevPage.messages?.filter(msg => msg.isStreaming)?.length || 0
+    const nextStreamingCount = nextPage.messages?.filter(msg => msg.isStreaming)?.length || 0
+
+    if (prevStreamingCount !== nextStreamingCount) {
+      return false
+    }
+
+    return true
+  }
 })
 
 export default ChatHistoryTreeNode
