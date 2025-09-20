@@ -268,6 +268,17 @@
   background-color: rgba(250, 173, 20, 0.1);
 }
 
+/* Favorited Message Highlighting */
+.message-item.favorited .message-card {
+  border: 1px solid #faad14 !important;
+  box-shadow: 0 2px 8px rgba(250, 173, 20, 0.15) !important;
+}
+
+.message-item.favorited .message-reasoning-card {
+  border: 1px solid #faad14 !important;
+  box-shadow: 0 1px 4px rgba(250, 173, 20, 0.1) !important;
+}
+
 /* Message Edit Container */
 .message-edit-container {
   display: flex;

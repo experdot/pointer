@@ -189,7 +189,7 @@ const MessageItem = React.memo(function MessageItem({
     <div
       ref={messageRef}
       data-message-id={message.id}
-      className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
+      className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isFavorited ? ' favorited' : ''}`}
     >
       <div className="message-avatar">
         <Avatar
