@@ -213,7 +213,7 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
             if (page && page.type === 'regular' && page.messages) {
               // 递归查找所有需要删除的消息ID（包括子分支）
               const messagesToDelete = new Set<string>()
-              
+
               const findChildrenRecursively = (currentMessageId: string) => {
                 messagesToDelete.add(currentMessageId)
                 const message = page.messages?.find(msg => msg.id === currentMessageId)
@@ -226,70 +226,113 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
 
               findChildrenRecursively(messageId)
 
-              // 过滤掉要删除的消息
-              const updatedMessages = page.messages?.filter(msg => !messagesToDelete.has(msg.id)) || []
-              
-              // 更新父消息的children数组（如果被删除的消息有父消息）
+              // 找到要删除的根消息（用于更新父消息）
               const messageToDelete = page.messages?.find(msg => msg.id === messageId)
-              let finalMessages = updatedMessages
-              
+
+              // 过滤掉要删除的消息
+              let updatedMessages = page.messages?.filter(msg => !messagesToDelete.has(msg.id)) || []
+
+              // 更新父消息的children数组（如果被删除的消息有父消息）
               if (messageToDelete?.parentId) {
-                finalMessages = updatedMessages.map(msg => 
-                  msg.id === messageToDelete.parentId 
-                    ? {
-                        ...msg,
-                        children: (msg.children || []).filter(childId => childId !== messageId)
-                      }
-                    : msg
-                )
+                updatedMessages = updatedMessages.map(msg => {
+                  if (msg.id === messageToDelete.parentId) {
+                    // 从父消息的children中移除被删除的messageId（不是所有被删除的消息）
+                    return {
+                      ...msg,
+                      children: (msg.children || []).filter(childId => childId !== messageId)
+                    }
+                  }
+                  return msg
+                })
               }
+
+              // 重建消息映射
+              const newMessageMap: { [key: string]: ChatMessage } = {}
+              updatedMessages.forEach(msg => {
+                newMessageMap[msg.id] = msg
+              })
 
               // 更新当前路径，移除已删除的消息
               let newCurrentPath = page.currentPath || []
-              
+
               // 如果当前路径包含被删除的消息，需要调整路径
-              if (messagesToDelete.has(newCurrentPath[newCurrentPath.length - 1])) {
-                // 找到被删除消息在路径中的位置
+              if (newCurrentPath.some(id => messagesToDelete.has(id))) {
+                // 找到第一个被删除消息在路径中的位置
                 const deletedMessageIndex = newCurrentPath.findIndex(id => messagesToDelete.has(id))
                 if (deletedMessageIndex !== -1) {
                   // 截取到被删除消息之前的路径
                   newCurrentPath = newCurrentPath.slice(0, deletedMessageIndex)
-                  
-                  // 如果删除了路径中的消息，尝试找到同级的其他消息作为替代
-                  if (messageToDelete?.parentId && deletedMessageIndex > 0) {
-                    const parentId = newCurrentPath[newCurrentPath.length - 1]
-                    const parentMessage = finalMessages.find(msg => msg.id === parentId)
+
+                  // 递归构建路径到节点的函数
+                  const buildPathToNode = (nodeId: string): string[] => {
+                    const node = updatedMessages.find(msg => msg.id === nodeId)
+                    if (!node) return []
+                    if (!node.parentId) return [nodeId]
+                    const parentPath = buildPathToNode(node.parentId)
+                    return [...parentPath, nodeId]
+                  }
+
+                  // 递归向下找到最新子节点的函数
+                  const extendPathToLeaf = (path: string[]): string[] => {
+                    if (path.length === 0) return path
+                    const lastNodeId = path[path.length - 1]
+                    const lastNode = updatedMessages.find(msg => msg.id === lastNodeId)
+
+                    if (lastNode?.children && lastNode.children.length > 0) {
+                      const children = lastNode.children
+                        .map(id => updatedMessages.find(msg => msg.id === id))
+                        .filter(Boolean) as ChatMessage[]
+
+                      if (children.length > 0) {
+                        children.sort((a, b) => b.timestamp - a.timestamp)
+                        const newestChild = children[0]
+                        return extendPathToLeaf([...path, newestChild.id])
+                      }
+                    }
+                    return path
+                  }
+
+                  // 处理不同情况
+                  if (messageToDelete?.parentId) {
+                    // 情况1：删除的消息有父节点
+                    const parentMessage = updatedMessages.find(msg => msg.id === messageToDelete.parentId)
                     if (parentMessage?.children && parentMessage.children.length > 0) {
-                      // 选择同级的第一个子消息继续路径
-                      newCurrentPath.push(parentMessage.children[0])
+                      // 找到最近的同级兄弟
+                      const siblings = parentMessage.children
+                        .map(id => updatedMessages.find(msg => msg.id === id))
+                        .filter(Boolean) as ChatMessage[]
+
+                      if (siblings.length > 0) {
+                        siblings.sort((a, b) => b.timestamp - a.timestamp)
+                        const newestSibling = siblings[0]
+                        // 构建完整路径并扩展到叶子节点
+                        newCurrentPath = extendPathToLeaf(buildPathToNode(newestSibling.id))
+                      }
+                      // 如果没有兄弟节点，路径停留在父节点
+                    }
+                    // 如果父节点没有其他子节点，路径停留在父节点
+                  } else {
+                    // 情况2：删除的是根级别的消息（没有父节点）
+                    // 找到其他根级别的消息
+                    const rootMessages = updatedMessages.filter(msg => !msg.parentId)
+                    if (rootMessages.length > 0) {
+                      // 选择最新的根消息
+                      rootMessages.sort((a, b) => b.timestamp - a.timestamp)
+                      const newestRoot = rootMessages[0]
+                      // 构建路径并扩展到叶子节点
+                      newCurrentPath = extendPathToLeaf([newestRoot.id])
+                    } else {
+                      // 如果没有其他根消息，清空路径
+                      newCurrentPath = []
                     }
                   }
                 }
               }
 
-              // 更新消息映射（如果存在）
-              let updatedMessageMap = page.messageMap
-              if (updatedMessageMap) {
-                const newMessageMap = { ...updatedMessageMap }
-                messagesToDelete.forEach(id => {
-                  delete newMessageMap[id]
-                })
-                
-                // 更新父消息在messageMap中的children
-                if (messageToDelete?.parentId && newMessageMap[messageToDelete.parentId]) {
-                  newMessageMap[messageToDelete.parentId] = {
-                    ...newMessageMap[messageToDelete.parentId],
-                    children: (newMessageMap[messageToDelete.parentId].children || []).filter(childId => childId !== messageId)
-                  }
-                }
-                
-                updatedMessageMap = newMessageMap
-              }
-
-              updatePage(chatId, { 
-                messages: finalMessages,
+              updatePage(chatId, {
+                messages: updatedMessages,
                 currentPath: newCurrentPath,
-                messageMap: updatedMessageMap
+                messageMap: newMessageMap
               })
             }
           } catch (error) {
