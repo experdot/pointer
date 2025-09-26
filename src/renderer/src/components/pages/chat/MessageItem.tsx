@@ -86,6 +86,7 @@ const MessageItem = React.memo(function MessageItem({
   const [editContent, setEditContent] = useState(message.content)
   const [reasoningExpanded, setReasoningExpanded] = useState<string[]>([])
   const messageRef = useRef<HTMLDivElement>(null)
+  const editContainerRef = useRef<HTMLDivElement>(null)
 
   // 订阅流式消息状态
   const streamingMessage = useStreamingMessage(chatId, message.id)
@@ -127,6 +128,30 @@ const MessageItem = React.memo(function MessageItem({
     setIsEditing(true)
     setEditContent(currentContent)
   }
+
+  // 当进入编辑状态时，滚动到编辑框
+  useEffect(() => {
+    if (isEditing && editContainerRef.current) {
+      // 使用 setTimeout 确保 DOM 已更新
+      setTimeout(() => {
+        if (editContainerRef.current) {
+          // 滚动到编辑容器，确保它在视口中可见
+          editContainerRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          })
+
+          // 聚焦到编辑框（通过查找 textarea 元素）
+          const textarea = editContainerRef.current.querySelector('textarea')
+          if (textarea) {
+            textarea.focus()
+            // 将光标移动到末尾
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+          }
+        }
+      }, 100)
+    }
+  }, [isEditing])
 
   const handleSaveEdit = () => {
     if (editContent.trim() !== currentContent) {
@@ -300,7 +325,7 @@ const MessageItem = React.memo(function MessageItem({
 
             <Card size="small" className="message-card">
               {isEditing ? (
-                <div className="message-edit-container">
+                <div className="message-edit-container" ref={editContainerRef}>
                   <TextArea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
