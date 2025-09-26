@@ -173,7 +173,7 @@ const MessageList = React.memo(function MessageList({
   const scrollToMessage = (messageId: string, behavior: 'smooth' | 'instant' = 'smooth') => {
     const messageElement = messageRefs.current.get(messageId)
     if (messageElement) {
-      messageElement.scrollIntoView({ behavior, block: 'center' })
+      messageElement.scrollIntoView({ behavior, block: 'start' })
     }
   }
 
