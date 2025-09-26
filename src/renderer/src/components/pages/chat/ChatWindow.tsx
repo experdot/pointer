@@ -286,6 +286,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   messageTreeCollapsed={messageTreeCollapsed}
                   onToggleMessageTree={handleToggleMessageTree}
                   llmConfigs={settings.llmConfigs}
+                  chat={chat}
                 />
                 <MessageList
                   chatId={chatId}

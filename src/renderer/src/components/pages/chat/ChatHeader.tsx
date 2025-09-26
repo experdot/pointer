@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Dropdown, Space, App } from 'antd'
+import { Button, Dropdown, Space, App, Tooltip } from 'antd'
 import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { ChatMessage } from '../../../types/type'
+import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
 import { formatExactDateTime } from '../../../utils/timeFormatter'
 import ExportModal, { ExportSettings } from './ExportModal'
+import { usePagesStore } from '../../../stores/pagesStore'
 
 interface ChatHeaderProps {
   chatId: string
@@ -21,6 +22,8 @@ interface ChatHeaderProps {
   onToggleMessageTree?: () => void
   // LLM配置
   llmConfigs?: Array<{ id: string; name: string }>
+  // 聊天页面对象
+  chat?: Page
 }
 
 export default function ChatHeader({
@@ -31,7 +34,8 @@ export default function ChatHeader({
   onExpandAll,
   messageTreeCollapsed = false,
   onToggleMessageTree,
-  llmConfigs = []
+  llmConfigs = [],
+  chat
 }: ChatHeaderProps) {
   const [isExportModalVisible, setIsExportModalVisible] = useState(false)
   const [selectMode, setSelectMode] = useState<'all' | 'current-path'>('current-path')
@@ -146,11 +150,104 @@ export default function ChatHeader({
   }
 
 
+  // 获取文件夹路径
+  const getFolderPath = (folderId: string | undefined): string => {
+    const { folders } = usePagesStore.getState()
+    if (!folderId) return '根目录'
+
+    const path: string[] = []
+    let currentFolderId: string | undefined = folderId
+
+    while (currentFolderId) {
+      const folder = folders.find(f => f.id === currentFolderId)
+      if (!folder) break
+      path.unshift(folder.name)
+      currentFolderId = folder.parentId
+    }
+
+    return path.length > 0 ? path.join(' / ') : '根目录'
+  }
+
+  // 构建元数据提示内容
+  const getMetadataTooltip = () => {
+    if (!chat) return null
+
+    const metadata: string[] = []
+
+    // 基本信息
+    metadata.push(`类型: ${chat.type === 'regular' ? '普通聊天' : chat.type === 'crosstab' ? '交叉表' : chat.type === 'object' ? '对象' : chat.type}`)
+    metadata.push(`创建时间: ${formatExactDateTime(chat.createdAt)}`)
+    metadata.push(`更新时间: ${formatExactDateTime(chat.updatedAt)}`)
+
+    // 文件夹路径
+    metadata.push(`文件夹: ${getFolderPath(chat.folderId)}`)
+
+    // 固定信息
+    if (chat.pinned) {
+      metadata.push(`状态: 已固定`)
+    }
+
+    // 溯源信息
+    if (chat.lineage) {
+      metadata.push(`\n--- 溯源信息 ---`)
+      const sourceMap = {
+        'user': '用户创建',
+        'object_to_crosstab': '对象→交叉表',
+        'crosstab_to_chat': '交叉表→聊天',
+        'object_to_chat': '对象→聊天',
+        'chat_to_object': '聊天→对象',
+        'other': '其他'
+      }
+      metadata.push(`来源: ${sourceMap[chat.lineage.source] || chat.lineage.source}`)
+      if (chat.lineage.sourcePageId) {
+        metadata.push(`源页面ID: ${chat.lineage.sourcePageId}`)
+      }
+      if (chat.lineage.description) {
+        metadata.push(`描述: ${chat.lineage.description}`)
+      }
+      if (chat.lineage.generatedAt) {
+        metadata.push(`生成时间: ${formatExactDateTime(chat.lineage.generatedAt)}`)
+      }
+      if (chat.lineage.generatedPageIds?.length > 0) {
+        metadata.push(`衍生页面数: ${chat.lineage.generatedPageIds.length}`)
+      }
+    }
+
+    // 消息统计
+    if (messages.length > 0) {
+      metadata.push(`\n--- 消息统计 ---`)
+      metadata.push(`总消息数: ${messages.length}`)
+      const userMessages = messages.filter(m => m.role === 'user').length
+      const assistantMessages = messages.filter(m => m.role === 'assistant').length
+      metadata.push(`用户消息: ${userMessages}`)
+      metadata.push(`AI消息: ${assistantMessages}`)
+
+      // 收藏的消息
+      const favoritedMessages = messages.filter(m => m.isFavorited).length
+      if (favoritedMessages > 0) {
+        metadata.push(`收藏消息: ${favoritedMessages}`)
+      }
+
+      // 当前路径信息
+      if (currentPath && currentPath.length > 0) {
+        metadata.push(`当前对话路径: ${currentPath.length} 条消息`)
+      }
+    }
+
+    return metadata.join('\n')
+  }
+
   return (
     <>
       <div className="chat-header">
         <div className="chat-header-left">
-          <h3 className="chat-title">{chatTitle || '未命名聊天'}</h3>
+          <Tooltip
+            title={<pre style={{ margin: 0, fontSize: '12px' }}>{getMetadataTooltip()}</pre>}
+            placement="bottomLeft"
+            overlayStyle={{ maxWidth: '400px' }}
+          >
+            <h3 className="chat-title" style={{ cursor: 'help' }}>{chatTitle || '未命名聊天'}</h3>
+          </Tooltip>
         </div>
         <div className="chat-header-right">
           <Space>
