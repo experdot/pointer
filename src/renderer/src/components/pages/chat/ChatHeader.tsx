@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react'
-import { Button, Dropdown, Space, App, Tooltip } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined } from '@ant-design/icons'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
+import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
@@ -27,6 +27,7 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({
+  chatId,
   chatTitle,
   messages,
   currentPath = [],
@@ -39,12 +40,62 @@ export default function ChatHeader({
 }: ChatHeaderProps) {
   const [isExportModalVisible, setIsExportModalVisible] = useState(false)
   const [selectMode, setSelectMode] = useState<'all' | 'current-path'>('current-path')
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(chatTitle || '')
+  const [isHoveringTitle, setIsHoveringTitle] = useState(false)
+  const inputRef = useRef<any>(null)
   const { message } = App.useApp()
+  const { updatePage } = usePagesStore()
 
   // 创建消息树实例
   const messageTree = useMemo(() => {
     return new MessageTree(messages)
   }, [messages])
+
+  // 当进入编辑状态时，自动聚焦输入框
+  useEffect(() => {
+    if (isEditingTitle && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditingTitle])
+
+  // 更新编辑中的标题
+  useEffect(() => {
+    setEditingTitle(chatTitle || '')
+  }, [chatTitle])
+
+  // 处理编辑标题
+  const handleEditTitle = () => {
+    setIsEditingTitle(true)
+  }
+
+  // 保存标题
+  const handleSaveTitle = () => {
+    const trimmedTitle = editingTitle.trim()
+    if (trimmedTitle && trimmedTitle !== chatTitle) {
+      updatePage(chatId, { title: trimmedTitle })
+      message.success('标题已更新')
+    }
+    setIsEditingTitle(false)
+    setIsHoveringTitle(false)
+  }
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditingTitle(chatTitle || '')
+    setIsEditingTitle(false)
+    setIsHoveringTitle(false)
+  }
+
+  // 处理按键事件
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle()
+    } else if (e.key === 'Escape') {
+      handleCancelEdit()
+    }
+  }
 
   // 获取当前路径的消息
   const currentPathMessages = useMemo(() => {
@@ -241,13 +292,50 @@ export default function ChatHeader({
     <>
       <div className="chat-header">
         <div className="chat-header-left">
-          <Tooltip
-            title={<pre style={{ margin: 0, fontSize: '12px' }}>{getMetadataTooltip()}</pre>}
-            placement="bottomLeft"
-            overlayStyle={{ maxWidth: '400px' }}
-          >
-            <h3 className="chat-title" style={{ cursor: 'help' }}>{chatTitle || '未命名聊天'}</h3>
-          </Tooltip>
+          {isEditingTitle ? (
+            <Input
+              ref={inputRef}
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyDown}
+              style={{
+                fontSize: '14px',
+                fontWeight: 'bold',
+                width: '300px'
+              }}
+              placeholder="输入标题"
+            />
+          ) : (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={() => setIsHoveringTitle(true)}
+              onMouseLeave={() => setIsHoveringTitle(false)}
+            >
+              <Tooltip
+                title={<pre style={{ margin: 0, fontSize: '12px' }}>{getMetadataTooltip()}</pre>}
+                placement="bottomLeft"
+                overlayStyle={{ maxWidth: '400px' }}
+              >
+                <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>{chatTitle || '未命名聊天'}</h3>
+              </Tooltip>
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={handleEditTitle}
+                style={{
+                  opacity: isHoveringTitle ? 1 : 0,
+                  transition: 'opacity 0.2s',
+                  visibility: isHoveringTitle ? 'visible' : 'hidden'
+                }}
+              />
+            </div>
+          )}
         </div>
         <div className="chat-header-right">
           <Space>
