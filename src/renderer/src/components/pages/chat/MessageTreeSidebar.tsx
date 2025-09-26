@@ -13,7 +13,9 @@ import {
   RightOutlined,
   DownOutlined as CollapseIcon,
   VerticalAlignTopOutlined,
-  VerticalAlignBottomOutlined
+  VerticalAlignBottomOutlined,
+  LeftOutlined,
+  RightOutlined as NextIcon
 } from '@ant-design/icons'
 import { ChatMessage } from '../../../types/type'
 import { MessageTree } from './messageTree'
@@ -51,7 +53,8 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
   width = 300,
   onWidthChange
 }) => {
-  const [selectedMessageId, setSelectedMessageId] = useState<string>('')
+  // 本地导航索引，用于在当前路径中导航，独立于实际路径
+  const [localNavigationIndex, setLocalNavigationIndex] = useState<number>(-1)
   const [expandedSiblings, setExpandedSiblings] = useState<Set<string>>(new Set())
   const [isResizing, setIsResizing] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -61,44 +64,19 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     return new MessageTree(messages)
   }, [messages])
 
-  // 构建显示路径的节点数据
+  // 构建显示路径的节点数据 - 始终基于 currentPath
   const pathNodes = useMemo(() => {
     if (!messages || messages.length === 0) return []
+    if (currentPath.length === 0) return []
 
     const messageMap = new Map<string, ChatMessage>()
     messages.forEach((msg) => {
       messageMap.set(msg.id, msg)
     })
 
-    // 如果没有选中节点，使用当前路径的最后一个节点，否则使用选中节点
-    let targetMessageId = selectedMessageId
-    if (!targetMessageId && currentPath.length > 0) {
-      targetMessageId = currentPath[currentPath.length - 1]
-    }
-
-    if (!targetMessageId) return []
-
-    // 构建从根节点到目标节点的完整路径
-    const buildFullPath = (messageId: string): string[] => {
-      const path: string[] = []
-      let currentMsg = messageMap.get(messageId)
-
-      while (currentMsg) {
-        path.unshift(currentMsg.id)
-        if (currentMsg.parentId) {
-          currentMsg = messageMap.get(currentMsg.parentId)
-        } else {
-          break
-        }
-      }
-
-      return path
-    }
-
-    const fullPath = buildFullPath(targetMessageId)
     const nodes: PathNodeData[] = []
 
-    fullPath.forEach((messageId, index) => {
+    currentPath.forEach((messageId, index) => {
       const message = messageMap.get(messageId)
       if (!message) return
 
@@ -127,22 +105,62 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     })
 
     return nodes
-  }, [messages, selectedMessageId, currentPath, expandedSiblings])
+  }, [messages, currentPath, expandedSiblings])
 
-  // 当前路径变化时更新选中状态
-  useEffect(() => {
-    if (currentPath.length > 0) {
-      const lastMessageId = currentPath[currentPath.length - 1]
-      setSelectedMessageId(lastMessageId)
+  // 计算当前选中的消息ID（基于导航索引）
+  const selectedMessageId = useMemo(() => {
+    console.log('[MessageTreeSidebar] Computing selectedMessageId:', {
+      localNavigationIndex,
+      pathNodesLength: pathNodes.length
+    })
+    if (localNavigationIndex >= 0 && localNavigationIndex < pathNodes.length) {
+      const msgId = pathNodes[localNavigationIndex].messageId
+      console.log('[MessageTreeSidebar] Selected from localNavigationIndex:', msgId)
+      return msgId
     }
-  }, [currentPath])
+    // 默认选中最后一条消息
+    if (pathNodes.length > 0) {
+      const msgId = pathNodes[pathNodes.length - 1].messageId
+      console.log('[MessageTreeSidebar] Selected last message:', msgId)
+      return msgId
+    }
+    console.log('[MessageTreeSidebar] No message selected')
+    return ''
+  }, [localNavigationIndex, pathNodes])
 
-  // 处理节点选择
+  // 记录上次的路径，用于判断路径是否真正变化了
+  const prevPathRef = useRef<string[]>([])
+
+  // 当路径变化时，检查是否需要重置导航索引
+  useEffect(() => {
+    const pathChanged = JSON.stringify(prevPathRef.current) !== JSON.stringify(currentPath)
+
+    if (pathChanged && currentPath.length > 0) {
+      // 如果当前有导航索引，检查选中的消息是否还在新路径中
+      if (localNavigationIndex >= 0 && localNavigationIndex < pathNodes.length) {
+        const currentSelectedId = pathNodes[localNavigationIndex]?.messageId
+        const stillInPath = currentPath.includes(currentSelectedId)
+
+        if (stillInPath) {
+          // 如果选中的消息还在新路径中，更新索引位置但不重置
+          const newIndex = currentPath.indexOf(currentSelectedId)
+          console.log('[MessageTreeSidebar] Path changed but message still in path, updating index to:', newIndex)
+          setLocalNavigationIndex(newIndex)
+          prevPathRef.current = currentPath
+          return
+        }
+      }
+
+      // 否则重置到默认位置
+      console.log('[MessageTreeSidebar] Path changed, resetting navigation index')
+      setLocalNavigationIndex(-1) // -1 表示使用默认（最后一条）
+      prevPathRef.current = currentPath
+    }
+  }, [currentPath, localNavigationIndex, pathNodes])
+
+  // 处理节点选择（点击节点切换分支）
   const handleNodeSelect = (messageId: string) => {
     const message = messages.find((msg) => msg.id === messageId)
-
-    // 立即更新选中状态
-    setSelectedMessageId(messageId)
 
     if (message && onNodeSelect) {
       onNodeSelect(messageId)
@@ -151,6 +169,15 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     // 构建到选中节点的路径
     if (message && onPathChange) {
       const newPath = buildPathToMessage(messageId)
+      // 设置导航索引到点击的消息在新路径中的位置
+      const indexInNewPath = newPath.indexOf(messageId)
+      if (indexInNewPath !== -1) {
+        console.log('[MessageTreeSidebar] Setting navigation index to clicked message:', indexInNewPath)
+        setLocalNavigationIndex(indexInNewPath)
+      } else {
+        // 如果找不到（不应该发生），重置到默认
+        setLocalNavigationIndex(-1)
+      }
       onPathChange(newPath)
     }
   }
@@ -295,6 +322,60 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     }
   }
 
+  // 导航到上一条/下一条消息（仅在当前路径中移动，不改变路径）
+  const navigateToPrevOrNext = (direction: 'prev' | 'next') => {
+    console.log('[MessageTreeSidebar] navigateToPrevOrNext called:', direction)
+    if (pathNodes.length === 0) return
+
+    // 获取当前索引
+    let currentIndex = localNavigationIndex
+    if (currentIndex === -1) {
+      // 如果还没有设置索引，使用最后一条消息
+      currentIndex = pathNodes.length - 1
+    }
+
+    console.log('[MessageTreeSidebar] Current index:', currentIndex, 'Total nodes:', pathNodes.length)
+
+    // 计算目标索引
+    let targetIndex: number
+    if (direction === 'prev') {
+      targetIndex = currentIndex - 1
+      if (targetIndex < 0) {
+        console.log('[MessageTreeSidebar] Already at first message')
+        return // 已经在第一个
+      }
+    } else {
+      targetIndex = currentIndex + 1
+      if (targetIndex >= pathNodes.length) {
+        console.log('[MessageTreeSidebar] Already at last message')
+        return // 已经在最后一个
+      }
+    }
+
+    console.log('[MessageTreeSidebar] Target index:', targetIndex)
+
+    // 更新导航索引
+    setLocalNavigationIndex(targetIndex)
+
+    // 通知父组件滚动到目标消息（仅用于滚动，不改变路径）
+    // 注意：这里调用 onNodeSelect 会触发父组件的路径重建
+    // 但是由于选中的消息在当前路径中，父组件会保持完整路径
+    const targetMessageId = pathNodes[targetIndex].messageId
+    console.log('[MessageTreeSidebar] Calling onNodeSelect with:', targetMessageId)
+    if (onNodeSelect) {
+      onNodeSelect(targetMessageId)
+    }
+  }
+
+  // 计算当前导航位置，用于判断按钮禁用状态
+  const currentNavigationIndex = useMemo(() => {
+    if (localNavigationIndex !== -1) {
+      return localNavigationIndex
+    }
+    // 默认为最后一个
+    return pathNodes.length - 1
+  }, [localNavigationIndex, pathNodes])
+
   // Resize 功能
   const MIN_WIDTH = 200
   const MAX_WIDTH = 600
@@ -406,6 +487,28 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                     className="nav-btn-collapsed"
                   />
                 </div>
+                <div className="stat-item">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<LeftOutlined />}
+                    onClick={() => navigateToPrevOrNext('prev')}
+                    title="上一条消息"
+                    className="nav-btn-collapsed"
+                    disabled={currentNavigationIndex <= 0 || pathNodes.length === 0}
+                  />
+                </div>
+                <div className="stat-item">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<NextIcon />}
+                    onClick={() => navigateToPrevOrNext('next')}
+                    title="下一条消息"
+                    className="nav-btn-collapsed"
+                    disabled={currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -499,6 +602,26 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                   icon={<VerticalAlignBottomOutlined />}
                   onClick={() => navigateToFirstOrLast('last')}
                   className="nav-btn path-nav-btn"
+                />
+              </Tooltip>
+              <Tooltip title="上一条消息">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<LeftOutlined />}
+                  onClick={() => navigateToPrevOrNext('prev')}
+                  className="nav-btn path-nav-btn"
+                  disabled={currentNavigationIndex <= 0 || pathNodes.length === 0}
+                />
+              </Tooltip>
+              <Tooltip title="下一条消息">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<NextIcon />}
+                  onClick={() => navigateToPrevOrNext('next')}
+                  className="nav-btn path-nav-btn"
+                  disabled={currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0}
                 />
               </Tooltip>
             </>
