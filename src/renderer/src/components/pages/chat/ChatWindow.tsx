@@ -276,6 +276,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onSendMessage,
             onStopGeneration,
             onRetryMessage,
+            onContinueMessage,
             onEditMessage,
             onEditAndResendMessage,
             onToggleFavorite,
@@ -325,6 +326,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   llmConfigs={settings.llmConfigs || []}
                   selectedMessageId={selectedMessageId}
                   onRetryMessage={onRetryMessage}
+                  onContinueMessage={onContinueMessage}
                   onEditMessage={onEditMessage}
                   onEditAndResendMessage={onEditAndResendMessage}
                   onToggleFavorite={onToggleFavorite}

@@ -43,8 +43,11 @@ interface MessageItemProps {
   branchCount?: number
   onBranchPrevious?: (messageId: string) => void
   onBranchNext?: (messageId: string) => void
+  // 消息状态
+  hasChildren?: boolean // 是否有后继消息
   // 原有的回调
   onRetry?: (messageId: string) => void
+  onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
   onToggleFavorite?: (messageId: string) => void
@@ -73,7 +76,9 @@ const MessageItem = React.memo(function MessageItem({
   branchCount = 1,
   onBranchPrevious,
   onBranchNext,
+  hasChildren = false,
   onRetry,
+  onContinue,
   onEdit,
   onEditAndResend,
   onToggleFavorite,
@@ -128,6 +133,10 @@ const MessageItem = React.memo(function MessageItem({
 
   const handleRetry = () => {
     onRetry?.(message.id)
+  }
+
+  const handleContinue = () => {
+    onContinue?.(message.id)
   }
 
   const handleEdit = () => {
@@ -554,6 +563,17 @@ const MessageItem = React.memo(function MessageItem({
                 />
               </Tooltip>
             )}
+            {message.role === 'user' && onContinue && !hasChildren && (
+              <Tooltip title="继续">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<SendOutlined />}
+                  onClick={handleContinue}
+                  disabled={isLoading || isCurrentlyStreaming}
+                />
+              </Tooltip>
+            )}
             {onDelete && (
               <Tooltip title="删除">
                 <Button
@@ -598,6 +618,7 @@ const MessageItem = React.memo(function MessageItem({
     prevProps.hasChildBranches === nextProps.hasChildBranches &&
     prevProps.branchIndex === nextProps.branchIndex &&
     prevProps.branchCount === nextProps.branchCount &&
+    prevProps.hasChildren === nextProps.hasChildren &&
     prevProps.llmConfigs === nextProps.llmConfigs
   )
 })

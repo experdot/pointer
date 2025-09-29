@@ -25,6 +25,7 @@ export interface UseMessageOperationsReturn {
     customParentId?: string
   ) => Promise<void>
   handleRetryMessage: (messageId: string) => Promise<void>
+  handleContinueMessage: (messageId: string) => Promise<void>
   handleEditMessage: (messageId: string, newContent: string) => Promise<void>
   handleEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
   handleToggleFavorite: (messageId: string) => void
@@ -171,6 +172,56 @@ export function useMessageOperations({
     [chat, isLoading, aiService, chatId, messageTree, setIsLoading]
   )
 
+  const handleContinueMessage = useCallback(
+    async (messageId: string) => {
+      if (!chat || isLoading) return
+
+      // 找到要继续的用户消息
+      const targetMessage = chat.messages.find((msg: any) => msg.id === messageId)
+      if (!targetMessage || targetMessage.role !== 'user') return
+
+      // 使用当前选中的模型
+      const llmConfig = aiService.getLLMConfig(selectedModel)
+      if (!llmConfig) {
+        message.error('请先在设置中配置LLM')
+        return
+      }
+
+      setIsLoading(true)
+
+      try {
+        // 获取当前路径上的消息历史，包含到该用户消息为止的所有消息
+        const currentPath = chat.currentPath || messageTree.getCurrentPath()
+        const currentPathMessages = currentPath
+          .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
+          .filter(Boolean) as ChatMessage[]
+
+        // 构建到目标消息为止的消息历史
+        let messagesToSend: ChatMessage[] = []
+        const targetIndex = currentPathMessages.findIndex((msg) => msg.id === messageId)
+        if (targetIndex >= 0) {
+          messagesToSend = currentPathMessages.slice(0, targetIndex + 1)
+        } else {
+          // 如果在当前路径中找不到，直接从所有消息中构建路径
+          messagesToSend = [targetMessage]
+        }
+
+        // 从该用户消息继续生成AI回复
+        await aiService.sendAIMessage(messagesToSend, llmConfig, messageId, 'chat', {
+          continue: {
+            fromMessageId: messageId
+          }
+        })
+      } catch (error) {
+        console.error('Continue message failed:', error)
+        message.error('继续对话失败，请检查网络连接和配置：' + error)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [chat, isLoading, aiService, chatId, messageTree, setIsLoading, selectedModel]
+  )
+
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!chat) return
@@ -193,6 +244,9 @@ export function useMessageOperations({
       const targetMessage = chat.messages.find((msg: any) => msg.id === messageId)
       if (!targetMessage) return
 
+      // 判断当前消息是否有后继消息（子消息）
+      const hasChildren = chat.messages.some((msg: any) => msg.parentId === messageId)
+
       // 如果是用户消息，使用当前选中的模型；如果是AI消息，使用原消息的模型
       const modelIdToUse = targetMessage.role === 'user' ? selectedModel : targetMessage.modelId
       const llmConfig = aiService.getLLMConfig(modelIdToUse)
@@ -205,81 +259,120 @@ export function useMessageOperations({
 
       try {
         if (targetMessage.role === 'user') {
-          // 对于用户消息，创建一个新的编辑版本作为兄弟分支
-          const editedUserMessage = {
-            id: uuidv4(),
-            role: 'user' as const,
-            content: newContent.trim(),
-            timestamp: Date.now(),
-            parentId: targetMessage.parentId || null
-          }
-
-          // 添加编辑后的用户消息
-          addMessageToParent(chatId, editedUserMessage, targetMessage.parentId)
-
-          // 获取到编辑消息父节点为止的消息历史
-          const currentPath = chat.currentPath || messageTree.getCurrentPath()
-          const currentPathMessages = currentPath
-            .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
-            .filter(Boolean) as ChatMessage[]
-
-          let messagesToSend: ChatMessage[] = []
-          if (targetMessage.parentId) {
-            const parentIndex = currentPathMessages.findIndex(
-              (msg) => msg.id === targetMessage.parentId
+          if (!hasChildren) {
+            // 没有后继消息时，直接编辑原消息内容，然后追加AI回复
+            const { updatePage } = usePagesStore.getState()
+            const updatedMessages = chat.messages.map((msg: any) =>
+              msg.id === messageId ? { ...msg, content: newContent.trim(), timestamp: Date.now() } : msg
             )
-            if (parentIndex >= 0) {
-              messagesToSend = [...currentPathMessages.slice(0, parentIndex + 1), editedUserMessage]
+            updatePage(chatId, { messages: updatedMessages })
+
+            // 获取当前路径上的消息历史
+            const currentPath = chat.currentPath || messageTree.getCurrentPath()
+            const currentPathMessages = currentPath
+              .map((id: string) => updatedMessages.find((msg: any) => msg.id === id))
+              .filter(Boolean) as ChatMessage[]
+
+            // 直接追加AI回复，就像正常发送消息一样
+            await aiService.sendAIMessage(
+              currentPathMessages,
+              llmConfig,
+              messageId,
+              'edit_resend',
+              {
+                editResend: {
+                  originalMessageId: messageId,
+                  newContent: newContent,
+                  isDirectAppend: true
+                }
+              }
+            )
+          } else {
+            // 有后继消息时，创建兄弟分支
+            const editedUserMessage = {
+              id: uuidv4(),
+              role: 'user' as const,
+              content: newContent.trim(),
+              timestamp: Date.now(),
+              parentId: targetMessage.parentId || null
+            }
+
+            // 添加编辑后的用户消息
+            addMessageToParent(chatId, editedUserMessage, targetMessage.parentId)
+
+            // 获取到编辑消息父节点为止的消息历史
+            const currentPath = chat.currentPath || messageTree.getCurrentPath()
+            const currentPathMessages = currentPath
+              .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
+              .filter(Boolean) as ChatMessage[]
+
+            let messagesToSend: ChatMessage[] = []
+            if (targetMessage.parentId) {
+              const parentIndex = currentPathMessages.findIndex(
+                (msg) => msg.id === targetMessage.parentId
+              )
+              if (parentIndex >= 0) {
+                messagesToSend = [...currentPathMessages.slice(0, parentIndex + 1), editedUserMessage]
+              } else {
+                messagesToSend = [editedUserMessage]
+              }
             } else {
               messagesToSend = [editedUserMessage]
             }
-          } else {
-            messagesToSend = [editedUserMessage]
-          }
 
-          // 生成新的AI回复
-          await aiService.sendAIMessage(
-            messagesToSend,
-            llmConfig,
-            editedUserMessage.id,
-            'edit_resend',
-            {
-              editResend: {
-                originalMessageId: messageId,
-                newContent: newContent
+            // 生成新的AI回复
+            await aiService.sendAIMessage(
+              messagesToSend,
+              llmConfig,
+              editedUserMessage.id,
+              'edit_resend',
+              {
+                editResend: {
+                  originalMessageId: messageId,
+                  newContent: newContent
+                }
               }
-            }
-          )
-        } else {
-          // 对于AI消息，从其父消息重新生成
-          const currentPath = chat.currentPath || messageTree.getCurrentPath()
-          const currentPathMessages = currentPath
-            .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
-            .filter(Boolean) as ChatMessage[]
-
-          let messagesToSend: ChatMessage[] = []
-          if (targetMessage.parentId) {
-            const parentIndex = currentPathMessages.findIndex(
-              (msg) => msg.id === targetMessage.parentId
             )
-            if (parentIndex >= 0) {
-              messagesToSend = currentPathMessages.slice(0, parentIndex + 1)
-            }
           }
+        } else {
+          if (!hasChildren) {
+            // AI消息没有后继消息时，只需要直接编辑内容，不需要重新生成
+            const { updatePage } = usePagesStore.getState()
+            const updatedMessages = chat.messages.map((msg: any) =>
+              msg.id === messageId ? { ...msg, content: newContent.trim(), timestamp: Date.now() } : msg
+            )
+            updatePage(chatId, { messages: updatedMessages })
+          } else {
+            // 有后继消息时，从父消息重新生成作为兄弟分支
+            const currentPath = chat.currentPath || messageTree.getCurrentPath()
+            const currentPathMessages = currentPath
+              .map((id: string) => chat.messages.find((msg: any) => msg.id === id))
+              .filter(Boolean) as ChatMessage[]
 
-          // 生成新的AI回复作为兄弟分支
-          await aiService.sendAIMessage(
-            messagesToSend,
-            llmConfig,
-            targetMessage.parentId,
-            'edit_resend',
-            {
-              editResend: {
-                originalMessageId: messageId,
-                newContent: newContent
+            let messagesToSend: ChatMessage[] = []
+            if (targetMessage.parentId) {
+              const parentIndex = currentPathMessages.findIndex(
+                (msg) => msg.id === targetMessage.parentId
+              )
+              if (parentIndex >= 0) {
+                messagesToSend = currentPathMessages.slice(0, parentIndex + 1)
               }
             }
-          )
+
+            // 生成新的AI回复作为兄弟分支
+            await aiService.sendAIMessage(
+              messagesToSend,
+              llmConfig,
+              targetMessage.parentId,
+              'edit_resend',
+              {
+                editResend: {
+                  originalMessageId: messageId,
+                  newContent: newContent
+                }
+              }
+            )
+          }
         }
       } catch (error) {
         console.error('Edit and resend failed:', error)
@@ -421,6 +514,7 @@ export function useMessageOperations({
   return {
     handleSendMessage,
     handleRetryMessage,
+    handleContinueMessage,
     handleEditMessage,
     handleEditAndResendMessage,
     handleToggleFavorite,

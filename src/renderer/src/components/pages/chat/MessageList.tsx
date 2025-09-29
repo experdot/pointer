@@ -17,6 +17,7 @@ interface MessageListProps {
   llmConfigs?: LLMConfig[]
   selectedMessageId?: string | null // 新增：选中的消息ID，用于滚动定位
   onRetryMessage?: (messageId: string) => void
+  onContinueMessage?: (messageId: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
   onEditAndResendMessage?: (messageId: string, newContent: string) => void
   onToggleFavorite?: (messageId: string) => void
@@ -42,6 +43,7 @@ const MessageList = React.memo(function MessageList({
   llmConfigs = [],
   selectedMessageId,
   onRetryMessage,
+  onContinueMessage,
   onEditMessage,
   onEditAndResendMessage,
   onToggleFavorite,
@@ -347,8 +349,11 @@ const MessageList = React.memo(function MessageList({
               branchCount={messageTree.getSiblingBranchCount(message.id)}
               onBranchPrevious={(messageId) => handleSiblingBranchSwitch(messageId, 'previous')}
               onBranchNext={(messageId) => handleSiblingBranchSwitch(messageId, 'next')}
+              // 消息状态
+              hasChildren={messages.some(msg => msg.parentId === message.id)}
               // 原有的回调
               onRetry={onRetryMessage}
+              onContinue={onContinueMessage}
               onEdit={onEditMessage}
               onEditAndResend={onEditAndResendMessage}
               onToggleFavorite={onToggleFavorite}

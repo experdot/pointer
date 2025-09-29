@@ -17,6 +17,7 @@ interface ChatLogicProps {
     onSendMessage: (content: string, customModelId?: string) => Promise<void>
     onStopGeneration: () => void
     onRetryMessage: (messageId: string) => Promise<void>
+    onContinueMessage: (messageId: string) => Promise<void>
     onEditMessage: (messageId: string, newContent: string) => Promise<void>
     onEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
     onToggleFavorite: (messageId: string) => void
@@ -178,6 +179,7 @@ export default function ChatLogic({
     onSendMessage: messageOperations.handleSendMessage,
     onStopGeneration: handleStopGeneration,
     onRetryMessage: messageOperations.handleRetryMessage,
+    onContinueMessage: messageOperations.handleContinueMessage,
     onEditMessage: messageOperations.handleEditMessage,
     onEditAndResendMessage: messageOperations.handleEditAndResendMessage,
     onToggleFavorite: messageOperations.handleToggleFavorite,
