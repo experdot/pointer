@@ -31,7 +31,8 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
     deletePage,
     deleteFolder,
     deleteMultiplePages,
-    updateFolder
+    updateFolder,
+    copyPage
   } = usePagesStore()
   const {
     selectedNodeId,
@@ -210,6 +211,33 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       })
     },
     [deletePage, modal]
+  )
+
+  const handleCopyChat = useCallback(
+    (chatId: string) => {
+      try {
+        const originalPage = pages.find(p => p.id === chatId)
+        if (!originalPage) return
+
+        // 复制聊天，标题自动添加"副本"后缀，保持在同一文件夹
+        const newPageId = copyPage(chatId)
+
+        // 可选：显示成功提示
+        // message.success('聊天已复制')
+
+        // 选中新复制的聊天
+        const { setSelectedNode } = useUIStore.getState()
+        setSelectedNode(newPageId, 'chat')
+
+        // 打开新复制的聊天
+        onChatClick(newPageId)
+      } catch (error) {
+        console.error('复制聊天失败:', error)
+        // 可选：显示错误提示
+        // message.error('复制聊天失败')
+      }
+    },
+    [pages, copyPage, onChatClick]
   )
 
   // 处理拖拽放置事件
@@ -463,6 +491,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 data={chat}
                 onEdit={() => handleNodeEdit(chat.id, 'chat')}
                 onDelete={() => handleDeleteChat(chat.id)}
+                onCopy={() => handleCopyChat(chat.id)}
                 onChatClick={onChatClick}
                 onSaveEdit={handleSaveEdit}
                 isEditing={editingNodeKey === nodeKey}
@@ -490,6 +519,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       handleDeleteFolder,
       handleClearFolder,
       handleDeleteChat,
+      handleCopyChat,
       handleNodeCreate,
       handleSaveEdit
     ]

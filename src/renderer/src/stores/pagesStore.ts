@@ -80,6 +80,9 @@ export interface PagesActions {
     sourcePageId: string
   }) => string
 
+  // 复制功能
+  copyPage: (pageId: string, newTitle?: string, targetFolderId?: string) => string
+
   // 工具方法
   clearAllPages: () => void
   importPages: (pages: Page[]) => void
@@ -892,6 +895,166 @@ ${params.nodeContext}
 
         // 同时保存到 IndexedDB
         folders.forEach((folder) => foldersStorage.saveFolder(folder))
+      },
+
+      copyPage: (pageId, newTitle, targetFolderId) => {
+        try {
+          const state = get()
+          const originalPage = state.pages.find((p) => p.id === pageId)
+
+          if (!originalPage) {
+            throw new Error(`Page with id ${pageId} not found`)
+          }
+
+          const timestamp = Date.now()
+
+          // 生成新的页面ID
+          const newPageId = uuidv4()
+
+          // 创建统一的ID映射表
+          const createIdMapping = (messages?: any[], messageMap?: { [messageId: string]: any }) => {
+            const idMap = new Map<string, string>()
+
+            // 为messages数组中的每个消息生成新ID
+            if (messages) {
+              messages.forEach(msg => {
+                idMap.set(msg.id, uuidv4())
+              })
+            }
+
+            // 为messageMap中可能存在但不在messages数组中的消息生成新ID
+            if (messageMap) {
+              Object.keys(messageMap).forEach(oldId => {
+                if (!idMap.has(oldId)) {
+                  idMap.set(oldId, uuidv4())
+                }
+              })
+            }
+
+            return idMap
+          }
+
+          // 创建统一的ID映射
+          const idMap = createIdMapping(originalPage.messages, originalPage.messageMap)
+
+          // 深度复制消息并重新生成ID
+          const copyMessagesWithNewIds = (messages?: any[]): any[] => {
+            if (!messages || messages.length === 0) return []
+
+            return messages.map(msg => ({
+              ...msg,
+              id: idMap.get(msg.id)!,
+              parentId: msg.parentId ? idMap.get(msg.parentId) : undefined,
+              replies: msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
+              children: msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
+              // 保持branchIndex（分支索引在消息关系中是相对的，不需要重新生成）
+              branchIndex: msg.branchIndex,
+              // 重置流式状态
+              isStreaming: false
+            }))
+          }
+
+          // 深度复制消息映射并重新生成ID
+          const copyMessageMapWithNewIds = (messageMap?: { [messageId: string]: any }): { [messageId: string]: any } => {
+            if (!messageMap) return {}
+
+            const newMessageMap: { [messageId: string]: any } = {}
+
+            Object.entries(messageMap).forEach(([oldId, msg]) => {
+              const newId = idMap.get(oldId)!
+              newMessageMap[newId] = {
+                ...msg,
+                id: newId,
+                parentId: msg.parentId ? idMap.get(msg.parentId) : undefined,
+                replies: msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
+                children: msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
+                // 保持branchIndex（分支索引在消息关系中是相对的，不需要重新生成）
+                branchIndex: msg.branchIndex,
+                // 重置流式状态
+                isStreaming: false
+              }
+            })
+
+            return newMessageMap
+          }
+
+          // 更新当前路径中的消息ID
+          const updateCurrentPath = (currentPath?: string[]): string[] => {
+            if (!currentPath) return []
+
+            return currentPath.map(oldId => idMap.get(oldId)).filter(Boolean) as string[]
+          }
+
+          // 深度复制特定类型的数据
+          const copyTypeSpecificData = () => {
+            const result: any = {}
+
+            // 对于crosstab类型，深度复制crosstabData
+            if (originalPage.type === 'crosstab' && originalPage.crosstabData) {
+              result.crosstabData = JSON.parse(JSON.stringify(originalPage.crosstabData))
+            }
+
+            // 对于object类型，深度复制objectData
+            if (originalPage.type === 'object' && originalPage.objectData) {
+              result.objectData = JSON.parse(JSON.stringify(originalPage.objectData))
+            }
+
+            return result
+          }
+
+          // 创建复制的页面
+          const copiedPage: Page = {
+            ...originalPage,
+            ...copyTypeSpecificData(), // 复制类型特定的数据
+            id: newPageId,
+            title: newTitle || `${originalPage.title} - 副本`,
+            folderId: targetFolderId !== undefined ? targetFolderId : originalPage.folderId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            // 复制消息和相关数据，重新生成所有ID
+            messages: copyMessagesWithNewIds(originalPage.messages),
+            messageMap: copyMessageMapWithNewIds(originalPage.messageMap),
+            // 重置一些状态
+            streamingMessage: undefined,
+            selectedMessageId: undefined,
+            // 处理溯源信息
+            lineage: originalPage.lineage ? {
+              ...originalPage.lineage,
+              source: 'user' as const, // 标记为用户手动复制
+              sourcePageId: pageId, // 记录原始页面ID
+              generatedPageIds: [], // 重置生成的页面列表
+              generatedAt: timestamp,
+              description: `复制自 "${originalPage.title}"`
+            } : {
+              source: 'user' as const,
+              sourcePageId: pageId,
+              generatedPageIds: [],
+              generatedAt: timestamp,
+              description: `复制自 "${originalPage.title}"`
+            }
+          }
+
+          // 更新当前路径
+          copiedPage.currentPath = updateCurrentPath(originalPage.currentPath)
+
+          // 如果有根消息ID，需要找到新的根消息ID
+          if (originalPage.rootMessageId) {
+            copiedPage.rootMessageId = idMap.get(originalPage.rootMessageId)
+          }
+
+          // 添加到状态
+          set((state) => {
+            state.pages.push(copiedPage)
+          })
+
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(copiedPage)
+
+          return newPageId
+        } catch (error) {
+          handleStoreError('pagesStore', 'copyPage', error)
+          throw error
+        }
       },
 
       exportPages: () => {

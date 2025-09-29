@@ -8,7 +8,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  FolderAddOutlined
+  FolderAddOutlined,
+  CopyOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { Page, PageFolder } from '../../../../types/type'
@@ -22,6 +23,7 @@ interface ChatHistoryTreeNodeProps {
   onEdit?: () => void
   onDelete?: () => void
   onClear?: () => void
+  onCopy?: () => void
   onCreate?: (type: 'folder' | 'chat') => void
   onChatClick?: (chatId: string) => void
   onSaveEdit?: (nodeId: string, nodeType: 'folder' | 'chat', newValue: string) => void
@@ -36,6 +38,7 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   onEdit,
   onDelete,
   onClear,
+  onCopy,
   onCreate,
   onChatClick,
   onSaveEdit,
@@ -139,6 +142,15 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           label: '重命名',
           icon: <EditOutlined />,
           onClick: () => startInlineEdit()
+        },
+        {
+          key: 'copy',
+          label: '复制聊天',
+          icon: <CopyOutlined />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            onCopy?.()
+          }
         },
         {
           type: 'divider'
