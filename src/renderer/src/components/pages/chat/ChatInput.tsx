@@ -172,6 +172,7 @@ interface ChatInputProps {
 
 export interface ChatInputRef {
   focus: () => void
+  insertQuote: (text: string) => void
 }
 
 const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
@@ -199,10 +200,28 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
     const textAreaRef = useRef<any>(null)
     const { settings } = useSettingsStore()
 
+    const insertQuote = useCallback((text: string) => {
+      const currentValue = value
+      const newValue = currentValue ? `${currentValue}\n\n${text}\n\n` : `${text}\n\n`
+      onChange(newValue)
+
+      // 聚焦到输入框并将光标移到末尾
+      setTimeout(() => {
+        if (textAreaRef.current) {
+          textAreaRef.current.focus()
+          const textarea = textAreaRef.current.resizableTextArea?.textArea || textAreaRef.current
+          if (textarea) {
+            textarea.setSelectionRange(newValue.length, newValue.length)
+          }
+        }
+      }, 100)
+    }, [value, onChange])
+
     useImperativeHandle(ref, () => ({
       focus: () => {
         textAreaRef.current?.focus()
-      }
+      },
+      insertQuote
     }))
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

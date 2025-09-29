@@ -119,6 +119,11 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     collapseAIMessages(chatId, aiMessageIds)
   }, [collapseAIMessages, chatId, chat?.messages])
 
+  const handleQuote = useCallback((text: string) => {
+    // 将引用的文本插入到输入框中
+    chatInputRef.current?.insertQuote(text)
+  }, [])
+
   const handleOpenSettings = useCallback(() => {
     const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
     setActiveTab(settingsPageId)
@@ -314,6 +319,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onModelChange={onModelChangeForMessage}
                   onDeleteMessage={onDeleteMessage}
                   onSwitchBranch={handleSwitchBranch}
+                  // 引用相关props
+                  onQuote={handleQuote}
                   // 折叠相关props
                   collapsedMessages={collapsedMessagesForChat}
                   onToggleMessageCollapse={handleToggleMessageCollapse}

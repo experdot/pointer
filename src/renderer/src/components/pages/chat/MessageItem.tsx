@@ -15,7 +15,8 @@ import {
   PictureOutlined,
   DownOutlined,
   UpOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  MessageOutlined
 } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
@@ -48,6 +49,7 @@ interface MessageItemProps {
   onToggleFavorite?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
+  onQuote?: (text: string) => void
   // 折叠相关
   isCollapsed?: boolean
   onToggleCollapse?: (messageId: string) => void
@@ -75,6 +77,7 @@ const MessageItem = React.memo(function MessageItem({
   onToggleFavorite,
   onModelChange,
   onDelete,
+  onQuote,
   isCollapsed = false,
   onToggleCollapse,
   searchQuery,
@@ -206,6 +209,28 @@ const MessageItem = React.memo(function MessageItem({
     }
   }
 
+  // 处理引用文本
+  const handleQuote = () => {
+    const selection = window.getSelection()
+    let textToQuote = ''
+
+    if (selection && selection.toString().trim()) {
+      // 如果有选中文本，引用选中的文本
+      textToQuote = selection.toString().trim()
+    } else {
+      // 如果没有选中文本，引用整个消息内容
+      textToQuote = currentContent
+    }
+
+    // 格式化引用文本（使用markdown的引用语法）
+    const quotedText = textToQuote
+      .split('\n')
+      .map(line => `> ${line}`)
+      .join('\n')
+
+    onQuote?.(quotedText)
+  }
+
   // 右键菜单项
   const contextMenuItems = [
     {
@@ -213,6 +238,13 @@ const MessageItem = React.memo(function MessageItem({
       label: '复制',
       icon: <CopyOutlined />,
       onClick: handleContextMenuCopy
+    },
+    {
+      key: 'quote',
+      label: '引用',
+      icon: <MessageOutlined />,
+      onClick: handleQuote,
+      disabled: !onQuote
     }
   ]
 

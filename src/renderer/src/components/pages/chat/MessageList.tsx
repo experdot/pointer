@@ -24,6 +24,7 @@ interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void
   onSwitchBranch?: (messageId: string, branchIndex: number) => void
   onStopGeneration?: () => void
+  onQuote?: (text: string) => void
   // 折叠相关
   collapsedMessages?: string[]
   onToggleMessageCollapse?: (messageId: string) => void
@@ -48,7 +49,8 @@ const MessageList = React.memo(function MessageList({
   onSwitchBranch,
   collapsedMessages = [],
   onToggleMessageCollapse,
-  onOpenSettings
+  onOpenSettings,
+  onQuote
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -350,6 +352,7 @@ const MessageList = React.memo(function MessageList({
               onToggleFavorite={onToggleFavorite}
               onModelChange={onModelChange}
               onDelete={onDeleteMessage}
+              onQuote={onQuote}
               // 折叠相关
               isCollapsed={collapsedMessages.includes(message.id)}
               onToggleCollapse={onToggleMessageCollapse}
