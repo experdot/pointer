@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Avatar, Card, Typography, Button, Space, Input, Tooltip, Select, Collapse } from 'antd'
+import { Avatar, Card, Typography, Button, Space, Input, Tooltip, Select, Collapse, Dropdown, Menu } from 'antd'
 import {
   UserOutlined,
   RobotOutlined,
@@ -194,6 +194,28 @@ const MessageItem = React.memo(function MessageItem({
     onDelete?.(message.id)
   }
 
+  // 处理右键菜单复制
+  const handleContextMenuCopy = () => {
+    const selection = window.getSelection()
+    if (selection && selection.toString().trim()) {
+      // 如果有选中文本，复制选中的文本
+      navigator.clipboard.writeText(selection.toString())
+    } else {
+      // 如果没有选中文本，复制整个消息内容
+      navigator.clipboard.writeText(currentContent)
+    }
+  }
+
+  // 右键菜单项
+  const contextMenuItems = [
+    {
+      key: 'copy',
+      label: '复制',
+      icon: <CopyOutlined />,
+      onClick: handleContextMenuCopy
+    }
+  ]
+
   // 生成折叠状态下的预览文本
   const getPreviewText = (content: string, maxLength: number = 80) => {
     if (!content) return '消息已折叠，点击展开按钮查看内容'
@@ -302,20 +324,35 @@ const MessageItem = React.memo(function MessageItem({
                         </Text>
                       ),
                       children: (
-                        <div
-                          style={{
-                            marginBottom: 0,
-                            color: '#666',
-                            backgroundColor: '#fafafa',
-                            padding: '8px 12px',
-                            borderRadius: '4px',
-                            border: '1px solid #f0f0f0',
-                            userSelect: 'text',
-                            cursor: 'text'
+                        <Dropdown
+                          menu={{
+                            items: [
+                              {
+                                key: 'copy-reasoning',
+                                label: '复制思考过程',
+                                icon: <CopyOutlined />,
+                                onClick: () => navigator.clipboard.writeText(currentReasoningContent || '')
+                              }
+                            ]
                           }}
+                          trigger={['contextMenu']}
+                          disabled={isCurrentlyStreaming}
                         >
-                          <Markdown content={currentReasoningContent ?? ''} />
-                        </div>
+                          <div
+                            style={{
+                              marginBottom: 0,
+                              color: '#666',
+                              backgroundColor: '#fafafa',
+                              padding: '8px 12px',
+                              borderRadius: '4px',
+                              border: '1px solid #f0f0f0',
+                              userSelect: 'text',
+                              cursor: 'text'
+                            }}
+                          >
+                            <Markdown content={currentReasoningContent ?? ''} />
+                          </div>
+                        </Dropdown>
                       )
                     }
                   ]}
@@ -362,23 +399,29 @@ const MessageItem = React.memo(function MessageItem({
                   </div>
                 </div>
               ) : (
-                <div
-                  style={{
-                    marginBottom: 0,
-                    userSelect: 'text',
-                    cursor: 'text'
-                  }}
+                <Dropdown
+                  menu={{ items: contextMenuItems }}
+                  trigger={['contextMenu']}
+                  disabled={isCurrentlyStreaming}
                 >
-                  <SearchableMarkdown
-                    content={currentContent ?? ''}
-                    loading={isCurrentlyStreaming && !currentContent}
-                    searchQuery={searchQuery}
-                    messageId={message.id}
-                    getCurrentMatch={getCurrentMatch}
-                    getHighlightInfo={getHighlightInfo}
-                    currentMatchIndex={currentMatchIndex}
-                  />
-                </div>
+                  <div
+                    style={{
+                      marginBottom: 0,
+                      userSelect: 'text',
+                      cursor: 'text'
+                    }}
+                  >
+                    <SearchableMarkdown
+                      content={currentContent ?? ''}
+                      loading={isCurrentlyStreaming && !currentContent}
+                      searchQuery={searchQuery}
+                      messageId={message.id}
+                      getCurrentMatch={getCurrentMatch}
+                      getHighlightInfo={getHighlightInfo}
+                      currentMatchIndex={currentMatchIndex}
+                    />
+                  </div>
+                </Dropdown>
               )}
             </Card>
           </>
