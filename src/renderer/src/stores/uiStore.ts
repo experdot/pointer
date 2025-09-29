@@ -39,6 +39,7 @@ export interface UIActions {
   // 消息折叠
   toggleMessageCollapse: (chatId: string, messageId: string) => void
   collapseAllMessages: (chatId: string, messageIds: string[]) => void
+  collapseAIMessages: (chatId: string, messageIds: string[]) => void
   expandAllMessages: (chatId: string) => void
   isMessageCollapsed: (chatId: string, messageId: string) => boolean
 
@@ -158,6 +159,19 @@ export const useUIStore = create<UIState & UIActions>()(
           })
         } catch (error) {
           handleStoreError('uiStore', 'collapseAllMessages', error)
+        }
+      },
+
+      collapseAIMessages: (chatId, messageIds) => {
+        try {
+          set((state) => {
+            const currentCollapsed = state.collapsedMessages[chatId] || []
+            // 合并当前已折叠的消息和AI消息，去重
+            const newCollapsed = [...new Set([...currentCollapsed, ...messageIds])]
+            state.collapsedMessages[chatId] = newCollapsed
+          })
+        } catch (error) {
+          handleStoreError('uiStore', 'collapseAIMessages', error)
         }
       },
 

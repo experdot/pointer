@@ -36,6 +36,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     allMessagesCollapsed,
     toggleMessageCollapse,
     collapseAllMessages,
+    collapseAIMessages,
     expandAllMessages
   } = useUIStore()
   const { settings } = useSettingsStore()
@@ -109,6 +110,14 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const handleExpandAll = useCallback(() => {
     expandAllMessages(chatId)
   }, [expandAllMessages, chatId])
+
+  const handleCollapseAI = useCallback(() => {
+    // 筛选出所有AI消息的ID
+    const aiMessageIds = chat.messages
+      .filter((msg) => msg.role === 'assistant')
+      .map((msg) => msg.id)
+    collapseAIMessages(chatId, aiMessageIds)
+  }, [collapseAIMessages, chatId, chat?.messages])
 
   const handleOpenSettings = useCallback(() => {
     const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
@@ -283,6 +292,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   allMessagesCollapsed={allMessagesCollapsed[chatId] || false}
                   onCollapseAll={handleCollapseAll}
                   onExpandAll={handleExpandAll}
+                  onCollapseAI={handleCollapseAI}
                   messageTreeCollapsed={messageTreeCollapsed}
                   onToggleMessageTree={handleToggleMessageTree}
                   llmConfigs={settings.llmConfigs}

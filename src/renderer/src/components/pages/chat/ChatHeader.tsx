@@ -17,6 +17,7 @@ interface ChatHeaderProps {
   allMessagesCollapsed?: boolean
   onCollapseAll?: () => void
   onExpandAll?: () => void
+  onCollapseAI?: () => void
   // 消息树相关
   messageTreeCollapsed?: boolean
   onToggleMessageTree?: () => void
@@ -33,6 +34,7 @@ export default function ChatHeader({
   currentPath = [],
   onCollapseAll,
   onExpandAll,
+  onCollapseAI,
   messageTreeCollapsed = false,
   onToggleMessageTree,
   llmConfigs = [],
@@ -124,6 +126,24 @@ export default function ChatHeader({
         setSelectMode('all')
         setIsExportModalVisible(true)
       }
+    }
+  ]
+
+  const collapseOptions: MenuProps['items'] = [
+    {
+      key: 'collapse-all',
+      label: '折叠全部消息',
+      onClick: onCollapseAll
+    },
+    {
+      key: 'expand-all',
+      label: '展开全部消息',
+      onClick: onExpandAll
+    },
+    {
+      key: 'collapse-ai',
+      label: '仅折叠AI消息',
+      onClick: onCollapseAI
     }
   ]
 
@@ -351,28 +371,13 @@ export default function ChatHeader({
                 消息树
               </Button>
             )}
-            {/* 消息折叠/展开按钮 */}
+            {/* 消息折叠/展开下拉按钮 */}
             {messages.length > 0 && (
-              <>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DownOutlined />}
-                  onClick={onCollapseAll}
-                  title="折叠全部消息"
-                >
-                  折叠全部
+              <Dropdown menu={{ items: collapseOptions }} trigger={['click']}>
+                <Button type="text" size="small" icon={<DownOutlined />}>
+                  折叠展开
                 </Button>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<UpOutlined />}
-                  onClick={onExpandAll}
-                  title="展开全部消息"
-                >
-                  展开全部
-                </Button>
-              </>
+              </Dropdown>
             )}
             <Dropdown menu={{ items: exportOptions }} trigger={['click']}>
               <Button icon={<ExportOutlined />} type="text">
