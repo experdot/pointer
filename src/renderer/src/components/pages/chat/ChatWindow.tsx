@@ -124,6 +124,18 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     chatInputRef.current?.insertQuote(text)
   }, [])
 
+  const handleCreateNewChat = useCallback((text: string) => {
+    // 生成对话标题（取前30个字符）
+    const title = text.length > 30 ? text.substring(0, 30) + '...' : text
+
+    // 创建新对话并打开
+    const { createChatWithInitialMessage } = usePagesStore.getState()
+    const newChatId = createChatWithInitialMessage(title, text, chat?.folderId, chatId)
+
+    // 切换到新创建的对话
+    setActiveTab(newChatId)
+  }, [chat?.folderId, chatId, setActiveTab])
+
   const handleOpenSettings = useCallback(() => {
     const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
     setActiveTab(settingsPageId)
@@ -321,6 +333,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onSwitchBranch={handleSwitchBranch}
                   // 引用相关props
                   onQuote={handleQuote}
+                  onCreateNewChat={handleCreateNewChat}
                   // 折叠相关props
                   collapsedMessages={collapsedMessagesForChat}
                   onToggleMessageCollapse={handleToggleMessageCollapse}

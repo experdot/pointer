@@ -52,6 +52,7 @@ export interface PagesActions {
   createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenSettingsPage: (defaultActiveTab?: string) => string
+  createChatWithInitialMessage: (title: string, initialMessage: string, folderId?: string, sourcePageId?: string) => string
 
   // 复杂页面创建功能
   createChatFromCell: (params: {
@@ -596,6 +597,78 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           return newPage.id
         } catch (error) {
           handleStoreError('pagesStore', 'createAndOpenSettingsPage', error)
+          throw error
+        }
+      },
+
+      createChatWithInitialMessage: (title, initialMessage, folderId, sourcePageId) => {
+        try {
+          const timestamp = Date.now()
+
+          // 如果没有指定order，获取同文件夹下的最小order值
+          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
+          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+
+          // 获取所有同级项的最小order值
+          const allOrders = [
+            ...siblingFolders.map(f => f.order || 0),
+            ...siblingPages.map(p => p.order || 0)
+          ]
+
+          const minOrder = allOrders.length > 0
+            ? Math.min(...allOrders)
+            : 1000
+
+          // 创建用户消息
+          const userMessage = {
+            id: uuidv4(),
+            role: 'user' as const,
+            content: initialMessage,
+            timestamp: timestamp
+          }
+
+          const newPage: Page = {
+            id: uuidv4(),
+            title,
+            type: 'regular',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            order: minOrder - 1000, // 新页面添加到最前面
+            folderId,
+            messages: [userMessage],
+            messageMap: { [userMessage.id]: userMessage },
+            currentPath: [userMessage.id],
+            rootMessageId: undefined,
+            ...(sourcePageId && {
+              lineage: {
+                source: 'other' as const,
+                sourcePageId,
+                sourceContext: {
+                  customContext: {
+                    action: 'create_chat_with_text',
+                    originalText: initialMessage
+                  }
+                },
+                generatedPageIds: [],
+                generatedAt: timestamp,
+                description: `从消息文本创建新对话`
+              }
+            })
+          }
+
+          set((state) => {
+            state.pages.push(newPage)
+          })
+
+          // 同时保存到 IndexedDB
+          pagesStorage.savePage(newPage)
+
+          const { setSelectedNode } = useUIStore.getState()
+          setSelectedNode(newPage.id, 'chat')
+
+          return newPage.id
+        } catch (error) {
+          handleStoreError('pagesStore', 'createChatWithInitialMessage', error)
           throw error
         }
       },

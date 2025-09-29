@@ -16,7 +16,8 @@ import {
   DownOutlined,
   UpOutlined,
   DeleteOutlined,
-  MessageOutlined
+  MessageOutlined,
+  PlusCircleOutlined
 } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
@@ -50,6 +51,7 @@ interface MessageItemProps {
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
+  onCreateNewChat?: (text: string) => void
   // 折叠相关
   isCollapsed?: boolean
   onToggleCollapse?: (messageId: string) => void
@@ -78,6 +80,7 @@ const MessageItem = React.memo(function MessageItem({
   onModelChange,
   onDelete,
   onQuote,
+  onCreateNewChat,
   isCollapsed = false,
   onToggleCollapse,
   searchQuery,
@@ -231,6 +234,22 @@ const MessageItem = React.memo(function MessageItem({
     onQuote?.(quotedText)
   }
 
+  // 处理创建新对话
+  const handleCreateNewChat = () => {
+    const selection = window.getSelection()
+    let textToUse = ''
+
+    if (selection && selection.toString().trim()) {
+      // 如果有选中文本，使用选中的文本
+      textToUse = selection.toString().trim()
+    } else {
+      // 如果没有选中文本，使用整个消息内容
+      textToUse = currentContent
+    }
+
+    onCreateNewChat?.(textToUse)
+  }
+
   // 右键菜单项
   const contextMenuItems = [
     {
@@ -245,6 +264,13 @@ const MessageItem = React.memo(function MessageItem({
       icon: <MessageOutlined />,
       onClick: handleQuote,
       disabled: !onQuote
+    },
+    {
+      key: 'newChat',
+      label: '新建对话',
+      icon: <PlusCircleOutlined />,
+      onClick: handleCreateNewChat,
+      disabled: !onCreateNewChat
     }
   ]
 
