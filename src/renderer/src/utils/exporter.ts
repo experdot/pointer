@@ -1,5 +1,93 @@
 import html2canvas from 'html2canvas'
 
+/**
+ * 将 DOM 元素转换为 canvas
+ */
+export async function captureElementToCanvas(
+  element: HTMLElement,
+  paddingV: number = 0,
+  paddingH: number = 0
+): Promise<HTMLCanvasElement> {
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    logging: false,
+    useCORS: true
+  })
+
+  if (paddingV === 0 && paddingH === 0) {
+    return canvas
+  }
+
+  // Create a new canvas with padding
+  const paddedCanvas = document.createElement('canvas')
+  paddedCanvas.width = canvas.width + 2 * paddingH
+  paddedCanvas.height = canvas.height + 2 * paddingV
+  const ctx = paddedCanvas.getContext('2d')
+
+  if (!ctx) {
+    throw new Error('Failed to get 2D context')
+  }
+
+  // Fill the background
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height)
+
+  // Draw the original canvas with padding
+  ctx.drawImage(canvas, paddingH, paddingV)
+
+  return paddedCanvas
+}
+
+/**
+ * 将 canvas 转换为 blob
+ */
+export async function canvasToBlob(canvas: HTMLCanvasElement, type: string = 'image/png'): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob)
+      } else {
+        reject(new Error('Failed to convert canvas to blob'))
+      }
+    }, type)
+  })
+}
+
+/**
+ * 将 blob 写入剪贴板
+ */
+export async function copyBlobToClipboard(blob: Blob): Promise<void> {
+  await navigator.clipboard.write([
+    new ClipboardItem({
+      [blob.type]: blob
+    })
+  ])
+}
+
+/**
+ * 将 canvas 转换为 data URL
+ */
+export function canvasToDataURL(canvas: HTMLCanvasElement, type: string = 'image/png'): string {
+  return canvas.toDataURL(type)
+}
+
+/**
+ * 将 data URL 转换为 blob（避免 CSP 问题）
+ */
+export function dataURLtoBlob(dataURL: string): Blob {
+  const arr = dataURL.split(',')
+  const mimeMatch = arr[0].match(/:(.*?);/)
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png'
+  const bstr = atob(arr[1])
+  let n = bstr.length
+  const u8arr = new Uint8Array(n)
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n)
+  }
+  return new Blob([u8arr], { type: mime })
+}
+
 export async function captureDivToClipboard(
   div: HTMLDivElement,
   paddingV: number = 0,

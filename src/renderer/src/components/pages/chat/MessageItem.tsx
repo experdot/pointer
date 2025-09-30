@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Avatar, Card, Typography, Button, Space, Input, Tooltip, Select, Collapse, Dropdown, Menu } from 'antd'
+import { Avatar, Card, Typography, Button, Space, Input, Tooltip, Select, Collapse, Dropdown, Menu, App } from 'antd'
 import {
   UserOutlined,
   RobotOutlined,
@@ -23,9 +23,11 @@ import { ChatMessage, LLMConfig } from '../../../types/type'
 import BranchNavigator from './BranchNavigator'
 import { Markdown } from '../../common/markdown/Markdown'
 import SearchableMarkdown from '../../common/markdown/SearchableMarkdown'
-import { captureDivToClipboard } from '@renderer/utils/exporter'
+import { captureElementToCanvas, canvasToDataURL, canvasToBlob, copyBlobToClipboard, dataURLtoBlob } from '@renderer/utils/exporter'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import RelativeTime from '../../common/RelativeTime'
+import ImagePreviewModal, { ImageExportWidth } from './ImagePreviewModal'
+import SingleMessageExportContainer from './SingleMessageExportContainer'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -96,8 +98,18 @@ const MessageItem = React.memo(function MessageItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
   const [reasoningExpanded, setReasoningExpanded] = useState<string[]>([])
+  const [isImagePreviewVisible, setIsImagePreviewVisible] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [currentCanvas, setCurrentCanvas] = useState<HTMLCanvasElement | null>(null)
+  const [isExportingImage, setIsExportingImage] = useState(false)
+  const [isRegeneratingImage, setIsRegeneratingImage] = useState(false)
+  const [imageExportWidth, setImageExportWidth] = useState<ImageExportWidth>('medium')
+  const [shouldRenderExportContainer, setShouldRenderExportContainer] = useState(false)
   const messageRef = useRef<HTMLDivElement>(null)
   const editContainerRef = useRef<HTMLDivElement>(null)
+  const exportContentRef = useRef<HTMLDivElement>(null)
+
+  const { message: antdMessage } = App.useApp()
 
   // 订阅流式消息状态
   const streamingMessage = useStreamingMessage(chatId, message.id)
@@ -126,9 +138,175 @@ const MessageItem = React.memo(function MessageItem({
     navigator.clipboard.writeText(currentContent)
   }
 
+  const generateImage = async () => {
+    // 等待导出容器渲染和内容加载完成
+    let retries = 0
+    const maxRetries = 20 // 最多等待2秒
+
+    while (!exportContentRef.current && retries < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      retries++
+    }
+
+    if (!exportContentRef.current) {
+      throw new Error('导出容器未找到')
+    }
+
+    // 额外等待以确保样式和内容完全加载
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    const canvas = await captureElementToCanvas(exportContentRef.current, 40, 40)
+    const dataUrl = canvasToDataURL(canvas)
+
+    setCurrentCanvas(canvas)
+    setPreviewImageUrl(dataUrl)
+  }
+
   const handleCopyAsImage = async () => {
-    if (!messageRef.current) return
-    captureDivToClipboard(messageRef.current, 10, 10)
+    setIsExportingImage(true)
+
+    try {
+      // 触发导出容器渲染
+      setShouldRenderExportContainer(true)
+
+      // 等待状态更新和DOM渲染
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      await generateImage()
+      setIsImagePreviewVisible(true)
+    } catch (error) {
+      console.error('Failed to export image:', error)
+      antdMessage.error('导出图片失败')
+    } finally {
+      setIsExportingImage(false)
+    }
+  }
+
+  const handleWidthChange = async (newWidth: ImageExportWidth) => {
+    setImageExportWidth(newWidth)
+    setIsRegeneratingImage(true)
+
+    try {
+      // 等待DOM更新后重新生成图片
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await generateImage()
+    } catch (error) {
+      console.error('Failed to regenerate image:', error)
+      antdMessage.error('重新生成图片失败')
+    } finally {
+      setIsRegeneratingImage(false)
+    }
+  }
+
+  const handleImageEdited = (editedImageUrl: string) => {
+    setPreviewImageUrl(editedImageUrl)
+  }
+
+  const handleSaveImage = async () => {
+    // 如果有编辑后的图片，直接从 previewImageUrl 保存
+    if (previewImageUrl && previewImageUrl.startsWith('data:')) {
+      try {
+        const blob = dataURLtoBlob(previewImageUrl)
+        const now = new Date()
+        const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+        const fileName = `消息_${timeString}.png`
+
+        // 将 blob 转换为 Uint8Array
+        const arrayBuffer = await blob.arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
+
+        // 调用主进程保存文件
+        const result = await window.api.saveFile({
+          content: buffer,
+          defaultPath: fileName,
+          filters: [
+            { name: 'PNG Images', extensions: ['png'] },
+            { name: 'All Files', extensions: ['*'] }
+          ]
+        })
+
+        if (result.success) {
+          antdMessage.success(`图片已保存: ${result.filePath}`)
+          setIsImagePreviewVisible(false)
+        } else if (!result.cancelled) {
+          antdMessage.error(`保存失败: ${result.error}`)
+        }
+        return
+      } catch (error) {
+        console.error('Failed to save image:', error)
+        antdMessage.error('保存图片失败')
+        return
+      }
+    }
+
+    // 原有的canvas保存逻辑
+    if (!currentCanvas) {
+      antdMessage.error('没有可保存的图片')
+      return
+    }
+
+    try {
+      const blob = await canvasToBlob(currentCanvas, 'image/png')
+      const now = new Date()
+      const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+      const fileName = `消息_${timeString}.png`
+
+      // 将 blob 转换为 Uint8Array
+      const arrayBuffer = await blob.arrayBuffer()
+      const buffer = new Uint8Array(arrayBuffer)
+
+      // 调用主进程保存文件
+      const result = await window.api.saveFile({
+        content: buffer,
+        defaultPath: fileName,
+        filters: [
+          { name: 'PNG Images', extensions: ['png'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.success) {
+        antdMessage.success(`图片已保存: ${result.filePath}`)
+        setIsImagePreviewVisible(false)
+      } else if (!result.cancelled) {
+        antdMessage.error(`保存失败: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to save image:', error)
+      antdMessage.error('保存图片失败')
+    }
+  }
+
+  const handleCopyImageToClipboard = async () => {
+    // 如果有编辑后的图片，直接从 previewImageUrl 复制
+    if (previewImageUrl && previewImageUrl.startsWith('data:')) {
+      try {
+        // 使用 dataURLtoBlob 函数而不是 fetch，避免 CSP 问题
+        const blob = dataURLtoBlob(previewImageUrl)
+        await copyBlobToClipboard(blob)
+        antdMessage.success('图片已复制到剪贴板')
+        return
+      } catch (error) {
+        console.error('Failed to copy image:', error)
+        antdMessage.error('复制到剪贴板失败')
+        return
+      }
+    }
+
+    // 原有的canvas复制逻辑
+    if (!currentCanvas) {
+      antdMessage.error('没有可复制的图片')
+      return
+    }
+
+    try {
+      const blob = await canvasToBlob(currentCanvas, 'image/png')
+      await copyBlobToClipboard(blob)
+      antdMessage.success('图片已复制到剪贴板')
+    } catch (error) {
+      console.error('Failed to copy image:', error)
+      antdMessage.error('复制到剪贴板失败')
+    }
   }
 
   const handleRetry = () => {
@@ -309,12 +487,22 @@ const MessageItem = React.memo(function MessageItem({
     return truncated + '...'
   }
 
+  // 获取当前消息的LLM配置
+  const currentLLMConfig = llmConfigs.find(config => config.id === message.modelId)
+
+  const IMAGE_WIDTH_CONFIG = {
+    small: 375,
+    medium: 600,
+    large: 800
+  }
+
   return (
-    <div
-      ref={messageRef}
-      data-message-id={message.id}
-      className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isFavorited ? ' favorited' : ''}`}
-    >
+    <>
+      <div
+        ref={messageRef}
+        data-message-id={message.id}
+        className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isFavorited ? ' favorited' : ''}`}
+      >
       <div className="message-avatar">
         <Avatar
           icon={message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
@@ -589,6 +777,36 @@ const MessageItem = React.memo(function MessageItem({
         </div>
       </div>
     </div>
+
+      {/* 只在需要时渲染导出容器 */}
+      {shouldRenderExportContainer && (
+        <SingleMessageExportContainer
+          message={message}
+          llmConfig={currentLLMConfig}
+          width={IMAGE_WIDTH_CONFIG[imageExportWidth]}
+          containerRef={exportContentRef}
+        />
+      )}
+
+      {/* 图片预览Modal */}
+      {isImagePreviewVisible && (
+        <ImagePreviewModal
+          visible={isImagePreviewVisible}
+          onClose={() => {
+            setIsImagePreviewVisible(false)
+            // 关闭预览后可以移除导出容器以节省内存
+            // setShouldRenderExportContainer(false)
+          }}
+          imageUrl={previewImageUrl}
+          onSave={handleSaveImage}
+          onCopy={handleCopyImageToClipboard}
+          imageWidth={imageExportWidth}
+          onWidthChange={handleWidthChange}
+          isRegenerating={isRegeneratingImage}
+          onImageEdited={handleImageEdited}
+        />
+      )}
+    </>
   )
 }, (prevProps, nextProps) => {
   // 自定义比较函数，避免不必要的重渲染

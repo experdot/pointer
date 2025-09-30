@@ -161,8 +161,10 @@ export default function ChatHeader({
 
       // 生成导出内容
       let exportContent = `# ${chatTitle || '聊天记录'}\n\n`
-      exportContent += `导出时间: ${formatExactDateTime(Date.now())}\n`
-      exportContent += `消息数量: ${selectedMessages.length}\n\n`
+      if (exportSettings.includeMetadata) {
+        exportContent += `导出时间: ${formatExactDateTime(Date.now())}\n`
+        exportContent += `消息数量: ${selectedMessages.length}\n\n`
+      }
       exportContent += '---\n\n'
 
       selectedMessages.forEach((msg, index) => {
