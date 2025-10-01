@@ -6,6 +6,11 @@
 .chat-history-tree .ant-tree-switcher {
   align-self: center;
 }
+
+/* 隐藏拖拽图标 */
+.chat-history-tree .ant-tree-draggable-icon {
+  display: none;
+}
 .chat-history-tree .ant-tree-treenode {
   width: 100%;
   align-items: center;
