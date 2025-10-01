@@ -251,6 +251,38 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     [folders, onFindInFolder]
   )
 
+  const handleMoveFolder = useCallback(
+    (folderId: string, targetFolderId: string | undefined) => {
+      const folder = folders.find(f => f.id === folderId)
+      if (!folder) return
+
+      // 计算新的order值，放在目标文件夹的最后
+      const siblings = folders.filter(f => f.parentId === targetFolderId)
+      const newOrder = siblings.length > 0
+        ? Math.max(...siblings.map(f => f.order || 0)) + 1000
+        : 1000
+
+      moveFolder(folderId, newOrder, targetFolderId)
+    },
+    [folders, moveFolder]
+  )
+
+  const handleMoveChat = useCallback(
+    (chatId: string, targetFolderId: string | undefined) => {
+      const chat = pages.find(p => p.id === chatId)
+      if (!chat) return
+
+      // 计算新的order值，放在目标文件夹的最后
+      const siblings = pages.filter(p => p.folderId === targetFolderId && p.type !== 'settings')
+      const newOrder = siblings.length > 0
+        ? Math.max(...siblings.map(p => p.order || 0)) + 1000
+        : 1000
+
+      movePage(chatId, targetFolderId, newOrder)
+    },
+    [pages, movePage]
+  )
+
   // 处理拖拽放置事件
   const handleDrop = useCallback(
     (info: DropInfo) => {
@@ -482,6 +514,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
                 onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
                 onFindInFolder={() => handleFindInFolder(folder.id)}
+                onMoveTo={(targetFolderId) => handleMoveFolder(folder.id, targetFolderId)}
+                allFolders={folders}
               />
             ),
             checkable: false,
@@ -509,6 +543,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
                 isEditing={editingNodeKey === nodeKey}
                 onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
+                onMoveTo={(targetFolderId) => handleMoveChat(chat.id, targetFolderId)}
+                allFolders={folders}
               />
             ),
             isLeaf: true
@@ -534,7 +570,9 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       handleCopyChat,
       handleNodeCreate,
       handleSaveEdit,
-      handleFindInFolder
+      handleFindInFolder,
+      handleMoveFolder,
+      handleMoveChat
     ]
   )
 

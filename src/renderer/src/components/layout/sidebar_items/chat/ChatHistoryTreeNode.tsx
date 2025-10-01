@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Button, Dropdown, Space, Typography, Tooltip, Input, Badge } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Button, Dropdown, Space, Typography, Tooltip, Input, Badge, Modal, TreeSelect } from 'antd'
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -10,7 +10,8 @@ import {
   PlusOutlined,
   FolderAddOutlined,
   CopyOutlined,
-  SearchOutlined
+  SearchOutlined,
+  FolderOpenFilled
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { Page, PageFolder } from '../../../../types/type'
@@ -31,6 +32,8 @@ interface ChatHistoryTreeNodeProps {
   onStartEdit?: () => void
   onEndEdit?: () => void
   onFindInFolder?: () => void
+  onMoveTo?: (targetFolderId: string | undefined) => void
+  allFolders?: PageFolder[]
 }
 
 const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
@@ -46,11 +49,15 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   onSaveEdit,
   onStartEdit,
   onEndEdit,
-  onFindInFolder
+  onFindInFolder,
+  onMoveTo,
+  allFolders = []
 }: ChatHistoryTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | undefined>(undefined)
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -93,6 +100,67 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
     }
   }
 
+  const handleShowMoveModal = () => {
+    // 初始化选中值为当前所在的文件夹
+    if (type === 'folder') {
+      const parentId = (data as PageFolder).parentId
+      setSelectedTargetFolder(parentId === undefined ? 'ROOT' : parentId)
+    } else {
+      const folderId = (data as Page).folderId
+      setSelectedTargetFolder(folderId === undefined ? 'ROOT' : folderId)
+    }
+
+    setShowMoveModal(true)
+  }
+
+  const handleConfirmMove = () => {
+    if (onMoveTo) {
+      // 将'ROOT'转换为undefined表示根目录
+      const targetFolder = selectedTargetFolder === 'ROOT' ? undefined : selectedTargetFolder
+      onMoveTo(targetFolder)
+    }
+    setShowMoveModal(false)
+  }
+
+  const handleCancelMove = () => {
+    setShowMoveModal(false)
+    setSelectedTargetFolder(undefined)
+  }
+
+  // 构建文件夹树数据（用于TreeSelect）
+  const buildFolderTreeData = () => {
+    const buildTree = (parentId?: string): any[] => {
+      const children = allFolders
+        .filter(folder => {
+          // 过滤掉当前节点（不能移动到自己）
+          if (type === 'folder' && folder.id === data.id) {
+            return false
+          }
+          // 如果是文件夹，还要过滤掉所有子文件夹（防止循环引用）
+          if (type === 'folder') {
+            let current = folder
+            while (current.parentId) {
+              if (current.parentId === data.id) {
+                return false
+              }
+              current = allFolders.find(f => f.id === current.parentId)!
+              if (!current) break
+            }
+          }
+          return folder.parentId === parentId
+        })
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+      return children.map(folder => ({
+        title: folder.name,
+        value: folder.id,
+        children: buildTree(folder.id)
+      }))
+    }
+
+    return buildTree()
+  }
+
   const getMenuItems = (): MenuProps['items'] => {
     if (type === 'folder') {
       return [
@@ -113,6 +181,15 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           label: '重命名',
           icon: <EditOutlined />,
           onClick: () => startInlineEdit()
+        },
+        {
+          key: 'moveTo',
+          label: '移动至...',
+          icon: <FolderOpenFilled />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            handleShowMoveModal()
+          }
         },
         {
           type: 'divider'
@@ -165,6 +242,15 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           onClick: (e) => {
             e?.domEvent?.stopPropagation()
             onCopy?.()
+          }
+        },
+        {
+          key: 'moveTo',
+          label: '移动至...',
+          icon: <FolderOpenFilled />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            handleShowMoveModal()
           }
         },
         {
@@ -318,6 +404,43 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           </Dropdown>
         </div>
       )}
+
+      {/* 移动到文件夹的模态框 */}
+      <Modal
+        title={`移动${type === 'folder' ? '文件夹' : '聊天'}至...`}
+        open={showMoveModal}
+        onOk={handleConfirmMove}
+        onCancel={handleCancelMove}
+        okText="确定"
+        cancelText="取消"
+        destroyOnClose
+        key={showMoveModal ? `modal-${allFolders.length}` : 'modal-closed'}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <TreeSelect
+            style={{ width: '100%' }}
+            value={selectedTargetFolder}
+            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+            placeholder="选择目标文件夹"
+            allowClear
+            treeDefaultExpandAll
+            treeData={[
+              {
+                title: '根目录',
+                value: 'ROOT',
+                selectable: true,
+                children: buildFolderTreeData()
+              }
+            ]}
+            onChange={(value) => setSelectedTargetFolder(value === 'ROOT' ? undefined : value)}
+          />
+        </div>
+        <div style={{ color: '#666', fontSize: '12px' }}>
+          {type === 'folder'
+            ? '注意：不能将文件夹移动到自身或其子文件夹中'
+            : '提示：选择目标文件夹后，聊天将被移动到该文件夹中'}
+        </div>
+      </Modal>
     </div>
   )
 }, (prevProps, nextProps) => {
@@ -327,6 +450,11 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
     prevProps.data.id !== nextProps.data.id ||
     prevProps.isEditing !== nextProps.isEditing
   ) {
+    return false
+  }
+
+  // 检查 allFolders 是否变化（用于移动功能）
+  if (prevProps.allFolders?.length !== nextProps.allFolders?.length) {
     return false
   }
 
