@@ -38,7 +38,7 @@ const api = {
   },
   // 文件操作API
   saveFile: (options: {
-    content: string
+    content: string | Uint8Array
     defaultPath: string
     filters?: Array<{ name: string; extensions: string[] }>
   }) => ipcRenderer.invoke('save-file', options),

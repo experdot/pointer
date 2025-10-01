@@ -13,7 +13,7 @@ declare global {
         removeStreamListener: (requestId: string) => void
       }
       saveFile: (options: {
-        content: string
+        content: string | Uint8Array
         defaultPath: string
         filters?: Array<{ name: string; extensions: string[] }>
       }) => Promise<{ success: boolean; cancelled?: boolean; filePath?: string; error?: string }>

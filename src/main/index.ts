@@ -223,7 +223,12 @@ app.whenReady().then(() => {
         return { success: false, cancelled: true }
       }
 
-      await writeFile(result.filePath!, content, 'utf8')
+      // Handle both string and Uint8Array/Buffer content
+      if (typeof content === 'string') {
+        await writeFile(result.filePath!, content, 'utf8')
+      } else {
+        await writeFile(result.filePath!, Buffer.from(content))
+      }
       return { success: true, filePath: result.filePath }
     } catch (error) {
       console.error('Save file error:', error)
