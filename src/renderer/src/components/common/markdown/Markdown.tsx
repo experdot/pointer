@@ -133,6 +133,7 @@ export function PreCode(props: { children: any }) {
   const refText = ref.current?.innerText
   const [mermaidCode, setMermaidCode] = useState('')
   const [isCopied, setIsCopied] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const renderMermaid = useDebouncedCallback(() => {
     if (!ref.current) return
@@ -153,7 +154,62 @@ export function PreCode(props: { children: any }) {
       const success = await copyToClipboard(code)
       if (success) {
         setIsCopied(true)
-        setTimeout(() => setIsCopied(false), 2000) // 2秒后重置状态
+        setTimeout(() => setIsCopied(false), 2000)
+      }
+    }
+  }
+
+  const handleDownload = async () => {
+    if (ref.current) {
+      const code = ref.current.innerText
+      const codeElement = ref.current.querySelector('code')
+      const language = codeElement?.className.match(/language-(\w+)/)?.[1] || 'txt'
+
+      // 根据语言类型确定文件扩展名
+      const extensionMap: Record<string, string> = {
+        javascript: 'js',
+        typescript: 'ts',
+        python: 'py',
+        java: 'java',
+        cpp: 'cpp',
+        csharp: 'cs',
+        go: 'go',
+        rust: 'rs',
+        php: 'php',
+        ruby: 'rb',
+        swift: 'swift',
+        kotlin: 'kt',
+        shell: 'sh',
+        bash: 'sh',
+        powershell: 'ps1',
+        json: 'json',
+        xml: 'xml',
+        yaml: 'yaml',
+        yml: 'yml',
+        markdown: 'md',
+        html: 'html',
+        css: 'css',
+        scss: 'scss',
+        sql: 'sql'
+      }
+
+      const extension = extensionMap[language] || language
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+
+      setIsDownloading(true)
+      try {
+        await window.api.saveFile({
+          content: code,
+          defaultPath: `code-${timestamp}.${extension}`,
+          filters: [
+            { name: `${language.toUpperCase()} Files`, extensions: [extension] },
+            { name: 'All Files', extensions: ['*'] }
+          ]
+        })
+      } catch (error) {
+        console.error('Download failed:', error)
+      } finally {
+        setIsDownloading(false)
       }
     }
   }
@@ -162,6 +218,11 @@ export function PreCode(props: { children: any }) {
     <>
       {mermaidCode.length > 0 && <Mermaid code={mermaidCode} key={mermaidCode} />}
       <pre ref={ref}>
+        <span
+          className={`download-code-button ${isDownloading ? 'downloading' : ''}`}
+          onClick={handleDownload}
+          title={isDownloading ? '下载中...' : '下载代码'}
+        ></span>
         <span
           className={`copy-code-button ${isCopied ? 'copied' : ''}`}
           onClick={handleCopy}
