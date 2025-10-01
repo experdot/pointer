@@ -16,6 +16,7 @@ import { useRef, useState, RefObject, useEffect, useMemo, ReactElement } from 'r
 import LoadingIcon from './three-dots.svg'
 import { useDebouncedCallback } from 'use-debounce'
 import { copyToClipboard } from './utils'
+import TableViewModal from './TableViewModal'
 
 export function Mermaid(props: { code: string }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -66,6 +67,9 @@ export function TableWrapper(props: { children: ReactElement }) {
   const ref = useRef<HTMLDivElement>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [tableMarkdown, setTableMarkdown] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [tableHtml, setTableHtml] = useState('')
+  const [tableTextMarkdown, setTableTextMarkdown] = useState('')
 
   useEffect(() => {
     if (ref.current) {
@@ -73,6 +77,10 @@ export function TableWrapper(props: { children: ReactElement }) {
       if (table) {
         const markdown = convertTableToMarkdown(table)
         setTableMarkdown(markdown)
+        setTableHtml(table.outerHTML)
+
+        const textMarkdown = convertTableToTextList(table)
+        setTableTextMarkdown(textMarkdown)
       }
     }
   }, [props.children])
@@ -106,6 +114,45 @@ export function TableWrapper(props: { children: ReactElement }) {
     return rows.map((row) => '| ' + row.join(' | ') + ' |').join('\n')
   }
 
+  const convertTableToTextList = (table: HTMLTableElement): string => {
+    const thead = table.querySelector('thead')
+    const tbody = table.querySelector('tbody')
+
+    let headers: string[] = []
+    if (thead) {
+      const headerRow = thead.querySelector('tr')
+      if (headerRow) {
+        headers = Array.from(headerRow.querySelectorAll('th')).map(
+          (th) => th.textContent?.trim() || ''
+        )
+      }
+    }
+
+    if (!tbody || headers.length === 0) {
+      return ''
+    }
+
+    const bodyRows = tbody.querySelectorAll('tr')
+    const result: string[] = []
+
+    bodyRows.forEach((tr, index) => {
+      const cells = Array.from(tr.querySelectorAll('td')).map(
+        (td) => td.textContent?.trim() || ''
+      )
+
+      const items: string[] = []
+      cells.forEach((cell, cellIndex) => {
+        if (cellIndex < headers.length) {
+          items.push(`**${headers[cellIndex]}**: ${cell}`)
+        }
+      })
+
+      result.push(`${index + 1}. ${items.join('\n   ')}`)
+    })
+
+    return result.join('\n\n')
+  }
+
   const handleCopy = async () => {
     if (tableMarkdown) {
       const success = await copyToClipboard(tableMarkdown)
@@ -116,15 +163,38 @@ export function TableWrapper(props: { children: ReactElement }) {
     }
   }
 
+  const handleViewFullscreen = () => {
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+  }
+
   return (
-    <div className="table-wrapper" ref={ref}>
-      <span
-        className={`copy-table-button ${isCopied ? 'copied' : ''}`}
-        onClick={handleCopy}
-        title={isCopied ? '已复制!' : '复制表格'}
-      ></span>
-      {props.children}
-    </div>
+    <>
+      <div className="table-wrapper" ref={ref}>
+        <span
+          className="view-table-button"
+          onClick={handleViewFullscreen}
+          title="全屏查看表格"
+        ></span>
+        <span
+          className={`copy-table-button ${isCopied ? 'copied' : ''}`}
+          onClick={handleCopy}
+          title={isCopied ? '已复制!' : '复制表格'}
+        ></span>
+        {props.children}
+      </div>
+
+      <TableViewModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        tableHtml={tableHtml}
+        tableMarkdown={tableMarkdown}
+        tableTextMarkdown={tableTextMarkdown}
+      />
+    </>
   )
 }
 

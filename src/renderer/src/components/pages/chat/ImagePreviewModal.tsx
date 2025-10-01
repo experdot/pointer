@@ -74,6 +74,7 @@ export default function ImagePreviewModal({
       width={isEditing ? 1000 : 900}
       style={{ top: 20 }}
       bodyStyle={isEditing ? { height: 'calc(100vh - 120px)', padding: '20px' } : undefined}
+      zIndex={10001}
       footer={
         isEditing ? null : (
           <Space>

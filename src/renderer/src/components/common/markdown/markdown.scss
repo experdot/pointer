@@ -313,10 +313,10 @@
   position: relative;
   margin-bottom: 16px;
 
+  .view-table-button,
   .copy-table-button {
     position: absolute;
     top: 8px;
-    right: 8px;
     width: 24px;
     height: 24px;
     background: rgba(0, 0, 0, 0.3);
@@ -329,7 +329,6 @@
       background-color 0.2s ease;
     z-index: 10;
 
-    /* 复制图标 */
     &::before {
       content: '';
       position: absolute;
@@ -338,7 +337,6 @@
       transform: translate(-50%, -50%);
       width: 14px;
       height: 14px;
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: center;
       background-size: contain;
@@ -346,6 +344,29 @@
 
     &:active {
       background: rgba(0, 0, 0, 0.6);
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 1;
+    }
+  }
+
+  .view-table-button {
+    right: 40px;
+
+    /* 全屏查看图标 */
+    &::before {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z'/%3E%3C/svg%3E");
+    }
+  }
+
+  .copy-table-button {
+    right: 8px;
+
+    /* 复制图标 */
+    &::before {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z'/%3E%3C/svg%3E");
     }
 
     /* 复制成功状态 */
@@ -359,13 +380,9 @@
     }
   }
 
+  &:hover .view-table-button,
   &:hover .copy-table-button {
     opacity: 0.6;
-  }
-
-  .copy-table-button:hover {
-    background: rgba(0, 0, 0, 0.5);
-    opacity: 1;
   }
 }
 
@@ -1319,12 +1336,9 @@
   opacity: 0.6;
 }
 
+.dark .markdown-body .table-wrapper .view-table-button,
 .dark .markdown-body .table-wrapper .copy-table-button {
   background: rgba(255, 255, 255, 0.15);
-
-  &::before {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z'/%3E%3C/svg%3E");
-  }
 
   &:hover {
     background: rgba(255, 255, 255, 0.25);
@@ -1333,12 +1347,8 @@
   &:active {
     background: rgba(255, 255, 255, 0.35);
   }
+}
 
-  &.copied {
-    background: rgba(34, 197, 94, 0.8);
-
-    &::before {
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z'/%3E%3C/svg%3E");
-    }
-  }
+.dark .markdown-body .table-wrapper .copy-table-button.copied {
+  background: rgba(34, 197, 94, 0.8);
 }
