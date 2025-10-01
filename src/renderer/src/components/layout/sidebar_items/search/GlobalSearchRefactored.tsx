@@ -20,7 +20,8 @@ import {
   SettingOutlined,
   FilterOutlined,
   DownOutlined,
-  UpOutlined
+  UpOutlined,
+  FolderOutlined
 } from '@ant-design/icons'
 import { useSearchStore } from '../../../../stores/searchStore'
 import { usePagesStore } from '../../../../stores/pagesStore'
@@ -35,22 +36,28 @@ interface GlobalSearchRefactoredProps {
   visible: boolean
   onClose: () => void
   embedded?: boolean
+  filterFolderId?: string | null
+  filterFolderName?: string
 }
 
 export default function GlobalSearchRefactored({
   visible,
   onClose,
-  embedded = false
+  embedded = false,
+  filterFolderId = null,
+  filterFolderName = ''
 }: GlobalSearchRefactoredProps) {
   const {
     searchQuery,
     searchResults,
     isSearching,
     searchOptions,
+    filterFolderId: storedFilterFolderId,
     setSearchQuery,
     setSearchResults,
     setIsSearching,
     setSearchOptions,
+    setFilterFolderId,
     clearSearch
   } = useSearchStore()
   const { pages } = usePagesStore()
@@ -62,6 +69,9 @@ export default function GlobalSearchRefactored({
   const [showOptions, setShowOptions] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [allExpanded, setAllExpanded] = useState(true)
+
+  // 使用props传入的filterFolderId或存储的filterFolderId
+  const activeFolderId = filterFolderId || storedFilterFolderId
 
   // 将搜索结果按对话分组
   const groupedResults = useMemo(() => {
@@ -99,6 +109,13 @@ export default function GlobalSearchRefactored({
     }
   }, [groupedResults, searchQuery])
 
+  // 当filterFolderId变化时，更新store中的filterFolderId
+  useEffect(() => {
+    if (filterFolderId !== undefined) {
+      setFilterFolderId(filterFolderId)
+    }
+  }, [filterFolderId, setFilterFolderId])
+
   // 执行搜索
   const performSearch = useCallback(
     (query: string) => {
@@ -119,7 +136,7 @@ export default function GlobalSearchRefactored({
 
         try {
           const { searchMessages } = useSearchStore.getState()
-          const results = searchMessages(pages, query, searchOptions)
+          const results = searchMessages(pages, query, searchOptions, activeFolderId)
           setSearchResults(results)
           setIsSearching(false)
           setVisibleGroups(10) // 重置可见组数量
@@ -138,7 +155,7 @@ export default function GlobalSearchRefactored({
 
       setSearchTimeout(timeout)
     },
-    [pages, searchTimeout, searchOptions, setSearchResults, setIsSearching]
+    [pages, searchTimeout, searchOptions, activeFolderId, setSearchResults, setIsSearching]
   )
 
   // 处理输入变化
@@ -176,7 +193,7 @@ export default function GlobalSearchRefactored({
           setIsSearching(true)
           try {
             const { searchMessages } = useSearchStore.getState()
-            const results = searchMessages(pages, value, searchOptions)
+            const results = searchMessages(pages, value, searchOptions, activeFolderId)
             setSearchResults(results)
             setIsSearching(false)
             setVisibleGroups(10)
@@ -193,7 +210,7 @@ export default function GlobalSearchRefactored({
         }
       }
     },
-    [inputValue, pages, searchOptions, searchTimeout]
+    [inputValue, pages, searchOptions, activeFolderId, searchTimeout]
   )
 
   // 处理搜索结果点击
@@ -224,6 +241,15 @@ export default function GlobalSearchRefactored({
       }, 0)
     }
   }, [searchTimeout])
+
+  // 清除文件夹过滤
+  const handleClearFolderFilter = useCallback(() => {
+    setFilterFolderId(null)
+    // 如果有搜索内容，重新执行搜索
+    if (inputValue.trim()) {
+      performSearch(inputValue)
+    }
+  }, [setFilterFolderId, inputValue, performSearch])
 
   // 切换单个组的展开状态
   const handleToggleGroup = useCallback((chatId: string) => {
@@ -267,7 +293,7 @@ export default function GlobalSearchRefactored({
         setIsSearching(true)
         try {
           const { searchMessages } = useSearchStore.getState()
-          const results = searchMessages(pages, inputValue, newOptions)
+          const results = searchMessages(pages, inputValue, newOptions, activeFolderId)
           setSearchResults(results)
           setIsSearching(false)
           setVisibleGroups(10)
@@ -283,7 +309,7 @@ export default function GlobalSearchRefactored({
         }
       }
     },
-    [inputValue, pages, searchTimeout]
+    [inputValue, pages, activeFolderId, searchTimeout]
   )
 
   // 组件卸载时清理
@@ -321,11 +347,23 @@ export default function GlobalSearchRefactored({
 
   const searchContent = (
     <div className="vscode-search-input-section">
+      {activeFolderId && (
+        <div style={{ marginBottom: 8 }}>
+          <Tag
+            icon={<FolderOutlined />}
+            closable
+            onClose={handleClearFolderFilter}
+            color="blue"
+          >
+            {filterFolderName || '文件夹过滤'}
+          </Tag>
+        </div>
+      )}
       <div className="search-input-wrapper">
         <Input
           ref={inputRef}
           className="vscode-search-input"
-          placeholder="搜索"
+          placeholder={activeFolderId ? "在文件夹中搜索" : "搜索"}
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

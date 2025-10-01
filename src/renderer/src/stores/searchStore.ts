@@ -11,6 +11,7 @@ export interface SearchState {
   isSearching: boolean
   showSearchResults: boolean
   searchOptions: SearchOptions
+  filterFolderId: string | null
 }
 
 export interface SearchActions {
@@ -27,9 +28,12 @@ export interface SearchActions {
   toggleMatchWholeWord: () => void
   toggleUseRegex: () => void
 
+  // 文件夹过滤
+  setFilterFolderId: (folderId: string | null) => void
+
   // 搜索执行
   performSearch: (query?: string) => void
-  searchMessages: (pages: any[], query: string, options?: SearchOptions) => SearchResult[]
+  searchMessages: (pages: any[], query: string, options?: SearchOptions, filterFolderId?: string | null) => SearchResult[]
 
   // 工具方法
   hasSearchResults: () => boolean
@@ -45,7 +49,8 @@ const initialState: SearchState = {
     matchCase: false,
     matchWholeWord: false,
     useRegex: false
-  }
+  },
+  filterFolderId: null
 }
 
 export const useSearchStore = create<SearchState & SearchActions>()(
@@ -85,6 +90,7 @@ export const useSearchStore = create<SearchState & SearchActions>()(
           state.searchResults = []
           state.isSearching = false
           state.showSearchResults = false
+          state.filterFolderId = null
         })
       },
 
@@ -113,6 +119,13 @@ export const useSearchStore = create<SearchState & SearchActions>()(
         })
       },
 
+      // 文件夹过滤
+      setFilterFolderId: (folderId) => {
+        set((state) => {
+          state.filterFolderId = folderId
+        })
+      },
+
       // 搜索执行
       performSearch: (query) => {
         try {
@@ -132,7 +145,7 @@ export const useSearchStore = create<SearchState & SearchActions>()(
 
           // 获取所有页面进行搜索
           const pages = usePagesStore.getState().pages
-          const results = get().searchMessages(pages, searchQuery, state.searchOptions)
+          const results = get().searchMessages(pages, searchQuery, state.searchOptions, state.filterFolderId)
 
           // 更新搜索结果
           set((state) => {
@@ -151,9 +164,29 @@ export const useSearchStore = create<SearchState & SearchActions>()(
       searchMessages: (
         pages,
         query,
-        options = { matchCase: false, matchWholeWord: false, useRegex: false }
+        options = { matchCase: false, matchWholeWord: false, useRegex: false },
+        filterFolderId = null
       ) => {
         if (!query.trim()) return []
+
+        // 如果需要过滤文件夹，先获取该文件夹及其所有子文件夹的ID集合
+        let folderIds: Set<string> | null = null
+        if (filterFolderId) {
+          const folders = usePagesStore.getState().folders
+          folderIds = new Set<string>()
+          folderIds.add(filterFolderId)
+
+          // 递归查找所有子文件夹
+          const findSubFolders = (parentId: string) => {
+            folders.forEach(folder => {
+              if (folder.parentId === parentId && !folderIds!.has(folder.id)) {
+                folderIds!.add(folder.id)
+                findSubFolders(folder.id)
+              }
+            })
+          }
+          findSubFolders(filterFolderId)
+        }
 
         const results: SearchResult[] = []
 
@@ -189,6 +222,11 @@ export const useSearchStore = create<SearchState & SearchActions>()(
         pages.forEach((chat) => {
           // 过滤掉设置页面和没有消息的页面
           if (chat.type === 'settings' || !chat.messages || chat.messages.length === 0) return
+
+          // 如果设置了文件夹过滤，检查该聊天是否在目标文件夹或其子文件夹中
+          if (folderIds && (!chat.folderId || !folderIds.has(chat.folderId))) {
+            return
+          }
 
           chat.messages.forEach((message: ChatMessage) => {
             const content = message.content
@@ -304,7 +342,8 @@ export const useSearchStore = create<SearchState & SearchActions>()(
       searchResults: state.searchResults,
       isSearching: state.isSearching,
       showSearchResults: state.showSearchResults,
-      searchOptions: state.searchOptions
+      searchOptions: state.searchOptions,
+      filterFolderId: state.filterFolderId
     }))
   )
 )

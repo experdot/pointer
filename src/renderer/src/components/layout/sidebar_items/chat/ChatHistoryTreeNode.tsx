@@ -9,7 +9,8 @@ import {
   DeleteOutlined,
   PlusOutlined,
   FolderAddOutlined,
-  CopyOutlined
+  CopyOutlined,
+  SearchOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { Page, PageFolder } from '../../../../types/type'
@@ -29,6 +30,7 @@ interface ChatHistoryTreeNodeProps {
   onSaveEdit?: (nodeId: string, nodeType: 'folder' | 'chat', newValue: string) => void
   onStartEdit?: () => void
   onEndEdit?: () => void
+  onFindInFolder?: () => void
 }
 
 const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
@@ -43,7 +45,8 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   onChatClick,
   onSaveEdit,
   onStartEdit,
-  onEndEdit
+  onEndEdit,
+  onFindInFolder
 }: ChatHistoryTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
@@ -110,6 +113,18 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           label: '重命名',
           icon: <EditOutlined />,
           onClick: () => startInlineEdit()
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'findInFolder',
+          label: '在文件夹中查找',
+          icon: <SearchOutlined />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            onFindInFolder?.()
+          }
         },
         {
           type: 'divider'

@@ -13,7 +13,7 @@ const { Sider, Content } = AntLayout
 
 export default function Layout() {
   const { sidebarCollapsed, sidebarWidth, toggleSidebar } = useUIStore()
-  const { clearSearch } = useSearchStore()
+  const { clearSearch, setFilterFolderId } = useSearchStore()
   const [activeTab, setActiveTab] = useState<ActivityBarTab>('explore')
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -57,6 +57,16 @@ export default function Layout() {
     setSearchOpen(true)
   }
 
+  const handleFindInFolder = (folderId: string, folderName: string) => {
+    setFilterFolderId(folderId)
+    // 切换到搜索标签页
+    setActiveTab('search')
+    // 如果侧边栏折叠，展开它
+    if (sidebarCollapsed) {
+      toggleSidebar()
+    }
+  }
+
   return (
     <div className="app-layout">
       {/* 自定义标题栏 */}
@@ -86,6 +96,7 @@ export default function Layout() {
             activeTab={activeTab}
             onSearchOpen={handleSearchOpen}
             onSettingsOpen={handleSearchOpen}
+            onFindInFolder={handleFindInFolder}
           />
           <ResizeHandle />
         </Sider>

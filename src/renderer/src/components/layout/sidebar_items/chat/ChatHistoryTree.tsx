@@ -20,9 +20,10 @@ interface DropInfo {
 
 interface ChatHistoryTreeProps {
   onChatClick: (chatId: string) => void
+  onFindInFolder?: (folderId: string, folderName: string) => void
 }
 
-export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
+export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHistoryTreeProps) {
   const {
     pages,
     folders,
@@ -238,6 +239,16 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       }
     },
     [pages, copyPage, onChatClick]
+  )
+
+  const handleFindInFolder = useCallback(
+    (folderId: string) => {
+      const folder = folders.find(f => f.id === folderId)
+      if (folder && onFindInFolder) {
+        onFindInFolder(folderId, folder.name)
+      }
+    },
+    [folders, onFindInFolder]
   )
 
   // 处理拖拽放置事件
@@ -470,6 +481,7 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
                 isEditing={editingNodeKey === nodeKey}
                 onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
+                onFindInFolder={() => handleFindInFolder(folder.id)}
               />
             ),
             checkable: false,
@@ -521,7 +533,8 @@ export default function ChatHistoryTree({ onChatClick }: ChatHistoryTreeProps) {
       handleDeleteChat,
       handleCopyChat,
       handleNodeCreate,
-      handleSaveEdit
+      handleSaveEdit,
+      handleFindInFolder
     ]
   )
 

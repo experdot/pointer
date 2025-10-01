@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
+import { useSearchStore } from '../../../stores/searchStore'
 import ChatHistoryTree from '../sidebar_items/chat/ChatHistoryTree'
 import SidebarActions from '../sidebar_items/SidebarActions'
 import Settings from '../../settings/Settings'
@@ -16,16 +17,19 @@ interface SidebarProps {
   activeTab: ActivityBarTab
   onSearchOpen: () => void
   onSettingsOpen: () => void
+  onFindInFolder?: (folderId: string, folderName: string) => void
 }
 
 export default function Sidebar({
   collapsed,
   activeTab,
   onSearchOpen,
-  onSettingsOpen
+  onSettingsOpen,
+  onFindInFolder
 }: SidebarProps) {
   const {
     pages,
+    folders,
     createFolder,
     createAndOpenChat,
     createAndOpenCrosstabChat,
@@ -35,6 +39,7 @@ export default function Sidebar({
   const { openTab } = useTabsStore()
   const { selectedNodeType, selectedNodeId, checkedNodeIds, setSelectedNode, clearCheckedNodes } =
     useUIStore()
+  const { filterFolderId } = useSearchStore()
   const { modal } = App.useApp()
 
   const handleCreateChat = useCallback(() => {
@@ -132,18 +137,25 @@ export default function Sidebar({
               {hasCheckedItems && (
                 <div className="multi-select-indicator">已选中 {checkedNodeIds.length} 项</div>
               )}
-              <ChatHistoryTree onChatClick={handleChatClick} />
+              <ChatHistoryTree onChatClick={handleChatClick} onFindInFolder={onFindInFolder} />
             </div>
           </div>
         )
       case 'search':
+        const filterFolder = filterFolderId ? folders.find(f => f.id === filterFolderId) : null
         return (
           <div className="sidebar-search">
             <div className="sidebar-header">
               <h3>搜索</h3>
             </div>
             <div className="sidebar-content">
-              <GlobalSearch visible={true} onClose={() => {}} embedded={true} />
+              <GlobalSearch
+                visible={true}
+                onClose={() => {}}
+                embedded={true}
+                filterFolderId={filterFolderId}
+                filterFolderName={filterFolder?.name || ''}
+              />
             </div>
           </div>
         )
