@@ -1,13 +1,15 @@
-import { ObjectNode as ObjectNodeType, AITask } from '../../../types/type'
+import { ObjectNode as ObjectNodeType } from '../../../types/type'
 import { v4 as uuidv4 } from 'uuid'
+import { AITaskManager } from './ai/AITaskManager'
+import { PromptBuilder, PromptContext } from './ai/PromptBuilder'
 
 export interface AIGenerationContext {
   node: ObjectNodeType
   ancestorChain: ObjectNodeType[]
   siblings: ObjectNodeType[]
   existingChildren: ObjectNodeType[]
-  getFullContextInformation?: () => string // 获取完整上下文信息
-  getNodeInformation?: (node: ObjectNodeType) => string // 获取单个节点的完整信息
+  getFullContextInformation?: () => string
+  getNodeInformation?: (node: ObjectNodeType) => string
 }
 
 export interface AIGenerationResult {
@@ -19,139 +21,48 @@ export interface AIGenerationResult {
 export class ObjectAIService {
   private llmConfig: any
   private aiService: any
-  private dispatch: any
-  private chatId?: string
+  private taskManager: AITaskManager
 
   constructor(llmConfig: any, aiService: any, dispatch?: any, chatId?: string) {
     this.llmConfig = llmConfig
     this.aiService = aiService
-    this.dispatch = dispatch
-    this.chatId = chatId
+    this.taskManager = new AITaskManager(llmConfig.id, aiService.id, dispatch, chatId)
+  }
+
+  private buildPromptContext(
+    context: AIGenerationContext,
+    userPrompt: string
+  ): PromptContext {
+    const { node, existingChildren, getFullContextInformation } = context
+    return {
+      fullContextInfo: getFullContextInformation ? getFullContextInformation() : '',
+      nodeName: node.name,
+      nodeDescription: node.description || '',
+      nodeProperties: node.properties || {},
+      existingChildrenInfo: PromptBuilder.buildChildrenInfo(existingChildren),
+      userPrompt
+    }
   }
 
   // 生成子节点名称
-  async generateChildrenNames(context: AIGenerationContext, userPrompt: string): Promise<string[]> {
-    const { node: parentNode, existingChildren, getFullContextInformation } = context
+  async generateChildrenNames(
+    context: AIGenerationContext,
+    userPrompt: string
+  ): Promise<string[]> {
+    const { node: parentNode } = context
 
-    const taskId = uuidv4()
-
-    // 创建AI任务监控
-    if (this.dispatch && this.chatId) {
-      const task: AITask = {
-        id: taskId,
-        requestId: this.aiService.id, // 使用AI服务的requestId
-        type: 'object_generation',
-        status: 'running',
-        title: '生成子节点名称',
-        description: `为节点 "${parentNode.name}" 生成子节点名称`,
-        chatId: this.chatId,
-        modelId: this.llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          object: {
-            nodeId: parentNode.id,
-            prompt: userPrompt
-          }
-        }
+    return this.taskManager.executeWithTask(
+      '生成子节点名称',
+      `为节点 "${parentNode.name}" 生成子节点名称`,
+      { nodeId: parentNode.id, prompt: userPrompt },
+      async () => {
+        const promptContext = this.buildPromptContext(context, userPrompt)
+        const aiPrompt = PromptBuilder.buildChildrenNamesPrompt(promptContext)
+        const response = await this.callAI(aiPrompt)
+        const names = PromptBuilder.parseJsonArray<string>(response)
+        return names.filter((name) => typeof name === 'string' && name.trim())
       }
-
-      this.dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
-    }
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 构建已有子节点信息
-      const existingChildrenInfo =
-        existingChildren.length > 0
-          ? existingChildren
-              .map(
-                (child) => `  - ${child.name}${child.description ? ` (${child.description})` : ''}`
-              )
-              .join('\n')
-          : '  暂无子节点'
-
-      const aiPrompt = `# 任务
-根据用户的描述，为指定的对象节点生成子节点名称。你只需要生成一个JSON字符串数组，包含多个子节点的名称。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-- 节点名称: ${parentNode.name}
-- 节点描述: ${parentNode.description || '无'}
-- 现有属性: ${Object.keys(parentNode.properties || {}).length > 0 ? JSON.stringify(parentNode.properties, null, 2) : '无'}
-
-# 已有子节点
-${existingChildrenInfo}
-
-# 用户需求
-${userPrompt}
-
-# 输出格式
-请严格按照以下JSON格式输出，只包含名称数组：
-\`\`\`json
-["子节点名称1", "子节点名称2", "子节点名称3", "..."]
-\`\`\`
-
-# 生成要求
-1. 只生成子节点的名称，不包含其他信息
-2. 避免与已有子节点重复
-3. 参考同级节点的命名风格和上下文层级结构
-4. 生成的名称应该语义清晰、简洁
-5. 考虑父节点的类型、用途以及整个对象树的结构
-6. 结合完整的上下文信息，确保生成的子节点符合整体架构
-7. 若无特别说明，请生成尽可能多的子节点名称
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const names = JSON.parse(jsonContent)
-      if (!Array.isArray(names)) {
-        throw new Error('期望数组格式')
-      }
-
-      // 更新任务状态为完成
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'completed',
-              endTime: Date.now()
-            }
-          }
-        })
-      }
-
-      return names.filter((name) => typeof name === 'string' && name.trim())
-    } catch (error) {
-      // 更新任务状态为失败
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
-      }
-      throw new Error('AI响应格式错误')
-    }
+    )
   }
 
   // 生成节点描述
@@ -159,112 +70,22 @@ ${userPrompt}
     context: AIGenerationContext,
     userPrompt?: string
   ): Promise<string> {
-    const { node, existingChildren, getFullContextInformation } = context
+    const { node } = context
 
-    const taskId = uuidv4()
-
-    // 创建AI任务监控
-    if (this.dispatch && this.chatId) {
-      const task: AITask = {
-        id: taskId,
-        requestId: this.aiService.id, // 使用AI服务的requestId
-        type: 'object_generation',
-        status: 'running',
-        title: '生成节点描述',
-        description: `为节点 "${node.name}" 生成描述`,
-        chatId: this.chatId,
-        modelId: this.llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          object: {
-            nodeId: node.id,
-            prompt: userPrompt || '生成描述'
-          }
-        }
+    return this.taskManager.executeWithTask(
+      '生成节点描述',
+      `为节点 "${node.name}" 生成描述`,
+      { nodeId: node.id, prompt: userPrompt || '生成描述' },
+      async () => {
+        const promptContext = this.buildPromptContext(
+          context,
+          userPrompt || '请生成一个简洁明了的节点描述'
+        )
+        const aiPrompt = PromptBuilder.buildNodeDescriptionPrompt(promptContext)
+        const response = await this.callAI(aiPrompt)
+        return response.trim()
       }
-
-      this.dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
-    }
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 构建已有子节点信息
-      const existingChildrenInfo =
-        existingChildren.length > 0
-          ? existingChildren
-              .map(
-                (child) => `  - ${child.name}${child.description ? ` (${child.description})` : ''}`
-              )
-              .join('\n')
-          : '  暂无子节点'
-
-      const aiPrompt = `# 任务
-为指定的对象节点生成一个准确、简洁的描述。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-- 节点名称: ${node.name}
-- 节点描述: ${node.description || '无'}
-- 现有属性: ${Object.keys(node.properties || {}).length > 0 ? JSON.stringify(node.properties, null, 2) : '无'}
-
-# 已有子节点
-${existingChildrenInfo}
-
-# 用户需求
-${userPrompt || '请生成一个简洁明了的节点描述'}
-
-# 输出要求
-请直接输出节点描述，不要包含任何格式化标记或额外说明。描述应该：
-1. 简洁明了，50-200字左右
-2. 准确反映节点的用途和功能
-3. 使用自然语言，避免过于技术性的表述
-4. 符合整个对象系统的语境
-5. 结合节点的属性、子节点等信息，提供全面的描述
-6. 结合完整的上下文信息，确保描述符合整体架构
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 更新任务状态为完成
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'completed',
-              endTime: Date.now()
-            }
-          }
-        })
-      }
-
-      return response.trim()
-    } catch (error) {
-      // 更新任务状态为失败
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
-      }
-      throw error
-    }
+    )
   }
 
   // 生成对象属性
@@ -272,349 +93,76 @@ ${userPrompt || '请生成一个简洁明了的节点描述'}
     context: AIGenerationContext,
     userPrompt?: string
   ): Promise<Record<string, any>> {
-    const { node, existingChildren, getFullContextInformation } = context
+    const { node } = context
 
-    const taskId = uuidv4()
-
-    // 创建AI任务监控
-    if (this.dispatch && this.chatId) {
-      const task: AITask = {
-        id: taskId,
-        requestId: this.aiService.id, // 使用AI服务的requestId
-        type: 'object_generation',
-        status: 'running',
-        title: '生成对象属性',
-        description: `为节点 "${node.name}" 生成属性`,
-        chatId: this.chatId,
-        modelId: this.llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          object: {
-            nodeId: node.id,
-            prompt: userPrompt || '生成属性'
-          }
-        }
+    return this.taskManager.executeWithTask(
+      '生成对象属性',
+      `为节点 "${node.name}" 生成属性`,
+      { nodeId: node.id, prompt: userPrompt || '生成属性' },
+      async () => {
+        const promptContext = this.buildPromptContext(
+          context,
+          userPrompt || '生成适合这个对象的属性'
+        )
+        const aiPrompt = PromptBuilder.buildObjectPropertiesPrompt(promptContext)
+        const response = await this.callAI(aiPrompt)
+        return PromptBuilder.parseJsonObject(response)
       }
+    )
+  }
 
-      this.dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
-    }
-
+  // 获取推荐提示词的通用方法
+  private async getPromptRecommendations(
+    taskType: string,
+    context: AIGenerationContext,
+    defaultRecommendations: string[]
+  ): Promise<string[]> {
     try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 构建已有子节点信息
-      const existingChildrenInfo =
-        existingChildren.length > 0
-          ? existingChildren
-              .map(
-                (child) => `  - ${child.name}${child.description ? ` (${child.description})` : ''}`
-              )
-              .join('\n')
-          : '  暂无子节点'
-
-      const aiPrompt = `# 任务
-为指定的对象节点生成合适的属性。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-- 节点名称: ${node.name}
-- 节点描述: ${node.description || '无'}
-- 现有属性: ${Object.keys(node.properties || {}).length > 0 ? JSON.stringify(node.properties, null, 2) : '无'}
-
-# 已有子节点
-${existingChildrenInfo}
-
-# 用户需求
-${userPrompt || '生成适合这个对象的属性'}
-
-# 输出格式
-请严格按照以下JSON格式输出：
-\`\`\`json
-{
-  "属性名1": "属性值1",
-  "属性名2": "属性值2",
-  "属性名3": "属性值3",
-  "...": "..."
-}
-\`\`\`
-
-# 生成要求
-1. 生成的属性应该符合对象的名称和描述
-2. 属性名应该简洁明了，使用驼峰命名法
-3. 属性值应该是合适的数据类型
-4. 避免与现有属性重复
-5. 考虑节点的功能、用途以及在整个对象系统中的作用
-6. 结合完整的上下文信息，确保生成的属性符合整体架构
-
-请开始生成：`
-
+      const promptContext = this.buildPromptContext(context, '')
+      const aiPrompt = PromptBuilder.buildPromptRecommendationsRequest(taskType, promptContext)
       const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const properties = JSON.parse(jsonContent)
-
-      // 更新任务状态为完成
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'completed',
-              endTime: Date.now()
-            }
-          }
-        })
-      }
-
-      return properties
+      const recommendations = PromptBuilder.parseJsonArray<string>(response)
+      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
     } catch (error) {
-      // 更新任务状态为失败
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
-      }
-      throw error
+      console.error(`获取${taskType}推荐失败:`, error)
+      return defaultRecommendations
     }
   }
 
   // 获取生成子节点的推荐提示词
   async getChildrenPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
-    const {
-      node: parentNode,
-      ancestorChain,
-      siblings,
-      existingChildren,
-      getFullContextInformation,
-      getNodeInformation
-    } = context
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 获取当前节点的详细信息
-      const nodeDetailInfo = getNodeInformation
-        ? getNodeInformation(parentNode)
-        : `节点名称: ${parentNode.name}\n节点描述: ${parentNode.description || '无'}`
-
-      // 构建已有子节点信息
-      const existingChildrenInfo =
-        existingChildren.length > 0
-          ? existingChildren
-              .map(
-                (child) => `  - ${child.name}${child.description ? ` (${child.description})` : ''}`
-              )
-              .join('\n')
-          : '  暂无子节点'
-
-      const aiPrompt = `# 任务
-根据对象节点的上下文信息，为用户推荐5个用于生成子节点的提示词。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-${nodeDetailInfo}
-
-# 已有子节点
-${existingChildrenInfo}
-
-# 输出格式
-请严格按照以下JSON格式输出，只包含提示词数组：
-\`\`\`json
-["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
-\`\`\`
-
-# 生成要求
-1. 提示词应该简洁明了，15-30字左右
-2. 提示词应该具有启发性，能够指导用户生成相关的子节点
-3. 考虑节点的类型、用途以及整个对象树的结构
-4. 避免与已有子节点重复
-5. 提示词应该涵盖不同的角度和维度
-6. 结合完整的上下文信息，确保推荐的提示词符合整体架构
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const recommendations = JSON.parse(jsonContent)
-      if (!Array.isArray(recommendations)) {
-        throw new Error('期望数组格式')
-      }
-
-      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
-    } catch (error) {
-      console.error('获取子节点推荐失败:', error)
-      // 返回默认推荐
-      return [
-        '添加基本功能模块',
-        '生成配置相关选项',
-        '创建状态管理字段',
-        '添加数据处理逻辑',
-        '生成用户界面组件'
-      ]
-    }
+    return this.getPromptRecommendations('children', context, [
+      '添加基本功能模块',
+      '生成配置相关选项',
+      '创建状态管理字段',
+      '添加数据处理逻辑',
+      '生成用户界面组件'
+    ])
   }
 
   // 获取生成描述的推荐提示词
   async getDescriptionPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
-    const { node, getFullContextInformation, getNodeInformation } = context
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 获取当前节点的详细信息
-      const nodeDetailInfo = getNodeInformation
-        ? getNodeInformation(node)
-        : `节点名称: ${node.name}\n节点描述: ${node.description || '无'}`
-
-      const aiPrompt = `# 任务
-根据对象节点的信息，为用户推荐5个用于生成节点描述的提示词。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-${nodeDetailInfo}
-
-# 输出格式
-请严格按照以下JSON格式输出，只包含提示词数组：
-\`\`\`json
-["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
-\`\`\`
-
-# 生成要求
-1. 提示词应该简洁明了，15-30字左右
-2. 提示词应该帮助用户从不同角度描述节点
-3. 考虑节点的功能、用途、特点以及在整个对象树中的位置
-4. 提示词应该具有启发性和实用性
-5. 涵盖功能说明、使用场景、技术特点等不同方面
-6. 结合完整的上下文信息，确保推荐的提示词符合整体架构
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const recommendations = JSON.parse(jsonContent)
-      if (!Array.isArray(recommendations)) {
-        throw new Error('期望数组格式')
-      }
-
-      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
-    } catch (error) {
-      console.error('获取描述推荐失败:', error)
-      // 返回默认推荐
-      return [
-        '生成详细的功能说明',
-        '描述主要用途和价值',
-        '说明技术特点和优势',
-        '介绍使用场景和应用',
-        '解释核心概念和原理'
-      ]
-    }
+    return this.getPromptRecommendations('description', context, [
+      '生成详细的功能说明',
+      '描述主要用途和价值',
+      '说明技术特点和优势',
+      '介绍使用场景和应用',
+      '解释核心概念和原理'
+    ])
   }
 
   // 获取生成属性的推荐提示词
   async getPropertiesPromptRecommendations(context: AIGenerationContext): Promise<string[]> {
-    const { node, getFullContextInformation, getNodeInformation } = context
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 获取当前节点的详细信息
-      const nodeDetailInfo = getNodeInformation
-        ? getNodeInformation(node)
-        : `节点名称: ${node.name}\n节点描述: ${node.description || '无'}`
-
-      const existingProperties = Object.keys(node.properties || {})
-      const existingPropertiesInfo =
-        existingProperties.length > 0
-          ? existingProperties.map((key) => `  - ${key}: ${node.properties?.[key]}`).join('\n')
-          : '  暂无属性'
-
-      const aiPrompt = `# 任务
-根据对象节点的信息，为用户推荐5个用于生成对象属性的提示词。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-${nodeDetailInfo}
-
-# 已有属性
-${existingPropertiesInfo}
-
-# 输出格式
-请严格按照以下JSON格式输出，只包含提示词数组：
-\`\`\`json
-["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
-\`\`\`
-
-# 生成要求
-1. 提示词应该简洁明了，15-30字左右
-2. 提示词应该帮助用户生成有用的对象属性
-3. 考虑配置信息等不同类型的属性
-4. 避免与已有属性重复
-5. 提示词应该具有实用性和针对性
-6. 结合完整的上下文信息，确保推荐的属性符合整体架构
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const recommendations = JSON.parse(jsonContent)
-      if (!Array.isArray(recommendations)) {
-        throw new Error('期望数组格式')
-      }
-
-      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
-    } catch (error) {
-      console.error('获取属性推荐失败:', error)
-      // 返回默认推荐
-      return [
-        '添加基本配置参数',
-        '生成状态管理属性',
-        '创建元数据信息',
-        '添加验证规则属性',
-        '生成显示控制选项'
-      ]
-    }
+    return this.getPromptRecommendations('properties', context, [
+      '添加基本配置参数',
+      '生成状态管理属性',
+      '创建元数据信息',
+      '添加验证规则属性',
+      '生成显示控制选项'
+    ])
   }
 
-  // 生成关系节点 - 新增方法
+  // 生成关系节点
   async generateRelationNodes(
     context: AIGenerationContext,
     sourceNodeId: string,
@@ -623,13 +171,8 @@ ${existingPropertiesInfo}
     allNodes?: { [nodeId: string]: ObjectNodeType }
   ): Promise<{
     relationNodes: ObjectNodeType[]
-    nodeUpdates: Array<{
-      nodeId: string
-      connection: any
-    }>
+    nodeUpdates: Array<{ nodeId: string; connection: any }>
   }> {
-    const { node, getFullContextInformation, getNodeInformation } = context
-
     if (!allNodes) {
       throw new Error('需要提供所有节点信息来生成关系节点')
     }
@@ -641,47 +184,47 @@ ${existingPropertiesInfo}
       throw new Error('源节点或目标节点不存在')
     }
 
-    const taskId = uuidv4()
+    return this.taskManager.executeWithTask(
+      '生成关系节点',
+      `为节点 "${sourceNode.name}" 和 "${targetNode.name}" 生成关系节点`,
+      { nodeId: sourceNodeId, prompt: userPrompt || '生成关系节点' },
+      async () => {
+        const relationData = await this.generateRelationData(
+          context,
+          sourceNode,
+          targetNode,
+          userPrompt
+        )
 
-    // 创建AI任务监控
-    if (this.dispatch && this.chatId) {
-      const task: AITask = {
-        id: taskId,
-        requestId: this.aiService.id,
-        type: 'object_generation',
-        status: 'running',
-        title: '生成关系节点',
-        description: `为节点 "${sourceNode.name}" 和 "${targetNode.name}" 生成关系节点`,
-        chatId: this.chatId,
-        modelId: this.llmConfig.id,
-        startTime: Date.now(),
-        context: {
-          object: {
-            nodeId: sourceNodeId,
-            prompt: userPrompt || '生成关系节点'
-          }
-        }
+        return this.createRelationNodesFromData(
+          relationData,
+          sourceNodeId,
+          targetNodeId,
+          sourceNode,
+          targetNode,
+          userPrompt
+        )
       }
+    )
+  }
 
-      this.dispatch({
-        type: 'ADD_AI_TASK',
-        payload: { task }
-      })
-    }
+  private async generateRelationData(
+    context: AIGenerationContext,
+    sourceNode: ObjectNodeType,
+    targetNode: ObjectNodeType,
+    userPrompt?: string
+  ): Promise<any[]> {
+    const { getFullContextInformation, getNodeInformation } = context
 
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
+    const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
+    const sourceNodeInfo = getNodeInformation
+      ? getNodeInformation(sourceNode)
+      : `节点名称: ${sourceNode.name}\n节点描述: ${sourceNode.description || '无'}`
+    const targetNodeInfo = getNodeInformation
+      ? getNodeInformation(targetNode)
+      : `节点名称: ${targetNode.name}\n节点描述: ${targetNode.description || '无'}`
 
-      // 获取源节点和目标节点的详细信息
-      const sourceNodeInfo = getNodeInformation
-        ? getNodeInformation(sourceNode)
-        : `节点名称: ${sourceNode.name}\n节点描述: ${sourceNode.description || '无'}`
-      const targetNodeInfo = getNodeInformation
-        ? getNodeInformation(targetNode)
-        : `节点名称: ${targetNode.name}\n节点描述: ${targetNode.description || '无'}`
-
-      const aiPrompt = `# 任务
+    const aiPrompt = `# 任务
 根据两个节点的信息和上下文，生成它们之间的关系节点。关系节点本身也是一个对象，可以描述两个节点之间的连接关系。
 
 # 完整上下文信息
@@ -725,220 +268,113 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
 
 请开始生成：`
 
-      const response = await this.callAI(aiPrompt)
+    const response = await this.callAI(aiPrompt)
+    return PromptBuilder.parseJsonArray(response)
+  }
 
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
+  private createRelationNodesFromData(
+    relationData: any[],
+    sourceNodeId: string,
+    targetNodeId: string,
+    sourceNode: ObjectNodeType,
+    targetNode: ObjectNodeType,
+    userPrompt?: string
+  ): {
+    relationNodes: ObjectNodeType[]
+    nodeUpdates: Array<{ nodeId: string; connection: any }>
+  } {
+    const relationNodes: ObjectNodeType[] = []
+    const nodeUpdates: Array<{ nodeId: string; connection: any }> = []
 
-      const relationData = JSON.parse(jsonContent)
-      if (!Array.isArray(relationData)) {
-        throw new Error('期望数组格式')
-      }
+    for (const relData of relationData) {
+      if (relData.name && relData.sourceRole && relData.targetRole) {
+        const relationNodeId = uuidv4()
+        const timestamp = Date.now()
 
-      // 创建关系节点对象和节点更新信息
-      const relationNodes: ObjectNodeType[] = []
-      const nodeUpdates: Array<{
-        nodeId: string
-        connection: any
-      }> = []
-
-      for (const relData of relationData) {
-        if (relData.name && relData.sourceRole && relData.targetRole) {
-          const relationNodeId = uuidv4()
-
-          const relationNode: ObjectNodeType = {
-            id: relationNodeId,
-            name: relData.name,
-            description: relData.description || '',
-            type: relData.type || 'relation',
-            connections: [
-              {
-                nodeId: sourceNodeId,
-                role: relData.sourceRole,
-                description: `${sourceNode.name}在此关系中的角色`,
-                strength: 'medium',
-                metadata: {
-                  createdAt: Date.now(),
-                  source: 'ai',
-                  aiPrompt: userPrompt || '生成关系节点'
-                }
-              },
-              {
-                nodeId: targetNodeId,
-                role: relData.targetRole,
-                description: `${targetNode.name}在此关系中的角色`,
-                strength: 'medium',
-                metadata: {
-                  createdAt: Date.now(),
-                  source: 'ai',
-                  aiPrompt: userPrompt || '生成关系节点'
-                }
+        const relationNode: ObjectNodeType = {
+          id: relationNodeId,
+          name: relData.name,
+          description: relData.description || '',
+          type: relData.type || 'relation',
+          connections: [
+            {
+              nodeId: sourceNodeId,
+              role: relData.sourceRole,
+              description: `${sourceNode.name}在此关系中的角色`,
+              strength: 'medium',
+              metadata: {
+                createdAt: timestamp,
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
               }
-            ],
-            properties: relData.properties || {},
-            children: [],
-            expanded: false,
-            metadata: {
-              createdAt: Date.now(),
-              source: 'ai',
-              aiPrompt: userPrompt || '生成关系节点'
+            },
+            {
+              nodeId: targetNodeId,
+              role: relData.targetRole,
+              description: `${targetNode.name}在此关系中的角色`,
+              strength: 'medium',
+              metadata: {
+                createdAt: timestamp,
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
+              }
             }
+          ],
+          properties: relData.properties || {},
+          children: [],
+          expanded: false,
+          metadata: {
+            createdAt: timestamp,
+            source: 'ai',
+            aiPrompt: userPrompt || '生成关系节点'
           }
+        }
 
-          relationNodes.push(relationNode)
+        relationNodes.push(relationNode)
 
-          // 为源节点添加连接到关系节点的连接
-          nodeUpdates.push({
+        // 为源节点和目标节点添加连接
+        nodeUpdates.push(
+          {
             nodeId: sourceNodeId,
             connection: {
               nodeId: relationNodeId,
               role: '关系参与者',
               description: `通过关系"${relData.name}"连接`,
               strength: 'medium',
-              metadata: {
-                createdAt: Date.now(),
-                source: 'ai',
-                aiPrompt: userPrompt || '生成关系节点'
-              }
+              metadata: { createdAt: timestamp, source: 'ai', aiPrompt: userPrompt || '生成关系节点' }
             }
-          })
-
-          // 为目标节点添加连接到关系节点的连接
-          nodeUpdates.push({
+          },
+          {
             nodeId: targetNodeId,
             connection: {
               nodeId: relationNodeId,
               role: '关系参与者',
               description: `通过关系"${relData.name}"连接`,
               strength: 'medium',
-              metadata: {
-                createdAt: Date.now(),
-                source: 'ai',
-                aiPrompt: userPrompt || '生成关系节点'
-              }
-            }
-          })
-        }
-      }
-
-      // 更新任务状态为完成
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'completed',
-              endTime: Date.now()
+              metadata: { createdAt: timestamp, source: 'ai', aiPrompt: userPrompt || '生成关系节点' }
             }
           }
-        })
+        )
       }
-
-      return {
-        relationNodes,
-        nodeUpdates
-      }
-    } catch (error) {
-      // 更新任务状态为失败
-      if (this.dispatch && this.chatId) {
-        this.dispatch({
-          type: 'UPDATE_AI_TASK',
-          payload: {
-            taskId,
-            updates: {
-              status: 'failed',
-              endTime: Date.now(),
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
-      }
-      throw error
     }
+
+    return { relationNodes, nodeUpdates }
   }
 
-  // 获取生成关系节点的推荐提示词 - 新增方法
+  // 获取生成关系节点的推荐提示词
   async getRelationsPromptRecommendations(
     context: AIGenerationContext,
     sourceNodeId?: string,
     targetNodeId?: string,
     allNodes?: { [nodeId: string]: ObjectNodeType }
   ): Promise<string[]> {
-    const { node, getFullContextInformation, getNodeInformation } = context
-
-    try {
-      // 获取完整的上下文信息
-      const fullContextInfo = getFullContextInformation ? getFullContextInformation() : ''
-
-      // 获取当前节点的详细信息
-      const nodeDetailInfo = getNodeInformation
-        ? getNodeInformation(node)
-        : `节点名称: ${node.name}\n节点描述: ${node.description || '无'}`
-
-      let contextualInfo = ''
-      if (sourceNodeId && targetNodeId && allNodes) {
-        const sourceNode = allNodes[sourceNodeId]
-        const targetNode = allNodes[targetNodeId]
-        if (sourceNode && targetNode) {
-          contextualInfo = `
-# 关系生成上下文
-源节点: ${sourceNode.name} (${sourceNode.description || '无描述'})
-目标节点: ${targetNode.name} (${targetNode.description || '无描述'})
-`
-        }
-      }
-
-      const aiPrompt = `# 任务
-根据对象节点的信息，为用户推荐5个用于生成关系节点的提示词。
-
-# 完整上下文信息
-${fullContextInfo}
-
-# 当前节点详细信息
-${nodeDetailInfo}
-
-${contextualInfo}
-
-# 输出格式
-请严格按照以下JSON格式输出，只包含提示词数组：
-\`\`\`json
-["提示词1", "提示词2", "提示词3", "提示词4", "提示词5"]
-\`\`\`
-
-# 生成要求
-1. 提示词应该简洁明了，15-30字左右
-2. 提示词应该帮助用户识别和生成有用的关系节点
-3. 考虑不同类型的关系（依赖、关联、对立、因果等）
-4. 提示词应该具有启发性和实用性
-5. 结合完整的上下文信息，确保推荐的关系符合整体架构
-
-请开始生成：`
-
-      const response = await this.callAI(aiPrompt)
-
-      // 解析响应
-      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-      const jsonContent = jsonMatch ? jsonMatch[1] : response
-
-      const recommendations = JSON.parse(jsonContent)
-      if (!Array.isArray(recommendations)) {
-        throw new Error('期望数组格式')
-      }
-
-      return recommendations.filter((rec) => typeof rec === 'string' && rec.trim())
-    } catch (error) {
-      console.error('获取关系推荐失败:', error)
-      // 返回默认推荐
-      return [
-        '查找两个节点的依赖关系',
-        '识别功能性关联',
-        '发现对立或冲突关系',
-        '分析因果关系',
-        '探索协作关系'
-      ]
-    }
+    return this.getPromptRecommendations('relations', context, [
+      '查找两个节点的依赖关系',
+      '识别功能性关联',
+      '发现对立或冲突关系',
+      '分析因果关系',
+      '探索协作关系'
+    ])
   }
 
   // 辅助方法：获取节点路径
