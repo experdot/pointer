@@ -580,7 +580,6 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             type: 'settings',
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            pinned: true, // 设置页面默认固定
             data: { defaultActiveTab }
           }
 
