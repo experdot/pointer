@@ -1,14 +1,51 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
+export interface LLMConfig {
+  apiHost: string
+  apiKey: string
+  modelName: string
+}
+
+export interface ModelConfig {
+  systemPrompt: string
+  topP: number
+  temperature: number
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+export interface AIRequest {
+  requestId: string
+  llmConfig: LLMConfig
+  modelConfig: ModelConfig
+  messages: ChatMessage[]
+}
+
+export interface AIStreamChunk {
+  requestId: string
+  type: 'chunk' | 'complete' | 'error' | 'reasoning_content'
+  content?: string
+  reasoning_content?: string
+  error?: string
+}
+
+export interface TestConnectionResult {
+  success: boolean
+  error?: string
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
     api: {
       ai: {
-        sendMessageStreaming: (request: any) => Promise<any>
+        sendMessageStreaming: (request: AIRequest) => Promise<void>
         stopStreaming: (requestId: string) => Promise<void>
-        testConnection: (config: any) => Promise<any>
-        onStreamData: (requestId: string, callback: (data: any) => void) => void
+        testConnection: (config: LLMConfig) => Promise<TestConnectionResult>
+        onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void) => void
         removeStreamListener: (requestId: string) => void
       }
       saveFile: (options: {

@@ -1,18 +1,25 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type {
+  AIRequest,
+  AIStreamChunk,
+  LLMConfig,
+  TestConnectionResult
+} from './index.d'
 
 // 管理多个流式监听器
-const streamListeners = new Map<string, (data: any) => void>()
+const streamListeners = new Map<string, (data: AIStreamChunk) => void>()
 
 // Custom APIs for renderer
 const api = {
   ai: {
-    sendMessageStreaming: (request: any) =>
+    sendMessageStreaming: (request: AIRequest): Promise<void> =>
       ipcRenderer.invoke('ai:send-message-streaming', request),
-    sendMessage: (request: any) => ipcRenderer.invoke('ai:send-message', request),
-    testConnection: (config: any) => ipcRenderer.invoke('ai:test-connection', config),
-    stopStreaming: (requestId: string) => ipcRenderer.invoke('ai:stop-streaming', requestId),
-    onStreamData: (requestId: string, callback: (data: any) => void) => {
+    testConnection: (config: LLMConfig): Promise<TestConnectionResult> =>
+      ipcRenderer.invoke('ai:test-connection', config),
+    stopStreaming: (requestId: string): Promise<void> =>
+      ipcRenderer.invoke('ai:stop-streaming', requestId),
+    onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void): void => {
       // 为每个请求ID创建独立的监听器
       streamListeners.set(requestId, callback)
 
@@ -26,7 +33,7 @@ const api = {
         })
       }
     },
-    removeStreamListener: (requestId: string) => {
+    removeStreamListener: (requestId: string): void => {
       streamListeners.delete(requestId)
 
       // 如果没有监听器了，移除全局监听器

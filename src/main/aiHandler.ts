@@ -37,180 +37,238 @@ class AIHandler {
   // 使用 Map 管理多个并行请求的 AbortController
   private abortControllers = new Map<string, AbortController>()
 
+  /**
+   * 准备 API 消息数组，处理 systemPrompt
+   */
+  private prepareApiMessages(messages: ChatMessage[], modelConfig: ModelConfig): ChatMessage[] {
+    const apiMessages = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content
+    }))
+
+    // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
+    if (
+      modelConfig.systemPrompt &&
+      (apiMessages.length === 0 || apiMessages[0].role !== 'system')
+    ) {
+      apiMessages.unshift({
+        role: 'system',
+        content: modelConfig.systemPrompt
+      })
+    }
+
+    return apiMessages
+  }
+
+  /**
+   * 获取或创建默认的 ModelConfig
+   */
+  private getModelConfig(modelConfig?: ModelConfig): ModelConfig {
+    return (
+      modelConfig || {
+        systemPrompt: '',
+        topP: 1,
+        temperature: 1
+      }
+    )
+  }
+
+  /**
+   * 发送错误消息给渲染进程
+   */
+  private sendError(event: Electron.IpcMainInvokeEvent, requestId: string, error: string): void {
+    event.sender.send('ai-stream-data', {
+      requestId,
+      type: 'error',
+      error
+    } as AIStreamChunk)
+  }
+
+  /**
+   * 发送完成消息给渲染进程
+   */
+  private sendComplete(
+    event: Electron.IpcMainInvokeEvent,
+    requestId: string,
+    content: string,
+    reasoning_content?: string
+  ): void {
+    event.sender.send('ai-stream-data', {
+      requestId,
+      type: 'complete',
+      content,
+      reasoning_content: reasoning_content || undefined
+    } as AIStreamChunk)
+  }
+
+  /**
+   * 创建并发送 API 请求
+   */
+  private async fetchStreamingResponse(
+    request: AIRequest,
+    apiMessages: ChatMessage[],
+    modelConfig: ModelConfig,
+    abortController: AbortController
+  ): Promise<Response> {
+    return await fetch(`${request.llmConfig.apiHost.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${request.llmConfig.apiKey}`
+      },
+      body: JSON.stringify({
+        model: request.llmConfig.modelName,
+        messages: apiMessages,
+        temperature: modelConfig.temperature,
+        top_p: modelConfig.topP,
+        stream: true
+      }),
+      signal: abortController.signal
+    })
+  }
+
+  /**
+   * 创建 SSE 事件解析器
+   */
+  private createStreamParser(
+    event: Electron.IpcMainInvokeEvent,
+    requestId: string,
+    fullResponse: { value: string },
+    fullReasoning: { value: string }
+  ) {
+    return createParser({
+      onEvent: (eventData) => {
+        if (eventData.data === '[DONE]') {
+          this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+          return
+        }
+
+        try {
+          const parsed = JSON.parse(eventData.data)
+          const delta = parsed.choices?.[0]?.delta
+          const content = delta?.content
+          const reasoning_content =
+            delta?.reasoning_content ||
+            delta?.reasoning ||
+            parsed.reasoning_content ||
+            parsed?.reasoning
+
+          if (content) {
+            fullResponse.value += content
+            event.sender.send('ai-stream-data', {
+              requestId,
+              type: 'chunk',
+              content: content
+            } as AIStreamChunk)
+          }
+
+          if (reasoning_content) {
+            fullReasoning.value += reasoning_content
+            event.sender.send('ai-stream-data', {
+              requestId,
+              type: 'reasoning_content',
+              reasoning_content: reasoning_content
+            } as AIStreamChunk)
+          }
+        } catch (e) {
+          console.warn('Failed to parse streaming data:', e)
+        }
+      }
+    })
+  }
+
+  /**
+   * 处理流式响应
+   */
+  private async processStreamResponse(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    parser: ReturnType<typeof createParser>,
+    event: Electron.IpcMainInvokeEvent,
+    requestId: string,
+    fullResponse: { value: string },
+    fullReasoning: { value: string }
+  ): Promise<void> {
+    const decoder = new TextDecoder()
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        parser.feed(chunk)
+      }
+
+      this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+      } else {
+        this.sendError(
+          event,
+          requestId,
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      }
+    }
+  }
+
   public async sendMessageStreaming(
     event: Electron.IpcMainInvokeEvent,
     request: AIRequest
   ): Promise<void> {
+    const abortController = new AbortController()
+    this.abortControllers.set(request.requestId, abortController)
+
     try {
-      // 为当前请求创建新的AbortController
-      const abortController = new AbortController()
-      this.abortControllers.set(request.requestId, abortController)
+      const modelConfig = this.getModelConfig(request.modelConfig)
+      const apiMessages = this.prepareApiMessages(request.messages, modelConfig)
 
-      // 准备消息数组，如果有systemPrompt，插入system消息
-      const apiMessages = request.messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content
-      }))
-
-      let modelConfig = request.modelConfig
-      if (!request.modelConfig) {
-        modelConfig = {
-          systemPrompt: '',
-          topP: 1,
-          temperature: 1
-        }
-      }
-
-      // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
-      if (
-        modelConfig.systemPrompt &&
-        (apiMessages.length === 0 || apiMessages[0].role !== 'system')
-      ) {
-        apiMessages.unshift({
-          role: 'system',
-          content: modelConfig.systemPrompt
-        })
-      }
-
-      const response = await fetch(
-        `${request.llmConfig.apiHost.replace(/\/$/, '')}/chat/completions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${request.llmConfig.apiKey}`
-          },
-          body: JSON.stringify({
-            model: request.llmConfig.modelName,
-            messages: apiMessages,
-            temperature: modelConfig.temperature,
-            top_p: modelConfig.topP,
-            stream: true
-          }),
-          signal: abortController.signal
-        }
+      const response = await this.fetchStreamingResponse(
+        request,
+        apiMessages,
+        modelConfig,
+        abortController
       )
 
       if (!response.ok) {
-        event.sender.send('ai-stream-data', {
-          requestId: request.requestId,
-          type: 'error',
-          error: `HTTP error! status: ${response.status}`
-        } as AIStreamChunk)
+        this.sendError(event, request.requestId, `HTTP error! status: ${response.status}`)
         return
       }
 
       const reader = response.body?.getReader()
       if (!reader) {
-        event.sender.send('ai-stream-data', {
-          requestId: request.requestId,
-          type: 'error',
-          error: 'No response body reader available'
-        } as AIStreamChunk)
+        this.sendError(event, request.requestId, 'No response body reader available')
         return
       }
 
-      const decoder = new TextDecoder()
-      let fullResponse = ''
-      let fullReasoning = ''
+      const fullResponse = { value: '' }
+      const fullReasoning = { value: '' }
 
-      // 使用 eventsource-parser 来解析 SSE 数据
-      const parser = createParser({
-        onEvent: (eventData) => {
-          if (eventData.data === '[DONE]') {
-            event.sender.send('ai-stream-data', {
-              requestId: request.requestId,
-              type: 'complete',
-              content: fullResponse,
-              reasoning_content: fullReasoning || undefined
-            } as AIStreamChunk)
-            return
-          }
+      const parser = this.createStreamParser(
+        event,
+        request.requestId,
+        fullResponse,
+        fullReasoning
+      )
 
-          try {
-            const parsed = JSON.parse(eventData.data)
-            const delta = parsed.choices?.[0]?.delta
-            const content = delta?.content
-            const reasoning_content =
-              delta?.reasoning_content ||
-              delta?.reasoning ||
-              parsed.reasoning_content ||
-              parsed?.reasoning
-
-            if (content) {
-              fullResponse += content
-              event.sender.send('ai-stream-data', {
-                requestId: request.requestId,
-                type: 'chunk',
-                content: content
-              } as AIStreamChunk)
-            }
-
-            if (reasoning_content) {
-              fullReasoning += reasoning_content
-              event.sender.send('ai-stream-data', {
-                requestId: request.requestId,
-                type: 'reasoning_content',
-                reasoning_content: reasoning_content
-              } as AIStreamChunk)
-            }
-          } catch (e) {
-            // 忽略解析错误，继续处理下一行
-            console.warn('Failed to parse streaming data:', e)
-          }
-        }
-      })
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-
-          if (done) break
-
-          const chunk = decoder.decode(value, { stream: true })
-          parser.feed(chunk)
-        }
-
-        event.sender.send('ai-stream-data', {
-          requestId: request.requestId,
-          type: 'complete',
-          content: fullResponse,
-          reasoning_content: fullReasoning || undefined
-        } as AIStreamChunk)
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          // 请求被中断
-          event.sender.send('ai-stream-data', {
-            requestId: request.requestId,
-            type: 'complete',
-            content: fullResponse,
-            reasoning_content: fullReasoning || undefined
-          } as AIStreamChunk)
-        } else {
-          event.sender.send('ai-stream-data', {
-            requestId: request.requestId,
-            type: 'error',
-            error: error instanceof Error ? error.message : 'Unknown error'
-          } as AIStreamChunk)
-        }
-      } finally {
-        this.abortControllers.delete(request.requestId)
-      }
+      await this.processStreamResponse(
+        reader,
+        parser,
+        event,
+        request.requestId,
+        fullResponse,
+        fullReasoning
+      )
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        // 请求被中断，发送当前内容作为完成状态
-        event.sender.send('ai-stream-data', {
-          requestId: request.requestId,
-          type: 'complete',
-          content: '',
-          reasoning_content: undefined
-        } as AIStreamChunk)
+        this.sendComplete(event, request.requestId, '', undefined)
       } else {
-        event.sender.send('ai-stream-data', {
-          requestId: request.requestId,
-          type: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        } as AIStreamChunk)
+        this.sendError(
+          event,
+          request.requestId,
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
     } finally {
       this.abortControllers.delete(request.requestId)
