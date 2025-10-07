@@ -285,6 +285,38 @@ class AIHandler {
 
   public async testConnection(config: LLMConfig): Promise<{ success: boolean; error?: string }> {
     try {
+      const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: config.modelName,
+          messages: [{ role: 'user', content: 'Hi' }],
+          max_tokens: 5
+        })
+      })
+
+      if (response.ok) {
+        return { success: true }
+      } else {
+        const errorText = await response.text()
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${errorText || response.statusText}`
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed'
+      }
+    }
+  }
+
+  public async getModels(config: LLMConfig): Promise<{ success: boolean; models?: string[]; error?: string }> {
+    try {
       const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/models`, {
         method: 'GET',
         headers: {
@@ -293,7 +325,9 @@ class AIHandler {
       })
 
       if (response.ok) {
-        return { success: true }
+        const data = await response.json()
+        const models = data.data?.map((model: any) => model.id) || []
+        return { success: true, models }
       } else {
         return {
           success: false,
@@ -303,7 +337,7 @@ class AIHandler {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Connection failed'
+        error: error instanceof Error ? error.message : 'Failed to fetch models'
       }
     }
   }
@@ -317,4 +351,5 @@ export function setupAIHandlers() {
   )
   ipcMain.handle('ai:stop-streaming', (event, requestId: string) => aiHandler.stopStreaming(requestId))
   ipcMain.handle('ai:test-connection', (event, config: LLMConfig) => aiHandler.testConnection(config))
+  ipcMain.handle('ai:get-models', (event, config: LLMConfig) => aiHandler.getModels(config))
 }

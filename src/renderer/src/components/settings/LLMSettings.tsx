@@ -42,6 +42,8 @@ interface LLMConfigFormProps {
 function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [modelLoading, setModelLoading] = useState(false)
+  const [models, setModels] = useState<string[]>([])
   const { message } = App.useApp()
   const { settings } = useSettingsStore()
 
@@ -53,6 +55,7 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       } else {
         form.resetFields()
       }
+      setModels([])
     }
   }, [open, config, form])
 
@@ -79,31 +82,59 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
     }
   }
 
+  const fetchModels = async () => {
+    try {
+      const apiHost = form.getFieldValue('apiHost')
+      const apiKey = form.getFieldValue('apiKey')
+
+      if (!apiHost || !apiKey) {
+        message.warning('请先输入 API Host 和 API Key')
+        return
+      }
+
+      setModelLoading(true)
+      const result = await window.api.ai.getModels({
+        id: 'temp',
+        name: 'temp',
+        apiHost,
+        apiKey,
+        modelName: '',
+        createdAt: Date.now()
+      })
+
+      if (result.success && result.models) {
+        setModels(result.models)
+        message.success(`成功获取 ${result.models.length} 个模型`)
+      } else {
+        message.error(result.error || '获取模型列表失败')
+        setModels([])
+      }
+    } catch (error) {
+      message.error('获取模型列表失败')
+      setModels([])
+    } finally {
+      setModelLoading(false)
+    }
+  }
+
   const testConnection = async () => {
     try {
       const values = await form.validateFields()
       setLoading(true)
 
-      const tempConfig: LLMConfig = {
+      const result = await window.api.ai.testConnection({
         id: 'temp',
         name: values.name,
         apiHost: values.apiHost,
         apiKey: values.apiKey,
         modelName: values.modelName,
         createdAt: Date.now()
-      }
+      })
 
-      const defaultModelConfig =
-        settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId) ||
-        settings.modelConfigs[0]
-      const aiService = createAIService(tempConfig, defaultModelConfig)
-      const isConnected = await aiService.testConnection()
-
-      console.log('isConnected', isConnected)
-      if (isConnected) {
+      if (result.success) {
         message.success('连接测试成功')
       } else {
-        message.error('连接测试失败，请检查配置')
+        message.error(result.error || '连接测试失败，请检查配置')
       }
     } catch (error) {
       message.error('连接测试失败，请检查配置')
@@ -167,8 +198,32 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
           name="modelName"
           label="模型名称"
           rules={[{ required: true, message: '请输入模型名称' }]}
+          extra={
+            <Button
+              type="link"
+              size="small"
+              onClick={fetchModels}
+              loading={modelLoading}
+              style={{ padding: 0 }}
+            >
+              从服务器获取模型列表
+            </Button>
+          }
         >
-          <Input placeholder="gpt-4" />
+          {models.length > 0 ? (
+            <Select
+              placeholder="选择或输入模型名称"
+              showSearch
+              allowClear
+              loading={modelLoading}
+              options={models.map((model) => ({ label: model, value: model }))}
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          ) : (
+            <Input placeholder="请输入模型名称，例如: gpt-4" />
+          )}
         </Form.Item>
 
         <Form.Item

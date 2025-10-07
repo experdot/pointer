@@ -37,6 +37,12 @@ export interface TestConnectionResult {
   error?: string
 }
 
+export interface GetModelsResult {
+  success: boolean
+  models?: string[]
+  error?: string
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -45,6 +51,7 @@ declare global {
         sendMessageStreaming: (request: AIRequest) => Promise<void>
         stopStreaming: (requestId: string) => Promise<void>
         testConnection: (config: LLMConfig) => Promise<TestConnectionResult>
+        getModels: (config: LLMConfig) => Promise<GetModelsResult>
         onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void) => void
         removeStreamListener: (requestId: string) => void
       }

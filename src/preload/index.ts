@@ -4,7 +4,8 @@ import type {
   AIRequest,
   AIStreamChunk,
   LLMConfig,
-  TestConnectionResult
+  TestConnectionResult,
+  GetModelsResult
 } from './index.d'
 
 // 管理多个流式监听器
@@ -17,6 +18,8 @@ const api = {
       ipcRenderer.invoke('ai:send-message-streaming', request),
     testConnection: (config: LLMConfig): Promise<TestConnectionResult> =>
       ipcRenderer.invoke('ai:test-connection', config),
+    getModels: (config: LLMConfig): Promise<GetModelsResult> =>
+      ipcRenderer.invoke('ai:get-models', config),
     stopStreaming: (requestId: string): Promise<void> =>
       ipcRenderer.invoke('ai:stop-streaming', requestId),
     onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void): void => {
