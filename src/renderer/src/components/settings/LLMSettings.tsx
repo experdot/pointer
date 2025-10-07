@@ -94,12 +94,9 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
 
       setModelLoading(true)
       const result = await window.api.ai.getModels({
-        id: 'temp',
-        name: 'temp',
         apiHost,
         apiKey,
         modelName: '',
-        createdAt: Date.now()
       })
 
       if (result.success && result.models) {
@@ -123,12 +120,9 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       setLoading(true)
 
       const result = await window.api.ai.testConnection({
-        id: 'temp',
-        name: values.name,
         apiHost: values.apiHost,
         apiKey: values.apiKey,
         modelName: values.modelName,
-        createdAt: Date.now()
       })
 
       if (result.success) {
