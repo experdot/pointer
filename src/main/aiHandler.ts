@@ -20,10 +20,9 @@ export interface ChatMessage {
 
 export interface AIRequest {
   requestId: string
-  config: LLMConfig
+  llmConfig: LLMConfig
   modelConfig: ModelConfig
   messages: ChatMessage[]
-  streaming?: boolean
 }
 
 export interface AIStreamChunk {
@@ -38,20 +37,7 @@ class AIHandler {
   // 使用 Map 管理多个并行请求的 AbortController
   private abortControllers = new Map<string, AbortController>()
 
-  constructor() {
-    this.setupHandlers()
-  }
-
-  private setupHandlers() {
-    ipcMain.handle('ai:send-message', (event, request: AIRequest) => this.sendMessage(request))
-    ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest) =>
-      this.sendMessageStreaming(event, request)
-    )
-    ipcMain.handle('ai:stop-streaming', (event, requestId: string) => this.stopStreaming(requestId))
-    ipcMain.handle('ai:test-connection', (event, config: LLMConfig) => this.testConnection(config))
-  }
-
-  private async sendMessageStreaming(
+  public async sendMessageStreaming(
     event: Electron.IpcMainInvokeEvent,
     request: AIRequest
   ): Promise<void> {
@@ -87,19 +73,19 @@ class AIHandler {
       }
 
       const response = await fetch(
-        `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
+        `${request.llmConfig.apiHost.replace(/\/$/, '')}/chat/completions`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${request.config.apiKey}`
+            Authorization: `Bearer ${request.llmConfig.apiKey}`
           },
           body: JSON.stringify({
-            model: request.config.modelName,
+            model: request.llmConfig.modelName,
             messages: apiMessages,
-            stream: true,
             temperature: modelConfig.temperature,
-            top_p: modelConfig.topP
+            top_p: modelConfig.topP,
+            stream: true
           }),
           signal: abortController.signal
         }
@@ -231,7 +217,7 @@ class AIHandler {
     }
   }
 
-  private async stopStreaming(requestId: string): Promise<void> {
+  public async stopStreaming(requestId: string): Promise<void> {
     const abortController = this.abortControllers.get(requestId)
     if (abortController) {
       abortController.abort()
@@ -239,79 +225,7 @@ class AIHandler {
     }
   }
 
-  private async sendMessage(
-    request: AIRequest
-  ): Promise<{ success: boolean; content?: string; reasoning_content?: string; error?: string }> {
-    try {
-      // 准备消息数组，如果有systemPrompt，插入system消息
-      const apiMessages = request.messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content
-      }))
-
-      let modelConfig = request.modelConfig
-      if (!request.modelConfig) {
-        modelConfig = {
-          systemPrompt: '',
-          topP: 1,
-          temperature: 1
-        }
-      }
-
-      // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
-      if (
-        modelConfig.systemPrompt &&
-        (apiMessages.length === 0 || apiMessages[0].role !== 'system')
-      ) {
-        apiMessages.unshift({
-          role: 'system',
-          content: modelConfig.systemPrompt
-        })
-      }
-
-      const response = await fetch(
-        `${request.config.apiHost.replace(/\/$/, '')}/chat/completions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${request.config.apiKey}`
-          },
-          body: JSON.stringify({
-            model: request.config.modelName,
-            messages: apiMessages,
-            temperature: modelConfig.temperature,
-            top_p: modelConfig.topP
-          })
-        }
-      )
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `HTTP error! status: ${response.status}`
-        }
-      }
-
-      const data = await response.json()
-      const content = data.choices?.[0]?.message?.content || ''
-      const reasoning_content =
-        data.choices?.[0]?.message?.reasoning_content || data.choices?.[0]?.message?.reasoning
-
-      return {
-        success: true,
-        content,
-        reasoning_content
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  private async testConnection(config: LLMConfig): Promise<{ success: boolean; error?: string }> {
+  public async testConnection(config: LLMConfig): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/models`, {
         method: 'GET',
@@ -338,3 +252,11 @@ class AIHandler {
 }
 
 export const aiHandler = new AIHandler()
+
+export function setupAIHandlers() {
+  ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest) =>
+    aiHandler.sendMessageStreaming(event, request)
+  )
+  ipcMain.handle('ai:stop-streaming', (event, requestId: string) => aiHandler.stopStreaming(requestId))
+  ipcMain.handle('ai:test-connection', (event, config: LLMConfig) => aiHandler.testConnection(config))
+}

@@ -6,9 +6,8 @@ declare global {
     api: {
       ai: {
         sendMessageStreaming: (request: any) => Promise<any>
-        sendMessage: (request: any) => Promise<any>
-        testConnection: (config: any) => Promise<any>
         stopStreaming: (requestId: string) => Promise<void>
+        testConnection: (config: any) => Promise<any>
         onStreamData: (requestId: string, callback: (data: any) => void) => void
         removeStreamListener: (requestId: string) => void
       }

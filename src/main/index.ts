@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { aiHandler } from './aiHandler'
+import { setupAIHandlers } from './aiHandler'
 import { setupAutoUpdater } from './autoUpdater'
 import { setupIpcHandlers } from './ipcHandlers'
 import { createWindow } from './window'
@@ -20,7 +20,7 @@ app.whenReady().then(() => {
   })
 
   // Initialize AI handler
-  aiHandler
+  setupAIHandlers()
 
   // Setup auto updater
   setupAutoUpdater()

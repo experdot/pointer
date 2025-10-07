@@ -4,7 +4,7 @@ import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
 
 export function setupAutoUpdater(): void {
-  // 设置自动下载为false，我们想手动控制下载过程
+  // 设置自动下载为false，手动控制下载过程
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
 

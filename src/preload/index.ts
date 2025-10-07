@@ -6,7 +6,6 @@ const streamListeners = new Map<string, (data: any) => void>()
 
 // Custom APIs for renderer
 const api = {
-  // AI相关API
   ai: {
     sendMessageStreaming: (request: any) =>
       ipcRenderer.invoke('ai:send-message-streaming', request),

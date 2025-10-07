@@ -86,7 +86,7 @@ export class AIService {
       // 发送流式请求，包含请求ID
       await window.api.ai.sendMessageStreaming({
         requestId: this.requestId,
-        config: this.llmConfig,
+        llmConfig: this.llmConfig,
         modelConfig: this.modelConfig,
         messages: messages
       })
@@ -102,33 +102,6 @@ export class AIService {
     window.api.ai.removeStreamListener(this.requestId)
   }
 
-  // 备用的非流式方法
-  async sendMessageNonStreaming(
-    messages: ChatMessage[]
-  ): Promise<{ content: string; reasoning_content?: string }> {
-    try {
-      const result = await window.api.ai.sendMessage({
-        requestId: this.requestId,
-        config: this.llmConfig,
-        modelConfig: this.modelConfig,
-        messages: messages
-      })
-
-      if (result.success) {
-        return {
-          content: result.content || '抱歉，我无法生成回复。',
-          reasoning_content: result.reasoning_content
-        }
-      } else {
-        throw new Error(result.error || 'Unknown error')
-      }
-    } catch (error) {
-      console.error('AI Service Error:', error)
-      throw error
-    }
-  }
-
-  // 测试连接
   async testConnection(): Promise<boolean> {
     try {
       const result = await window.api.ai.testConnection(this.llmConfig)
