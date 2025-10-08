@@ -88,7 +88,8 @@ const windowAPI = {
   minimize: () => ipcRenderer.invoke('window-minimize'),
   maximize: () => ipcRenderer.invoke('window-maximize'),
   close: () => ipcRenderer.invoke('window-close'),
-  isMaximized: () => ipcRenderer.invoke('window-is-maximized')
+  isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  getPlatform: () => ipcRenderer.invoke('window-get-platform')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

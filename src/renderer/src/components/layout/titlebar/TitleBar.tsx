@@ -18,18 +18,21 @@ interface TitleBarProps {
 
 export default function TitleBar({ title, sidebarCollapsed, onToggleSidebar }: TitleBarProps) {
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isMac, setIsMac] = useState(false)
 
   useEffect(() => {
-    // 检查窗口状态
-    const checkMaximized = async () => {
+    const init = async () => {
       try {
+        const platform = await (window as any).electronWindow.getPlatform()
+        setIsMac(platform === 'darwin')
+
         const maximized = await (window as any).electronWindow.isMaximized()
         setIsMaximized(maximized)
       } catch (error) {
-        console.error('Error checking maximized state:', error)
+        console.error('Error initializing titlebar:', error)
       }
     }
-    checkMaximized()
+    init()
   }, [])
 
   const handleMinimize = async () => {
@@ -59,7 +62,7 @@ export default function TitleBar({ title, sidebarCollapsed, onToggleSidebar }: T
   }
 
   return (
-    <div className="custom-title-bar">
+    <div className={`custom-title-bar ${isMac ? 'mac' : ''}`}>
       <div className="title-bar-drag-region">
         <div className="title-bar-left">
           <Tooltip title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}>
@@ -72,32 +75,34 @@ export default function TitleBar({ title, sidebarCollapsed, onToggleSidebar }: T
           </Tooltip>
           <h2 className="title-bar-title">{title}</h2>
         </div>
-        <div className="title-bar-right">
-          <Tooltip title="最小化">
-            <Button
-              type="text"
-              icon={<MinusOutlined />}
-              onClick={handleMinimize}
-              className="title-bar-control-button"
-            />
-          </Tooltip>
-          <Tooltip title={isMaximized ? '还原' : '最大化'}>
-            <Button
-              type="text"
-              icon={isMaximized ? <CopyOutlined /> : <BorderOutlined />}
-              onClick={handleMaximize}
-              className="title-bar-control-button"
-            />
-          </Tooltip>
-          <Tooltip title="关闭">
-            <Button
-              type="text"
-              icon={<CloseOutlined />}
-              onClick={handleClose}
-              className="title-bar-control-button title-bar-close-button"
-            />
-          </Tooltip>
-        </div>
+        {!isMac && (
+          <div className="title-bar-right">
+            <Tooltip title="最小化">
+              <Button
+                type="text"
+                icon={<MinusOutlined />}
+                onClick={handleMinimize}
+                className="title-bar-control-button"
+              />
+            </Tooltip>
+            <Tooltip title={isMaximized ? '还原' : '最大化'}>
+              <Button
+                type="text"
+                icon={isMaximized ? <CopyOutlined /> : <BorderOutlined />}
+                onClick={handleMaximize}
+                className="title-bar-control-button"
+              />
+            </Tooltip>
+            <Tooltip title="关闭">
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={handleClose}
+                className="title-bar-control-button title-bar-close-button"
+              />
+            </Tooltip>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -78,6 +78,10 @@ export function setupIpcHandlers(): void {
     return window ? window.isMaximized() : false
   })
 
+  ipcMain.handle('window-get-platform', () => {
+    return process.platform
+  })
+
   // Handle save file
   ipcMain.handle('save-file', async (event, { content, defaultPath, filters }) => {
     try {

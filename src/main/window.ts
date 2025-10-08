@@ -21,8 +21,16 @@ export function createWindow(): void {
     minHeight: 320,
     show: false,
     autoHideMenuBar: true,
-    frame: false, // 禁用默认边框，启用自定义标题栏
-    titleBarStyle: 'hidden', // 隐藏标题栏
+    // macOS 使用原生窗口控制按钮，其他平台使用自定义
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset', // macOS: 显示原生控制按钮
+          trafficLightPosition: { x: 10, y: 10 } // 调整原生按钮位置
+        }
+      : {
+          frame: false, // Windows/Linux: 完全自定义
+          titleBarStyle: 'hidden'
+        }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
