@@ -198,6 +198,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
     ref
   ) => {
     const textAreaRef = useRef<any>(null)
+    const isComposingRef = useRef(false)
     const { settings } = useSettingsStore()
 
     const insertQuote = useCallback((text: string) => {
@@ -225,15 +226,23 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
     }))
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
         e.preventDefault()
         onSend()
       }
     }, [onSend])
-    
+
     const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value)
     }, [onChange])
+
+    const handleCompositionStart = useCallback(() => {
+      isComposingRef.current = true
+    }, [])
+
+    const handleCompositionEnd = useCallback(() => {
+      isComposingRef.current = false
+    }, [])
 
     const hasNoModels = !llmConfigs || llmConfigs.length === 0
     const hasNoSelectedModel = !selectedModel
@@ -288,6 +297,8 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
             value={value}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             autoSize={{ minRows: 1, maxRows: 10 }}
             disabled={hasNoModels}
           />
