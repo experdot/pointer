@@ -8,7 +8,8 @@ import {
   EditOutlined,
   RedoOutlined,
   SendOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  StarOutlined
 } from '@ant-design/icons'
 
 interface MessageActionButtonsProps {
@@ -21,6 +22,7 @@ interface MessageActionButtonsProps {
   onCopy: () => void
   onCopyAsImage: () => void
   onToggleBookmark: () => void
+  onAddToFavorites?: () => void
   onEdit: () => void
   onRetry?: () => void
   onContinue?: () => void
@@ -37,6 +39,7 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
   onCopy,
   onCopyAsImage,
   onToggleBookmark,
+  onAddToFavorites,
   onEdit,
   onRetry,
   onContinue,
@@ -72,6 +75,17 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>
+      {onAddToFavorites && (
+        <Tooltip title="添加到收藏">
+          <Button
+            type="text"
+            size="small"
+            icon={<StarOutlined />}
+            onClick={onAddToFavorites}
+            disabled={isCurrentlyStreaming}
+          />
+        </Tooltip>
+      )}
       {!isEditing && (
         <Tooltip title="编辑">
           <Button

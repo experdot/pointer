@@ -402,3 +402,81 @@ export interface AITask {
     }
   }
 }
+
+// ==================== 收藏功能类型定义 ====================
+
+// 收藏项类型
+export type FavoriteItemType = 'page' | 'message' | 'text-fragment'
+
+// 收藏项来源信息（用于溯源）
+export interface FavoriteSource {
+  type: 'page' | 'message'
+  pageId?: string // 源页面 ID
+  messageId?: string // 源消息 ID
+  pageTitle?: string // 源页面标题（快照）
+  pageType?: 'regular' | 'crosstab' | 'object' | 'settings'
+  timestamp: number // 收藏时的时间戳
+}
+
+// 页面收藏项数据
+export interface PageFavoriteData {
+  pageSnapshot: Page // 完整的页面快照
+  thumbnailUrl?: string // 可选的缩略图
+}
+
+// 消息收藏项数据
+export interface MessageFavoriteData {
+  message: ChatMessage // 消息快照
+  contextMessages?: ChatMessage[] // 可选的上下文消息（前后各2条）
+  pageTitle: string // 所属页面标题
+  pageType: 'regular' | 'crosstab' | 'object'
+}
+
+// 文本片段收藏项数据
+export interface TextFragmentFavoriteData {
+  text: string // 选中的文本内容
+  fullMessage: ChatMessage // 完整的消息快照
+  startOffset: number // 文本在消息中的起始位置
+  endOffset: number // 文本在消息中的结束位置
+  highlightedText: string // 带高亮标记的完整消息（用于展示）
+  pageTitle: string
+  pageType: 'regular' | 'crosstab' | 'object'
+}
+
+// 收藏项基础接口
+export interface FavoriteItem {
+  id: string // 收藏项唯一 ID
+  type: FavoriteItemType // 收藏项类型
+  title: string // 收藏项标题
+  description?: string // 可选的描述
+  tags?: string[] // 标签
+  folderId?: string // 所属文件夹 ID
+  source?: FavoriteSource // 来源信息
+
+  // 类型特定的数据
+  data: PageFavoriteData | MessageFavoriteData | TextFragmentFavoriteData
+
+  createdAt: number // 收藏时间
+  updatedAt: number // 最后更新时间
+  order?: number // 排序顺序
+  color?: string // 可选的标记颜色
+  pinned?: boolean // 是否置顶
+
+  // 笔记和统计
+  notes?: string // 用户笔记
+  viewCount?: number // 查看次数
+  lastViewedAt?: number // 最后查看时间
+}
+
+// 收藏文件夹
+export interface FavoriteFolder {
+  id: string
+  name: string
+  description?: string
+  parentId?: string // 支持嵌套
+  expanded?: boolean // 是否展开
+  color?: string // 文件夹颜色
+  icon?: string // 自定义图标
+  createdAt: number
+  order?: number
+}

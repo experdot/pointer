@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Card, Collapse, Dropdown, Typography, Button } from 'antd'
 import { BulbOutlined, CopyOutlined } from '@ant-design/icons'
 import { Markdown } from '../../../common/markdown/Markdown'
@@ -12,7 +12,7 @@ interface MessageContentProps {
   isCurrentlyStreaming: boolean
   reasoningExpanded: string[]
   onReasoningExpandChange: (keys: string | string[]) => void
-  contextMenuItems: any[]
+  contextMenuItems: any[] | (() => any[])
   searchQuery?: string
   messageId: string
   getCurrentMatch?: () => { messageId: string; startIndex: number; endIndex: number } | null
@@ -36,6 +36,8 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   getHighlightInfo,
   currentMatchIndex
 }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   return (
     <>
       {currentReasoningContent && (
@@ -94,7 +96,11 @@ export const MessageContent: React.FC<MessageContentProps> = ({
 
       <Card size="small" className="message-card">
         <Dropdown
-          menu={{ items: contextMenuItems }}
+          open={dropdownOpen}
+          onOpenChange={setDropdownOpen}
+          menu={{
+            items: typeof contextMenuItems === 'function' ? contextMenuItems() : contextMenuItems
+          }}
           trigger={['contextMenu']}
           disabled={isCurrentlyStreaming}
         >

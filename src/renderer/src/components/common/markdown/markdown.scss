@@ -1352,3 +1352,18 @@
 .dark .markdown-body .table-wrapper .copy-table-button.copied {
   background: rgba(34, 197, 94, 0.8);
 }
+
+/* 确保 markdown 内容可以被选中和复制 */
+.markdown-body {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+.markdown-body * {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}

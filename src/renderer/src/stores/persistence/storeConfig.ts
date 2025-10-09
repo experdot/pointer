@@ -1,7 +1,7 @@
 // 基于 IndexedDB 的持久化配置
 
 const DB_NAME = 'PointerAppDB'
-const DB_VERSION = 1
+const DB_VERSION = 2 // 版本2：添加收藏功能
 
 // 对象存储名称
 const OBJECT_STORES = {
@@ -14,7 +14,9 @@ const OBJECT_STORES = {
   UI: 'ui',
   OBJECTS: 'objects',
   CROSSTAB: 'crosstab',
-  AI_TASKS: 'ai_tasks'
+  AI_TASKS: 'ai_tasks',
+  FAVORITES: 'favorites',
+  FAVORITE_FOLDERS: 'favorite_folders'
 }
 
 // 防抖定时器管理
@@ -55,6 +57,17 @@ const initDB = (): Promise<IDBDatabase> => {
             objectStore.createIndex('type', 'type', { unique: false })
           }
           if (storeName === OBJECT_STORES.FOLDERS) {
+            objectStore.createIndex('parentId', 'parentId', { unique: false })
+          }
+          // 为 favorites 创建索引
+          if (storeName === OBJECT_STORES.FAVORITES) {
+            objectStore.createIndex('type', 'type', { unique: false })
+            objectStore.createIndex('folderId', 'folderId', { unique: false })
+            objectStore.createIndex('createdAt', 'createdAt', { unique: false })
+            objectStore.createIndex('pinned', 'pinned', { unique: false })
+          }
+          // 为 favorite_folders 创建索引
+          if (storeName === OBJECT_STORES.FAVORITE_FOLDERS) {
             objectStore.createIndex('parentId', 'parentId', { unique: false })
           }
         }
@@ -255,6 +268,161 @@ class FoldersStorage {
 // 全局 folders 存储实例
 const foldersStorage = new FoldersStorage()
 
+// 为 favorites 特别定制的存储类
+class FavoritesStorage {
+  private itemsStoreName = OBJECT_STORES.FAVORITES
+  private foldersStoreName = OBJECT_STORES.FAVORITE_FOLDERS
+
+  // ========== 收藏项 CRUD 操作 ==========
+
+  async getFavorite(favoriteId: string): Promise<any> {
+    return await indexedDBStorage.getItem(this.itemsStoreName, favoriteId)
+  }
+
+  async getAllFavorites(): Promise<any[]> {
+    return await indexedDBStorage.getAllItems(this.itemsStoreName)
+  }
+
+  async saveFavorite(favorite: any): Promise<void> {
+    debounce(
+      `favorite-${favorite.id}`,
+      async () => {
+        await indexedDBStorage.setItem(this.itemsStoreName, favorite.id, favorite)
+      },
+      100
+    )
+  }
+
+  async deleteFavorite(favoriteId: string): Promise<void> {
+    await indexedDBStorage.removeItem(this.itemsStoreName, favoriteId)
+  }
+
+  async saveFavorites(favorites: any[]): Promise<void> {
+    // 获取现有的所有收藏项
+    const existingFavorites = await this.getAllFavorites()
+    const existingIds = new Set(existingFavorites.map((f) => f.id))
+    const newIds = new Set(favorites.map((f) => f.id))
+
+    // 删除不再存在的收藏项
+    const deletePromises = existingFavorites
+      .filter((f) => !newIds.has(f.id))
+      .map((f) => indexedDBStorage.removeItem(this.itemsStoreName, f.id))
+
+    // 保存或更新收藏项
+    const savePromises = favorites.map((favorite) =>
+      indexedDBStorage.setItem(this.itemsStoreName, favorite.id, favorite)
+    )
+
+    await Promise.all([...deletePromises, ...savePromises])
+  }
+
+  async clearAllFavorites(): Promise<void> {
+    await indexedDBStorage.clearStore(this.itemsStoreName)
+  }
+
+  // ========== 收藏文件夹 CRUD 操作 ==========
+
+  async getFavoriteFolder(folderId: string): Promise<any> {
+    return await indexedDBStorage.getItem(this.foldersStoreName, folderId)
+  }
+
+  async getAllFavoriteFolders(): Promise<any[]> {
+    return await indexedDBStorage.getAllItems(this.foldersStoreName)
+  }
+
+  async saveFavoriteFolder(folder: any): Promise<void> {
+    debounce(
+      `favorite-folder-${folder.id}`,
+      async () => {
+        await indexedDBStorage.setItem(this.foldersStoreName, folder.id, folder)
+      },
+      100
+    )
+  }
+
+  async deleteFavoriteFolder(folderId: string): Promise<void> {
+    await indexedDBStorage.removeItem(this.foldersStoreName, folderId)
+  }
+
+  async saveFavoriteFolders(folders: any[]): Promise<void> {
+    // 获取现有的所有文件夹
+    const existingFolders = await this.getAllFavoriteFolders()
+    const newIds = new Set(folders.map((f) => f.id))
+
+    // 删除不再存在的文件夹
+    const deletePromises = existingFolders
+      .filter((f) => !newIds.has(f.id))
+      .map((f) => indexedDBStorage.removeItem(this.foldersStoreName, f.id))
+
+    // 保存或更新文件夹
+    const savePromises = folders.map((folder) =>
+      indexedDBStorage.setItem(this.foldersStoreName, folder.id, folder)
+    )
+
+    await Promise.all([...deletePromises, ...savePromises])
+  }
+
+  async clearAllFavoriteFolders(): Promise<void> {
+    await indexedDBStorage.clearStore(this.foldersStoreName)
+  }
+}
+
+// 全局 favorites 存储实例
+const favoritesStorage = new FavoritesStorage()
+
+// 为 favorites store 创建特殊的持久化配置
+export const createFavoritesPersistConfig = (storeName: string, version: number = 1) => ({
+  name: storeName,
+  storage: {
+    getItem: async (name: string) => {
+      try {
+        console.log('Loading favorites and folders from IndexedDB...')
+        const [items, folders] = await Promise.all([
+          favoritesStorage.getAllFavorites(),
+          favoritesStorage.getAllFavoriteFolders()
+        ])
+        return { state: { items, folders }, version }
+      } catch (error) {
+        console.error(`Error loading ${name} from IndexedDB:`, error)
+        return null
+      }
+    },
+    setItem: async (name: string, value: any) => {
+      // 对于 favorites store，我们需要特殊处理
+      debounce(
+        `${storeName}-${name}`,
+        async () => {
+          try {
+            console.log('Saving favorites and folders to IndexedDB...')
+            // value.state 包含实际的状态数据
+            if (value.state?.items) {
+              await favoritesStorage.saveFavorites(value.state.items)
+            }
+            if (value.state?.folders) {
+              await favoritesStorage.saveFavoriteFolders(value.state.folders)
+            }
+          } catch (error) {
+            console.error(`Error saving ${name} to IndexedDB:`, error)
+          }
+        },
+        100
+      )
+    },
+    removeItem: async (name: string) => {
+      try {
+        console.log('Removing favorites and folders from IndexedDB...')
+        await Promise.all([
+          favoritesStorage.clearAllFavorites(),
+          favoritesStorage.clearAllFavoriteFolders()
+        ])
+      } catch (error) {
+        console.error(`Error removing ${name} from IndexedDB:`, error)
+      }
+    }
+  },
+  version
+})
+
 // 为 pages store 创建特殊的持久化配置
 export const createPagesPersistConfig = (storeName: string, version: number = 1) => ({
   name: storeName,
@@ -359,7 +527,8 @@ function getObjectStoreName(storeName: string): string {
     'ui-store': OBJECT_STORES.UI,
     'object-store': OBJECT_STORES.OBJECTS,
     'crosstab-store': OBJECT_STORES.CROSSTAB,
-    'ai-tasks-store': OBJECT_STORES.AI_TASKS
+    'ai-tasks-store': OBJECT_STORES.AI_TASKS,
+    'favorites-store': OBJECT_STORES.FAVORITES
   }
   return storeMap[storeName] || storeName
 }
@@ -401,4 +570,4 @@ export const initializeStoreState = async <T>(
 }
 
 // 导出单独的存储实例供外部使用
-export { pagesStorage, foldersStorage, indexedDBStorage }
+export { pagesStorage, foldersStorage, favoritesStorage, indexedDBStorage }

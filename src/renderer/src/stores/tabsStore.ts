@@ -106,13 +106,19 @@ export const useTabsStore = create<TabsState & TabsActions>()(
             return
           }
 
-          // 检查页面是否存在
-          const page = findPageById(chatId)
-          if (!page) return
+          // 检查是否是虚拟tab（如收藏详情页）
+          const isVirtualTab = chatId.startsWith('favorite-')
+
+          // 检查页面是否存在（虚拟tab不需要检查）
+          if (!isVirtualTab) {
+            const page = findPageById(chatId)
+            if (!page) return
+          }
 
           set((state) => {
-            // 根据是否固定来决定插入位置
-            const isPinned = page.pinned || false
+            // 根据是否固定来决定插入位置（虚拟tab总是非固定的）
+            const page = isVirtualTab ? null : findPageById(chatId)
+            const isPinned = page?.pinned || false
             let newOpenTabs
 
             if (isPinned) {
@@ -127,7 +133,7 @@ export const useTabsStore = create<TabsState & TabsActions>()(
               })
               newOpenTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
             } else {
-              // 普通标签页添加到末尾
+              // 普通标签页（包括虚拟tab）添加到末尾
               newOpenTabs = [...state.openTabs, chatId]
             }
 

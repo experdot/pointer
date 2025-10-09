@@ -20,6 +20,8 @@ import { ChatWindow, ChatWindowRef } from '../../pages/chat/index'
 import { CrosstabChat } from '../../pages/crosstab/index'
 import { ObjectPage } from '../../pages/object/index'
 import SettingsPage from '../../pages/settings/SettingsPage'
+import FavoriteDetailPage from '../../pages/favorites/FavoriteDetailPage'
+import { useFavoritesStore } from '../../../stores/favoritesStore'
 import './TabsArea.css'
 
 export default function TabsArea() {
@@ -44,6 +46,7 @@ export default function TabsArea() {
   } = useTabsStore()
   const {} = useUIStore()
   const { settings } = useSettingsStore()
+  const { items: favoriteItems } = useFavoritesStore()
   const chatWindowRefs = useRef<Map<string, ChatWindowRef>>(new Map())
   const [draggedTabId, setDraggedTabId] = React.useState<string | null>(null)
   const [dragOverTabId, setDragOverTabId] = React.useState<string | null>(null)
@@ -447,6 +450,27 @@ export default function TabsArea() {
 
   const tabItems = openTabs
     .map((chatId) => {
+      // 检查是否是收藏详情tab
+      if (chatId.startsWith('favorite-')) {
+        const favoriteId = chatId.substring(9) // 移除 'favorite-' 前缀
+        const favorite = favoriteItems.find((f) => f.id === favoriteId)
+        if (!favorite) return null
+
+        const tabLabel = (
+          <span className="tab-label-content">
+            <MessageOutlined className="message-icon" />
+            <span className="tab-title">{favorite.title}</span>
+          </span>
+        )
+
+        return {
+          key: chatId,
+          label: tabLabel,
+          children: <FavoriteDetailPage favoriteId={favoriteId} />,
+          closable: true
+        }
+      }
+
       const chat = pages.find((c) => c.id === chatId)
       if (!chat) return null
 

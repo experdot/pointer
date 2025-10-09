@@ -1,0 +1,166 @@
+/* 收藏面板样式 */
+.favorites-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 头部搜索区域 */
+.favorites-header {
+  padding: 12px;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.favorites-search {
+  flex: 1;
+}
+
+.favorites-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* 统计信息 */
+.favorites-stats {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.favorites-stats .ant-tag {
+  margin: 0;
+  font-size: 11px;
+}
+
+/* 收藏树容器 */
+.favorites-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+}
+
+.favorites-tree {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Ant Design Tree 样式覆盖 */
+.favorites-tree .ant-tree-switcher {
+  align-self: center;
+}
+
+/* 隐藏拖拽图标 */
+.favorites-tree .ant-tree-draggable-icon {
+  display: none;
+}
+
+.favorites-tree .ant-tree-treenode {
+  width: 100%;
+  align-items: center;
+}
+
+.favorites-tree .ant-tree-node-content-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.favorites-tree .ant-tree-title {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* 树节点样式 - 与聊天历史树保持一致 */
+.favorites-tree .tree-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.favorites-tree .tree-node-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+  min-height: 24px;
+}
+
+.favorites-tree .tree-node-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorites-tree .tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.favorites-tree .tree-node:hover .tree-node-actions {
+  opacity: 1;
+}
+
+.favorites-tree .tree-node-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 滚动条样式 */
+.favorites-tree-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.favorites-tree-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.favorites-tree-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.favorites-tree-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 空状态 */
+.favorites-tree-container .ant-empty {
+  margin-top: 60px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .favorites-header {
+    padding: 8px;
+  }
+
+  .favorites-stats {
+    padding: 6px 8px;
+  }
+
+  .favorites-tree-container {
+    padding: 4px;
+  }
+}

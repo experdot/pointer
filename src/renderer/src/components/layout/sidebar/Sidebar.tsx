@@ -8,6 +8,7 @@ import SidebarActions from '../sidebar_items/SidebarActions'
 import Settings from '../../settings/Settings'
 import { GlobalSearch } from '../sidebar_items/search'
 import TaskMonitor from '../sidebar_items/task/TaskMonitor'
+import FavoritesPanel from '../sidebar_items/favorites/FavoritesPanel'
 import { Modal, App } from 'antd'
 import { ActivityBarTab } from '../activitybar/ActivityBar'
 import './sidebar.css'
@@ -156,6 +157,17 @@ export default function Sidebar({
                 filterFolderId={filterFolderId}
                 filterFolderName={filterFolder?.name || ''}
               />
+            </div>
+          </div>
+        )
+      case 'favorites':
+        return (
+          <div className="sidebar-favorites">
+            <div className="sidebar-header">
+              <h3>收藏夹</h3>
+            </div>
+            <div className="sidebar-content">
+              <FavoritesPanel />
             </div>
           </div>
         )

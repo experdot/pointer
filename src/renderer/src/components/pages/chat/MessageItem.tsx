@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { Avatar, App } from 'antd'
-import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined } from '@ant-design/icons'
+import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined, StarOutlined } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import SingleMessageExportContainer from './SingleMessageExportContainer'
@@ -31,6 +31,8 @@ interface MessageItemProps {
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
   onToggleBookmark?: (messageId: string) => void
+  onAddToFavorites?: (messageId: string) => void
+  onFavoriteTextFragment?: (messageId: string, text: string, startOffset: number, endOffset: number) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
@@ -70,6 +72,8 @@ const MessageItem = React.memo(
     onEdit,
     onEditAndResend,
     onToggleBookmark,
+    onAddToFavorites,
+    onFavoriteTextFragment,
     onModelChange,
     onDelete,
     onQuote,
@@ -96,11 +100,13 @@ const MessageItem = React.memo(
     // 使用自定义 hooks
     const messageActions = useMessageActions({
       message,
+      chatId,
       onRetry,
       onContinue,
       onEdit,
       onEditAndResend,
       onToggleBookmark,
+      onAddToFavorites,
       onModelChange,
       onDelete,
       onQuote,
@@ -138,29 +144,60 @@ const MessageItem = React.memo(
       }
     }, [messageActions.isEditing])
 
-    // 右键菜单项
-    const contextMenuItems = [
-      {
-        key: 'copy',
-        label: '复制',
-        icon: <CopyOutlined />,
-        onClick: messageActions.handleContextMenuCopy
-      },
-      {
-        key: 'quote',
-        label: '引用',
-        icon: <MessageOutlined />,
-        onClick: messageActions.handleQuote,
-        disabled: !onQuote
-      },
-      {
-        key: 'newChat',
-        label: '新建对话',
-        icon: <PlusCircleOutlined />,
-        onClick: messageActions.handleCreateNewChat,
-        disabled: !onCreateNewChat
+    // 处理收藏文本片段
+    const handleFavoriteTextFragment = () => {
+      const selection = window.getSelection()
+      const selectedText = selection?.toString()
+
+      if (selectedText && selectedText.trim() && onFavoriteTextFragment) {
+        // 计算选中文本在消息内容中的偏移量
+        const content = message.content
+        const startOffset = content.indexOf(selectedText)
+        const endOffset = startOffset + selectedText.length
+
+        if (startOffset !== -1) {
+          onFavoriteTextFragment(message.id, selectedText, startOffset, endOffset)
+          selection?.removeAllRanges()
+        }
       }
-    ]
+    }
+
+    // 右键菜单项 - 使用函数生成以便动态检查选中文本
+    const getContextMenuItems = () => {
+      const selection = window.getSelection()
+      const selectedText = selection?.toString() || ''
+      const hasSelection = selectedText.trim().length > 0
+
+      return [
+        {
+          key: 'copy',
+          label: '复制',
+          icon: <CopyOutlined />,
+          onClick: messageActions.handleContextMenuCopy
+        },
+        {
+          key: 'favoriteText',
+          label: '收藏选中文本',
+          icon: <StarOutlined />,
+          onClick: handleFavoriteTextFragment,
+          disabled: !onFavoriteTextFragment || !hasSelection
+        },
+        {
+          key: 'quote',
+          label: '引用',
+          icon: <MessageOutlined />,
+          onClick: messageActions.handleQuote,
+          disabled: !onQuote
+        },
+        {
+          key: 'newChat',
+          label: '新建对话',
+          icon: <PlusCircleOutlined />,
+          onClick: messageActions.handleCreateNewChat,
+          disabled: !onCreateNewChat
+        }
+      ]
+    }
 
     const currentLLMConfig = llmConfigs.find((config) => config.id === message.modelId)
 
@@ -221,7 +258,7 @@ const MessageItem = React.memo(
                     isCurrentlyStreaming={isCurrentlyStreaming}
                     reasoningExpanded={reasoningExpanded}
                     onReasoningExpandChange={handleReasoningExpandChange}
-                    contextMenuItems={contextMenuItems}
+                    contextMenuItems={getContextMenuItems}
                     searchQuery={searchQuery}
                     messageId={message.id}
                     getCurrentMatch={getCurrentMatch}
@@ -251,6 +288,7 @@ const MessageItem = React.memo(
                 onCopy={messageActions.handleCopy}
                 onCopyAsImage={imageExport.handleCopyAsImage}
                 onToggleBookmark={messageActions.handleToggleBookmark}
+                onAddToFavorites={onAddToFavorites ? messageActions.handleAddToFavorites : undefined}
                 onEdit={messageActions.handleEdit}
                 onRetry={onRetry ? messageActions.handleRetry : undefined}
                 onContinue={onContinue ? messageActions.handleContinue : undefined}

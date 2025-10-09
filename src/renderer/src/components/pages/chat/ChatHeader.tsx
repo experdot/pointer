@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined } from '@ant-design/icons'
+import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
 import { formatExactDateTime } from '../../../utils/timeFormatter'
 import ExportModal, { ExportSettings } from './ExportModal'
 import { usePagesStore } from '../../../stores/pagesStore'
+import { useFavoritesStore } from '../../../stores/favoritesStore'
 
 interface ChatHeaderProps {
   chatId: string
@@ -46,8 +47,17 @@ export default function ChatHeader({
   const [editingTitle, setEditingTitle] = useState(chatTitle || '')
   const [isHoveringTitle, setIsHoveringTitle] = useState(false)
   const inputRef = useRef<any>(null)
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const { updatePage } = usePagesStore()
+  const { favoriteCurrentPage, items: favoriteItems } = useFavoritesStore()
+
+  // 检查当前会话是否已被收藏
+  const isFavorited = useMemo(() => {
+    return favoriteItems.some(item =>
+      item.type === 'page' &&
+      item.source?.pageId === chatId
+    )
+  }, [favoriteItems, chatId])
 
   // 创建消息树实例
   const messageTree = useMemo(() => {
@@ -96,6 +106,30 @@ export default function ChatHeader({
       handleSaveTitle()
     } else if (e.key === 'Escape') {
       handleCancelEdit()
+    }
+  }
+
+  // 处理收藏会话
+  const handleFavoritePage = () => {
+    try {
+      if (isFavorited) {
+        message.info('此会话已在收藏夹中')
+        return
+      }
+
+      const favoriteId = favoriteCurrentPage(chatId, undefined, chatTitle)
+      modal.success({
+        title: '添加成功',
+        content: '会话已添加到收藏夹',
+        okText: '确定'
+      })
+    } catch (error) {
+      console.error('添加收藏失败:', error)
+      modal.error({
+        title: '添加失败',
+        content: '添加到收藏夹失败，请重试',
+        okText: '确定'
+      })
     }
   }
 
@@ -344,6 +378,20 @@ export default function ChatHeader({
                 overlayStyle={{ maxWidth: '400px' }}
               >
                 <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>{chatTitle || '未命名聊天'}</h3>
+              </Tooltip>
+              <Tooltip title={isFavorited ? '已收藏' : '收藏会话'}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={isFavorited ? <StarFilled /> : <StarOutlined />}
+                  onClick={handleFavoritePage}
+                  style={{
+                    opacity: isHoveringTitle || isFavorited ? 1 : 0,
+                    transition: 'opacity 0.2s',
+                    visibility: isHoveringTitle || isFavorited ? 'visible' : 'hidden',
+                    color: isFavorited ? '#faad14' : undefined
+                  }}
+                />
               </Tooltip>
               <Button
                 type="text"

@@ -11,6 +11,8 @@ import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
+import { useFavoritesStore } from '../../../stores/favoritesStore'
+import { App } from 'antd'
 import ChatLogic from './ChatLogic'
 import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
@@ -144,6 +146,61 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const handleToggleMessageTree = useCallback(() => {
     setMessageTreeCollapsed(!messageTreeCollapsed)
   }, [messageTreeCollapsed])
+
+  const { modal } = App.useApp()
+  const { favoriteMessage, favoriteTextFragment, createFolder, folders } = useFavoritesStore()
+
+  const handleAddToFavorites = useCallback(
+    async (messageId: string) => {
+      try {
+        // 可以添加一个对话框让用户选择文件夹
+        // 这里先实现简单版本，直接收藏到根目录
+        const favoriteId = favoriteMessage(chatId, messageId, true, undefined, undefined)
+        modal.success({
+          title: '添加成功',
+          content: '消息已添加到收藏夹',
+          okText: '确定'
+        })
+      } catch (error) {
+        console.error('添加收藏失败:', error)
+        modal.error({
+          title: '添加失败',
+          content: '添加到收藏夹失败，请重试',
+          okText: '确定'
+        })
+      }
+    },
+    [chatId, favoriteMessage, modal]
+  )
+
+  const handleFavoriteTextFragment = useCallback(
+    async (messageId: string, text: string, startOffset: number, endOffset: number) => {
+      try {
+        const favoriteId = favoriteTextFragment(
+          chatId,
+          messageId,
+          text,
+          startOffset,
+          endOffset,
+          undefined,
+          undefined
+        )
+        modal.success({
+          title: '添加成功',
+          content: '文本片段已添加到收藏夹',
+          okText: '确定'
+        })
+      } catch (error) {
+        console.error('添加收藏失败:', error)
+        modal.error({
+          title: '添加失败',
+          content: '添加到收藏夹失败，请重试',
+          okText: '确定'
+        })
+      }
+    },
+    [chatId, favoriteTextFragment, modal]
+  )
 
   const handleMessageTreeNodeSelect = useCallback(
     (messageId: string) => {
@@ -330,6 +387,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onEditMessage={onEditMessage}
                   onEditAndResendMessage={onEditAndResendMessage}
                   onToggleBookmark={onToggleBookmark}
+                  onAddToFavorites={handleAddToFavorites}
+                  onFavoriteTextFragment={handleFavoriteTextFragment}
                   onModelChange={onModelChangeForMessage}
                   onDeleteMessage={onDeleteMessage}
                   onSwitchBranch={handleSwitchBranch}

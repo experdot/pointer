@@ -3,11 +3,13 @@ import { ChatMessage } from '../../../../types/type'
 
 interface UseMessageActionsProps {
   message: ChatMessage
+  chatId: string
   onRetry?: (messageId: string) => void
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
   onToggleBookmark?: (messageId: string) => void
+  onAddToFavorites?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
@@ -55,6 +57,10 @@ export function useMessageActions(props: UseMessageActionsProps) {
   const handleToggleBookmark = useCallback(() => {
     props.onToggleBookmark?.(message.id)
   }, [props.onToggleBookmark, message.id])
+
+  const handleAddToFavorites = useCallback(() => {
+    props.onAddToFavorites?.(message.id)
+  }, [props.onAddToFavorites, message.id])
 
   const handleModelChange = useCallback(
     (newModelId: string) => {
@@ -132,6 +138,7 @@ export function useMessageActions(props: UseMessageActionsProps) {
     handleSaveAndResend,
     handleCancelEdit,
     handleToggleBookmark,
+    handleAddToFavorites,
     handleModelChange,
     handleBranchPrevious,
     handleBranchNext,

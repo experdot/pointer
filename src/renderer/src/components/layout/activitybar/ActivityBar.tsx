@@ -1,12 +1,19 @@
 import React from 'react'
 import { Button, Badge, Tooltip } from 'antd'
-import { FolderOutlined, SearchOutlined, MonitorOutlined, SettingOutlined } from '@ant-design/icons'
+import {
+  FolderOutlined,
+  SearchOutlined,
+  MonitorOutlined,
+  SettingOutlined,
+  StarOutlined
+} from '@ant-design/icons'
 import { useAITasksStore } from '../../../stores/aiTasksStore'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
+import { useFavoritesStore } from '../../../stores/favoritesStore'
 import './activitybar.css'
 
-export type ActivityBarTab = 'explore' | 'search' | 'tasks'
+export type ActivityBarTab = 'explore' | 'search' | 'tasks' | 'favorites'
 
 interface ActivityBarProps {
   activeTab: ActivityBarTab
@@ -17,9 +24,14 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
   const { getRunningTasksCount } = useAITasksStore()
   const { createAndOpenSettingsPage } = usePagesStore()
   const { openTab } = useTabsStore()
+  const { getStats, getPinnedFavorites } = useFavoritesStore()
 
   // 计算活跃任务数量
   const activeTaskCount = getRunningTasksCount()
+
+  // 计算收藏统计
+  const favoritesStats = getStats()
+  const pinnedCount = getPinnedFavorites().length
 
   // 处理设置按钮点击
   const handleSettingsClick = () => {
@@ -39,6 +51,13 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
       icon: <SearchOutlined />,
       label: '搜索',
       tooltip: '搜索 - 全局搜索'
+    },
+    {
+      key: 'favorites' as ActivityBarTab,
+      icon: <StarOutlined />,
+      label: '收藏夹',
+      tooltip: `收藏夹 - ${favoritesStats.totalCount} 个收藏`,
+      badge: pinnedCount > 0 ? pinnedCount : undefined
     },
     {
       key: 'tasks' as ActivityBarTab,
