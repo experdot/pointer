@@ -26,6 +26,11 @@
   padding-left: 8px;
 }
 
+/* macOS: 为原生窗口控制按钮留出空间 */
+.custom-title-bar.mac .title-bar-left {
+  padding-left: 78px; /* 为原生红黄绿按钮留出空间 */
+}
+
 .title-bar-right {
   display: flex;
   align-items: center;
