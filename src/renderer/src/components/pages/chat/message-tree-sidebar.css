@@ -112,12 +112,12 @@
   color: #666;
 }
 
-.stat-item .anticon-star {
+.stat-item .anticon-book {
   color: #ffc107;
 }
 
-/* 收藏消息导航样式 */
-.stat-item-favorited {
+/* 书签消息导航样式 */
+.stat-item-bookmarked {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -125,26 +125,26 @@
   width: 100%;
 }
 
-.favorited-info {
+.bookmarked-info {
   display: flex;
   align-items: center;
   gap: 4px;
   flex: 1;
 }
 
-.favorited-position {
+.bookmarked-position {
   font-size: 10px;
   color: #999;
 }
 
-.favorited-navigation {
+.bookmarked-navigation {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.favorited-navigation .nav-btn {
+.bookmarked-navigation .nav-btn {
   width: 20px;
   height: 20px;
   padding: 0;
@@ -152,12 +152,12 @@
   transition: all 0.2s;
 }
 
-.favorited-navigation .nav-btn:hover {
+.bookmarked-navigation .nav-btn:hover {
   background-color: #f0f0f0;
   color: #ffc107;
 }
 
-.favorited-navigation .nav-btn .anticon {
+.bookmarked-navigation .nav-btn .anticon {
   font-size: 10px;
 }
 
@@ -203,7 +203,7 @@
   font-size: 14px;
 }
 
-.tree-stats-collapsed .stat-item .anticon-star {
+.tree-stats-collapsed .stat-item .anticon-book {
   color: #ffc107;
 }
 
@@ -211,8 +211,8 @@
   font-size: 10px;
 }
 
-/* 折叠状态下的收藏导航 */
-.stat-item-favorited-collapsed {
+/* 折叠状态下的书签导航 */
+.stat-item-bookmarked-collapsed {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -220,14 +220,14 @@
   position: relative;
 }
 
-.favorited-navigation-collapsed {
+.bookmarked-navigation-collapsed {
   display: flex;
   justify-content: center;
   gap: 2px;
   margin-top: 2px;
 }
 
-.favorited-navigation-collapsed .nav-btn-collapsed {
+.bookmarked-navigation-collapsed .nav-btn-collapsed {
   width: 16px;
   height: 16px;
   padding: 0;
@@ -235,12 +235,12 @@
   transition: all 0.2s;
 }
 
-.favorited-navigation-collapsed .nav-btn-collapsed:hover {
+.bookmarked-navigation-collapsed .nav-btn-collapsed:hover {
   background-color: #f0f0f0;
   color: #ffc107;
 }
 
-.favorited-navigation-collapsed .nav-btn-collapsed .anticon {
+.bookmarked-navigation-collapsed .nav-btn-collapsed .anticon {
   font-size: 8px;
 }
 
@@ -412,29 +412,29 @@
   color: #fff;
 }
 
-/* 收藏消息样式 */
-.path-node.favorited {
+/* 书签消息样式 */
+.path-node.bookmarked {
   border-right: 4px solid #ffc107;
   background: rgba(255, 193, 7, 0.05);
 }
 
-.path-node.favorited:hover {
+.path-node.bookmarked:hover {
   background: rgba(255, 193, 7, 0.08);
 }
 
-.path-node.favorited.selected {
+.path-node.bookmarked.selected {
   background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
 }
 
-/* 收藏图标样式 */
-.path-node-role .favorite-icon {
+/* 书签图标样式 */
+.path-node-role .bookmark-icon {
   color: #ffc107;
   font-size: 11px;
-  animation: star-pulse 2s infinite;
+  animation: bookmark-pulse 2s infinite;
   flex-shrink: 0;
 }
 
-@keyframes star-pulse {
+@keyframes bookmark-pulse {
   0% {
     transform: scale(1);
     opacity: 1;
@@ -574,24 +574,24 @@
   color: #fff;
 }
 
-/* 兄弟节点收藏样式 */
-.sibling-node.favorited {
+/* 兄弟节点书签样式 */
+.sibling-node.bookmarked {
   border-right: 3px solid #ffc107;
   background: rgba(255, 193, 7, 0.05);
 }
 
-.sibling-node.favorited:hover {
+.sibling-node.bookmarked:hover {
   background: rgba(255, 193, 7, 0.08);
 }
 
-.sibling-node.favorited.selected {
+.sibling-node.bookmarked.selected {
   background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
 }
 
-.sibling-node-role .favorite-icon {
+.sibling-node-role .bookmark-icon {
   color: #ffc107;
   font-size: 10px;
-  animation: star-pulse 2s infinite;
+  animation: bookmark-pulse 2s infinite;
   flex-shrink: 0;
 }
 

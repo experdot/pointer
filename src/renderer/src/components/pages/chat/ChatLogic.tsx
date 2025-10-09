@@ -20,7 +20,7 @@ interface ChatLogicProps {
     onContinueMessage: (messageId: string) => Promise<void>
     onEditMessage: (messageId: string, newContent: string) => Promise<void>
     onEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
-    onToggleFavorite: (messageId: string) => void
+    onToggleBookmark: (messageId: string) => void
     onModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
     onDeleteMessage: (messageId: string) => Promise<void>
     onTriggerFollowUpQuestion: () => Promise<void>
@@ -182,7 +182,7 @@ export default function ChatLogic({
     onContinueMessage: messageOperations.handleContinueMessage,
     onEditMessage: messageOperations.handleEditMessage,
     onEditAndResendMessage: messageOperations.handleEditAndResendMessage,
-    onToggleFavorite: messageOperations.handleToggleFavorite,
+    onToggleBookmark: messageOperations.handleToggleBookmark,
     onModelChangeForMessage: messageOperations.handleModelChangeForMessage,
     onDeleteMessage: messageOperations.handleDeleteMessage,
     onTriggerFollowUpQuestion: handleTriggerFollowUpQuestion

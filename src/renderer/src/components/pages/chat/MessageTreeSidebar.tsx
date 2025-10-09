@@ -7,7 +7,8 @@ import {
   MessageOutlined,
   ExpandAltOutlined,
   CompressOutlined,
-  StarFilled,
+  BookOutlined,
+  BookFilled,
   UpOutlined,
   DownOutlined,
   RightOutlined,
@@ -244,14 +245,14 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     })
   }
 
-  // 统计信息和收藏消息列表
+  // 统计信息和书签消息列表
   const stats = useMemo(() => {
     const totalMessages = messages.length
     const userMessages = messages.filter((msg) => msg.role === 'user').length
     const aiMessages = messages.filter((msg) => msg.role === 'assistant').length
     const branches = messages.filter((msg) => msg.children && msg.children.length > 1).length
-    const favoritedMessages = messages
-      .filter((msg) => msg.isFavorited)
+    const bookmarkedMessages = messages
+      .filter((msg) => msg.isBookmarked)
       .sort((a, b) => a.timestamp - b.timestamp)
 
     return {
@@ -259,38 +260,38 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
       userMessages,
       aiMessages,
       branches,
-      favorited: favoritedMessages.length,
-      favoritedMessages
+      bookmarked: bookmarkedMessages.length,
+      bookmarkedMessages
     }
   }, [messages])
 
-  // 当前收藏消息的索引
-  const currentFavoritedIndex = useMemo(() => {
-    if (stats.favoritedMessages.length === 0 || !selectedMessageId) {
+  // 当前书签消息的索引
+  const currentBookmarkedIndex = useMemo(() => {
+    if (stats.bookmarkedMessages.length === 0 || !selectedMessageId) {
       return -1
     }
-    return stats.favoritedMessages.findIndex((msg) => msg.id === selectedMessageId)
-  }, [stats.favoritedMessages, selectedMessageId])
+    return stats.bookmarkedMessages.findIndex((msg) => msg.id === selectedMessageId)
+  }, [stats.bookmarkedMessages, selectedMessageId])
 
-  // 跳转到指定的收藏消息
-  const navigateToFavorited = (direction: 'prev' | 'next') => {
-    if (stats.favoritedMessages.length === 0) return
+  // 跳转到指定的书签消息
+  const navigateToBookmarked = (direction: 'prev' | 'next') => {
+    if (stats.bookmarkedMessages.length === 0) return
 
     let targetIndex: number
-    if (currentFavoritedIndex === -1) {
-      // 如果当前没有选中收藏消息，跳转到第一个
+    if (currentBookmarkedIndex === -1) {
+      // 如果当前没有选中书签消息，跳转到第一个
       targetIndex = 0
     } else {
       if (direction === 'prev') {
         targetIndex =
-          currentFavoritedIndex > 0 ? currentFavoritedIndex - 1 : stats.favoritedMessages.length - 1
+          currentBookmarkedIndex > 0 ? currentBookmarkedIndex - 1 : stats.bookmarkedMessages.length - 1
       } else {
         targetIndex =
-          currentFavoritedIndex < stats.favoritedMessages.length - 1 ? currentFavoritedIndex + 1 : 0
+          currentBookmarkedIndex < stats.bookmarkedMessages.length - 1 ? currentBookmarkedIndex + 1 : 0
       }
     }
 
-    const targetMessage = stats.favoritedMessages[targetIndex]
+    const targetMessage = stats.bookmarkedMessages[targetIndex]
     if (targetMessage && onNodeSelect) {
       onNodeSelect(targetMessage.id)
     }
@@ -441,25 +442,25 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
               <BranchesOutlined />
               <Text type="secondary">{stats.branches}</Text>
             </div>
-            {stats.favorited > 0 && (
-              <div className="stat-item stat-item-favorited-collapsed">
-                <StarFilled />
-                <Text type="secondary">{stats.favorited}</Text>
-                <div className="favorited-navigation-collapsed">
+            {stats.bookmarked > 0 && (
+              <div className="stat-item stat-item-bookmarked-collapsed">
+                <BookFilled />
+                <Text type="secondary">{stats.bookmarked}</Text>
+                <div className="bookmarked-navigation-collapsed">
                   <Button
                     type="text"
                     size="small"
                     icon={<UpOutlined />}
-                    onClick={() => navigateToFavorited('prev')}
-                    title="上一个收藏"
+                    onClick={() => navigateToBookmarked('prev')}
+                    title="上一个书签"
                     className="nav-btn-collapsed"
                   />
                   <Button
                     type="text"
                     size="small"
                     icon={<DownOutlined />}
-                    onClick={() => navigateToFavorited('next')}
-                    title="下一个收藏"
+                    onClick={() => navigateToBookmarked('next')}
+                    title="下一个书签"
                     className="nav-btn-collapsed"
                   />
                 </div>
@@ -551,34 +552,34 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
               {stats.branches}个分支
             </Text>
           </div>
-          {stats.favorited > 0 && (
-            <div className="stat-item stat-item-favorited">
-              <div className="favorited-info">
-                <StarFilled />
+          {stats.bookmarked > 0 && (
+            <div className="stat-item stat-item-bookmarked">
+              <div className="bookmarked-info">
+                <BookOutlined />
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {stats.favorited}个收藏
-                  {currentFavoritedIndex >= 0 && (
-                    <span className="favorited-position">
-                      {` (${currentFavoritedIndex + 1}/${stats.favorited})`}
+                  {stats.bookmarked}个书签
+                  {currentBookmarkedIndex >= 0 && (
+                    <span className="bookmarked-position">
+                      {` (${currentBookmarkedIndex + 1}/${stats.bookmarked})`}
                     </span>
                   )}
                 </Text>
               </div>
-              <div className="favorited-navigation">
+              <div className="bookmarked-navigation">
                 <Button
                   type="text"
                   size="small"
                   icon={<UpOutlined />}
-                  onClick={() => navigateToFavorited('prev')}
-                  title="上一个收藏"
+                  onClick={() => navigateToBookmarked('prev')}
+                  title="上一个书签"
                   className="nav-btn"
                 />
                 <Button
                   type="text"
                   size="small"
                   icon={<DownOutlined />}
-                  onClick={() => navigateToFavorited('next')}
-                  title="下一个收藏"
+                  onClick={() => navigateToBookmarked('next')}
+                  title="下一个书签"
                   className="nav-btn"
                 />
               </div>
@@ -642,7 +643,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                 <div
                   className={`path-node ${
                     selectedMessageId === node.messageId ? 'selected' : ''
-                  } ${node.message.isFavorited ? 'favorited' : ''}`}
+                  } ${node.message.isBookmarked ? 'bookmarked' : ''}`}
                   onClick={() => handleNodeSelect(node.messageId)}
                   data-role={node.message.role}
                 >
@@ -653,7 +654,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                     <div className="path-node-info">
                       <div className="path-node-role">
                         {node.message.role === 'user' ? '用户' : 'AI'}
-                        {node.message.isFavorited && <StarFilled className="favorite-icon" />}
+                        {node.message.isBookmarked && <BookFilled className="bookmark-icon" />}
                       </div>
                       <div className="path-node-time">
                         <RelativeTime timestamp={node.message.timestamp} />
@@ -696,7 +697,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                         key={sibling.id}
                         className={`sibling-node ${
                           selectedMessageId === sibling.id ? 'selected' : ''
-                        } ${sibling.isFavorited ? 'favorited' : ''}`}
+                        } ${sibling.isBookmarked ? 'bookmarked' : ''}`}
                         onClick={() => handleNodeSelect(sibling.id)}
                         data-role={sibling.role}
                       >
@@ -707,7 +708,7 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                           <div className="sibling-node-info">
                             <div className="sibling-node-role">
                               {sibling.role === 'user' ? '用户' : 'AI'}
-                              {sibling.isFavorited && <StarFilled className="favorite-icon" />}
+                              {sibling.isBookmarked && <BookFilled className="bookmark-icon" />}
                             </div>
                             <div className="sibling-node-time">
                               <RelativeTime timestamp={sibling.timestamp} />

@@ -295,10 +295,10 @@ export default function ChatHeader({
       metadata.push(`用户消息: ${userMessages}`)
       metadata.push(`AI消息: ${assistantMessages}`)
 
-      // 收藏的消息
-      const favoritedMessages = messages.filter(m => m.isFavorited).length
-      if (favoritedMessages > 0) {
-        metadata.push(`收藏消息: ${favoritedMessages}`)
+      // 书签消息
+      const bookmarkedMessages = messages.filter(m => m.isBookmarked).length
+      if (bookmarkedMessages > 0) {
+        metadata.push(`书签消息: ${bookmarkedMessages}`)
       }
 
       // 当前路径信息

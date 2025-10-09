@@ -3,8 +3,8 @@ import { Button, Tooltip } from 'antd'
 import {
   CopyOutlined,
   PictureOutlined,
-  StarOutlined,
-  StarFilled,
+  BookOutlined,
+  BookFilled,
   EditOutlined,
   RedoOutlined,
   SendOutlined,
@@ -13,14 +13,14 @@ import {
 
 interface MessageActionButtonsProps {
   role: string
-  isFavorited: boolean
+  isBookmarked: boolean
   isCurrentlyStreaming: boolean
   isEditing: boolean
   hasChildren: boolean
   isLoading: boolean
   onCopy: () => void
   onCopyAsImage: () => void
-  onToggleFavorite: () => void
+  onToggleBookmark: () => void
   onEdit: () => void
   onRetry?: () => void
   onContinue?: () => void
@@ -29,14 +29,14 @@ interface MessageActionButtonsProps {
 
 export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
   role,
-  isFavorited,
+  isBookmarked,
   isCurrentlyStreaming,
   isEditing,
   hasChildren,
   isLoading,
   onCopy,
   onCopyAsImage,
-  onToggleFavorite,
+  onToggleBookmark,
   onEdit,
   onRetry,
   onContinue,
@@ -62,13 +62,13 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>
-      <Tooltip title="收藏">
+      <Tooltip title="书签">
         <Button
           type="text"
           size="small"
-          icon={isFavorited ? <StarFilled /> : <StarOutlined />}
-          onClick={onToggleFavorite}
-          className={isFavorited ? 'favorited' : ''}
+          icon={isBookmarked ? <BookFilled /> : <BookOutlined />}
+          onClick={onToggleBookmark}
+          className={isBookmarked ? 'bookmarked' : ''}
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>

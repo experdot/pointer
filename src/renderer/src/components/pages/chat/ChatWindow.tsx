@@ -279,7 +279,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onContinueMessage,
             onEditMessage,
             onEditAndResendMessage,
-            onToggleFavorite,
+            onToggleBookmark,
             onModelChangeForMessage,
             onDeleteMessage,
             onTriggerFollowUpQuestion
@@ -329,7 +329,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onContinueMessage={onContinueMessage}
                   onEditMessage={onEditMessage}
                   onEditAndResendMessage={onEditAndResendMessage}
-                  onToggleFavorite={onToggleFavorite}
+                  onToggleBookmark={onToggleBookmark}
                   onModelChange={onModelChangeForMessage}
                   onDeleteMessage={onDeleteMessage}
                   onSwitchBranch={handleSwitchBranch}

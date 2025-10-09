@@ -265,22 +265,22 @@
   background-color: rgba(0, 0, 0, 0.06);
 }
 
-.message-action-buttons .ant-btn.favorited {
+.message-action-buttons .ant-btn.bookmarked {
   color: #faad14;
 }
 
-.message-action-buttons .ant-btn.favorited:hover {
+.message-action-buttons .ant-btn.bookmarked:hover {
   color: #d48806;
   background-color: rgba(250, 173, 20, 0.1);
 }
 
-/* Favorited Message Highlighting */
-.message-item.favorited .message-card {
+/* Bookmarked Message Highlighting */
+.message-item.bookmarked .message-card {
   border: 1px solid #faad14 !important;
   box-shadow: 0 2px 8px rgba(250, 173, 20, 0.15) !important;
 }
 
-.message-item.favorited .message-reasoning-card {
+.message-item.bookmarked .message-reasoning-card {
   border: 1px solid #faad14 !important;
   box-shadow: 0 1px 4px rgba(250, 173, 20, 0.1) !important;
 }

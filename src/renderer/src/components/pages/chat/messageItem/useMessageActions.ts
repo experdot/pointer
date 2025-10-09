@@ -7,7 +7,7 @@ interface UseMessageActionsProps {
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
-  onToggleFavorite?: (messageId: string) => void
+  onToggleBookmark?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
@@ -52,9 +52,9 @@ export function useMessageActions(props: UseMessageActionsProps) {
     setEditContent(message.content)
   }, [message.content])
 
-  const handleToggleFavorite = useCallback(() => {
-    props.onToggleFavorite?.(message.id)
-  }, [props.onToggleFavorite, message.id])
+  const handleToggleBookmark = useCallback(() => {
+    props.onToggleBookmark?.(message.id)
+  }, [props.onToggleBookmark, message.id])
 
   const handleModelChange = useCallback(
     (newModelId: string) => {
@@ -131,7 +131,7 @@ export function useMessageActions(props: UseMessageActionsProps) {
     handleSaveEdit,
     handleSaveAndResend,
     handleCancelEdit,
-    handleToggleFavorite,
+    handleToggleBookmark,
     handleModelChange,
     handleBranchPrevious,
     handleBranchNext,

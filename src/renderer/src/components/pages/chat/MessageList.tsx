@@ -20,7 +20,7 @@ interface MessageListProps {
   onContinueMessage?: (messageId: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
   onEditAndResendMessage?: (messageId: string, newContent: string) => void
-  onToggleFavorite?: (messageId: string) => void
+  onToggleBookmark?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDeleteMessage?: (messageId: string) => void
   onSwitchBranch?: (messageId: string, branchIndex: number) => void
@@ -46,7 +46,7 @@ const MessageList = React.memo(function MessageList({
   onContinueMessage,
   onEditMessage,
   onEditAndResendMessage,
-  onToggleFavorite,
+  onToggleBookmark,
   onModelChange,
   onDeleteMessage,
   onSwitchBranch,
@@ -356,7 +356,7 @@ const MessageList = React.memo(function MessageList({
               onContinue={onContinueMessage}
               onEdit={onEditMessage}
               onEditAndResend={onEditAndResendMessage}
-              onToggleFavorite={onToggleFavorite}
+              onToggleBookmark={onToggleBookmark}
               onModelChange={onModelChange}
               onDelete={onDeleteMessage}
               onQuote={onQuote}

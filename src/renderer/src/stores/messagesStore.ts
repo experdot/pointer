@@ -26,7 +26,7 @@ export interface MessagesActions {
   updateMessageReasoning: (chatId: string, messageId: string, reasoning_content: string) => void
   removeMessage: (chatId: string, messageId: string) => void
   deleteMessageAndChildren: (chatId: string, messageId: string) => void
-  toggleMessageFavorite: (chatId: string, messageId: string) => void
+  toggleMessageBookmark: (chatId: string, messageId: string) => void
 
   // 流式消息处理 - 优化版本
   updateStreamingMessageContent: (chatId: string, messageId: string, content: string) => void
@@ -340,19 +340,19 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
           }
         },
 
-        toggleMessageFavorite: (chatId, messageId) => {
+        toggleMessageBookmark: (chatId, messageId) => {
           try {
             const { updatePage } = usePagesStore.getState()
             const page = usePagesStore.getState().findPageById(chatId)
             if (page && page.type === 'regular') {
               const updatedMessages =
                 page.messages?.map((msg) =>
-                  msg.id === messageId ? { ...msg, isFavorited: !msg.isFavorited } : msg
+                  msg.id === messageId ? { ...msg, isBookmarked: !msg.isBookmarked } : msg
                 ) || []
               updatePage(chatId, { messages: updatedMessages })
             }
           } catch (error) {
-            handleStoreError('messagesStore', 'toggleMessageFavorite', error)
+            handleStoreError('messagesStore', 'toggleMessageBookmark', error)
           }
         },
 

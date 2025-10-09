@@ -30,7 +30,7 @@ interface MessageItemProps {
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
-  onToggleFavorite?: (messageId: string) => void
+  onToggleBookmark?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void
@@ -69,7 +69,7 @@ const MessageItem = React.memo(
     onContinue,
     onEdit,
     onEditAndResend,
-    onToggleFavorite,
+    onToggleBookmark,
     onModelChange,
     onDelete,
     onQuote,
@@ -100,7 +100,7 @@ const MessageItem = React.memo(
       onContinue,
       onEdit,
       onEditAndResend,
-      onToggleFavorite,
+      onToggleBookmark,
       onModelChange,
       onDelete,
       onQuote,
@@ -169,7 +169,7 @@ const MessageItem = React.memo(
         <div
           ref={messageRef}
           data-message-id={message.id}
-          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isFavorited ? ' favorited' : ''}`}
+          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isBookmarked ? ' bookmarked' : ''}`}
         >
           <div className="message-avatar">
             <Avatar
@@ -243,14 +243,14 @@ const MessageItem = React.memo(
             <div className={`message-actions ${isLastMessage ? 'visible' : ''}`}>
               <MessageActionButtons
                 role={message.role}
-                isFavorited={message.isFavorited || false}
+                isBookmarked={message.isBookmarked || false}
                 isCurrentlyStreaming={isCurrentlyStreaming}
                 isEditing={messageActions.isEditing}
                 hasChildren={hasChildren}
                 isLoading={isLoading}
                 onCopy={messageActions.handleCopy}
                 onCopyAsImage={imageExport.handleCopyAsImage}
-                onToggleFavorite={messageActions.handleToggleFavorite}
+                onToggleBookmark={messageActions.handleToggleBookmark}
                 onEdit={messageActions.handleEdit}
                 onRetry={onRetry ? messageActions.handleRetry : undefined}
                 onContinue={onContinue ? messageActions.handleContinue : undefined}
@@ -296,7 +296,7 @@ const MessageItem = React.memo(
       prevProps.message.content !== nextProps.message.content ||
       prevProps.message.reasoning_content !== nextProps.message.reasoning_content ||
       prevProps.message.isStreaming !== nextProps.message.isStreaming ||
-      prevProps.message.isFavorited !== nextProps.message.isFavorited ||
+      prevProps.message.isBookmarked !== nextProps.message.isBookmarked ||
       prevProps.message.modelId !== nextProps.message.modelId
     ) {
       return false
