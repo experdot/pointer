@@ -32,6 +32,13 @@ export interface AIStreamChunk {
   error?: string
 }
 
+export interface AIStreamCallbacks {
+  onChunk: (chunk: string) => void
+  onReasoning?: (reasoning: string) => void
+  onComplete?: (fullResponse: string, reasoning?: string) => void
+  onError?: (error: string) => void
+}
+
 export interface TestConnectionResult {
   success: boolean
   error?: string
@@ -48,12 +55,10 @@ declare global {
     electron: ElectronAPI
     api: {
       ai: {
-        sendMessageStreaming: (request: AIRequest) => Promise<void>
+        sendMessageStreaming: (request: AIRequest, callbacks: AIStreamCallbacks) => Promise<string>
         stopStreaming: (requestId: string) => Promise<void>
         testConnection: (config: LLMConfig) => Promise<TestConnectionResult>
         getModels: (config: LLMConfig) => Promise<GetModelsResult>
-        onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void) => void
-        removeStreamListener: (requestId: string) => void
       }
       saveFile: (options: {
         content: string | Uint8Array

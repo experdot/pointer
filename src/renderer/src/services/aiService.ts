@@ -41,65 +41,42 @@ export class AIService {
     }
 
     try {
-      let fullResponse = ''
-      let fullReasoning = ''
-
-      // 设置流数据监听器 - 每个请求使用独立的监听器
-      const handleStreamData = (data: any) => {
-        // 验证数据是否属于当前请求
-        if (data.requestId !== this.requestId) {
-          return // 忽略不属于当前请求的数据
-        }
-
-        if (this.isAborted) {
-          return // 请求已被中止，忽略后续数据
-        }
-
-        switch (data.type) {
-          case 'chunk':
-            if (data.content) {
-              fullResponse += data.content
-              callbacks.onChunk(data.content)
+      // 直接调用新接口，传递回调函数对象
+      await window.api.ai.sendMessageStreaming(
+        {
+          requestId: this.requestId,
+          llmConfig: this.llmConfig,
+          modelConfig: this.modelConfig,
+          messages: messages
+        },
+        {
+          onChunk: (chunk: string) => {
+            if (!this.isAborted) {
+              callbacks.onChunk(chunk)
             }
-            break
-          case 'reasoning_content':
-            if (data.reasoning_content) {
-              fullReasoning += data.reasoning_content
-              callbacks.onReasoning?.(data.reasoning_content)
+          },
+          onReasoning: (reasoning: string) => {
+            if (!this.isAborted) {
+              callbacks.onReasoning?.(reasoning)
             }
-            break
-          case 'complete':
-            const finalReasoning = data.reasoning_content || fullReasoning || undefined
-            callbacks.onComplete(fullResponse || data.content || '', finalReasoning)
-            this.removeStreamListener()
-            break
-          case 'error':
-            callbacks.onError(new Error(data.error || 'Unknown error'))
-            this.removeStreamListener()
-            break
+          },
+          onComplete: (fullResponse: string, reasoning?: string) => {
+            if (!this.isAborted) {
+              callbacks.onComplete(fullResponse, reasoning)
+            }
+          },
+          onError: (error: string) => {
+            if (!this.isAborted) {
+              callbacks.onError(new Error(error))
+            }
+          }
         }
-      }
-
-      // 监听流数据 - 使用请求ID作为标识
-      window.api.ai.onStreamData(this.requestId, handleStreamData)
-
-      // 发送流式请求，包含请求ID
-      await window.api.ai.sendMessageStreaming({
-        requestId: this.requestId,
-        llmConfig: this.llmConfig,
-        modelConfig: this.modelConfig,
-        messages: messages
-      })
+      )
     } catch (error) {
-      this.removeStreamListener()
       if (!this.isAborted) {
         callbacks.onError(error as Error)
       }
     }
-  }
-
-  private removeStreamListener() {
-    window.api.ai.removeStreamListener(this.requestId)
   }
 
   async testConnection(): Promise<boolean> {

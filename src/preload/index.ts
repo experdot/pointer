@@ -3,47 +3,68 @@ import { electronAPI } from '@electron-toolkit/preload'
 import type {
   AIRequest,
   AIStreamChunk,
+  AIStreamCallbacks,
   LLMConfig,
   TestConnectionResult,
   GetModelsResult
 } from './index.d'
 
-// 管理多个流式监听器
-const streamListeners = new Map<string, (data: AIStreamChunk) => void>()
-
 // Custom APIs for renderer
 const api = {
   ai: {
-    sendMessageStreaming: (request: AIRequest): Promise<void> =>
-      ipcRenderer.invoke('ai:send-message-streaming', request),
+    sendMessageStreaming: (request: AIRequest, callbacks: AIStreamCallbacks): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        let fullResponse = ''
+        let fullReasoning = ''
+
+        // 创建一个唯一的事件通道
+        const eventChannel = `ai-stream-${request.requestId}`
+
+        // 监听流数据
+        const handleStreamData = (_: any, data: AIStreamChunk) => {
+          switch (data.type) {
+            case 'chunk':
+              if (data.content) {
+                fullResponse += data.content
+                callbacks.onChunk(data.content)
+              }
+              break
+            case 'reasoning_content':
+              if (data.reasoning_content) {
+                fullReasoning += data.reasoning_content
+                callbacks.onReasoning?.(data.reasoning_content)
+              }
+              break
+            case 'complete':
+              ipcRenderer.removeListener(eventChannel, handleStreamData)
+              const finalReasoning = data.reasoning_content || fullReasoning || undefined
+              callbacks.onComplete?.(fullResponse || data.content || '', finalReasoning)
+              resolve(request.requestId)
+              break
+            case 'error':
+              ipcRenderer.removeListener(eventChannel, handleStreamData)
+              callbacks.onError?.(data.error || 'Unknown error')
+              reject(new Error(data.error || 'Unknown error'))
+              break
+          }
+        }
+
+        ipcRenderer.on(eventChannel, handleStreamData)
+
+        // 发送请求，传递事件通道名称
+        ipcRenderer.invoke('ai:send-message-streaming', request, eventChannel).catch((error) => {
+          ipcRenderer.removeListener(eventChannel, handleStreamData)
+          callbacks.onError?.(error.message)
+          reject(error)
+        })
+      })
+    },
     testConnection: (config: LLMConfig): Promise<TestConnectionResult> =>
       ipcRenderer.invoke('ai:test-connection', config),
     getModels: (config: LLMConfig): Promise<GetModelsResult> =>
       ipcRenderer.invoke('ai:get-models', config),
     stopStreaming: (requestId: string): Promise<void> =>
-      ipcRenderer.invoke('ai:stop-streaming', requestId),
-    onStreamData: (requestId: string, callback: (data: AIStreamChunk) => void): void => {
-      // 为每个请求ID创建独立的监听器
-      streamListeners.set(requestId, callback)
-
-      // 如果是第一个监听器，则设置全局监听器
-      if (streamListeners.size === 1) {
-        ipcRenderer.on('ai-stream-data', (_, data) => {
-          const listener = streamListeners.get(data.requestId)
-          if (listener) {
-            listener(data)
-          }
-        })
-      }
-    },
-    removeStreamListener: (requestId: string): void => {
-      streamListeners.delete(requestId)
-
-      // 如果没有监听器了，移除全局监听器
-      if (streamListeners.size === 0) {
-        ipcRenderer.removeAllListeners('ai-stream-data')
-      }
-    }
+      ipcRenderer.invoke('ai:stop-streaming', requestId)
   },
   // 文件操作API
   saveFile: (options: {
