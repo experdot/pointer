@@ -76,9 +76,8 @@ class AIHandler {
   /**
    * 发送错误消息给渲染进程
    */
-  private sendError(event: Electron.IpcMainInvokeEvent, requestId: string, error: string): void {
-    event.sender.send('ai-stream-data', {
-      requestId,
+  private sendError(event: Electron.IpcMainInvokeEvent, eventChannel: string, error: string): void {
+    event.sender.send(eventChannel, {
       type: 'error',
       error
     } as AIStreamChunk)
@@ -89,12 +88,11 @@ class AIHandler {
    */
   private sendComplete(
     event: Electron.IpcMainInvokeEvent,
-    requestId: string,
+    eventChannel: string,
     content: string,
     reasoning_content?: string
   ): void {
-    event.sender.send('ai-stream-data', {
-      requestId,
+    event.sender.send(eventChannel, {
       type: 'complete',
       content,
       reasoning_content: reasoning_content || undefined
@@ -132,14 +130,14 @@ class AIHandler {
    */
   private createStreamParser(
     event: Electron.IpcMainInvokeEvent,
-    requestId: string,
+    eventChannel: string,
     fullResponse: { value: string },
     fullReasoning: { value: string }
   ) {
     return createParser({
       onEvent: (eventData) => {
         if (eventData.data === '[DONE]') {
-          this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+          this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
           return
         }
 
@@ -155,8 +153,7 @@ class AIHandler {
 
           if (content) {
             fullResponse.value += content
-            event.sender.send('ai-stream-data', {
-              requestId,
+            event.sender.send(eventChannel, {
               type: 'chunk',
               content: content
             } as AIStreamChunk)
@@ -164,8 +161,7 @@ class AIHandler {
 
           if (reasoning_content) {
             fullReasoning.value += reasoning_content
-            event.sender.send('ai-stream-data', {
-              requestId,
+            event.sender.send(eventChannel, {
               type: 'reasoning_content',
               reasoning_content: reasoning_content
             } as AIStreamChunk)
@@ -184,7 +180,7 @@ class AIHandler {
     reader: ReadableStreamDefaultReader<Uint8Array>,
     parser: ReturnType<typeof createParser>,
     event: Electron.IpcMainInvokeEvent,
-    requestId: string,
+    eventChannel: string,
     fullResponse: { value: string },
     fullReasoning: { value: string }
   ): Promise<void> {
@@ -199,14 +195,14 @@ class AIHandler {
         parser.feed(chunk)
       }
 
-      this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+      this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.sendComplete(event, requestId, fullResponse.value, fullReasoning.value)
+        this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
       } else {
         this.sendError(
           event,
-          requestId,
+          eventChannel,
           error instanceof Error ? error.message : 'Unknown error'
         )
       }
@@ -215,7 +211,8 @@ class AIHandler {
 
   public async sendMessageStreaming(
     event: Electron.IpcMainInvokeEvent,
-    request: AIRequest
+    request: AIRequest,
+    eventChannel: string
   ): Promise<void> {
     const abortController = new AbortController()
     this.abortControllers.set(request.requestId, abortController)
@@ -232,13 +229,13 @@ class AIHandler {
       )
 
       if (!response.ok) {
-        this.sendError(event, request.requestId, `HTTP error! status: ${response.status}`)
+        this.sendError(event, eventChannel, `HTTP error! status: ${response.status}`)
         return
       }
 
       const reader = response.body?.getReader()
       if (!reader) {
-        this.sendError(event, request.requestId, 'No response body reader available')
+        this.sendError(event, eventChannel, 'No response body reader available')
         return
       }
 
@@ -247,7 +244,7 @@ class AIHandler {
 
       const parser = this.createStreamParser(
         event,
-        request.requestId,
+        eventChannel,
         fullResponse,
         fullReasoning
       )
@@ -256,17 +253,17 @@ class AIHandler {
         reader,
         parser,
         event,
-        request.requestId,
+        eventChannel,
         fullResponse,
         fullReasoning
       )
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.sendComplete(event, request.requestId, '', undefined)
+        this.sendComplete(event, eventChannel, '', undefined)
       } else {
         this.sendError(
           event,
-          request.requestId,
+          eventChannel,
           error instanceof Error ? error.message : 'Unknown error'
         )
       }
@@ -346,10 +343,10 @@ class AIHandler {
 export const aiHandler = new AIHandler()
 
 export function setupAIHandlers() {
-  ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest) =>
-    aiHandler.sendMessageStreaming(event, request)
+  ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest, eventChannel: string) =>
+    aiHandler.sendMessageStreaming(event, request, eventChannel)
   )
-  ipcMain.handle('ai:stop-streaming', (event, requestId: string) => aiHandler.stopStreaming(requestId))
-  ipcMain.handle('ai:test-connection', (event, config: LLMConfig) => aiHandler.testConnection(config))
-  ipcMain.handle('ai:get-models', (event, config: LLMConfig) => aiHandler.getModels(config))
+  ipcMain.handle('ai:stop-streaming', (_event, requestId: string) => aiHandler.stopStreaming(requestId))
+  ipcMain.handle('ai:test-connection', (_event, config: LLMConfig) => aiHandler.testConnection(config))
+  ipcMain.handle('ai:get-models', (_event, config: LLMConfig) => aiHandler.getModels(config))
 }
