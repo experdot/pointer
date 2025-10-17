@@ -65,6 +65,7 @@ const MessageList = React.memo(function MessageList({
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const prevMessagesLength = useRef<number>(0)
   const prevStreamingContent = useRef<string>('')
+  const prevStreamingReasoningContent = useRef<string>('')
   const prevCurrentPath = useRef<string[]>([])
   const prevSelectedMessageId = useRef<string | null>(null)
   const isInitialRender = useRef<boolean>(true)
@@ -112,6 +113,7 @@ const MessageList = React.memo(function MessageList({
 
   // 计算当前的流式内容，用于触发滚动
   const currentStreamingContent = lastMessageStreaming?.content || ''
+  const currentStreamingReasoningContent = lastMessageStreaming?.reasoning_content || ''
 
   // 检查是否距离底部较近
   const isNearBottom = useCallback(() => {
@@ -208,7 +210,7 @@ const MessageList = React.memo(function MessageList({
 
     // 只在以下情况下滚动：
     // 1. 消息总数增加（有新消息）- 滚动到底部
-    // 2. 流式内容发生变化（正在接收AI回复）- 滚动到底部
+    // 2. 流式内容发生变化（正在接收AI回复或思考过程）- 滚动到底部
     // 3. 初次渲染且有消息 - 滚动到底部
     // 4. 当前路径发生变化（用户点击消息树切换分支）- 滚动到底部
     // 5. 选中消息发生变化（用户点击消息树中的特定消息）- 滚动到选中消息
@@ -216,6 +218,7 @@ const MessageList = React.memo(function MessageList({
       !isSearching && (
         currentMessagesLength > prevMessagesLength.current ||
         currentStreamingContent !== prevStreamingContent.current ||
+        currentStreamingReasoningContent !== prevStreamingReasoningContent.current ||
         (isInitialRender.current && currentMessagesLength > 0) ||
         (pathChanged && !selectedMessageChanged)
       )
@@ -244,9 +247,10 @@ const MessageList = React.memo(function MessageList({
     // 更新引用值
     prevMessagesLength.current = currentMessagesLength
     prevStreamingContent.current = currentStreamingContent
+    prevStreamingReasoningContent.current = currentStreamingReasoningContent
     prevCurrentPath.current = [...currentPath]
     prevSelectedMessageId.current = selectedMessageId
-  }, [messages.length, currentStreamingContent, currentPath, selectedMessageId, isAutoScrollEnabled, isSearchVisible, searchQuery])
+  }, [messages.length, currentStreamingContent, currentStreamingReasoningContent, currentPath, selectedMessageId, isAutoScrollEnabled, isSearchVisible, searchQuery])
 
   // 单独处理搜索滚动
   useEffect(() => {
