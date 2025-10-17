@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
+import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
@@ -383,13 +383,13 @@ export default function ChatHeader({
                 <Button
                   type="text"
                   size="small"
-                  icon={isFavorited ? <StarFilled /> : <StarOutlined />}
+                  icon={isFavorited ? <HeartFilled /> : <HeartOutlined />}
                   onClick={handleFavoritePage}
                   style={{
                     opacity: isHoveringTitle || isFavorited ? 1 : 0,
                     transition: 'opacity 0.2s',
                     visibility: isHoveringTitle || isFavorited ? 'visible' : 'hidden',
-                    color: isFavorited ? '#faad14' : undefined
+                    color: isFavorited ? '#ff4d4f' : undefined
                   }}
                 />
               </Tooltip>

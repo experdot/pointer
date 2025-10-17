@@ -91,10 +91,6 @@
   margin-right: auto;
 }
 
-.message-avatar {
-  flex-shrink: 0;
-}
-
 .message-content {
   display: flex;
   flex-direction: column;
@@ -120,6 +116,7 @@
 
 .message-avatar {
   flex-shrink: 0;
+  margin: 8px 0;
 }
 
 .message-header {
