@@ -13,9 +13,19 @@ export interface ModelConfig {
   temperature: number
 }
 
+export interface FileAttachment {
+  id: string
+  name: string
+  type: string
+  size: number
+  content: string
+  url?: string
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
+  attachments?: FileAttachment[]
 }
 
 export interface AIRequest {
@@ -38,13 +48,46 @@ class AIHandler {
   private abortControllers = new Map<string, AbortController>()
 
   /**
-   * 准备 API 消息数组，处理 systemPrompt
+   * 准备 API 消息数组，处理 systemPrompt 和文件附件
    */
   private prepareApiMessages(messages: ChatMessage[], modelConfig: ModelConfig): ChatMessage[] {
-    const apiMessages = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content
-    }))
+    const apiMessages = messages.map((msg) => {
+      // 如果消息有附件，需要转换为多模态格式
+      if (msg.attachments && msg.attachments.length > 0) {
+        const contentParts: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = []
+
+        // 添加文本内容
+        if (typeof msg.content === 'string' && msg.content.trim()) {
+          contentParts.push({
+            type: 'text',
+            text: msg.content
+          })
+        }
+
+        // 添加图片附件
+        msg.attachments.forEach((attachment) => {
+          if (attachment.type.startsWith('image/')) {
+            contentParts.push({
+              type: 'image_url',
+              image_url: {
+                url: `data:${attachment.type};base64,${attachment.content}`
+              }
+            })
+          }
+        })
+
+        return {
+          role: msg.role,
+          content: contentParts
+        }
+      }
+
+      // 普通文本消息
+      return {
+        role: msg.role,
+        content: msg.content
+      }
+    })
 
     // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
     if (

@@ -13,7 +13,8 @@ import {
   Typography,
   Empty,
   Switch,
-  Dropdown
+  Dropdown,
+  Image
 } from 'antd'
 import {
   DeleteOutlined,
@@ -27,9 +28,11 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   MoreOutlined,
-  PlusOutlined
+  PlusOutlined,
+  FileOutlined,
+  PaperClipOutlined
 } from '@ant-design/icons'
-import { MessageQueueItem, MessageQueueConfig } from '../../../types/type'
+import { MessageQueueItem, MessageQueueConfig, FileAttachment } from '../../../types/type'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -39,7 +42,7 @@ interface MessageQueuePanelProps {
   config: MessageQueueConfig
   currentlyProcessing: string | null
   selectedModel?: string
-  onAddToQueue: (content: string, modelId?: string, options?: { autoResume?: boolean }) => string
+  onAddToQueue: (content: string, modelId?: string, options?: { autoResume?: boolean; attachments?: FileAttachment[] }) => string
   onRemoveFromQueue: (itemId: string) => void
   onEditQueueItem: (itemId: string, newContent: string) => void
   onClearQueue: () => void
@@ -122,6 +125,46 @@ export default function MessageQueuePanel({
     }
     const config = statusConfig[status]
     return <Tag color={config.color}>{config.text}</Tag>
+  }
+
+  const renderAttachments = (attachments?: FileAttachment[]) => {
+    if (!attachments || attachments.length === 0) return null
+
+    return (
+      <div style={{ marginTop: 8 }}>
+        <Space size="small" wrap>
+          <PaperClipOutlined style={{ color: '#1890ff' }} />
+          {attachments.map((attachment) => {
+            const isImage = attachment.type.startsWith('image/')
+            return (
+              <Tag
+                key={attachment.id}
+                icon={isImage ? undefined : <FileOutlined />}
+                color="blue"
+                style={{ margin: 0 }}
+              >
+                {isImage && attachment.url ? (
+                  <Image
+                    src={attachment.url}
+                    alt={attachment.name}
+                    width={40}
+                    height={40}
+                    style={{ objectFit: 'cover', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }}
+                    preview={{
+                      mask: <span style={{ fontSize: 12 }}>{attachment.name}</span>
+                    }}
+                  />
+                ) : null}
+                <span style={{ fontSize: 12 }}>
+                  {attachment.name}
+                  {attachment.size && ` (${(attachment.size / 1024).toFixed(1)}KB)`}
+                </span>
+              </Tag>
+            )
+          })}
+        </Space>
+      </div>
+    )
   }
 
   const stats = {
@@ -287,8 +330,14 @@ export default function MessageQueuePanel({
                               '(空消息 - 点击编辑按钮添加内容)'
                             )}
                           </div>
-                          <Space size="small" wrap>
+                          {renderAttachments(item.attachments)}
+                          <Space size="small" wrap style={{ marginTop: 4 }}>
                             {getStatusTag(item.status)}
+                            {item.attachments && item.attachments.length > 0 && (
+                              <Tag icon={<PaperClipOutlined />} color="blue" style={{ fontSize: 11 }}>
+                                {item.attachments.length} 个附件
+                              </Tag>
+                            )}
                             {item.error && (
                               <Tooltip title={item.error}>
                                 <Tag color="error" style={{ fontSize: 11 }}>

@@ -73,6 +73,13 @@ const api = {
     filters?: Array<{ name: string; extensions: string[] }>
   }) => ipcRenderer.invoke('save-file', options),
 
+  readFile: (filePath: string) => ipcRenderer.invoke('read-file', filePath),
+
+  selectFiles: (options?: {
+    multiple?: boolean
+    filters?: Array<{ name: string; extensions: string[] }>
+  }) => ipcRenderer.invoke('select-files', options),
+
   // 自动更新API
   updater: {
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

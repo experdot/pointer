@@ -17,6 +17,16 @@ export interface LLMConfig {
   modelConfigId?: string
 }
 
+// 文件附件类型
+export interface FileAttachment {
+  id: string
+  name: string
+  type: string // MIME type
+  size: number
+  content: string // base64 编码的文件内容
+  url?: string // 用于图片预览的 data URL
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -29,6 +39,7 @@ export interface ChatMessage {
   children?: string[]
   branchIndex?: number
   isStreaming?: boolean
+  attachments?: FileAttachment[] // 文件附件数组
 }
 
 // 页面溯源信息
@@ -491,6 +502,7 @@ export interface MessageQueueItem {
   id: string // 队列项唯一ID
   content: string // 消息内容
   modelId?: string // 指定的模型ID（可选）
+  attachments?: FileAttachment[] // 文件附件（可选）
   status: MessageQueueItemStatus // 状态
   createdAt: number // 创建时间
   startedAt?: number // 开始处理时间

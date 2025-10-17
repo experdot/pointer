@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { ChatMessage } from '../../../../types/type'
+import { ChatMessage, FileAttachment } from '../../../../types/type'
+import { usePagesStore } from '../../../../stores/pagesStore'
 
 interface UseMessageActionsProps {
   message: ChatMessage
@@ -7,7 +8,7 @@ interface UseMessageActionsProps {
   onRetry?: (messageId: string) => void
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
-  onEditAndResend?: (messageId: string, newContent: string) => void
+  onEditAndResend?: (messageId: string, newContent: string, newAttachments?: FileAttachment[]) => void
   onToggleBookmark?: (messageId: string) => void
   onAddToFavorites?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
@@ -23,6 +24,7 @@ export function useMessageActions(props: UseMessageActionsProps) {
   const { message } = props
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
+  const [editAttachments, setEditAttachments] = useState<FileAttachment[]>(message.attachments || [])
 
   const handleRetry = useCallback(() => {
     props.onRetry?.(message.id)
@@ -35,24 +37,40 @@ export function useMessageActions(props: UseMessageActionsProps) {
   const handleEdit = useCallback(() => {
     setIsEditing(true)
     setEditContent(message.content)
-  }, [message.content])
+    setEditAttachments(message.attachments || [])
+  }, [message.content, message.attachments])
 
   const handleSaveEdit = useCallback(() => {
     if (editContent.trim()) {
-      props.onEdit?.(message.id, editContent)
+      // 更新消息内容和附件
+      const { updatePage } = usePagesStore.getState()
+      const chat = usePagesStore.getState().pages.find(p => p.id === props.chatId)
+
+      if (chat && chat.messages) {
+        const updatedMessages = chat.messages.map((msg: ChatMessage) =>
+          msg.id === message.id
+            ? { ...msg, content: editContent, attachments: editAttachments, timestamp: Date.now() }
+            : msg
+        )
+        updatePage(props.chatId, { messages: updatedMessages })
+      }
+
       setIsEditing(false)
     }
-  }, [props.onEdit, message.id, editContent])
+  }, [message.id, editContent, editAttachments, props.chatId])
 
   const handleSaveAndResend = useCallback(() => {
-    props.onEditAndResend?.(message.id, editContent)
+    // 保存并重发会创建新分支，不修改原消息
+    // 将编辑后的附件传递给 onEditAndResend，让它在创建新分支时使用
+    props.onEditAndResend?.(message.id, editContent, editAttachments)
     setIsEditing(false)
-  }, [props.onEditAndResend, message.id, editContent])
+  }, [props.onEditAndResend, message.id, editContent, editAttachments])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
     setEditContent(message.content)
-  }, [message.content])
+    setEditAttachments(message.attachments || [])
+  }, [message.content, message.attachments])
 
   const handleToggleBookmark = useCallback(() => {
     props.onToggleBookmark?.(message.id)
@@ -129,6 +147,8 @@ export function useMessageActions(props: UseMessageActionsProps) {
     isEditing,
     editContent,
     setEditContent,
+    editAttachments,
+    setEditAttachments,
 
     // Actions
     handleRetry,

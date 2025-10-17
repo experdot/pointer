@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { usePagesStore } from '../../../../stores/pagesStore'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 import { useMessagesStore } from '../../../../stores/messagesStore'
-import { ChatMessage } from '../../../../types/type'
+import { ChatMessage, FileAttachment } from '../../../../types/type'
 import { MessageTree } from '../messageTree'
 import { UseAIServiceReturn } from './useAIService'
 
@@ -22,12 +22,13 @@ export interface UseMessageOperationsReturn {
   handleSendMessage: (
     content: string,
     customModelId?: string,
-    customParentId?: string
+    customParentId?: string,
+    attachments?: FileAttachment[]
   ) => Promise<void>
   handleRetryMessage: (messageId: string) => Promise<void>
   handleContinueMessage: (messageId: string) => Promise<void>
   handleEditMessage: (messageId: string, newContent: string) => Promise<void>
-  handleEditAndResendMessage: (messageId: string, newContent: string) => Promise<void>
+  handleEditAndResendMessage: (messageId: string, newContent: string, newAttachments?: FileAttachment[]) => Promise<void>
   handleToggleBookmark: (messageId: string) => void
   handleModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
   handleDeleteMessage: (messageId: string) => Promise<void>
@@ -47,8 +48,10 @@ export function useMessageOperations({
   const { message, modal } = App.useApp()
 
   const handleSendMessage = useCallback(
-    async (content: string, customModelId?: string, customParentId?: string) => {
-      if (!content.trim() || isLoading) return
+    async (content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => {
+      // 允许空内容但有附件的情况
+      if (!content.trim() && (!attachments || attachments.length === 0)) return
+      if (isLoading) return
 
       const llmConfig = aiService.getLLMConfig(customModelId)
       if (!llmConfig) {
@@ -60,7 +63,8 @@ export function useMessageOperations({
         id: uuidv4(),
         role: 'user',
         content: content.trim(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        attachments: attachments
       }
 
       // Get current messages before adding the new one
@@ -237,7 +241,7 @@ export function useMessageOperations({
   )
 
   const handleEditAndResendMessage = useCallback(
-    async (messageId: string, newContent: string) => {
+    async (messageId: string, newContent: string, newAttachments?: FileAttachment[]) => {
       if (!chat || isLoading) return
 
       // 找到要编辑的消息
@@ -294,7 +298,8 @@ export function useMessageOperations({
               role: 'user' as const,
               content: newContent.trim(),
               timestamp: Date.now(),
-              parentId: targetMessage.parentId || null
+              parentId: targetMessage.parentId || null,
+              attachments: newAttachments !== undefined ? newAttachments : targetMessage.attachments // 使用编辑后的附件，如果没有传入则使用原消息的附件
             }
 
             // 添加编辑后的用户消息

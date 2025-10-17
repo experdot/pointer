@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Card, Collapse, Dropdown, Typography, Button } from 'antd'
-import { BulbOutlined, CopyOutlined } from '@ant-design/icons'
+import { Card, Collapse, Dropdown, Typography, Button, Image, Space } from 'antd'
+import { BulbOutlined, CopyOutlined, FileImageOutlined } from '@ant-design/icons'
 import { Markdown } from '../../../common/markdown/Markdown'
 import SearchableMarkdown from '../../../common/markdown/SearchableMarkdown'
+import { FileAttachment } from '../../../../types/type'
 
 const { Text } = Typography
 
@@ -21,6 +22,7 @@ interface MessageContentProps {
     messageId: string
   ) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
   currentMatchIndex?: number
+  attachments?: FileAttachment[]
 }
 
 export const MessageContent: React.FC<MessageContentProps> = ({
@@ -34,12 +36,55 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   messageId,
   getCurrentMatch,
   getHighlightInfo,
-  currentMatchIndex
+  currentMatchIndex,
+  attachments
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   return (
     <>
+      {/* 文件附件显示 */}
+      {attachments && attachments.length > 0 && (
+        <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {attachments.map((attachment) => (
+            <div
+              key={attachment.id}
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                border: '1px solid #d9d9d9',
+                borderRadius: 4,
+                padding: 4,
+                background: '#fafafa'
+              }}
+            >
+              {attachment.type.startsWith('image/') && attachment.url ? (
+                <div>
+                  <Image
+                    src={attachment.url}
+                    alt={attachment.name}
+                    width={120}
+                    height={120}
+                    style={{ objectFit: 'cover', borderRadius: 2 }}
+                    preview={{
+                      mask: <div style={{ fontSize: 12 }}>预览</div>
+                    }}
+                  />
+                  <div style={{ fontSize: 11, marginTop: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {attachment.name}
+                  </div>
+                </div>
+              ) : (
+                <Space>
+                  <FileImageOutlined />
+                  <span style={{ fontSize: 12 }}>{attachment.name}</span>
+                </Space>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {currentReasoningContent && (
         <Card size="small" className="message-reasoning-card" style={{ marginBottom: 8 }}>
           <Collapse

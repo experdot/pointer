@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { MessageQueueItem, MessageQueueConfig, MessageQueueItemStatus } from '../../../types/type'
+import { MessageQueueItem, MessageQueueConfig, MessageQueueItemStatus, FileAttachment } from '../../../types/type'
 import { nanoid } from 'nanoid'
 
 interface UseMessageQueueProps {
-  onProcessMessage: (content: string, modelId?: string) => Promise<void>
+  onProcessMessage: (content: string, modelId?: string, parentId?: string, attachments?: FileAttachment[]) => Promise<void>
   isLoading: boolean
 }
 
@@ -19,11 +19,12 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
   const processingRef = useRef(false)
 
   // 添加消息到队列
-  const addToQueue = useCallback((content: string, modelId?: string, options?: { autoResume?: boolean }) => {
+  const addToQueue = useCallback((content: string, modelId?: string, options?: { autoResume?: boolean; attachments?: FileAttachment[] }) => {
     const newItem: MessageQueueItem = {
       id: nanoid(),
       content,
       modelId,
+      attachments: options?.attachments,
       status: 'pending',
       createdAt: Date.now(),
       order: Date.now() // 使用时间戳作为顺序
@@ -116,7 +117,7 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
         startedAt: Date.now()
       })
 
-      await onProcessMessage(pendingItem.content, pendingItem.modelId)
+      await onProcessMessage(pendingItem.content, pendingItem.modelId, undefined, pendingItem.attachments)
 
       updateQueueItem(pendingItem.id, {
         status: 'completed',

@@ -3,6 +3,7 @@ import { usePagesStore } from '../../../stores/pagesStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { MessageTree } from './messageTree'
 import { useAIService, useAutoQuestion, useMessageOperations } from './hooks'
+import { FileAttachment } from '../../../types/type'
 
 interface ChatLogicProps {
   chatId: string
@@ -14,7 +15,7 @@ interface ChatLogicProps {
     isLoading: boolean
     selectedModel: string | undefined
     onModelChange: (modelId: string) => void
-    onSendMessage: (content: string, customModelId?: string) => Promise<void>
+    onSendMessage: (content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => Promise<void>
     onStopGeneration: () => void
     onRetryMessage: (messageId: string) => Promise<void>
     onContinueMessage: (messageId: string) => Promise<void>
@@ -51,7 +52,7 @@ export default function ChatLogic({
   const aiService = useAIService(chatId)
 
   // 创建 ref 来解决循环依赖问题
-  const sendMessageRef = useRef<((content: string, customModelId?: string, customParentId?: string) => Promise<void>) | null>(null)
+  const sendMessageRef = useRef<((content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => Promise<void>) | null>(null)
 
   // 使用自动提问 hook
   const autoQuestion = useAutoQuestion({

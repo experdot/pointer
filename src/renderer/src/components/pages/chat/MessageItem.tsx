@@ -253,6 +253,8 @@ const MessageItem = React.memo(
                     onSaveAndResend={messageActions.handleSaveAndResend}
                     onCancel={messageActions.handleCancelEdit}
                     containerRef={editContainerRef}
+                    attachments={messageActions.editAttachments}
+                    onAttachmentsChange={messageActions.setEditAttachments}
                   />
                 ) : (
                   <MessageContent
@@ -267,6 +269,7 @@ const MessageItem = React.memo(
                     getCurrentMatch={getCurrentMatch}
                     getHighlightInfo={getHighlightInfo}
                     currentMatchIndex={currentMatchIndex}
+                    attachments={message.attachments}
                   />
                 )}
               </>
@@ -338,7 +341,8 @@ const MessageItem = React.memo(
       prevProps.message.reasoning_content !== nextProps.message.reasoning_content ||
       prevProps.message.isStreaming !== nextProps.message.isStreaming ||
       prevProps.message.isBookmarked !== nextProps.message.isBookmarked ||
-      prevProps.message.modelId !== nextProps.message.modelId
+      prevProps.message.modelId !== nextProps.message.modelId ||
+      prevProps.message.attachments !== nextProps.message.attachments
     ) {
       return false
     }

@@ -21,7 +21,7 @@ import PageLineageDisplay from '../../common/PageLineageDisplay'
 import MessageTreeSidebar from './MessageTreeSidebar'
 import MessageQueuePanel from './MessageQueuePanel'
 import { MessageTree } from './messageTree'
-import { ChatMessage } from '../../../types/type'
+import { ChatMessage, FileAttachment } from '../../../types/type'
 import { useMessageQueue } from './useMessageQueue'
 
 interface ChatWindowProps {
@@ -46,6 +46,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const { settings } = useSettingsStore()
   const { updateCurrentPath } = useMessagesStore()
   const [inputValue, setInputValue] = useState('')
+  const [attachments, setAttachments] = useState<FileAttachment[]>([])
   const [messageTreeCollapsed, setMessageTreeCollapsed] = useState(true)
   const [messageTreeWidth, setMessageTreeWidth] = useState(() => {
     const saved = localStorage.getItem('messageTreeWidth')
@@ -474,19 +475,31 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   value={inputValue}
                   onChange={setInputValue}
                   onSend={useCallback(async () => {
-                    if (inputValue.trim()) {
+                    if (inputValue.trim() || attachments.length > 0) {
                       // 判断是否应该加入队列：队列已启用且（AI正在回答或队列中有待处理消息）
                       const shouldAddToQueue = messageQueue.config.enabled &&
                         (isLoading || messageQueue.getQueueStats().pending > 0)
 
+                      const messageContent = inputValue.trim()
+                      const messageAttachments = [...attachments]
+
                       setInputValue('') // 立即清空输入框
+                      setAttachments([]) // 立即清空附件
 
                       if (shouldAddToQueue) {
-                        // 加入队列并自动恢复
-                        messageQueue.addToQueue(inputValue.trim(), selectedModel, { autoResume: true })
+                        // 添加到队列，包含附件
+                        messageQueue.addToQueue(messageContent, selectedModel, {
+                          autoResume: true,
+                          attachments: messageAttachments.length > 0 ? messageAttachments : undefined
+                        })
                       } else {
-                        // 直接发送
-                        await onSendMessage(inputValue, selectedModel)
+                        // 发送消息，如果有附件则传递附件参数
+                        await onSendMessage(
+                          messageContent || '请分析这张图片',
+                          selectedModel,
+                          undefined,
+                          messageAttachments.length > 0 ? messageAttachments : undefined
+                        )
                       }
 
                       // 在下一个tick中聚焦，确保界面更新完成
@@ -494,7 +507,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                         chatInputRef.current?.focus()
                       }, 0)
                     }
-                  }, [inputValue, onSendMessage, selectedModel, isLoading, messageQueue])}
+                  }, [inputValue, attachments, onSendMessage, selectedModel, isLoading, messageQueue, chat, chatId, settings])}
                   onStop={handleStopWithQueue}
                   disabled={isLoading}
                   loading={isLoading}
@@ -516,6 +529,9 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   queueAutoProcess={messageQueue.config.autoProcess}
                   onToggleQueuePanel={handleToggleQueuePanel}
                   onResumeQueue={messageQueue.resumeQueue}
+                  // 文件附件相关props
+                  attachments={attachments}
+                  onAttachmentsChange={setAttachments}
                 />
 
                 {/* 消息队列面板 */}

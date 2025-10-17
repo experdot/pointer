@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, app } from 'electron'
-import { writeFile } from 'fs/promises'
+import { writeFile, readFile } from 'fs/promises'
 import { is } from '@electron-toolkit/utils'
 import { autoUpdater } from './autoUpdater'
 
@@ -107,6 +107,66 @@ export function setupIpcHandlers(): void {
       return { success: true, filePath: result.filePath }
     } catch (error) {
       console.error('Save file error:', error)
+      return { success: false, error: error instanceof Error ? error.message : '未知错误' }
+    }
+  })
+
+  // Handle read file
+  ipcMain.handle('read-file', async (event, filePath: string) => {
+    try {
+      const buffer = await readFile(filePath)
+      const base64 = buffer.toString('base64')
+      return { success: true, content: base64 }
+    } catch (error) {
+      console.error('Read file error:', error)
+      return { success: false, error: error instanceof Error ? error.message : '未知错误' }
+    }
+  })
+
+  // Handle select files (file picker dialog)
+  ipcMain.handle('select-files', async (event, options?: {
+    multiple?: boolean
+    filters?: Array<{ name: string; extensions: string[] }>
+  }) => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: [
+          'openFile',
+          ...(options?.multiple ? ['multiSelections' as const] : [])
+        ],
+        filters: options?.filters || [
+          { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] },
+          { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.canceled) {
+        return { success: false, cancelled: true }
+      }
+
+      // Read all selected files and convert to base64
+      const files = await Promise.all(
+        result.filePaths.map(async (filePath) => {
+          const buffer = await readFile(filePath)
+          const base64 = buffer.toString('base64')
+          const fileName = filePath.split(/[\\/]/).pop() || 'unknown'
+
+          // Get file stats for size
+          const stats = await import('fs/promises').then(fs => fs.stat(filePath))
+
+          return {
+            name: fileName,
+            path: filePath,
+            content: base64,
+            size: stats.size
+          }
+        })
+      )
+
+      return { success: true, files }
+    } catch (error) {
+      console.error('Select files error:', error)
       return { success: false, error: error instanceof Error ? error.message : '未知错误' }
     }
   })
