@@ -1,8 +1,5 @@
 import { Page } from '../../types/type'
 
-// 导入限制常量
-export const MAX_IMPORT_LIMIT = 50
-
 // DeepSeek导出格式的类型定义
 export interface DeepSeekMessage {
   id: string

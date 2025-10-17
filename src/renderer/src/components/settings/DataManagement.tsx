@@ -18,7 +18,6 @@ import {
   UploadOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  ImportOutlined,
   SelectOutlined
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -29,7 +28,6 @@ import { useMessagesStore } from '../../stores/messagesStore'
 import RelativeTime from '../common/RelativeTime'
 
 import {
-  importExternalChatHistory,
   parseExternalChatHistory,
   importSelectedChats,
   SelectableChatItem
@@ -42,7 +40,6 @@ export default function DataManagement() {
   const { importSettings, exportSettings } = useSettingsStore()
   const { pages, folders, importPages, importFolders, clearAllPages } = usePagesStore()
   const [importing, setImporting] = useState(false)
-  const [importingExternal, setImportingExternal] = useState(false)
   const [selectiveImportModal, setSelectiveImportModal] = useState(false)
   const [selectableChatItems, setSelectableChatItems] = useState<SelectableChatItem[]>([])
   const [selectedChatIds, setSelectedChatIds] = useState<string[]>([])
@@ -202,66 +199,6 @@ export default function DataManagement() {
     reader.onerror = () => {
       message.error('文件读取失败')
       setImporting(false)
-    }
-
-    reader.readAsText(file)
-    return false // 防止自动上传
-  }
-
-  // 导入外部聊天历史（快速导入）
-  const handleImportExternal = (file: File) => {
-    setImportingExternal(true)
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string
-        const result = importExternalChatHistory(content)
-
-        if (result.success) {
-          // 获取当前状态
-          const currentChats = usePagesStore.getState().pages || []
-          const currentFolders = usePagesStore.getState().folders || []
-
-          // 创建新文件夹（如果有的话）
-          let updatedFolders = currentFolders
-          if (result.folder) {
-            // 添加到文件夹列表
-            const newFolder: PageFolder = {
-              id: result.folder.id,
-              name: result.folder.name,
-              expanded: true,
-              createdAt: Date.now(),
-              order: Date.now()
-            }
-            updatedFolders = [...currentFolders, newFolder]
-          }
-
-          // 合并新聊天到现有聊天中
-          const mergedChats = [...currentChats, ...result.pages]
-
-          // 保存到存储并更新状态
-          usePagesStore.getState().importPages(mergedChats)
-          usePagesStore.getState().importFolders(updatedFolders)
-
-          // 更新应用状态，确保保留当前的设置
-          importPages(mergedChats)
-
-          message.success(result.message)
-        } else {
-          message.error(result.message)
-        }
-      } catch (error) {
-        console.error('导入外部数据失败:', error)
-        message.error('导入失败，请检查文件格式是否正确')
-      } finally {
-        setImportingExternal(false)
-      }
-    }
-
-    reader.onerror = () => {
-      message.error('文件读取失败')
-      setImportingExternal(false)
     }
 
     reader.readAsText(file)
@@ -560,8 +497,6 @@ export default function DataManagement() {
           </div>
         </div>
 
-        <Divider style={{ margin: '16px 0' }} />
-
         {/* 导入数据 */}
         <div style={{ marginBottom: '16px' }}>
           <div style={{ marginBottom: '8px' }}>
@@ -576,7 +511,8 @@ export default function DataManagement() {
             <Button
               icon={<UploadOutlined />}
               loading={importing}
-              type="default"
+              type="primary"
+              ghost
               style={{ marginBottom: '4px' }}
             >
               {importing ? '导入中...' : '选择文件导入'}
@@ -589,31 +525,21 @@ export default function DataManagement() {
           </div>
         </div>
 
+        <Divider style={{ margin: '16px 0' }} />
+        
         {/* 导入外部聊天历史 */}
         <div style={{ marginBottom: '16px' }}>
           <div style={{ marginBottom: '8px' }}>
             <Text strong>导入外部聊天历史</Text>
           </div>
-          <Space direction="horizontal" size="small" style={{ marginBottom: '4px' }}>
-            <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
-              <Button icon={<SelectOutlined />} type="primary" ghost>
-                选择性导入
-              </Button>
-            </Upload>
-            <Upload
-              accept=".json"
-              showUploadList={false}
-              beforeUpload={handleImportExternal}
-              disabled={importingExternal}
-            >
-              <Button icon={<ImportOutlined />} loading={importingExternal} type="default">
-                {importingExternal ? '导入中...' : '快速导入(50条限制)'}
-              </Button>
-            </Upload>
-          </Space>
+          <Upload accept=".json" showUploadList={false} beforeUpload={handleSelectiveImport}>
+            <Button icon={<SelectOutlined />} type="primary" ghost style={{ marginBottom: '4px' }}>
+              选择性导入
+            </Button>
+          </Upload>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              支持导入DeepSeek、OpenAI等平台导出的聊天历史JSON文件。快速导入最多50条记录，选择性导入可自定义选择。
+              支持导入DeepSeek、OpenAI等平台导出的聊天历史JSON文件，可自定义选择要导入的聊天记录。
             </Text>
           </div>
         </div>

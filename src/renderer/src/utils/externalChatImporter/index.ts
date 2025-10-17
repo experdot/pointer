@@ -10,7 +10,6 @@ export type {
   ParseResult
 } from './types'
 
-export { MAX_IMPORT_LIMIT } from './types'
 
 // 导出格式检测
 export { detectChatFormat } from './formatDetector'
@@ -22,8 +21,4 @@ export { convertOpenAIMessages, convertDeepSeekMessages } from './converters'
 export { generateFolderName } from './utils'
 
 // 导出核心导入功能
-export {
-  parseExternalChatHistory,
-  importSelectedChats,
-  importExternalChatHistory
-} from './importer'
+export { parseExternalChatHistory, importSelectedChats } from './importer'

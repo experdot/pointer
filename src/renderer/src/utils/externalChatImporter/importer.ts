@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { Page, ChatMessage, RegularChat } from '../../types/type'
 import { MessageTree } from '../../components/pages/chat/messageTree'
 import {
-  MAX_IMPORT_LIMIT,
   SelectableChatItem,
   ParseResult,
   ImportResult,
@@ -11,7 +10,6 @@ import {
 } from './types'
 import { detectChatFormat } from './formatDetector'
 import { convertDeepSeekMessages, convertOpenAIMessages } from './converters'
-import { generateFolderName } from './utils'
 
 /**
  * 解析外部聊天历史文件，返回可选择的聊天列表
@@ -179,48 +177,3 @@ export function importSelectedChats(
   }
 }
 
-/**
- * 导入外部聊天历史的主要函数 (保持向后兼容)
- */
-export function importExternalChatHistory(jsonContent: string): ImportResult {
-  try {
-    const parseResult = parseExternalChatHistory(jsonContent)
-
-    if (!parseResult.success) {
-      return {
-        success: false,
-        pages: [],
-        successCount: 0,
-        errorCount: 1,
-        message: parseResult.message
-      }
-    }
-
-    // 限制为50条记录
-    const limitedChats = parseResult.pages.slice(0, MAX_IMPORT_LIMIT)
-    const skippedCount = Math.max(0, parseResult.pages.length - MAX_IMPORT_LIMIT)
-
-    // 生成文件夹名称
-    const folderName = generateFolderName(
-      parseResult.formatType,
-      parseResult.pages[0]?.originalData
-    )
-
-    const result = importSelectedChats(limitedChats, folderName)
-
-    if (result.success && skippedCount > 0) {
-      result.message += `（跳过 ${skippedCount} 个，已达到50个限制）`
-    }
-
-    return result
-  } catch (error) {
-    console.error('导入外部数据失败:', error)
-    return {
-      success: false,
-      pages: [],
-      successCount: 0,
-      errorCount: 1,
-      message: '导入失败，请检查文件格式是否正确'
-    }
-  }
-}
