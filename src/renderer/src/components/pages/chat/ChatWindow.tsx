@@ -52,6 +52,10 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     return saved ? parseInt(saved, 10) : 300
   })
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
+  const [visibleMessageId, setVisibleMessageId] = useState<string | null>(null)
+  const [scrollTriggeredSelection, setScrollTriggeredSelection] = useState(false)
+  const isUserNavigatingRef = useRef(false)
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   // 自动提问相关状态
   const [autoQuestionEnabled, setAutoQuestionEnabled] = useState(false)
   const [autoQuestionMode, setAutoQuestionMode] = useState<'ai' | 'preset'>('ai')
@@ -210,8 +214,23 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     (messageId: string) => {
       if (!chat?.messages) return
 
+      // 标记用户正在主动导航
+      isUserNavigatingRef.current = true
+
+      // 清除之前的超时
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current)
+      }
+
+      // 2秒后恢复滚动监听
+      navigationTimeoutRef.current = setTimeout(() => {
+        isUserNavigatingRef.current = false
+      }, 2000)
+
       // 设置选中的消息ID，用于滚动
       setSelectedMessageId(messageId)
+      // 标记这是用户手动选择，而非滚动触发
+      setScrollTriggeredSelection(false)
 
       const messageMap = new Map<string, ChatMessage>()
       chat.messages.forEach((msg) => {
@@ -263,6 +282,30 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     },
     [chat?.messages, chat?.currentPath, updateCurrentPath, chatId]
   )
+
+  // 处理消息列表中可见消息变化
+  const handleVisibleMessageChange = useCallback((messageId: string | null) => {
+    if (!messageId) return
+
+    // 如果用户正在主动导航，忽略滚动触发的选择
+    if (isUserNavigatingRef.current) {
+      return
+    }
+
+    // 更新可见的消息ID
+    setVisibleMessageId(messageId)
+    // 标记这是由滚动触发的选择
+    setScrollTriggeredSelection(true)
+  }, [])
+
+  // 组件卸载时清理定时器
+  React.useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleMessageTreePathChange = useCallback(
     (path: string[]) => {
@@ -374,6 +417,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                 onToggleCollapse={handleToggleMessageTree}
                 width={messageTreeWidth}
                 onWidthChange={handleMessageTreeWidthChange}
+                scrollTriggeredMessageId={scrollTriggeredSelection ? visibleMessageId : null}
               />
 
               {/* 聊天主内容区 */}
@@ -422,6 +466,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onToggleMessageCollapse={handleToggleMessageCollapse}
                   // 设置相关props
                   onOpenSettings={handleOpenSettings}
+                  // 可见消息变化回调
+                  onVisibleMessageChange={handleVisibleMessageChange}
                 />
                 <ChatInput
                   ref={chatInputRef}

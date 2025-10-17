@@ -34,6 +34,7 @@ interface MessageTreeSidebarProps {
   onToggleCollapse?: () => void
   width?: number
   onWidthChange?: (width: number) => void
+  scrollTriggeredMessageId?: string | null // 由滚动触发的消息选中
 }
 
 interface PathNodeData {
@@ -52,13 +53,15 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
   collapsed = false,
   onToggleCollapse,
   width = 300,
-  onWidthChange
+  onWidthChange,
+  scrollTriggeredMessageId
 }) => {
   // 本地导航索引，用于在当前路径中导航，独立于实际路径
   const [localNavigationIndex, setLocalNavigationIndex] = useState<number>(-1)
   const [expandedSiblings, setExpandedSiblings] = useState<Set<string>>(new Set())
   const [isResizing, setIsResizing] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
+  const prevScrollTriggeredMessageIdRef = useRef<string | null>(null)
 
   // 创建消息树实例
   const messageTree = useMemo(() => {
@@ -131,6 +134,23 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
 
   // 记录上次的路径，用于判断路径是否真正变化了
   const prevPathRef = useRef<string[]>([])
+
+  // 处理由滚动触发的消息选中（外部控制）
+  useEffect(() => {
+    if (!scrollTriggeredMessageId) return
+    if (scrollTriggeredMessageId === prevScrollTriggeredMessageIdRef.current) return
+
+    console.log('[MessageTreeSidebar] Scroll triggered message:', scrollTriggeredMessageId)
+
+    // 检查该消息是否在当前路径中
+    const indexInPath = currentPath.indexOf(scrollTriggeredMessageId)
+    if (indexInPath !== -1) {
+      console.log('[MessageTreeSidebar] Setting navigation index from scroll:', indexInPath)
+      setLocalNavigationIndex(indexInPath)
+    }
+
+    prevScrollTriggeredMessageIdRef.current = scrollTriggeredMessageId
+  }, [scrollTriggeredMessageId, currentPath])
 
   // 当路径变化时，检查是否需要重置导航索引
   useEffect(() => {
@@ -306,12 +326,19 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
   const navigateToFirstOrLast = (position: 'first' | 'last') => {
     if (pathNodes.length === 0) return
 
-    let targetMessageId: string
+    let targetIndex: number
     if (position === 'first') {
-      targetMessageId = pathNodes[0].messageId
+      targetIndex = 0
     } else {
-      targetMessageId = pathNodes[pathNodes.length - 1].messageId
+      targetIndex = pathNodes.length - 1
     }
+
+    const targetMessageId = pathNodes[targetIndex].messageId
+
+    console.log('[MessageTreeSidebar] navigateToFirstOrLast:', position, 'targetIndex:', targetIndex)
+
+    // 更新本地导航索引
+    setLocalNavigationIndex(targetIndex)
 
     if (onNodeSelect) {
       onNodeSelect(targetMessageId)

@@ -34,6 +34,8 @@ interface MessageListProps {
   onToggleMessageCollapse?: (messageId: string) => void
   // 设置相关
   onOpenSettings?: () => void
+  // 可见消息变化回调
+  onVisibleMessageChange?: (messageId: string | null) => void
 }
 
 const MessageList = React.memo(function MessageList({
@@ -58,7 +60,8 @@ const MessageList = React.memo(function MessageList({
   onToggleMessageCollapse,
   onOpenSettings,
   onQuote,
-  onCreateNewChat
+  onCreateNewChat,
+  onVisibleMessageChange
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -69,7 +72,9 @@ const MessageList = React.memo(function MessageList({
   const prevCurrentPath = useRef<string[]>([])
   const prevSelectedMessageId = useRef<string | null>(null)
   const isInitialRender = useRef<boolean>(true)
-  
+  const visibleMessagesRef = useRef<Set<string>>(new Set())
+  const observerRef = useRef<IntersectionObserver | null>(null)
+
   // 控制是否自动滚动到底部
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
 
@@ -155,6 +160,123 @@ const MessageList = React.memo(function MessageList({
       container.removeEventListener('wheel', handleWheel)
     }
   }, [handleWheel])
+
+  // 处理可见消息变化，通知最中心的消息
+  const updateVisibleMessage = useCallback(() => {
+    if (!onVisibleMessageChange || visibleMessagesRef.current.size === 0) return
+
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const containerRect = container.getBoundingClientRect()
+    const containerCenter = containerRect.top + containerRect.height / 2
+
+    // 找出距离容器中心最近的可见消息
+    let closestMessageId: string | null = null
+    let minDistance = Infinity
+
+    visibleMessagesRef.current.forEach((messageId) => {
+      const element = messageRefs.current.get(messageId)
+      if (element) {
+        const rect = element.getBoundingClientRect()
+        const elementCenter = rect.top + rect.height / 2
+        const distance = Math.abs(elementCenter - containerCenter)
+
+        if (distance < minDistance) {
+          minDistance = distance
+          closestMessageId = messageId
+        }
+      }
+    })
+
+    if (closestMessageId) {
+      onVisibleMessageChange(closestMessageId)
+    }
+  }, [onVisibleMessageChange])
+
+  // 设置 Intersection Observer 监听消息可见性
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || !onVisibleMessageChange) return
+
+    // 创建 Intersection Observer
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        let changed = false
+        entries.forEach((entry) => {
+          const messageId = entry.target.getAttribute('data-message-id')
+          if (!messageId) return
+
+          if (entry.isIntersecting) {
+            if (!visibleMessagesRef.current.has(messageId)) {
+              visibleMessagesRef.current.add(messageId)
+              changed = true
+            }
+          } else {
+            if (visibleMessagesRef.current.has(messageId)) {
+              visibleMessagesRef.current.delete(messageId)
+              changed = true
+            }
+          }
+        })
+
+        // 如果可见消息发生变化，更新最中心的消息
+        if (changed) {
+          updateVisibleMessage()
+        }
+      },
+      {
+        root: container,
+        threshold: [0, 0.25, 0.5, 0.75, 1.0], // 多个阈值以获得更精确的可见性检测
+        rootMargin: '0px'
+      }
+    )
+
+    // 观察所有消息元素
+    messageRefs.current.forEach((element, messageId) => {
+      if (observerRef.current) {
+        observerRef.current.observe(element)
+      }
+    })
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+        observerRef.current = null
+      }
+      visibleMessagesRef.current.clear()
+    }
+  }, [displayMessages, onVisibleMessageChange, updateVisibleMessage])
+
+  // 监听滚动事件，更新可见消息
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || !onVisibleMessageChange) return
+
+    let scrollTimeout: NodeJS.Timeout | null = null
+
+    const handleScroll = () => {
+      // 清除之前的定时器
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout)
+      }
+
+      // 设置新的防抖定时器
+      scrollTimeout = setTimeout(() => {
+        updateVisibleMessage()
+      }, 150) // 150ms 防抖延迟
+    }
+
+    // 使用 passive 监听器以提升滚动性能
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout)
+      }
+    }
+  }, [onVisibleMessageChange, updateVisibleMessage])
 
   // 添加键盘事件监听器
   useEffect(() => {
@@ -337,6 +459,7 @@ const MessageList = React.memo(function MessageList({
         {displayMessages.map((message, index) => (
           <div
             key={message.id}
+            data-message-id={message.id}
             ref={(el) => {
               if (el) {
                 messageRefs.current.set(message.id, el)
