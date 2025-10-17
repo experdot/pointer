@@ -1,5 +1,5 @@
 import React, { useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react'
-import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown, Flex } from 'antd'
+import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown, Flex, Badge } from 'antd'
 import {
   SendOutlined,
   StopOutlined,
@@ -7,7 +7,10 @@ import {
   QuestionCircleOutlined,
   BulbOutlined,
   DownOutlined,
-  PlaySquareOutlined
+  PlaySquareOutlined,
+  UnorderedListOutlined,
+  PlusOutlined,
+  CaretRightOutlined
 } from '@ant-design/icons'
 import { LLMConfig } from '../../../types/type'
 import { useSettingsStore } from '../../../stores/settingsStore'
@@ -168,6 +171,13 @@ interface ChatInputProps {
   autoQuestionListId?: string
   onAutoQuestionChange?: (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => void
   onTriggerFollowUpQuestion?: () => Promise<void>
+  // 消息队列相关
+  queueEnabled?: boolean
+  queuePendingCount?: number
+  queuePaused?: boolean
+  onToggleQueuePanel?: () => void
+  onAddToQueue?: () => void
+  onResumeQueue?: () => void
 }
 
 export interface ChatInputRef {
@@ -193,7 +203,13 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
       autoQuestionMode = 'ai',
       autoQuestionListId,
       onAutoQuestionChange,
-      onTriggerFollowUpQuestion
+      onTriggerFollowUpQuestion,
+      queueEnabled = false,
+      queuePendingCount = 0,
+      queuePaused = false,
+      onToggleQueuePanel,
+      onAddToQueue,
+      onResumeQueue
     },
     ref
   ) => {
@@ -351,11 +367,34 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
               )}
             </Space>
 
-            {/* 发送/停止按钮 */}
-            <div style={{ justifySelf: 'flex-end' }}>
+            {/* 发送/停止/队列按钮 */}
+            <Space>
+              {queueEnabled && (
+                <>
+                  {/* 队列面板切换按钮 */}
+                  <Tooltip title="消息队列">
+                    <Badge count={queuePendingCount} size="small" offset={[-5, 5]}>
+                      <Button
+                        icon={<UnorderedListOutlined />}
+                        onClick={onToggleQueuePanel}
+                      />
+                    </Badge>
+                  </Tooltip>
+                </>
+              )}
+
               {loading ? (
                 <Button type="primary" danger icon={<StopOutlined />} onClick={onStop}>
                   停止
+                </Button>
+              ) : queuePaused && queuePendingCount > 0 ? (
+                <Button
+                  type="primary"
+                  icon={<CaretRightOutlined />}
+                  onClick={onResumeQueue}
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                >
+                  继续队列
                 </Button>
               ) : (
                 <Button
@@ -367,7 +406,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
                   发送
                 </Button>
               )}
-            </div>
+            </Space>
           </Flex>
         </div>
       </div>

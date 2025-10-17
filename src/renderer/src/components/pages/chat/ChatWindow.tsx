@@ -12,15 +12,17 @@ import { useUIStore } from '../../../stores/uiStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
-import { App } from 'antd'
+import { App, Drawer } from 'antd'
 import ChatLogic from './ChatLogic'
 import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
 import ChatInput, { ChatInputRef } from './ChatInput'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import MessageTreeSidebar from './MessageTreeSidebar'
+import MessageQueuePanel from './MessageQueuePanel'
 import { MessageTree } from './messageTree'
 import { ChatMessage } from '../../../types/type'
+import { useMessageQueue } from './useMessageQueue'
 
 interface ChatWindowProps {
   chatId: string
@@ -58,6 +60,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     const lists = settings.promptLists || []
     return lists.length > 0 ? settings.defaultPromptListId || lists[0].id : undefined
   })
+  // 队列面板状态
+  const [queuePanelVisible, setQueuePanelVisible] = useState(false)
   const chatInputRef = useRef<ChatInputRef>(null)
 
   useImperativeHandle(ref, () => ({
@@ -340,7 +344,36 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onModelChangeForMessage,
             onDeleteMessage,
             onTriggerFollowUpQuestion
-          }) => (
+          }) => {
+            // 在这里初始化消息队列
+            const messageQueue = useMessageQueue({
+              onProcessMessage: onSendMessage,
+              isLoading
+            })
+
+            const handleToggleQueuePanel = useCallback(() => {
+              setQueuePanelVisible((prev) => !prev)
+            }, [])
+
+            const handleAddToQueue = useCallback(() => {
+              if (inputValue.trim()) {
+                messageQueue.addToQueue(inputValue.trim(), selectedModel, { autoResume: true })
+                setInputValue('') // 清空输入框
+                // 聚焦输入框
+                setTimeout(() => {
+                  chatInputRef.current?.focus()
+                }, 0)
+              }
+            }, [inputValue, selectedModel, messageQueue, setInputValue])
+
+            const handleStopWithQueue = useCallback(() => {
+              // 先调用原始的停止方法
+              onStopGeneration()
+              // 如果队列中有正在处理的项，标记为失败
+              messageQueue.handleStop()
+            }, [onStopGeneration, messageQueue])
+
+            return (
             <>
               {/* 消息树侧边栏 */}
               <MessageTreeSidebar
@@ -407,15 +440,27 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   onChange={setInputValue}
                   onSend={useCallback(async () => {
                     if (inputValue.trim()) {
+                      // 判断是否应该加入队列：队列已启用且（AI正在回答或队列中有待处理消息）
+                      const shouldAddToQueue = messageQueue.config.enabled &&
+                        (isLoading || messageQueue.getQueueStats().pending > 0)
+
                       setInputValue('') // 立即清空输入框
-                      await onSendMessage(inputValue, selectedModel)
+
+                      if (shouldAddToQueue) {
+                        // 加入队列并自动恢复
+                        messageQueue.addToQueue(inputValue.trim(), selectedModel, { autoResume: true })
+                      } else {
+                        // 直接发送
+                        await onSendMessage(inputValue, selectedModel)
+                      }
+
                       // 在下一个tick中聚焦，确保界面更新完成
                       setTimeout(() => {
                         chatInputRef.current?.focus()
                       }, 0)
                     }
-                  }, [inputValue, onSendMessage, selectedModel])}
-                  onStop={onStopGeneration}
+                  }, [inputValue, onSendMessage, selectedModel, isLoading, messageQueue])}
+                  onStop={handleStopWithQueue}
                   disabled={isLoading}
                   loading={isLoading}
                   llmConfigs={settings.llmConfigs || []}
@@ -429,10 +474,44 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   autoQuestionListId={autoQuestionListId}
                   onAutoQuestionChange={handleAutoQuestionChange}
                   onTriggerFollowUpQuestion={onTriggerFollowUpQuestion}
+                  // 消息队列相关props
+                  queueEnabled={messageQueue.config.enabled}
+                  queuePendingCount={messageQueue.getQueueStats().pending}
+                  queuePaused={messageQueue.config.paused}
+                  onToggleQueuePanel={handleToggleQueuePanel}
+                  onAddToQueue={handleAddToQueue}
+                  onResumeQueue={messageQueue.resumeQueue}
                 />
+
+                {/* 消息队列面板 */}
+                <Drawer
+                  title="消息队列"
+                  placement="right"
+                  open={queuePanelVisible}
+                  onClose={() => setQueuePanelVisible(false)}
+                  width={400}
+                  destroyOnClose={false}
+                >
+                  <MessageQueuePanel
+                    queue={messageQueue.queue}
+                    config={messageQueue.config}
+                    currentlyProcessing={messageQueue.currentlyProcessing}
+                    selectedModel={selectedModel}
+                    onAddToQueue={messageQueue.addToQueue}
+                    onRemoveFromQueue={messageQueue.removeFromQueue}
+                    onEditQueueItem={messageQueue.editQueueItem}
+                    onClearQueue={messageQueue.clearQueue}
+                    onClearCompletedItems={messageQueue.clearCompletedItems}
+                    onRetryQueueItem={messageQueue.retryQueueItem}
+                    onProcessNext={messageQueue.processNextInQueue}
+                    onUpdateConfig={messageQueue.updateConfig}
+                    onReorderQueue={messageQueue.reorderQueue}
+                  />
+                </Drawer>
               </div>
             </>
-          )}
+            )
+          }}
         </ChatLogic>
       </div>
     </div>

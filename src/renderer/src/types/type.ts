@@ -480,3 +480,29 @@ export interface FavoriteFolder {
   createdAt: number
   order?: number
 }
+
+// ==================== 消息队列功能类型定义 ====================
+
+// 消息队列项状态
+export type MessageQueueItemStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+// 消息队列项
+export interface MessageQueueItem {
+  id: string // 队列项唯一ID
+  content: string // 消息内容
+  modelId?: string // 指定的模型ID（可选）
+  status: MessageQueueItemStatus // 状态
+  createdAt: number // 创建时间
+  startedAt?: number // 开始处理时间
+  completedAt?: number // 完成时间
+  error?: string // 错误信息
+  order: number // 队列顺序
+}
+
+// 消息队列配置
+export interface MessageQueueConfig {
+  enabled: boolean // 是否启用队列
+  autoProcess: boolean // 是否自动处理队列（当前任务完成后自动处理下一个）
+  paused: boolean // 是否暂停队列处理
+  maxRetries: number // 最大重试次数
+}
