@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { Avatar, App } from 'antd'
-import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined, StarOutlined } from '@ant-design/icons'
+import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined, HeartOutlined } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import SingleMessageExportContainer from './SingleMessageExportContainer'
@@ -176,18 +176,21 @@ const MessageItem = React.memo(
           onClick: messageActions.handleContextMenuCopy
         },
         {
-          key: 'favoriteText',
-          label: '收藏选中文本',
-          icon: <StarOutlined />,
-          onClick: handleFavoriteTextFragment,
-          disabled: !onFavoriteTextFragment || !hasSelection
-        },
-        {
           key: 'quote',
           label: '引用',
           icon: <MessageOutlined />,
           onClick: messageActions.handleQuote,
           disabled: !onQuote
+        },
+        {
+          key: 'favoriteText',
+          label: '收藏',
+          icon: <HeartOutlined />,
+          onClick: handleFavoriteTextFragment,
+          disabled: !onFavoriteTextFragment || !hasSelection
+        },
+        {
+          type: 'divider'
         },
         {
           key: 'newChat',

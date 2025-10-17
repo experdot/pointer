@@ -5,7 +5,7 @@ import {
   SearchOutlined,
   MonitorOutlined,
   SettingOutlined,
-  StarOutlined
+  HeartOutlined
 } from '@ant-design/icons'
 import { useAITasksStore } from '../../../stores/aiTasksStore'
 import { usePagesStore } from '../../../stores/pagesStore'
@@ -54,7 +54,7 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
     },
     {
       key: 'favorites' as ActivityBarTab,
-      icon: <StarOutlined />,
+      icon: <HeartOutlined />,
       label: '收藏夹',
       tooltip: `收藏夹 - ${favoritesStats.totalCount} 个收藏`,
       badge: pinnedCount > 0 ? pinnedCount : undefined

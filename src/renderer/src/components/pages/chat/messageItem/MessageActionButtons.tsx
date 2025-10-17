@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, Tooltip } from 'antd'
+import { Button, Tooltip, Dropdown, type MenuProps } from 'antd'
 import {
   CopyOutlined,
   PictureOutlined,
@@ -9,7 +9,9 @@ import {
   RedoOutlined,
   SendOutlined,
   DeleteOutlined,
-  StarOutlined
+  StarOutlined,
+  MoreOutlined,
+  HeartOutlined
 } from '@ant-design/icons'
 
 interface MessageActionButtonsProps {
@@ -45,6 +47,20 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
   onContinue,
   onDelete
 }) => {
+  // 构建下拉菜单项
+  const menuItems: MenuProps['items'] = []
+
+  // 添加"添加到收藏"选项
+  if (onAddToFavorites) {
+    menuItems.push({
+      key: 'addToFavorites',
+      label: '添加到收藏',
+      icon: <HeartOutlined />,
+      onClick: onAddToFavorites,
+      disabled: isCurrentlyStreaming
+    })
+  }
+
   return (
     <div className="message-action-buttons">
       <Tooltip title="复制">
@@ -75,17 +91,6 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>
-      {onAddToFavorites && (
-        <Tooltip title="添加到收藏">
-          <Button
-            type="text"
-            size="small"
-            icon={<StarOutlined />}
-            onClick={onAddToFavorites}
-            disabled={isCurrentlyStreaming}
-          />
-        </Tooltip>
-      )}
       {!isEditing && (
         <Tooltip title="编辑">
           <Button
@@ -129,6 +134,16 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
             className="message-delete-btn"
           />
         </Tooltip>
+      )}
+      {menuItems.length > 0 && (
+        <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+          <Button
+            type="text"
+            size="small"
+            icon={<MoreOutlined />}
+            disabled={isCurrentlyStreaming}
+          />
+        </Dropdown>
       )}
     </div>
   )
