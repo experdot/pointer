@@ -176,7 +176,6 @@ interface ChatInputProps {
   queuePendingCount?: number
   queuePaused?: boolean
   onToggleQueuePanel?: () => void
-  onAddToQueue?: () => void
   onResumeQueue?: () => void
 }
 
@@ -208,7 +207,6 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
       queuePendingCount = 0,
       queuePaused = false,
       onToggleQueuePanel,
-      onAddToQueue,
       onResumeQueue
     },
     ref

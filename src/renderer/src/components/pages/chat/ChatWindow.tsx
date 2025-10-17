@@ -355,17 +355,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
               setQueuePanelVisible((prev) => !prev)
             }, [])
 
-            const handleAddToQueue = useCallback(() => {
-              if (inputValue.trim()) {
-                messageQueue.addToQueue(inputValue.trim(), selectedModel, { autoResume: true })
-                setInputValue('') // 清空输入框
-                // 聚焦输入框
-                setTimeout(() => {
-                  chatInputRef.current?.focus()
-                }, 0)
-              }
-            }, [inputValue, selectedModel, messageQueue, setInputValue])
-
             const handleStopWithQueue = useCallback(() => {
               // 先调用原始的停止方法
               onStopGeneration()
@@ -479,7 +468,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   queuePendingCount={messageQueue.getQueueStats().pending}
                   queuePaused={messageQueue.config.paused}
                   onToggleQueuePanel={handleToggleQueuePanel}
-                  onAddToQueue={handleAddToQueue}
                   onResumeQueue={messageQueue.resumeQueue}
                 />
 
