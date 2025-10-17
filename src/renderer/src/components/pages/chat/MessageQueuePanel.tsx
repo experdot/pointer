@@ -22,7 +22,6 @@ import {
   CloseCircleOutlined,
   ClearOutlined,
   MenuOutlined,
-  SettingOutlined,
   ReloadOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -68,7 +67,6 @@ export default function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
-  const [configModalVisible, setConfigModalVisible] = useState(false)
 
   const handleStartEdit = useCallback((item: MessageQueueItem) => {
     setEditingItemId(item.id)
@@ -156,14 +154,6 @@ export default function MessageQueuePanel({
                 onClick={handleAddMessage}
               />
             </Tooltip>
-            <Tooltip title="队列设置">
-              <Button
-                type="text"
-                size="small"
-                icon={<SettingOutlined />}
-                onClick={() => setConfigModalVisible(true)}
-              />
-            </Tooltip>
             <Dropdown
               menu={{
                 items: [
@@ -197,24 +187,36 @@ export default function MessageQueuePanel({
         }
         className="queue-card"
       >
-        {/* 统计信息 */}
+        {/* 统计信息和设置 */}
         <div style={{ marginBottom: 12 }}>
-          <Space size="small" wrap>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              总计: {stats.total}
-            </Text>
-            {stats.pending > 0 && (
-              <Text style={{ fontSize: 12, color: '#faad14' }}>等待: {stats.pending}</Text>
-            )}
-            {stats.processing > 0 && (
-              <Text style={{ fontSize: 12, color: '#1890ff' }}>处理中: {stats.processing}</Text>
-            )}
-            {stats.completed > 0 && (
-              <Text style={{ fontSize: 12, color: '#52c41a' }}>完成: {stats.completed}</Text>
-            )}
-            {stats.failed > 0 && (
-              <Text style={{ fontSize: 12, color: '#ff4d4f' }}>失败: {stats.failed}</Text>
-            )}
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space size="small" wrap>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                总计: {stats.total}
+              </Text>
+              {stats.pending > 0 && (
+                <Text style={{ fontSize: 12, color: '#faad14' }}>等待: {stats.pending}</Text>
+              )}
+              {stats.processing > 0 && (
+                <Text style={{ fontSize: 12, color: '#1890ff' }}>处理中: {stats.processing}</Text>
+              )}
+              {stats.completed > 0 && (
+                <Text style={{ fontSize: 12, color: '#52c41a' }}>完成: {stats.completed}</Text>
+              )}
+              {stats.failed > 0 && (
+                <Text style={{ fontSize: 12, color: '#ff4d4f' }}>失败: {stats.failed}</Text>
+              )}
+            </Space>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Switch
+                size="small"
+                checked={config.autoProcess}
+                onChange={(checked) => onUpdateConfig({ autoProcess: checked })}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                自动处理队列
+              </Text>
+            </div>
           </Space>
         </div>
 
@@ -348,41 +350,6 @@ export default function MessageQueuePanel({
           />
         )}
       </Card>
-
-      {/* 配置弹窗 */}
-      <Modal
-        title="队列设置"
-        open={configModalVisible}
-        onCancel={() => setConfigModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setConfigModalVisible(false)}>
-            关闭
-          </Button>
-        ]}
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text>启用队列模式</Text>
-            <Switch
-              checked={config.enabled}
-              onChange={(checked) => onUpdateConfig({ enabled: checked })}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <Text>自动处理队列</Text>
-              <br />
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                当前消息完成后自动处理下一条
-              </Text>
-            </div>
-            <Switch
-              checked={config.autoProcess}
-              onChange={(checked) => onUpdateConfig({ autoProcess: checked })}
-            />
-          </div>
-        </Space>
-      </Modal>
     </div>
   )
 }

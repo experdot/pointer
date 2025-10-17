@@ -8,7 +8,7 @@ import {
   BulbOutlined,
   DownOutlined,
   PlaySquareOutlined,
-  UnorderedListOutlined,
+  HourglassOutlined,
   PlusOutlined,
   CaretRightOutlined
 } from '@ant-design/icons'
@@ -175,6 +175,7 @@ interface ChatInputProps {
   queueEnabled?: boolean
   queuePendingCount?: number
   queuePaused?: boolean
+  queueAutoProcess?: boolean
   onToggleQueuePanel?: () => void
   onResumeQueue?: () => void
 }
@@ -206,6 +207,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
       queueEnabled = false,
       queuePendingCount = 0,
       queuePaused = false,
+      queueAutoProcess = true,
       onToggleQueuePanel,
       onResumeQueue
     },
@@ -373,7 +375,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
                   <Tooltip title="消息队列">
                     <Badge count={queuePendingCount} size="small" offset={[-5, 5]}>
                       <Button
-                        icon={<UnorderedListOutlined />}
+                        icon={<HourglassOutlined />}
                         onClick={onToggleQueuePanel}
                       />
                     </Badge>
@@ -385,7 +387,7 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
                 <Button type="primary" danger icon={<StopOutlined />} onClick={onStop}>
                   停止
                 </Button>
-              ) : queuePaused && queuePendingCount > 0 ? (
+              ) : (!queueAutoProcess && queuePendingCount > 0) || (queuePaused && queuePendingCount > 0) ? (
                 <Button
                   type="primary"
                   icon={<CaretRightOutlined />}

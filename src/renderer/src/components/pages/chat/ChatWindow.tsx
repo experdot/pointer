@@ -467,6 +467,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                   queueEnabled={messageQueue.config.enabled}
                   queuePendingCount={messageQueue.getQueueStats().pending}
                   queuePaused={messageQueue.config.paused}
+                  queueAutoProcess={messageQueue.config.autoProcess}
                   onToggleQueuePanel={handleToggleQueuePanel}
                   onResumeQueue={messageQueue.resumeQueue}
                 />
