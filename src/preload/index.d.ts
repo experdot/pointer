@@ -92,6 +92,30 @@ declare global {
         onUpdateError: (callback: (error: string) => void) => void
         removeAllUpdateListeners: () => void
       }
+      attachment: {
+        save: (options: {
+          fileId: string
+          fileName: string
+          base64Content: string
+          pageId?: string
+          messageId?: string
+        }) => Promise<{ success: boolean; localPath?: string; error?: string }>
+        read: (localPath: string) => Promise<{ success: boolean; content?: string; error?: string }>
+        delete: (localPath: string) => Promise<{ success: boolean; error?: string }>
+        move: (options: {
+          fileId: string
+          fileName: string
+          fromPath: string
+          pageId: string
+          messageId: string
+        }) => Promise<{ success: boolean; localPath?: string; error?: string }>
+        cleanupMessage: (
+          pageId: string,
+          messageId: string
+        ) => Promise<{ success: boolean; error?: string }>
+        cleanupPage: (pageId: string) => Promise<{ success: boolean; error?: string }>
+        cleanupTemp: () => Promise<{ success: boolean; error?: string }>
+      }
     }
     electronWindow: {
       minimize: () => Promise<void>

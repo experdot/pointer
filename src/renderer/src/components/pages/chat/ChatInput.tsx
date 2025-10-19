@@ -1,4 +1,4 @@
-import React, { useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react'
+import React, { useRef, forwardRef, useImperativeHandle, useState, useCallback, useEffect } from 'react'
 import { Input, Button, Alert, Switch, Tooltip, Space, Select, Dropdown, Flex, Badge, Upload, Image, Tag } from 'antd'
 import {
   SendOutlined,
@@ -19,6 +19,106 @@ import { LLMConfig, FileAttachment } from '../../../types/type'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import ModelSelector from './ModelSelector'
 import { v4 as uuidv4 } from 'uuid'
+
+// 附件预览组件
+const AttachmentPreview: React.FC<{
+  attachments: FileAttachment[]
+  onRemove: (id: string) => void
+}> = ({ attachments, onRemove }) => {
+  const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    // 加载所有附件的预览URL
+    const loadPreviews = async () => {
+      const newUrls = new Map<string, string>()
+
+      for (const attachment of attachments) {
+        if (attachment.type.startsWith('image/')) {
+          try {
+            const result = await window.api.attachment.read(attachment.localPath)
+            if (result.success && result.content) {
+              const url = `data:${attachment.type};base64,${result.content}`
+              newUrls.set(attachment.id, url)
+            }
+          } catch (error) {
+            console.error('加载附件预览失败:', error)
+          }
+        }
+      }
+
+      setPreviewUrls(newUrls)
+    }
+
+    loadPreviews()
+  }, [attachments])
+
+  return (
+    <div style={{ marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {attachments.map((attachment) => (
+        <div
+          key={attachment.id}
+          style={{
+            position: 'relative',
+            display: 'inline-block',
+            border: '1px solid #d9d9d9',
+            borderRadius: 4,
+            padding: 4,
+            background: '#fafafa'
+          }}
+        >
+          {attachment.type.startsWith('image/') && previewUrls.get(attachment.id) ? (
+            <div style={{ position: 'relative' }}>
+              <Image
+                src={previewUrls.get(attachment.id)}
+                alt={attachment.name}
+                width={80}
+                height={80}
+                style={{ objectFit: 'cover', borderRadius: 2 }}
+                preview={{
+                  mask: <div style={{ fontSize: 12 }}>预览</div>
+                }}
+              />
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<CloseOutlined />}
+                onClick={() => onRemove(attachment.id)}
+                style={{
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  width: 20,
+                  height: 20,
+                  minWidth: 20,
+                  padding: 0,
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              />
+              <div style={{ fontSize: 11, marginTop: 4, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {attachment.name}
+              </div>
+            </div>
+          ) : (
+            <Space>
+              <FileImageOutlined />
+              <span style={{ fontSize: 12 }}>{attachment.name}</span>
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<CloseOutlined />}
+                onClick={() => onRemove(attachment.id)}
+              />
+            </Space>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 const { TextArea } = Input
 const { Option } = Select
@@ -312,15 +412,28 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
               continue
             }
 
-            const attachment: FileAttachment = {
-              id: uuidv4(),
-              name: file.name,
-              type: mimeType,
-              size: file.size,
-              content: file.content,
-              url: mimeType.startsWith('image/') ? `data:${mimeType};base64,${file.content}` : undefined
+            // 保存附件到本地（临时目录）
+            const fileId = uuidv4()
+            const saveResult = await window.api.attachment.save({
+              fileId,
+              fileName: file.name,
+              base64Content: file.content
+              // 不提供 pageId 和 messageId，保存到 temp 目录
+            })
+
+            if (saveResult.success && saveResult.localPath) {
+              const attachment: FileAttachment = {
+                id: fileId,
+                name: file.name,
+                type: mimeType,
+                size: file.size,
+                localPath: saveResult.localPath,
+                createdAt: Date.now()
+              }
+              newAttachments.push(attachment)
+            } else {
+              errors.push(`${file.name}: ${saveResult.error || '保存失败'}`)
             }
-            newAttachments.push(attachment)
           }
 
           if (errors.length > 0) {
@@ -399,15 +512,29 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
             reader.readAsDataURL(file)
           })
 
-          const attachment: FileAttachment = {
-            id: uuidv4(),
-            name: file.name || `粘贴的图片-${Date.now()}.${file.type.split('/')[1]}`,
-            type: file.type,
-            size: file.size,
-            content: base64Content,
-            url: `data:${file.type};base64,${base64Content}`
+          // 保存附件到本地（临时目录）
+          const fileId = uuidv4()
+          const fileName = file.name || `粘贴的图片-${Date.now()}.${file.type.split('/')[1]}`
+          const saveResult = await window.api.attachment.save({
+            fileId,
+            fileName,
+            base64Content
+            // 不提供 pageId 和 messageId，保存到 temp 目录
+          })
+
+          if (saveResult.success && saveResult.localPath) {
+            const attachment: FileAttachment = {
+              id: fileId,
+              name: fileName,
+              type: file.type,
+              size: file.size,
+              localPath: saveResult.localPath,
+              createdAt: Date.now()
+            }
+            newAttachments.push(attachment)
+          } else {
+            errors.push(`${fileName}: ${saveResult.error || '保存失败'}`)
           }
-          newAttachments.push(attachment)
         } catch (error) {
           console.error('读取粘贴图片失败:', error)
           errors.push(`${file.name || '粘贴的图片'}: 读取失败`)
@@ -466,70 +593,10 @@ const ChatInput = React.memo(forwardRef<ChatInputRef, ChatInputProps>(
 
         {/* 文件附件预览 */}
         {attachments && attachments.length > 0 && (
-          <div style={{ marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                style={{
-                  position: 'relative',
-                  display: 'inline-block',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: 4,
-                  padding: 4,
-                  background: '#fafafa'
-                }}
-              >
-                {attachment.type.startsWith('image/') && attachment.url ? (
-                  <div style={{ position: 'relative' }}>
-                    <Image
-                      src={attachment.url}
-                      alt={attachment.name}
-                      width={80}
-                      height={80}
-                      style={{ objectFit: 'cover', borderRadius: 2 }}
-                      preview={{
-                        mask: <div style={{ fontSize: 12 }}>预览</div>
-                      }}
-                    />
-                    <Button
-                      size="small"
-                      type="text"
-                      danger
-                      icon={<CloseOutlined />}
-                      onClick={() => handleRemoveAttachment(attachment.id)}
-                      style={{
-                        position: 'absolute',
-                        top: -8,
-                        right: -8,
-                        width: 20,
-                        height: 20,
-                        minWidth: 20,
-                        padding: 0,
-                        borderRadius: '50%',
-                        background: 'white',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                    <div style={{ fontSize: 11, marginTop: 4, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {attachment.name}
-                    </div>
-                  </div>
-                ) : (
-                  <Space>
-                    <FileImageOutlined />
-                    <span style={{ fontSize: 12 }}>{attachment.name}</span>
-                    <Button
-                      size="small"
-                      type="text"
-                      danger
-                      icon={<CloseOutlined />}
-                      onClick={() => handleRemoveAttachment(attachment.id)}
-                    />
-                  </Space>
-                )}
-              </div>
-            ))}
-          </div>
+          <AttachmentPreview
+            attachments={attachments}
+            onRemove={handleRemoveAttachment}
+          />
         )}
 
         <div className="chat-input-container">

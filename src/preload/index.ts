@@ -108,6 +108,36 @@ const api = {
       ipcRenderer.removeAllListeners('update-downloaded')
       ipcRenderer.removeAllListeners('update-error')
     }
+  },
+
+  // 附件管理API
+  attachment: {
+    save: (options: {
+      fileId: string
+      fileName: string
+      base64Content: string
+      pageId?: string
+      messageId?: string
+    }) => ipcRenderer.invoke('attachment:save', options),
+
+    read: (localPath: string) => ipcRenderer.invoke('attachment:read', localPath),
+
+    delete: (localPath: string) => ipcRenderer.invoke('attachment:delete', localPath),
+
+    move: (options: {
+      fileId: string
+      fileName: string
+      fromPath: string
+      pageId: string
+      messageId: string
+    }) => ipcRenderer.invoke('attachment:move', options),
+
+    cleanupMessage: (pageId: string, messageId: string) =>
+      ipcRenderer.invoke('attachment:cleanup-message', { pageId, messageId }),
+
+    cleanupPage: (pageId: string) => ipcRenderer.invoke('attachment:cleanup-page', pageId),
+
+    cleanupTemp: () => ipcRenderer.invoke('attachment:cleanup-temp')
   }
 }
 

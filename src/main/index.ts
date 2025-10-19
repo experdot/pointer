@@ -3,12 +3,13 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { setupAIHandlers } from './aiHandler'
 import { setupAutoUpdater } from './autoUpdater'
 import { setupIpcHandlers } from './ipcHandlers'
+import { setupAttachmentHandlers } from './attachmentHandler'
 import { createWindow } from './window'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -27,6 +28,15 @@ app.whenReady().then(() => {
 
   // Setup IPC handlers
   setupIpcHandlers()
+
+  // Setup attachment handlers
+  setupAttachmentHandlers()
+
+  // Clean up temp attachments on startup
+  const { attachmentHandler } = await import('./attachmentHandler')
+  attachmentHandler.cleanupTempAttachments().catch((error) => {
+    console.error('Failed to cleanup temp attachments on startup:', error)
+  })
 
   createWindow()
 

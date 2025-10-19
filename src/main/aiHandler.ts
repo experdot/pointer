@@ -1,5 +1,7 @@
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
 import { createParser } from 'eventsource-parser'
+import { readFile } from 'fs/promises'
+import * as path from 'path'
 
 export interface LLMConfig {
   apiHost: string
@@ -18,8 +20,8 @@ export interface FileAttachment {
   name: string
   type: string
   size: number
-  content: string
-  url?: string
+  localPath: string
+  createdAt: number
 }
 
 export interface ChatMessage {
@@ -50,8 +52,10 @@ class AIHandler {
   /**
    * 准备 API 消息数组，处理 systemPrompt 和文件附件
    */
-  private prepareApiMessages(messages: ChatMessage[], modelConfig: ModelConfig): ChatMessage[] {
-    const apiMessages = messages.map((msg) => {
+  private async prepareApiMessages(messages: ChatMessage[], modelConfig: ModelConfig): Promise<ChatMessage[]> {
+    const attachmentsDir = path.join(app.getPath('userData'), 'attachments')
+
+    const apiMessages = await Promise.all(messages.map(async (msg) => {
       // 如果消息有附件，需要转换为多模态格式
       if (msg.attachments && msg.attachments.length > 0) {
         const contentParts: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = []
@@ -64,17 +68,26 @@ class AIHandler {
           })
         }
 
-        // 添加图片附件
-        msg.attachments.forEach((attachment) => {
+        // 添加图片附件 - 从文件系统读取
+        for (const attachment of msg.attachments) {
           if (attachment.type.startsWith('image/')) {
-            contentParts.push({
-              type: 'image_url',
-              image_url: {
-                url: `data:${attachment.type};base64,${attachment.content}`
-              }
-            })
+            try {
+              const fullPath = path.join(attachmentsDir, attachment.localPath)
+              const buffer = await readFile(fullPath)
+              const base64Content = buffer.toString('base64')
+
+              contentParts.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${attachment.type};base64,${base64Content}`
+                }
+              })
+            } catch (error) {
+              console.error('Failed to read attachment file:', attachment.localPath, error)
+              // 跳过无法读取的附件
+            }
           }
-        })
+        }
 
         return {
           role: msg.role,
@@ -87,7 +100,7 @@ class AIHandler {
         role: msg.role,
         content: msg.content
       }
-    })
+    }))
 
     // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
     if (
@@ -262,7 +275,7 @@ class AIHandler {
 
     try {
       const modelConfig = this.getModelConfig(request.modelConfig)
-      const apiMessages = this.prepareApiMessages(request.messages, modelConfig)
+      const apiMessages = await this.prepareApiMessages(request.messages, modelConfig)
 
       const response = await this.fetchStreamingResponse(
         request,

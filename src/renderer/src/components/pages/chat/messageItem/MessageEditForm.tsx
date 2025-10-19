@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, Input, Button, Space, Image, Tooltip } from 'antd'
 import { CheckOutlined, CloseOutlined, SendOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons'
 import { FileAttachment } from '../../../../types/type'
@@ -32,6 +32,36 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
   onAttachmentsChange
 }) => {
   const [isSelectingFile, setIsSelectingFile] = useState(false)
+  const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map())
+
+  // 加载附件预览
+  useEffect(() => {
+    const loadPreviews = async () => {
+      const newUrls = new Map<string, string>()
+
+      for (const attachment of attachments) {
+        if (attachment.type.startsWith('image/')) {
+          try {
+            const result = await window.api.attachment.read(attachment.localPath)
+            if (result.success && result.content) {
+              const url = `data:${attachment.type};base64,${result.content}`
+              newUrls.set(attachment.id, url)
+            }
+          } catch (error) {
+            console.error('Failed to load attachment preview:', error)
+          }
+        }
+      }
+
+      setPreviewUrls(newUrls)
+    }
+
+    if (attachments.length > 0) {
+      loadPreviews()
+    } else {
+      setPreviewUrls(new Map())
+    }
+  }, [attachments])
 
   // 处理文件选择
   const handleSelectFiles = async () => {
@@ -72,15 +102,27 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
             continue
           }
 
-          const attachment: FileAttachment = {
-            id: uuidv4(),
-            name: file.name,
-            type: mimeType,
-            size: file.size,
-            content: file.content,
-            url: mimeType.startsWith('image/') ? `data:${mimeType};base64,${file.content}` : undefined
+          // 保存文件到本地临时目录
+          const fileId = uuidv4()
+          const saveResult = await window.api.attachment.save({
+            fileId,
+            fileName: file.name,
+            base64Content: file.content
+          })
+
+          if (saveResult.success && saveResult.localPath) {
+            const attachment: FileAttachment = {
+              id: fileId,
+              name: file.name,
+              type: mimeType,
+              size: file.size,
+              localPath: saveResult.localPath,
+              createdAt: Date.now()
+            }
+            newAttachments.push(attachment)
+          } else {
+            errors.push(`${file.name}: 文件保存失败`)
           }
-          newAttachments.push(attachment)
         }
 
         if (errors.length > 0) {
@@ -126,10 +168,10 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
                   background: '#fafafa'
                 }}
               >
-                {attachment.type.startsWith('image/') && attachment.url ? (
+                {attachment.type.startsWith('image/') && previewUrls.get(attachment.id) ? (
                   <div style={{ position: 'relative' }}>
                     <Image
-                      src={attachment.url}
+                      src={previewUrls.get(attachment.id)}
                       alt={attachment.name}
                       width={120}
                       height={120}

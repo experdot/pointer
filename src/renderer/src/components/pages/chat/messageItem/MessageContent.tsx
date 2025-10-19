@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, Collapse, Dropdown, Typography, Button, Image, Space } from 'antd'
 import { BulbOutlined, CopyOutlined, FileImageOutlined } from '@ant-design/icons'
 import { Markdown } from '../../../common/markdown/Markdown'
@@ -40,6 +40,37 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   attachments
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [attachmentUrls, setAttachmentUrls] = useState<Map<string, string>>(new Map())
+
+  // 加载附件的预览 URL
+  useEffect(() => {
+    const loadAttachments = async () => {
+      if (!attachments || attachments.length === 0) {
+        setAttachmentUrls(new Map())
+        return
+      }
+
+      const newUrls = new Map<string, string>()
+
+      for (const attachment of attachments) {
+        if (attachment.type.startsWith('image/')) {
+          try {
+            const result = await window.api.attachment.read(attachment.localPath)
+            if (result.success && result.content) {
+              const url = `data:${attachment.type};base64,${result.content}`
+              newUrls.set(attachment.id, url)
+            }
+          } catch (error) {
+            console.error('加载附件失败:', error)
+          }
+        }
+      }
+
+      setAttachmentUrls(newUrls)
+    }
+
+    loadAttachments()
+  }, [attachments])
 
   return (
     <>
@@ -58,10 +89,10 @@ export const MessageContent: React.FC<MessageContentProps> = ({
                 background: '#fafafa'
               }}
             >
-              {attachment.type.startsWith('image/') && attachment.url ? (
+              {attachment.type.startsWith('image/') && attachmentUrls.get(attachment.id) ? (
                 <div>
                   <Image
-                    src={attachment.url}
+                    src={attachmentUrls.get(attachment.id)}
                     alt={attachment.name}
                     width={120}
                     height={120}

@@ -150,12 +150,23 @@ export const usePagesStore = create<PagesState & PagesActions>()(
 
       deletePage: (id) => {
         try {
+          // 获取要删除的页面，用于清理附件
+          const state = get()
+          const pageToDelete = state.pages.find((p) => p.id === id)
+
           set((state) => {
             state.pages = state.pages.filter((p) => p.id !== id)
           })
 
           // 同时从 IndexedDB 中删除单个页面记录
           pagesStorage.deletePage(id)
+
+          // 异步清理页面的所有附件
+          if (pageToDelete) {
+            window.api.attachment.cleanupPage(id).catch((error) => {
+              console.error('清理页面附件失败:', error)
+            })
+          }
         } catch (error) {
           handleStoreError('pagesStore', 'deletePage', error)
         }
@@ -169,6 +180,13 @@ export const usePagesStore = create<PagesState & PagesActions>()(
 
           // 同时从 IndexedDB 中删除多个页面记录
           chatIds.forEach((id) => pagesStorage.deletePage(id))
+
+          // 异步清理所有页面的附件
+          chatIds.forEach((id) => {
+            window.api.attachment.cleanupPage(id).catch((error) => {
+              console.error('清理页面附件失败:', id, error)
+            })
+          })
         } catch (error) {
           handleStoreError('pagesStore', 'deleteMultiplePages', error)
         }

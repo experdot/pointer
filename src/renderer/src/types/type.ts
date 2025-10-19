@@ -23,8 +23,8 @@ export interface FileAttachment {
   name: string
   type: string // MIME type
   size: number
-  content: string // base64 编码的文件内容
-  url?: string // 用于图片预览的 data URL
+  localPath: string // 本地文件路径（相对于attachments目录）
+  createdAt: number // 创建时间
 }
 
 export interface ChatMessage {

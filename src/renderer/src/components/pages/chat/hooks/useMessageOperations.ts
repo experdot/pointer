@@ -59,12 +59,46 @@ export function useMessageOperations({
         return
       }
 
+      const messageId = uuidv4()
+
+      // 如果有附件，将它们从temp移动到正式目录
+      let finalAttachments = attachments
+      if (attachments && attachments.length > 0) {
+        try {
+          const movedAttachments: FileAttachment[] = []
+          for (const attachment of attachments) {
+            const moveResult = await window.api.attachment.move({
+              fileId: attachment.id,
+              fileName: attachment.name,
+              fromPath: attachment.localPath,
+              pageId: chatId,
+              messageId: messageId
+            })
+
+            if (moveResult.success && moveResult.localPath) {
+              movedAttachments.push({
+                ...attachment,
+                localPath: moveResult.localPath
+              })
+            } else {
+              console.error('移动附件失败:', attachment.name, moveResult.error)
+              // 如果移动失败，仍使用原路径
+              movedAttachments.push(attachment)
+            }
+          }
+          finalAttachments = movedAttachments
+        } catch (error) {
+          console.error('移动附件时发生错误:', error)
+          // 发生错误时使用原附件
+        }
+      }
+
       const userMessage: ChatMessage = {
-        id: uuidv4(),
+        id: messageId,
         role: 'user',
         content: content.trim(),
         timestamp: Date.now(),
-        attachments: attachments
+        attachments: finalAttachments
       }
 
       // Get current messages before adding the new one
@@ -293,13 +327,51 @@ export function useMessageOperations({
             )
           } else {
             // 有后继消息时，创建兄弟分支
+            const newMessageId = uuidv4()
+
+            // 处理附件：如果有新附件，需要移动到正式目录
+            let finalAttachments = newAttachments !== undefined ? newAttachments : targetMessage.attachments
+            if (newAttachments && newAttachments.length > 0) {
+              try {
+                const movedAttachments: FileAttachment[] = []
+                for (const attachment of newAttachments) {
+                  // 检查是否是temp目录的附件
+                  if (attachment.localPath.startsWith('temp')) {
+                    const moveResult = await window.api.attachment.move({
+                      fileId: attachment.id,
+                      fileName: attachment.name,
+                      fromPath: attachment.localPath,
+                      pageId: chatId,
+                      messageId: newMessageId
+                    })
+
+                    if (moveResult.success && moveResult.localPath) {
+                      movedAttachments.push({
+                        ...attachment,
+                        localPath: moveResult.localPath
+                      })
+                    } else {
+                      console.error('移动附件失败:', attachment.name, moveResult.error)
+                      movedAttachments.push(attachment)
+                    }
+                  } else {
+                    // 已经在正式目录中的附件不需要移动
+                    movedAttachments.push(attachment)
+                  }
+                }
+                finalAttachments = movedAttachments
+              } catch (error) {
+                console.error('移动附件时发生错误:', error)
+              }
+            }
+
             const editedUserMessage = {
-              id: uuidv4(),
+              id: newMessageId,
               role: 'user' as const,
               content: newContent.trim(),
               timestamp: Date.now(),
               parentId: targetMessage.parentId || null,
-              attachments: newAttachments !== undefined ? newAttachments : targetMessage.attachments // 使用编辑后的附件，如果没有传入则使用原消息的附件
+              attachments: finalAttachments
             }
 
             // 添加编辑后的用户消息
@@ -470,19 +542,20 @@ export function useMessageOperations({
       const messageToDelete = chat.messages?.find((msg: any) => msg.id === messageId)
       if (!messageToDelete) return
 
-      // 计算要删除的消息总数（包括子分支）
-      const countChildrenRecursively = (msgId: string): number => {
-        let count = 1 // 当前消息
+      // 收集要删除的所有消息ID（包括子分支）
+      const collectMessageIdsRecursively = (msgId: string, ids: string[] = []): string[] => {
+        ids.push(msgId)
         const msg = chat.messages?.find((m: any) => m.id === msgId)
         if (msg?.children) {
           msg.children.forEach((childId: string) => {
-            count += countChildrenRecursively(childId)
+            collectMessageIdsRecursively(childId, ids)
           })
         }
-        return count
+        return ids
       }
 
-      const totalCount = countChildrenRecursively(messageId)
+      const messageIdsToDelete = collectMessageIdsRecursively(messageId)
+      const totalCount = messageIdsToDelete.length
       const hasChildren = totalCount > 1
 
       // 显示确认对话框
@@ -505,7 +578,29 @@ export function useMessageOperations({
       if (!confirmed) return
 
       try {
-        // 调用删除方法
+        // 收集所有要删除的附件
+        const attachmentPathsToDelete: string[] = []
+        messageIdsToDelete.forEach((msgId) => {
+          const msg = chat.messages?.find((m: any) => m.id === msgId)
+          if (msg?.attachments && msg.attachments.length > 0) {
+            msg.attachments.forEach((att: FileAttachment) => {
+              attachmentPathsToDelete.push(att.localPath)
+            })
+          }
+        })
+
+        // 删除附件文件
+        if (attachmentPathsToDelete.length > 0) {
+          for (const localPath of attachmentPathsToDelete) {
+            try {
+              await window.api.attachment.delete(localPath)
+            } catch (error) {
+              console.error('删除附件失败:', localPath, error)
+            }
+          }
+        }
+
+        // 调用删除消息方法
         deleteMessageAndChildren(chatId, messageId)
         message.success(hasChildren ? `已删除 ${totalCount} 条消息` : '已删除消息')
       } catch (error) {
