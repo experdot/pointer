@@ -137,7 +137,7 @@ export default function TabsArea() {
     reorderTabs,
     setActiveTab
   } = useTabsStore()
-  const {} = useUIStore()
+  const { setSelectedNode, setSelectedFavorite } = useUIStore()
   const { settings } = useSettingsStore()
   const { items: favoriteItems } = useFavoritesStore()
   const chatWindowRefs = useRef<Map<string, ChatWindowRef>>(new Map())
@@ -316,6 +316,23 @@ export default function TabsArea() {
 
   const handleTabChange = (activeKey: string) => {
     setActiveTab(activeKey)
+
+    // 同步侧边栏选中状态
+    if (activeKey.startsWith('favorite-')) {
+      // 如果是收藏详情页，更新收藏面板的选中状态
+      const favoriteId = activeKey.substring(9) // 移除 'favorite-' 前缀
+      setSelectedFavorite(favoriteId, 'item')
+      // 清空聊天历史树的选中状态
+      setSelectedNode(null, null)
+    } else {
+      // 如果是普通页面，更新聊天历史树的选中状态
+      const page = pages.find((p) => p.id === activeKey)
+      if (page) {
+        setSelectedNode(activeKey, 'chat')
+        // 清空收藏面板的选中状态
+        setSelectedFavorite(null, null)
+      }
+    }
   }
 
   const handleTabClose = (targetKey: string) => {

@@ -11,6 +11,10 @@ export interface UIState {
   selectedNodeType: 'folder' | 'chat' | null
   checkedNodeIds: string[]
 
+  // 收藏面板选中状态
+  selectedFavoriteId: string | null
+  selectedFavoriteType: 'folder' | 'item' | null
+
   // 侧边栏状态
   sidebarCollapsed: boolean
   sidebarWidth: number
@@ -29,6 +33,9 @@ export interface UIActions {
   setCheckedNodes: (nodeIds: string[]) => void
   clearCheckedNodes: () => void
   toggleNodeCheck: (nodeId: string) => void
+
+  // 收藏面板选择
+  setSelectedFavorite: (favoriteId: string | null, favoriteType: 'folder' | 'item' | null) => void
 
   // 侧边栏
   toggleSidebar: () => void
@@ -56,6 +63,8 @@ const initialState: UIState = {
   selectedNodeId: null,
   selectedNodeType: null,
   checkedNodeIds: [],
+  selectedFavoriteId: null,
+  selectedFavoriteType: null,
   sidebarCollapsed: false,
   sidebarWidth: 300,
   collapsedMessages: {},
@@ -101,6 +110,14 @@ export const useUIStore = create<UIState & UIActions>()(
           } else {
             state.checkedNodeIds.push(nodeId)
           }
+        })
+      },
+
+      // 收藏面板选择
+      setSelectedFavorite: (favoriteId, favoriteType) => {
+        set((state) => {
+          state.selectedFavoriteId = favoriteId
+          state.selectedFavoriteType = favoriteType
         })
       },
 
@@ -213,6 +230,8 @@ export const useUIStore = create<UIState & UIActions>()(
           state.selectedNodeId = null
           state.selectedNodeType = null
           state.checkedNodeIds = []
+          state.selectedFavoriteId = null
+          state.selectedFavoriteType = null
           state.collapsedMessages = {}
           state.allMessagesCollapsed = {}
           state.lineageDisplayCollapsed = {}
@@ -229,6 +248,8 @@ export const useUIStore = create<UIState & UIActions>()(
       selectedNodeId: state.selectedNodeId,
       selectedNodeType: state.selectedNodeType,
       checkedNodeIds: state.checkedNodeIds,
+      selectedFavoriteId: state.selectedFavoriteId,
+      selectedFavoriteType: state.selectedFavoriteType,
       sidebarCollapsed: state.sidebarCollapsed,
       sidebarWidth: state.sidebarWidth,
       collapsedMessages: state.collapsedMessages,

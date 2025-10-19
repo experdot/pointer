@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { Input, Button, Tree, Empty, Space, App, Tag } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import {
@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons'
 import { useFavoritesStore } from '../../../../stores/favoritesStore'
 import { useTabsStore } from '../../../../stores/tabsStore'
+import { useUIStore } from '../../../../stores/uiStore'
 import { FavoriteItem, FavoriteFolder } from '../../../../types/type'
 import FavoriteTreeNode from './FavoriteTreeNode'
 import './favorites-panel.css'
@@ -32,8 +33,8 @@ export default function FavoritesPanel() {
   } = useFavoritesStore()
 
   const { openTab } = useTabsStore()
+  const { selectedFavoriteId, selectedFavoriteType, setSelectedFavorite } = useUIStore()
 
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([])
   const [editingNodeKey, setEditingNodeKey] = useState<string | null>(null)
 
   const stats = getStats()
@@ -45,13 +46,16 @@ export default function FavoritesPanel() {
 
   // 处理打开收藏项
   const handleOpenFavorite = useCallback((itemId: string) => {
+    // 更新选中状态
+    setSelectedFavorite(itemId, 'item')
+
     // 创建一个新tab页来显示收藏详情
     // 使用特殊的 favorite- 前缀来标识收藏详情页
     const favoriteTabId = `favorite-${itemId}`
 
     // 直接打开tab，TabsArea会识别favorite-前缀并渲染收藏详情页
     openTab(favoriteTabId)
-  }, [openTab])
+  }, [openTab, setSelectedFavorite])
 
   // 处理删除收藏项
   const handleDeleteFavorite = useCallback((itemId: string) => {
@@ -246,11 +250,18 @@ export default function FavoritesPanel() {
       handleOpenFavorite(itemId)
     } else if (key.startsWith('folder-')) {
       const folderId = key.substring(7)
+      setSelectedFavorite(folderId, 'folder')
       toggleFolderExpanded(folderId)
     }
+  }, [handleOpenFavorite, toggleFolderExpanded, setSelectedFavorite])
 
-    setSelectedKeys([key])
-  }, [handleOpenFavorite, toggleFolderExpanded])
+  // 计算选中的节点keys
+  const selectedKeys = useMemo(() => {
+    if (selectedFavoriteId && selectedFavoriteType) {
+      return [`${selectedFavoriteType}-${selectedFavoriteId}`]
+    }
+    return []
+  }, [selectedFavoriteId, selectedFavoriteType])
 
   // 计算展开的文件夹keys
   const expandedKeys = useMemo(
