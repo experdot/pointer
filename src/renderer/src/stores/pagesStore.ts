@@ -30,6 +30,7 @@ export interface PagesActions {
   deleteMultiplePages: (chatIds: string[]) => void
   movePage: (chatId: string, targetFolderId?: string, newOrder?: number) => void
   reorderPagesInFolder: (folderId: string | undefined, chatIds: string[]) => void
+  toggleStarPage: (id: string) => void
 
   // 页面溯源
   updatePageLineage: (pageId: string, lineage: Partial<PageLineage>) => void
@@ -239,6 +240,27 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           })
         } catch (error) {
           handleStoreError('pagesStore', 'reorderPagesInFolder', error)
+        }
+      },
+
+      toggleStarPage: (id) => {
+        try {
+          set((state) => {
+            const pageIndex = state.pages.findIndex((p) => p.id === id)
+            if (pageIndex !== -1) {
+              const updatedPage = {
+                ...state.pages[pageIndex],
+                starred: !state.pages[pageIndex].starred,
+                updatedAt: Date.now()
+              }
+              state.pages[pageIndex] = updatedPage
+
+              // 同时更新 IndexedDB 中的页面记录
+              pagesStorage.savePage(updatedPage)
+            }
+          })
+        } catch (error) {
+          handleStoreError('pagesStore', 'toggleStarPage', error)
         }
       },
 

@@ -33,7 +33,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     deleteFolder,
     deleteMultiplePages,
     updateFolder,
-    copyPage
+    copyPage,
+    toggleStarPage
   } = usePagesStore()
   const {
     selectedNodeId,
@@ -544,6 +545,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
                 onStartEdit={() => setEditingNodeKey(nodeKey)}
                 onEndEdit={() => setEditingNodeKey(null)}
                 onMoveTo={(targetFolderId) => handleMoveChat(chat.id, targetFolderId)}
+                onToggleStar={toggleStarPage}
                 allFolders={folders}
               />
             ),
@@ -572,7 +574,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       handleSaveEdit,
       handleFindInFolder,
       handleMoveFolder,
-      handleMoveChat
+      handleMoveChat,
+      toggleStarPage
     ]
   )
 
@@ -588,7 +591,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       // 对于聊天页面，需要包含消息状态以便正确更新状态指示器
       const streamingCount = p.messages?.filter(msg => msg.isStreaming)?.length || 0
       const hasStreamingMessage = !!p.streamingMessage
-      return `${p.id}-${p.title}-${p.folderId}-${p.order}-${p.messages?.length || 0}-${streamingCount}-${hasStreamingMessage}`
+      return `${p.id}-${p.title}-${p.folderId}-${p.order}-${p.messages?.length || 0}-${streamingCount}-${hasStreamingMessage}-${p.starred}`
     }).join(','),
     editingNodeKey
   ])

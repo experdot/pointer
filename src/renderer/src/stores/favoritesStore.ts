@@ -36,7 +36,7 @@ export interface FavoritesActions {
   updateFavorite: (id: string, updates: Partial<FavoriteItem>) => void
   deleteFavorite: (id: string) => void
   moveFavorite: (id: string, targetFolderId?: string, newOrder?: number) => void
-  togglePinFavorite: (id: string) => void
+  toggleStarFavorite: (id: string) => void
 
   // 批量操作
   deleteFavorites: (ids: string[]) => void
@@ -56,7 +56,7 @@ export interface FavoritesActions {
   getFavoritesByTag: (tag: string) => FavoriteItem[]
   getFavoritesByPage: (pageId: string) => FavoriteItem[]
   searchFavorites: (query: string) => FavoriteItem[]
-  getPinnedFavorites: () => FavoriteItem[]
+  getStarredFavorites: () => FavoriteItem[]
 
   // 快捷方法
   favoriteCurrentPage: (pageId: string, folderId?: string, title?: string) => string
@@ -186,17 +186,17 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
           }
         },
 
-        togglePinFavorite: (id) => {
+        toggleStarFavorite: (id) => {
           try {
             set((state) => {
               const item = state.items.find((i) => i.id === id)
               if (item) {
-                item.pinned = !item.pinned
+                item.starred = !item.starred
                 item.updatedAt = Date.now()
               }
             })
           } catch (error) {
-            handleStoreError('favoritesStore', 'togglePinFavorite', error)
+            handleStoreError('favoritesStore', 'toggleStarFavorite', error)
           }
         },
 
@@ -378,8 +378,8 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
           )
         },
 
-        getPinnedFavorites: () => {
-          return get().items.filter((i) => i.pinned)
+        getStarredFavorites: () => {
+          return get().items.filter((i) => i.starred)
         },
 
         // ==================== 快捷方法 ====================

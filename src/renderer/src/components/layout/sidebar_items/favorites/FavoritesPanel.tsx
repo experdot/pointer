@@ -26,7 +26,7 @@ export default function FavoritesPanel() {
     createFolder,
     deleteFolder,
     deleteFavorite,
-    togglePinFavorite,
+    toggleStarFavorite,
     toggleFolderExpanded,
     getStats,
     moveFavorite
@@ -129,6 +129,51 @@ export default function FavoritesPanel() {
     []
   )
 
+  // 处理移动文件夹（支持拖拽和菜单移动）
+  const handleMoveFolder = useCallback(
+    (folderId: string, targetFolderId: string | undefined, newOrder?: number) => {
+      const folder = folders.find((f) => f.id === folderId)
+      if (!folder) return
+
+      // 如果没有提供 newOrder，则计算新的order值，放在目标文件夹的最后
+      let finalOrder = newOrder
+      if (finalOrder === undefined) {
+        const siblings = folders.filter((f) => f.parentId === targetFolderId)
+        finalOrder = siblings.length > 0
+          ? Math.max(...siblings.map((f) => f.order || 0)) + 1000
+          : 1000
+      }
+
+      // 更新文件夹的 parentId 和 order
+      const { updateFolder } = useFavoritesStore.getState()
+      updateFolder(folderId, {
+        parentId: targetFolderId,
+        order: finalOrder
+      })
+    },
+    [folders]
+  )
+
+  // 处理移动收藏项（支持拖拽和菜单移动）
+  const handleMoveFavorite = useCallback(
+    (itemId: string, targetFolderId: string | undefined, newOrder?: number) => {
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
+
+      // 如果没有提供 newOrder，则计算新的order值，放在目标文件夹的最后
+      let finalOrder = newOrder
+      if (finalOrder === undefined) {
+        const siblings = items.filter((i) => i.folderId === targetFolderId)
+        finalOrder = siblings.length > 0
+          ? Math.max(...siblings.map((i) => i.order || 0)) + 1000
+          : 1000
+      }
+
+      moveFavorite(itemId, targetFolderId, finalOrder)
+    },
+    [items, moveFavorite]
+  )
+
   // 构建树形数据结构
   const treeData = useMemo(() => {
     const filteredItems = searchQuery ? searchFavorites(searchQuery) : items
@@ -151,8 +196,6 @@ export default function FavoritesPanel() {
           ...buildFolderTree(folder.id),
           ...folderItems
             .sort((a, b) => {
-              if (a.pinned && !b.pinned) return -1
-              if (!a.pinned && b.pinned) return 1
               return (b.order || 0) - (a.order || 0)
             })
             .map((item) => buildItemNode(item))
@@ -175,6 +218,8 @@ export default function FavoritesPanel() {
               isEditing={editingNodeKey === nodeKey}
               onStartEdit={() => setEditingNodeKey(nodeKey)}
               onEndEdit={() => setEditingNodeKey(null)}
+              onMoveTo={(targetFolderId) => handleMoveFolder(folder.id, targetFolderId)}
+              allFolders={folders}
             />
           ),
           checkable: false,
@@ -202,7 +247,9 @@ export default function FavoritesPanel() {
             isEditing={editingNodeKey === nodeKey}
             onStartEdit={() => setEditingNodeKey(nodeKey)}
             onEndEdit={() => setEditingNodeKey(null)}
-            onTogglePin={togglePinFavorite}
+            onToggleStar={toggleStarFavorite}
+            onMoveTo={(targetFolderId) => handleMoveFavorite(item.id, targetFolderId)}
+            allFolders={folders}
           />
         ),
         isLeaf: true
@@ -214,8 +261,6 @@ export default function FavoritesPanel() {
     const rootItems = filteredItems
       .filter((item) => !item.folderId)
       .sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1
-        if (!a.pinned && b.pinned) return 1
         return (b.order || 0) - (a.order || 0)
       })
       .map((item) => buildItemNode(item))
@@ -232,7 +277,9 @@ export default function FavoritesPanel() {
     handleDeleteFavorite,
     handleOpenFavorite,
     handleSaveEdit,
-    togglePinFavorite
+    toggleStarFavorite,
+    handleMoveFolder,
+    handleMoveFavorite
   ])
 
   // 处理创建文件夹
@@ -293,30 +340,6 @@ export default function FavoritesPanel() {
       return null
     },
     []
-  )
-
-  // 处理移动文件夹
-  const handleMoveFolder = useCallback(
-    (folderId: string, targetFolderId: string | undefined, newOrder: number) => {
-      const folder = folders.find((f) => f.id === folderId)
-      if (!folder) return
-
-      // 更新文件夹的 parentId 和 order
-      const { updateFolder } = useFavoritesStore.getState()
-      updateFolder(folderId, {
-        parentId: targetFolderId,
-        order: newOrder
-      })
-    },
-    [folders]
-  )
-
-  // 处理移动收藏项
-  const handleMoveFavorite = useCallback(
-    (itemId: string, targetFolderId: string | undefined, newOrder: number) => {
-      moveFavorite(itemId, targetFolderId, newOrder)
-    },
-    [moveFavorite]
   )
 
   // 处理拖拽放置事件

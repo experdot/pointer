@@ -11,7 +11,9 @@ import {
   FolderAddOutlined,
   CopyOutlined,
   SearchOutlined,
-  FolderOpenFilled
+  FolderOpenFilled,
+  StarFilled,
+  StarOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { Page, PageFolder } from '../../../../types/type'
@@ -33,6 +35,7 @@ interface ChatHistoryTreeNodeProps {
   onEndEdit?: () => void
   onFindInFolder?: () => void
   onMoveTo?: (targetFolderId: string | undefined) => void
+  onToggleStar?: (chatId: string) => void
   allFolders?: PageFolder[]
 }
 
@@ -51,6 +54,7 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   onEndEdit,
   onFindInFolder,
   onMoveTo,
+  onToggleStar,
   allFolders = []
 }: ChatHistoryTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -228,7 +232,20 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
         }
       ]
     } else {
+      const chat = data as Page
       return [
+        {
+          key: 'star',
+          label: chat.starred ? '取消星标' : '标记为星标',
+          icon: chat.starred ? <StarFilled /> : <StarOutlined />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            onToggleStar?.(chat.id)
+          }
+        },
+        {
+          type: 'divider'
+        },
         {
           key: 'rename',
           label: '重命名',
@@ -311,6 +328,7 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
   }
 
   const chatStatus = getChatStatus()
+  const chat = type === 'chat' ? (data as Page) : null
 
   return (
     <div
@@ -333,6 +351,9 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           <Tooltip title={chatStatus.text}>
             <Badge status={chatStatus.status} />
           </Tooltip>
+        )}
+        {chat?.starred && (
+          <StarFilled style={{ color: '#faad14', fontSize: '12px', marginRight: '4px' }} />
         )}
         <div className="tree-node-title">
           {isInlineEditing ? (
@@ -468,6 +489,11 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
 
     // 检查标题是否变化
     if (prevPage.title !== nextPage.title) {
+      return false
+    }
+
+    // 检查星标状态是否变化
+    if (prevPage.starred !== nextPage.starred) {
       return false
     }
 

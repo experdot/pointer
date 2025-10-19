@@ -86,6 +86,7 @@ export interface PageBase {
 
   order?: number // 添加排序字段
   pinned?: boolean // 是否固定标签页
+  starred?: boolean // 是否标记为星标
 
   lineage?: PageLineage // 页面溯源信息
 
@@ -472,7 +473,7 @@ export interface FavoriteItem {
   updatedAt: number // 最后更新时间
   order?: number // 排序顺序
   color?: string // 可选的标记颜色
-  pinned?: boolean // 是否置顶
+  starred?: boolean // 是否标记为星标
 
   // 笔记和统计
   notes?: string // 用户笔记

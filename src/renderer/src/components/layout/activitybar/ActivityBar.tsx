@@ -24,14 +24,13 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
   const { getRunningTasksCount } = useAITasksStore()
   const { createAndOpenSettingsPage } = usePagesStore()
   const { openTab } = useTabsStore()
-  const { getStats, getPinnedFavorites } = useFavoritesStore()
+  const { getStats } = useFavoritesStore()
 
   // 计算活跃任务数量
   const activeTaskCount = getRunningTasksCount()
 
   // 计算收藏统计
   const favoritesStats = getStats()
-  const pinnedCount = getPinnedFavorites().length
 
   // 处理设置按钮点击
   const handleSettingsClick = () => {
@@ -57,7 +56,6 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
       icon: <HeartOutlined />,
       label: '收藏夹',
       tooltip: `收藏夹 - ${favoritesStats.totalCount} 个收藏`,
-      badge: pinnedCount > 0 ? pinnedCount : undefined
     },
     {
       key: 'tasks' as ActivityBarTab,

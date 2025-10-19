@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Button, Dropdown, Typography, Input } from 'antd'
+import { Button, Dropdown, Typography, Input, Modal, TreeSelect } from 'antd'
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -11,7 +11,8 @@ import {
   DeleteOutlined,
   StarFilled,
   StarOutlined,
-  FolderAddOutlined
+  FolderAddOutlined,
+  FolderOpenFilled
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { FavoriteItem, FavoriteFolder } from '../../../../types/type'
@@ -31,7 +32,9 @@ interface FavoriteTreeNodeProps {
   onSaveEdit?: (nodeId: string, nodeType: 'folder' | 'item', newValue: string) => void
   onStartEdit?: () => void
   onEndEdit?: () => void
-  onTogglePin?: (itemId: string) => void
+  onToggleStar?: (itemId: string) => void
+  onMoveTo?: (targetFolderId: string | undefined) => void
+  allFolders?: FavoriteFolder[]
 }
 
 const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
@@ -47,11 +50,15 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
   onSaveEdit,
   onStartEdit,
   onEndEdit,
-  onTogglePin
+  onToggleStar,
+  onMoveTo,
+  allFolders = []
 }: FavoriteTreeNodeProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isInlineEditing, setIsInlineEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | undefined>(undefined)
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -94,6 +101,67 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
     }
   }
 
+  const handleShowMoveModal = () => {
+    // 初始化选中值为当前所在的文件夹
+    if (type === 'folder') {
+      const parentId = (data as FavoriteFolder).parentId
+      setSelectedTargetFolder(parentId === undefined ? 'ROOT' : parentId)
+    } else {
+      const folderId = (data as FavoriteItem).folderId
+      setSelectedTargetFolder(folderId === undefined ? 'ROOT' : folderId)
+    }
+
+    setShowMoveModal(true)
+  }
+
+  const handleConfirmMove = () => {
+    if (onMoveTo) {
+      // 将'ROOT'转换为undefined表示根目录
+      const targetFolder = selectedTargetFolder === 'ROOT' ? undefined : selectedTargetFolder
+      onMoveTo(targetFolder)
+    }
+    setShowMoveModal(false)
+  }
+
+  const handleCancelMove = () => {
+    setShowMoveModal(false)
+    setSelectedTargetFolder(undefined)
+  }
+
+  // 构建文件夹树数据（用于TreeSelect）
+  const buildFolderTreeData = () => {
+    const buildTree = (parentId?: string): any[] => {
+      const children = allFolders
+        .filter(folder => {
+          // 过滤掉当前节点（不能移动到自己）
+          if (type === 'folder' && folder.id === data.id) {
+            return false
+          }
+          // 如果是文件夹，还要过滤掉所有子文件夹（防止循环引用）
+          if (type === 'folder') {
+            let current = folder
+            while (current.parentId) {
+              if (current.parentId === data.id) {
+                return false
+              }
+              current = allFolders.find(f => f.id === current.parentId)!
+              if (!current) break
+            }
+          }
+          return folder.parentId === parentId
+        })
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+      return children.map(folder => ({
+        title: folder.name,
+        value: folder.id,
+        children: buildTree(folder.id)
+      }))
+    }
+
+    return buildTree()
+  }
+
   const getMenuItems = (): MenuProps['items'] => {
     if (type === 'folder') {
       return [
@@ -108,6 +176,15 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
           label: '重命名',
           icon: <EditOutlined />,
           onClick: () => startInlineEdit()
+        },
+        {
+          key: 'moveTo',
+          label: '移动至...',
+          icon: <FolderOpenFilled />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            handleShowMoveModal()
+          }
         },
         {
           type: 'divider'
@@ -137,12 +214,30 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
       const item = data as FavoriteItem
       return [
         {
-          key: 'pin',
-          label: item.pinned ? '取消置顶' : '置顶',
-          icon: item.pinned ? <StarOutlined /> : <StarFilled />,
+          key: 'star',
+          label: item.starred ? '取消星标' : '标记为星标',
+          icon: item.starred ? <StarFilled /> : <StarOutlined />,
           onClick: (e) => {
             e?.domEvent?.stopPropagation()
-            onTogglePin?.(item.id)
+            onToggleStar?.(item.id)
+          }
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'rename',
+          label: '重命名',
+          icon: <EditOutlined />,
+          onClick: () => startInlineEdit()
+        },
+        {
+          key: 'moveTo',
+          label: '移动至...',
+          icon: <FolderOpenFilled />,
+          onClick: (e) => {
+            e?.domEvent?.stopPropagation()
+            handleShowMoveModal()
           }
         },
         {
@@ -205,7 +300,7 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
     >
       <div className="tree-node-content">
         <div className="tree-node-icon">{getIcon()}</div>
-        {item?.pinned && (
+        {item?.starred && (
           <StarFilled style={{ color: '#faad14', fontSize: '12px', marginRight: '4px' }} />
         )}
         <div className="tree-node-title">
@@ -268,6 +363,43 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
           </Dropdown>
         </div>
       )}
+
+      {/* 移动到文件夹的模态框 */}
+      <Modal
+        title={`移动${type === 'folder' ? '文件夹' : '收藏项'}至...`}
+        open={showMoveModal}
+        onOk={handleConfirmMove}
+        onCancel={handleCancelMove}
+        okText="确定"
+        cancelText="取消"
+        destroyOnClose
+        key={showMoveModal ? `modal-${allFolders.length}` : 'modal-closed'}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <TreeSelect
+            style={{ width: '100%' }}
+            value={selectedTargetFolder}
+            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+            placeholder="选择目标文件夹"
+            allowClear
+            treeDefaultExpandAll
+            treeData={[
+              {
+                title: '根目录',
+                value: 'ROOT',
+                selectable: true,
+                children: buildFolderTreeData()
+              }
+            ]}
+            onChange={(value) => setSelectedTargetFolder(value === 'ROOT' ? undefined : value)}
+          />
+        </div>
+        <div style={{ color: '#666', fontSize: '12px' }}>
+          {type === 'folder'
+            ? '注意：不能将文件夹移动到自身或其子文件夹中'
+            : '提示：选择目标文件夹后，收藏项将被移动到该文件夹中'}
+        </div>
+      </Modal>
     </div>
   )
 }, (prevProps, nextProps) => {
@@ -289,7 +421,7 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
     const nextItem = nextProps.data as FavoriteItem
     return (
       prevItem.title === nextItem.title &&
-      prevItem.pinned === nextItem.pinned &&
+      prevItem.starred === nextItem.starred &&
       prevItem.type === nextItem.type
     )
   }
