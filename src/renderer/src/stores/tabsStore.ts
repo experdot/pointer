@@ -8,7 +8,7 @@ import { ChatMessage } from '../types/type'
 // 构建到指定消息的路径
 function buildPathToMessage(messages: ChatMessage[], targetMessageId: string): string[] {
   const messageMap = new Map<string, ChatMessage>()
-  messages.forEach(msg => messageMap.set(msg.id, msg))
+  messages.forEach((msg) => messageMap.set(msg.id, msg))
 
   const targetMessage = messageMap.get(targetMessageId)
   if (!targetMessage) return []
@@ -43,8 +43,9 @@ function buildPathToMessage(messages: ChatMessage[], targetMessageId: string): s
 }
 
 export interface TabsState {
-  openTabs: string[]
-  activeTabId: string | null
+  openTabs: string[] // 所有打开的 tab ID
+  activeTabId: string | null // 当前激活的 tab ID
+  pinnedTabs: Record<string, boolean> // 所有 tab 的 pinned 状态（统一管理）
 }
 
 export interface TabsActions {
@@ -56,9 +57,10 @@ export interface TabsActions {
   closeAllTabs: () => void
   setActiveTab: (chatId: string) => void
 
-  // 标签页固定
+  // 标签页固定（统一逻辑，不区分普通页面或收藏页）
   pinTab: (chatId: string) => void
   unpinTab: (chatId: string) => void
+  isTabPinned: (chatId: string) => boolean
 
   // 标签页重排序
   reorderTabs: (newOrder: string[]) => void
@@ -72,7 +74,8 @@ export interface TabsActions {
 
 const initialState: TabsState = {
   openTabs: [],
-  activeTabId: null
+  activeTabId: null,
+  pinnedTabs: {}
 }
 
 export const useTabsStore = create<TabsState & TabsActions>()(
@@ -80,11 +83,15 @@ export const useTabsStore = create<TabsState & TabsActions>()(
     immer((set, get) => ({
       ...initialState,
 
-      // 标签页基本操作
+      // 获取 tab 的 pinned 状态
+      isTabPinned: (chatId: string) => {
+        return get().pinnedTabs[chatId] || false
+      },
+
+      // 打开标签页
       openTab: (chatId, messageId?) => {
         try {
-          const { openTabs } = get()
-          const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
+          const { openTabs, pinnedTabs } = get()
 
           // 如果标签页已经打开，只需激活它
           if (openTabs.includes(chatId)) {
@@ -92,11 +99,11 @@ export const useTabsStore = create<TabsState & TabsActions>()(
               state.activeTabId = chatId
             })
 
-            // 如果提供了 messageId，更新页面的当前路径
-            if (messageId) {
+            // 如果提供了 messageId，更新页面的当前路径（仅对普通页面有效）
+            if (messageId && !chatId.startsWith('favorite-')) {
+              const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
               const page = findPageById(chatId)
               if (page && page.type === 'regular' && page.messages) {
-                // 构建到该消息的路径
                 const path = buildPathToMessage(page.messages, messageId)
                 if (path.length > 0) {
                   updatePageCurrentPath(chatId, path, messageId)
@@ -106,49 +113,30 @@ export const useTabsStore = create<TabsState & TabsActions>()(
             return
           }
 
-          // 检查是否是虚拟tab（如收藏详情页）
-          const isVirtualTab = chatId.startsWith('favorite-')
-
-          // 检查页面是否存在（虚拟tab不需要检查）
-          if (!isVirtualTab) {
-            const page = findPageById(chatId)
-            if (!page) return
-          }
-
+          // 新打开标签页
           set((state) => {
-            // 根据是否固定来决定插入位置（虚拟tab总是非固定的）
-            const page = isVirtualTab ? null : findPageById(chatId)
-            const isPinned = page?.pinned || false
-            let newOpenTabs
+            const isPinned = pinnedTabs[chatId] || false
 
             if (isPinned) {
               // 固定标签页插入到所有固定标签页的末尾
-              const pinnedTabs = state.openTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return tab?.pinned || false
-              })
-              const unpinnedTabs = state.openTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return !(tab?.pinned || false)
-              })
-              newOpenTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
+              const pinnedTabIds = state.openTabs.filter((id) => state.pinnedTabs[id])
+              const unpinnedTabIds = state.openTabs.filter((id) => !state.pinnedTabs[id])
+              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
             } else {
-              // 普通标签页（包括虚拟tab）添加到末尾
-              newOpenTabs = [...state.openTabs, chatId]
+              // 普通标签页添加到末尾
+              state.openTabs.push(chatId)
             }
 
-            state.openTabs = newOpenTabs
             state.activeTabId = chatId
           })
 
-          // 如果提供了 messageId，更新页面的当前路径
-          if (messageId) {
+          // 如果提供了 messageId，更新页面的当前路径（仅对普通页面有效）
+          if (messageId && !chatId.startsWith('favorite-')) {
+            const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
             const page = findPageById(chatId)
             if (page && page.type === 'regular' && page.messages) {
-              // 构建到该消息的路径
               const path = buildPathToMessage(page.messages, messageId)
               if (path.length > 0) {
-                const { updatePageCurrentPath } = usePagesStore.getState()
                 updatePageCurrentPath(chatId, path, messageId)
               }
             }
@@ -158,6 +146,7 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 关闭标签页
       closeTab: (chatId) => {
         try {
           set((state) => {
@@ -167,7 +156,6 @@ export const useTabsStore = create<TabsState & TabsActions>()(
             if (state.activeTabId === chatId) {
               if (newOpenTabs.length > 0) {
                 const closedIndex = state.openTabs.indexOf(chatId)
-                // 如果关闭的不是最后一个tab，激活后面的tab；否则激活前面的tab
                 newActiveTabId = newOpenTabs[Math.min(closedIndex, newOpenTabs.length - 1)]
               } else {
                 newActiveTabId = null
@@ -182,12 +170,9 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 关闭其他标签页
       closeOtherTabs: (chatId) => {
         try {
-          const { findPageById } = usePagesStore.getState()
-          const page = findPageById(chatId)
-          if (!page) return
-
           set((state) => {
             state.openTabs = [chatId]
             state.activeTabId = chatId
@@ -197,6 +182,7 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 关闭右侧标签页
       closeTabsToRight: (chatId) => {
         try {
           set((state) => {
@@ -206,7 +192,6 @@ export const useTabsStore = create<TabsState & TabsActions>()(
             const newOpenTabs = state.openTabs.slice(0, currentIndex + 1)
             let newActiveTabId = state.activeTabId
 
-            // 如果当前激活的tab在关闭的tabs中，激活指定的tab
             if (state.activeTabId && !newOpenTabs.includes(state.activeTabId)) {
               newActiveTabId = chatId
             }
@@ -219,6 +204,7 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 关闭所有标签页
       closeAllTabs: () => {
         try {
           set((state) => {
@@ -230,12 +216,9 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 设置激活的标签页
       setActiveTab: (chatId) => {
         try {
-          const { findPageById } = usePagesStore.getState()
-          const page = findPageById(chatId)
-          if (!page) return
-
           set((state) => {
             state.activeTabId = chatId
           })
@@ -244,34 +227,19 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
-      // 标签页固定
+      // 固定标签页
       pinTab: (chatId) => {
         try {
-          const { updatePage } = usePagesStore.getState()
-          const page = usePagesStore.getState().findPageById(chatId)
-          if (!page) return
-
-          // 更新页面的固定状态
-          updatePage(chatId, { pinned: true })
-
           set((state) => {
-            // 重新排序标签页，将新固定的标签页移到所有固定标签页的末尾
+            // 设置 pinned 状态
+            state.pinnedTabs[chatId] = true
+
+            // 重新排序标签页
             if (state.openTabs.includes(chatId)) {
-              // 移除当前位置的标签页
               const filteredTabs = state.openTabs.filter((id) => id !== chatId)
-
-              // 找到所有固定标签页的位置
-              const pinnedTabs = filteredTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return tab?.pinned || false
-              })
-              const unpinnedTabs = filteredTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return !(tab?.pinned || false)
-              })
-
-              // 将新固定的标签页插入到固定标签页的末尾
-              state.openTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
+              const pinnedTabIds = filteredTabs.filter((id) => state.pinnedTabs[id])
+              const unpinnedTabIds = filteredTabs.filter((id) => !state.pinnedTabs[id])
+              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
             }
           })
         } catch (error) {
@@ -279,33 +247,19 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
+      // 取消固定标签页
       unpinTab: (chatId) => {
         try {
-          const { updatePage } = usePagesStore.getState()
-          const page = usePagesStore.getState().findPageById(chatId)
-          if (!page) return
-
-          // 更新页面的固定状态
-          updatePage(chatId, { pinned: false })
-
           set((state) => {
-            // 重新排序标签页，将取消固定的标签页移到所有固定标签页的后面
+            // 取消 pinned 状态
+            state.pinnedTabs[chatId] = false
+
+            // 重新排序标签页
             if (state.openTabs.includes(chatId)) {
-              // 移除当前位置的标签页
               const filteredTabs = state.openTabs.filter((id) => id !== chatId)
-
-              // 找到所有固定标签页的位置
-              const pinnedTabs = filteredTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return tab?.pinned || false
-              })
-              const unpinnedTabs = filteredTabs.filter((id) => {
-                const tab = usePagesStore.getState().findPageById(id)
-                return !(tab?.pinned || false)
-              })
-
-              // 将取消固定的标签页插入到未固定标签页的开头
-              state.openTabs = [...pinnedTabs, chatId, ...unpinnedTabs]
+              const pinnedTabIds = filteredTabs.filter((id) => state.pinnedTabs[id])
+              const unpinnedTabIds = filteredTabs.filter((id) => !state.pinnedTabs[id])
+              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
             }
           })
         } catch (error) {
@@ -313,32 +267,22 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }
       },
 
-      // 标签页重排序
+      // 重新排序标签页
       reorderTabs: (newOrder) => {
         try {
           set((state) => {
-            const { findPageById } = usePagesStore.getState()
-
             // 验证新顺序是否有效
-            const validOrder = newOrder.filter(
-              (id) => state.openTabs.includes(id) && findPageById(id)
-            )
+            const validOrder = newOrder.filter((id) => state.openTabs.includes(id))
 
             // 如果有遗漏的标签页，添加到末尾
             const missingTabs = state.openTabs.filter((id) => !validOrder.includes(id))
             const reorderedTabs = [...validOrder, ...missingTabs]
 
             // 重新分离固定标签页和普通标签页，确保固定标签页在前
-            const pinnedTabs = reorderedTabs.filter((id) => {
-              const tab = findPageById(id)
-              return tab?.pinned || false
-            })
-            const unpinnedTabs = reorderedTabs.filter((id) => {
-              const tab = findPageById(id)
-              return !(tab?.pinned || false)
-            })
+            const pinnedTabIds = reorderedTabs.filter((id) => state.pinnedTabs[id])
+            const unpinnedTabIds = reorderedTabs.filter((id) => !state.pinnedTabs[id])
 
-            state.openTabs = [...pinnedTabs, ...unpinnedTabs]
+            state.openTabs = [...pinnedTabIds, ...unpinnedTabIds]
           })
         } catch (error) {
           handleStoreError('tabsStore', 'reorderTabs', error)
@@ -371,9 +315,10 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         })
       }
     })),
-    createPersistConfig('tabs-store', 1, (state) => ({
+    createPersistConfig('tabs-store', 2, (state) => ({
       openTabs: state.openTabs,
-      activeTabId: state.activeTabId
+      activeTabId: state.activeTabId,
+      pinnedTabs: state.pinnedTabs
     }))
   )
 )

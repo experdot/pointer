@@ -101,15 +101,7 @@
   }
 }
 
-/* 标签页动画效果 */
-.tabs-area .ant-tabs-tab {
-  transition: all 0.2s ease;
-}
-
-.tabs-area .ant-tabs-tab:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
+/* 标签页样式 */
 .tabs-area .ant-tabs-tab-active {
   font-weight: 500;
 }
@@ -132,64 +124,97 @@
   z-index: 1;
 }
 
-/* 拖拽相关样式 */
+/* 拖拽相关样式 - VSCode 风格 */
 .tab-label-content {
-  cursor: move;
+  cursor: grab;
+  user-select: none;
 }
 
-.tab-label-content.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
-  transition: all 0.2s ease;
+.tab-label-content:active {
+  cursor: grabbing;
 }
 
-.tab-label-content.drag-over {
-  background-color: rgba(24, 144, 255, 0.1);
+/* 拖拽预览层样式 */
+.tab-drag-overlay {
+  background: #fff;
+  border: 1px solid #d9d9d9;
   border-radius: 4px;
-  transform: scale(1.05);
-  transition: all 0.2s ease;
+  padding: 4px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: grabbing;
+  opacity: 0.9;
+  transform: rotate(2deg);
+  pointer-events: none;
 }
 
-.tab-label-content.drag-over-forbidden {
-  background-color: rgba(255, 77, 79, 0.1);
-  border-radius: 4px;
-  cursor: not-allowed;
-  transition: all 0.2s ease;
+.tab-drag-overlay .tab-label-content {
+  cursor: grabbing;
 }
 
-.tabs-area .ant-tabs-tab.dragging {
-  opacity: 0.6;
-  transform: scale(0.95);
-  z-index: 1000;
+/* 拖拽中的原始标签样式 - 完全透明但保持位置 */
+.tabs-area .ant-tabs-tab:has(.tab-label-content.dragging) {
+  opacity: 0;
 }
 
-.tabs-area .ant-tabs-tab.drag-over {
-  background-color: rgba(24, 144, 255, 0.15) !important;
-  border-color: rgba(24, 144, 255, 0.5) !important;
-  transform: scale(1.02);
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+/* 插入位置指示线 - 类似 VSCode */
+.tabs-area .ant-tabs-tab {
+  position: relative;
+  /* 禁止所有的 transform 和 transition，标签保持完全静止 */
 }
 
-/* 拖拽时的指示器 */
-.tabs-area .ant-tabs-tab.drag-over::before {
+/* 禁用拖拽时的所有动画效果 */
+.tabs-area .ant-tabs-tab > div {
+  transform: none !important;
+  transition: none !important;
+}
+
+/* 左侧插入线 */
+.tabs-area .ant-tabs-tab::before {
   content: '';
   position: absolute;
-  left: -2px;
-  top: 0;
-  bottom: 0;
-  width: 4px;
+  left: -1px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
   background-color: #1890ff;
-  border-radius: 2px;
-  animation: dragIndicator 0.3s ease;
+  opacity: 0;
+  transform: scaleY(0);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 1px;
+  z-index: 10;
 }
 
-@keyframes dragIndicator {
-  from {
-    opacity: 0;
-    transform: scaleY(0.5);
-  }
-  to {
-    opacity: 1;
-    transform: scaleY(1);
-  }
+/* 右侧插入线 */
+.tabs-area .ant-tabs-tab::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background-color: #1890ff;
+  opacity: 0;
+  transform: scaleY(0);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 1px;
+  z-index: 10;
 }
+
+/* 当标签在拖拽目标左侧时显示右侧插入线 */
+.tabs-area .ant-tabs-tab.drop-indicator-right::after {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* 当标签在拖拽目标右侧时显示左侧插入线 */
+.tabs-area .ant-tabs-tab.drop-indicator-left::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* 移除悬停效果 */
+.tabs-area .ant-tabs-tab:hover:not(.ant-tabs-tab-active) {
+  /* 不改变背景色 */
+}
+
+/* 活动标签也可以显示插入线（拖拽时） */

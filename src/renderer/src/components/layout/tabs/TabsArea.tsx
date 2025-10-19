@@ -12,6 +12,25 @@ import {
   TableOutlined,
   BlockOutlined
 } from '@ant-design/icons'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  MouseSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+  DragOverlay
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
@@ -23,6 +42,79 @@ import SettingsPage from '../../pages/settings/SettingsPage'
 import FavoriteDetailPage from '../../pages/favorites/FavoriteDetailPage'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
 import './TabsArea.css'
+
+// Tab Label Content Component (共用的标签内容)
+interface TabLabelContentProps {
+  chat: any
+  chatStatus: { status: 'success' | 'processing' | 'default'; text: string }
+  isPinned: boolean
+  isDragging?: boolean
+}
+
+const TabLabelContent: React.FC<TabLabelContentProps> = ({
+  chat,
+  chatStatus,
+  isPinned,
+  isDragging = false
+}) => {
+  return (
+    <span className={`tab-label-content ${isDragging ? 'dragging' : ''}`}>
+      {chat.type === 'crosstab' ? (
+        <TableOutlined className="message-icon" />
+      ) : chat.type === 'object' ? (
+        <BlockOutlined className="message-icon" />
+      ) : chat.type === 'settings' ? (
+        <SettingOutlined className="message-icon" />
+      ) : (
+        <MessageOutlined className="message-icon" />
+      )}
+      {isPinned && <PushpinFilled className="pin-icon" title="已固定标签页" />}
+      <Tooltip title={chatStatus.text}>
+        <Badge status={chatStatus.status} className="status-badge" />
+      </Tooltip>
+      <span className="tab-title">{chat.title}</span>
+    </span>
+  )
+}
+
+// Sortable Tab Label Component
+interface SortableTabLabelProps {
+  chatId: string
+  chat: any
+  chatStatus: { status: 'success' | 'processing' | 'default'; text: string }
+  isPinned: boolean
+  getContextMenuItems: (chatId: string) => MenuProps['items']
+}
+
+const SortableTabLabel: React.FC<SortableTabLabelProps> = ({
+  chatId,
+  chat,
+  chatStatus,
+  isPinned,
+  getContextMenuItems
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: chatId,
+    // 禁用动画变换，让标签保持原位
+    transition: null
+  })
+
+  const style: React.CSSProperties = {
+    // 不应用 transform，让标签保持在原位
+    transform: isDragging ? 'none' : undefined,
+    opacity: isDragging ? 0 : 1, // 拖拽时完全透明，因为会显示在 DragOverlay 中
+    cursor: 'grab',
+    position: 'relative'
+  }
+
+  return (
+    <Dropdown menu={{ items: getContextMenuItems(chatId) }} trigger={['contextMenu']}>
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <TabLabelContent chat={chat} chatStatus={chatStatus} isPinned={isPinned} />
+      </div>
+    </Dropdown>
+  )
+}
 
 export default function TabsArea() {
   const {
@@ -41,6 +133,7 @@ export default function TabsArea() {
     closeAllTabs,
     pinTab,
     unpinTab,
+    isTabPinned,
     reorderTabs,
     setActiveTab
   } = useTabsStore()
@@ -48,8 +141,26 @@ export default function TabsArea() {
   const { settings } = useSettingsStore()
   const { items: favoriteItems } = useFavoritesStore()
   const chatWindowRefs = useRef<Map<string, ChatWindowRef>>(new Map())
-  const [draggedTabId, setDraggedTabId] = React.useState<string | null>(null)
-  const [dragOverTabId, setDragOverTabId] = React.useState<string | null>(null)
+  const [activeId, setActiveId] = React.useState<string | null>(null)
+  const [overId, setOverId] = React.useState<string | null>(null)
+
+  // Setup sensors for dnd-kit
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 10 // Require 10px of movement before drag starts (避免点击被误认为拖拽)
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
+
+  // Handle drag over - 用于显示插入指示线
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event
+    setOverId(over ? (over.id as string) : null)
+  }, [])
 
   // 设置ChatWindow引用的回调函数
   const setChatWindowRef = useCallback((chatId: string, ref: ChatWindowRef | null) => {
@@ -81,90 +192,45 @@ export default function TabsArea() {
     setActiveTab(settingsPageId)
   }, [createAndOpenSettingsPage, setActiveTab])
 
-  // 拖拽排序处理函数
-  const handleDragStart = useCallback((event: React.DragEvent, chatId: string) => {
-    setDraggedTabId(chatId)
-    event.dataTransfer.setData('text/plain', chatId)
-    event.dataTransfer.effectAllowed = 'move'
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
   }, [])
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent, chatId: string) => {
-      event.preventDefault()
+  // Handle drag end
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
 
-      if (draggedTabId) {
-        const sourceChat = pages.find((p) => p.id === draggedTabId)
-        const targetChat = pages.find((p) => p.id === chatId)
+      if (over && active.id !== over.id) {
+        const activeId = active.id as string
+        const overId = over.id as string
 
-        const sourcePinned = sourceChat?.pinned || false
-        const targetPinned = targetChat?.pinned || false
+        // 使用统一的 pinned 状态检查
+        const activePinned = isTabPinned(activeId)
+        const overPinned = isTabPinned(overId)
 
-        // 检查是否可以拖拽
-        if (sourcePinned !== targetPinned) {
-          event.dataTransfer.dropEffect = 'none'
-          return
-        }
-      }
-
-      event.dataTransfer.dropEffect = 'move'
-      setDragOverTabId(chatId)
-    },
-    [draggedTabId, pages]
-  )
-
-  const handleDragLeave = useCallback((event: React.DragEvent) => {
-    // 只在离开整个标签区域时清除
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-      setDragOverTabId(null)
-    }
-  }, [])
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent, targetChatId: string) => {
-      event.preventDefault()
-      const sourceChatId = event.dataTransfer.getData('text/plain')
-
-      if (sourceChatId && sourceChatId !== targetChatId) {
-        const sourceChat = pages.find((p) => p.id === sourceChatId)
-        const targetChat = pages.find((p) => p.id === targetChatId)
-
-        // 检查是否可以进行拖拽排序
-        const sourcePinned = sourceChat?.pinned || false
-        const targetPinned = targetChat?.pinned || false
-
-        // 固定标签页和非固定标签页不能互相拖拽
-        if (sourcePinned !== targetPinned) {
-          setDraggedTabId(null)
-          setDragOverTabId(null)
+        // Only allow reordering if both tabs have the same pinned status
+        if (activePinned !== overPinned) {
+          setActiveId(null)
+          setOverId(null)
           return
         }
 
-        const currentTabs = [...openTabs]
-        const sourceIndex = currentTabs.indexOf(sourceChatId)
-        const targetIndex = currentTabs.indexOf(targetChatId)
+        const oldIndex = openTabs.indexOf(activeId)
+        const newIndex = openTabs.indexOf(overId)
 
-        if (sourceIndex !== -1 && targetIndex !== -1) {
-          // 移除源标签
-          currentTabs.splice(sourceIndex, 1)
-          // 在目标位置插入
-          const newTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
-          currentTabs.splice(newTargetIndex, 0, sourceChatId)
-
-          // 通过reorderTabs进行排序，确保固定标签页在前
-          reorderTabs(currentTabs)
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newTabs = arrayMove(openTabs, oldIndex, newIndex)
+          reorderTabs(newTabs)
         }
       }
 
-      setDraggedTabId(null)
-      setDragOverTabId(null)
+      setActiveId(null)
+      setOverId(null)
     },
-    [openTabs, pages, reorderTabs]
+    [openTabs, isTabPinned, reorderTabs]
   )
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedTabId(null)
-    setDragOverTabId(null)
-  }, [])
 
   // 键盘快捷键处理
   useEffect(() => {
@@ -211,6 +277,43 @@ export default function TabsArea() {
     }
   }, [activeTabId])
 
+  // 动态添加/移除插入指示器的 CSS 类
+  useEffect(() => {
+    // 清除所有插入指示器
+    const allTabs = document.querySelectorAll('.tabs-area .ant-tabs-tab')
+    allTabs.forEach((tab) => {
+      tab.classList.remove('drop-indicator-left', 'drop-indicator-right')
+    })
+
+    // 如果正在拖拽且有悬停目标
+    if (activeId && overId && activeId !== overId) {
+      const activeIndex = openTabs.indexOf(activeId)
+      const overIndex = openTabs.indexOf(overId)
+
+      // 找到对应的 DOM 元素
+      const overTab = document.querySelector(
+        `.tabs-area .ant-tabs-tab[data-node-key="${overId}"]`
+      )
+
+      if (overTab && activeIndex !== -1 && overIndex !== -1) {
+        // 使用统一的 pinned 状态检查
+        const activePinned = isTabPinned(activeId)
+        const overPinned = isTabPinned(overId)
+
+        if (activePinned === overPinned) {
+          // 根据拖拽方向显示左侧或右侧插入线
+          if (activeIndex < overIndex) {
+            // 从左向右拖拽，显示右侧插入线
+            overTab.classList.add('drop-indicator-right')
+          } else {
+            // 从右向左拖拽，显示左侧插入线
+            overTab.classList.add('drop-indicator-left')
+          }
+        }
+      }
+    }
+  }, [activeId, overId, openTabs, isTabPinned])
+
   const handleTabChange = (activeKey: string) => {
     setActiveTab(activeKey)
   }
@@ -219,10 +322,9 @@ export default function TabsArea() {
     closeTab(targetKey)
   }
 
-  // 获取右键菜单项
+  // 获取右键菜单项（统一逻辑，不区分类型）
   const getContextMenuItems = (chatId: string): MenuProps['items'] => {
-    const chat = pages.find((c) => c.id === chatId)
-    const isPinned = chat?.pinned || false
+    const isPinned = isTabPinned(chatId)
     const currentIndex = openTabs.indexOf(chatId)
     const hasTabsToRight = currentIndex < openTabs.length - 1
     const hasOtherTabs = openTabs.length > 1
@@ -306,6 +408,14 @@ export default function TabsArea() {
 
   // 获取聊天状态指示器的颜色和状态文本
   const getChatStatus = (chat: any) => {
+    // 对于收藏详情页
+    if (chat.type === 'favorite') {
+      return {
+        status: 'default' as const,
+        text: '收藏详情'
+      }
+    }
+
     // 对于交叉视图聊天，使用不同的状态计算
     if (chat.type === 'crosstab') {
       const currentStep = chat.crosstabData?.currentStep || 0
@@ -456,11 +566,26 @@ export default function TabsArea() {
         const favorite = favoriteItems.find((f) => f.id === favoriteId)
         if (!favorite) return null
 
+        // 构建一个类似 chat 的对象，以便复用 SortableTabLabel
+        const favoriteAsChat = {
+          id: chatId,
+          type: 'favorite',
+          title: favorite.title,
+          pinned: false,
+          messages: [] // 收藏详情页没有 messages，但为了计算状态需要提供
+        }
+
+        const chatStatus = getChatStatus(favoriteAsChat)
+        const isPinned = isTabPinned(chatId)
+
         const tabLabel = (
-          <span className="tab-label-content">
-            <MessageOutlined className="message-icon" />
-            <span className="tab-title">{favorite.title}</span>
-          </span>
+          <SortableTabLabel
+            chatId={chatId}
+            chat={favoriteAsChat}
+            chatStatus={chatStatus}
+            isPinned={isPinned}
+            getContextMenuItems={getContextMenuItems}
+          />
         )
 
         return {
@@ -475,45 +600,16 @@ export default function TabsArea() {
       if (!chat) return null
 
       const chatStatus = getChatStatus(chat)
-      const isPinned = chat.pinned || false
-
-      // 检查是否可以与当前拖拽的标签页进行拖拽
-      const canDragToThis =
-        !draggedTabId ||
-        (() => {
-          const sourceChat = pages.find((p) => p.id === draggedTabId)
-          const sourcePinned = sourceChat?.pinned || false
-          const targetPinned = chat.pinned || false
-          return sourcePinned === targetPinned
-        })()
+      const isPinned = isTabPinned(chatId)
 
       const tabLabel = (
-        <Dropdown menu={{ items: getContextMenuItems(chatId) }} trigger={['contextMenu']}>
-          <span
-            className={`tab-label-content ${draggedTabId === chatId ? 'dragging' : ''} ${dragOverTabId === chatId ? (canDragToThis ? 'drag-over' : 'drag-over-forbidden') : ''}`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, chatId)}
-            onDragOver={(e) => handleDragOver(e, chatId)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, chatId)}
-            onDragEnd={handleDragEnd}
-          >
-            {chat.type === 'crosstab' ? (
-              <TableOutlined className="message-icon" />
-            ) : chat.type === 'object' ? (
-              <BlockOutlined className="message-icon" />
-            ) : chat.type === 'settings' ? (
-              <SettingOutlined className="message-icon" />
-            ) : (
-              <MessageOutlined className="message-icon" />
-            )}
-            {isPinned && <PushpinFilled className="pin-icon" title="已固定标签页" />}
-            <Tooltip title={chatStatus.text}>
-              <Badge status={chatStatus.status} className="status-badge" />
-            </Tooltip>
-            <span className="tab-title">{chat.title}</span>
-          </span>
-        </Dropdown>
+        <SortableTabLabel
+          chatId={chatId}
+          chat={chat}
+          chatStatus={chatStatus}
+          isPinned={isPinned}
+          getContextMenuItems={getContextMenuItems}
+        />
       )
 
       return {
@@ -529,48 +625,81 @@ export default function TabsArea() {
           ) : (
             <ChatWindow chatId={chatId} ref={(ref) => setChatWindowRef(chatId, ref)} />
           ),
-        closable: true,
-        className: `${draggedTabId === chatId ? 'dragging' : ''} ${dragOverTabId === chatId ? 'drag-over' : ''}`
+        closable: true
       }
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
 
+  // 获取当前拖拽的标签信息（用于 DragOverlay）
+  const activeTab = activeId
+    ? (() => {
+        // 先检查是否是收藏详情tab
+        if (activeId.startsWith('favorite-')) {
+          const favoriteId = activeId.substring(9)
+          const favorite = favoriteItems.find((f) => f.id === favoriteId)
+          if (favorite) {
+            return {
+              type: 'favorite',
+              title: favorite.title,
+              pinned: false // 收藏详情页不支持固定
+            }
+          }
+        }
+        // 否则是普通页面
+        const page = pages.find((p) => p.id === activeId)
+        return page
+      })()
+    : null
+
   return (
     <div className="tabs-area">
-      <Tabs
-        type="editable-card"
-        activeKey={activeTabId || undefined}
-        onChange={handleTabChange}
-        onEdit={(targetKey, action) => {
-          if (action === 'remove' && typeof targetKey === 'string') {
-            handleTabClose(targetKey)
-          }
-        }}
-        items={tabItems}
-        hideAdd
-        size="small"
-        style={
-          {
-            '--pinned-tabs': openTabs
-              .filter((id) => {
-                const chat = pages.find((c) => c.id === id)
-                return chat?.pinned
-              })
-              .map((id) => `[data-node-key="${id}"]`)
-              .join(','),
-            '--pinned-count': openTabs.filter((id) => {
-              const chat = pages.find((c) => c.id === id)
-              return chat?.pinned
-            }).length
-          } as React.CSSProperties
-        }
-      />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={openTabs}>
+          <Tabs
+            type="editable-card"
+            activeKey={activeTabId || undefined}
+            onChange={handleTabChange}
+            onEdit={(targetKey, action) => {
+              if (action === 'remove' && typeof targetKey === 'string') {
+                handleTabClose(targetKey)
+              }
+            }}
+            items={tabItems}
+            hideAdd
+            size="small"
+            style={
+              {
+                '--pinned-tabs': openTabs
+                  .filter((id) => isTabPinned(id))
+                  .map((id) => `[data-node-key="${id}"]`)
+                  .join(','),
+                '--pinned-count': openTabs.filter((id) => isTabPinned(id)).length
+              } as React.CSSProperties
+            }
+          />
+        </SortableContext>
+        <DragOverlay dropAnimation={null}>
+          {activeId && activeTab ? (
+            <div className="tab-drag-overlay">
+              <TabLabelContent
+                chat={activeTab}
+                chatStatus={getChatStatus(activeTab)}
+                isPinned={activeTab.pinned || false}
+                isDragging={true}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
       <style>{`
         ${openTabs
-          .filter((id) => {
-            const chat = pages.find((c) => c.id === id)
-            return chat?.pinned
-          })
+          .filter((id) => isTabPinned(id))
           .map(
             (id, index, pinnedTabs) => `
           .tabs-area .ant-tabs-tab[data-node-key="${id}"] {
