@@ -212,7 +212,7 @@ export const useUIStore = create<UIState & UIActions>()(
       toggleLineageDisplayCollapse: (pageId) => {
         try {
           set((state) => {
-            const isCurrentlyCollapsed = state.lineageDisplayCollapsed[pageId] || false
+            const isCurrentlyCollapsed = state.lineageDisplayCollapsed[pageId] ?? true
             state.lineageDisplayCollapsed[pageId] = !isCurrentlyCollapsed
           })
         } catch (error) {
@@ -221,7 +221,7 @@ export const useUIStore = create<UIState & UIActions>()(
       },
 
       isLineageDisplayCollapsed: (pageId) => {
-        return get().lineageDisplayCollapsed[pageId] || false
+        return get().lineageDisplayCollapsed[pageId] ?? true
       },
 
       // 工具方法
