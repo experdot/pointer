@@ -1,5 +1,17 @@
-import React, { useMemo } from 'react'
-import { Card, Typography, Tag, Space, Button, Descriptions, Empty, Divider, message } from 'antd'
+import React, { useMemo, useState, useEffect } from 'react'
+import {
+  Card,
+  Typography,
+  Tag,
+  Space,
+  Button,
+  Descriptions,
+  Empty,
+  Divider,
+  message,
+  Collapse,
+  Image
+} from 'antd'
 import {
   ClockCircleOutlined,
   EyeOutlined,
@@ -10,18 +22,147 @@ import {
   LinkOutlined,
   FileOutlined,
   MessageOutlined,
-  FontSizeOutlined
+  FontSizeOutlined,
+  BulbOutlined,
+  UserOutlined,
+  RobotOutlined,
+  FileImageOutlined
 } from '@ant-design/icons'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { Markdown } from '../../common/markdown/Markdown'
+import { RelativeTime } from '../../common/RelativeTime'
+import { ChatMessage, FileAttachment } from '../../../types/type'
 import './favorite-detail-page.css'
 
 const { Title, Text, Paragraph } = Typography
 
 interface FavoriteDetailPageProps {
   favoriteId: string
+}
+
+// 消息预览组件 - 与 MessageContent 保持一致的样式
+interface MessagePreviewProps {
+  message: ChatMessage
+  showContext?: boolean
+}
+
+const MessagePreview: React.FC<MessagePreviewProps> = ({ message, showContext = true }) => {
+  const [reasoningExpanded, setReasoningExpanded] = useState<string[]>([])
+  const [attachmentUrls, setAttachmentUrls] = useState<Map<string, string>>(new Map())
+
+  // 加载附件的预览 URL
+  useEffect(() => {
+    const loadAttachments = async () => {
+      if (!message.attachments || message.attachments.length === 0) {
+        setAttachmentUrls(new Map())
+        return
+      }
+
+      const newUrls = new Map<string, string>()
+
+      for (const attachment of message.attachments) {
+        if (attachment.type.startsWith('image/')) {
+          try {
+            const result = await window.api.attachment.read(attachment.localPath)
+            if (result.success && result.content) {
+              const url = `data:${attachment.type};base64,${result.content}`
+              newUrls.set(attachment.id, url)
+            }
+          } catch (error) {
+            console.error('加载附件失败:', error)
+          }
+        }
+      }
+
+      setAttachmentUrls(newUrls)
+    }
+
+    loadAttachments()
+  }, [message.attachments])
+
+  return (
+    <div className="favorite-message-preview">
+      {/* 消息角色标签 */}
+      <div className="message-preview-header">
+        <Space>
+          <Tag
+            icon={message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
+            color={message.role === 'user' ? 'green' : 'blue'}
+          >
+            {message.role === 'user' ? '用户' : 'AI'}
+          </Tag>
+          <RelativeTime timestamp={message.timestamp} style={{ fontSize: '12px' }} />
+        </Space>
+      </div>
+
+      {/* 文件附件显示 */}
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="message-attachments">
+          {message.attachments.map((attachment) => (
+            <div key={attachment.id} className="attachment-item">
+              {attachment.type.startsWith('image/') && attachmentUrls.get(attachment.id) ? (
+                <div>
+                  <Image
+                    src={attachmentUrls.get(attachment.id)}
+                    alt={attachment.name}
+                    width={120}
+                    height={120}
+                    style={{ objectFit: 'cover', borderRadius: 2 }}
+                    preview={{
+                      mask: <div style={{ fontSize: 12 }}>预览</div>
+                    }}
+                  />
+                  <div className="attachment-name">{attachment.name}</div>
+                </div>
+              ) : (
+                <Space>
+                  <FileImageOutlined />
+                  <span style={{ fontSize: 12 }}>{attachment.name}</span>
+                </Space>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 推理内容 */}
+      {message.reasoning_content && (
+        <Card size="small" className="message-reasoning-card">
+          <Collapse
+            size="small"
+            ghost
+            activeKey={reasoningExpanded}
+            onChange={(keys) => setReasoningExpanded(Array.isArray(keys) ? keys : [keys])}
+            items={[
+              {
+                key: 'reasoning_content',
+                label: (
+                  <Text type="secondary">
+                    <BulbOutlined style={{ marginRight: 4 }} />
+                    思考过程
+                  </Text>
+                ),
+                children: (
+                  <div className="reasoning-content">
+                    <Markdown content={message.reasoning_content} />
+                  </div>
+                )
+              }
+            ]}
+          />
+        </Card>
+      )}
+
+      {/* 主要内容 */}
+      <Card size="small" className="message-card">
+        <div className="message-body">
+          <Markdown content={message.content} />
+        </div>
+      </Card>
+    </div>
+  )
 }
 
 export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPageProps) {
@@ -139,49 +280,19 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
               </Descriptions>
 
               {pageSnapshot.type === 'regular' && pageSnapshot.messages && (
-                <div className="messages-preview">
-                  <Divider>
-                    会话内容
-                    <Text type="secondary" style={{ fontSize: '12px', marginLeft: '8px' }}>
-                      (当前分支，共 {pageSnapshot.messages.length} 条消息)
-                    </Text>
+                <div className="messages-preview-section">
+                  <Divider orientation="left">
+                    <Space>
+                      <MessageOutlined />
+                      <span>会话内容</span>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        (当前分支，共 {pageSnapshot.messages.length} 条消息)
+                      </Text>
+                    </Space>
                   </Divider>
                   <div className="favorite-messages-list">
                     {pageSnapshot.messages.map((msg, index) => (
-                      <Card
-                        key={msg.id}
-                        size="small"
-                        style={{ marginBottom: 12 }}
-                        title={
-                          <Space>
-                            <Tag color={msg.role === 'user' ? 'green' : 'blue'}>
-                              {msg.role === 'user' ? '用户' : 'AI'}
-                            </Tag>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                              {new Date(msg.timestamp).toLocaleString('zh-CN')}
-                            </Text>
-                          </Space>
-                        }
-                      >
-                        {msg.reasoning_content && (
-                          <>
-                            <div style={{
-                              color: '#666',
-                              backgroundColor: '#fafafa',
-                              padding: '8px 12px',
-                              borderRadius: '4px',
-                              marginBottom: '12px',
-                              border: '1px solid #f0f0f0'
-                            }}>
-                              <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>💡 思考过程</Text>
-                              <div style={{ marginTop: '8px' }}>
-                                <Markdown content={msg.reasoning_content} />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                        <Markdown content={msg.content} />
-                      </Card>
+                      <MessagePreview key={msg.id} message={msg} />
                     ))}
                   </div>
                 </div>
@@ -196,41 +307,36 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
           const { message: msg, contextMessages, pageTitle } = favorite.data
           return (
             <div className="favorite-message-content">
-              <Card size="small" title={`来自: ${pageTitle}`} style={{ marginBottom: 16 }}>
-                <div className="message-content">
-                  <Tag color={msg.role === 'user' ? 'green' : 'blue'} style={{ marginBottom: 8 }}>
-                    {msg.role === 'user' ? '用户' : 'AI'}
-                  </Tag>
-                  <div style={{ marginTop: 8 }}>
-                    <Markdown content={msg.content} />
-                  </div>
-                  {msg.reasoning_content && (
-                    <>
-                      <Divider>推理过程</Divider>
-                      <div style={{ color: '#666', backgroundColor: '#fafafa', padding: '8px 12px', borderRadius: '4px' }}>
-                        <Markdown content={msg.reasoning_content} />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Card>
+              {/* 来源页面信息 */}
+              <div className="source-info">
+                <Tag icon={<LinkOutlined />} color="processing">
+                  来自: {pageTitle}
+                </Tag>
+              </div>
 
+              {/* 主要消息 */}
+              <div className="main-message">
+                <MessagePreview message={msg} />
+              </div>
+
+              {/* 上下文消息 */}
               {contextMessages && contextMessages.length > 0 && (
-                <>
-                  <Divider>上下文消息</Divider>
-                  <div className="context-messages">
+                <div className="context-messages-section">
+                  <Divider orientation="left">
+                    <Space>
+                      <MessageOutlined />
+                      <span>上下文消息</span>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        ({contextMessages.length} 条)
+                      </Text>
+                    </Space>
+                  </Divider>
+                  <div className="context-messages-list">
                     {contextMessages.map((ctxMsg) => (
-                      <Card key={ctxMsg.id} size="small" style={{ marginBottom: 8 }}>
-                        <Tag color={ctxMsg.role === 'user' ? 'green' : 'blue'} style={{ marginBottom: 8 }}>
-                          {ctxMsg.role === 'user' ? '用户' : 'AI'}
-                        </Tag>
-                        <div style={{ marginTop: 8 }}>
-                          <Markdown content={ctxMsg.content} />
-                        </div>
-                      </Card>
+                      <MessagePreview key={ctxMsg.id} message={ctxMsg} />
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </div>
           )
@@ -242,27 +348,32 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
           const { text, highlightedText, fullMessage, pageTitle } = favorite.data
           return (
             <div className="favorite-text-fragment-content">
-              <Card size="small" title="选中的文本" style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    background: '#fff7e6',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    border: '1px solid #ffd591'
-                  }}
-                >
+              {/* 来源页面信息 */}
+              <div className="source-info">
+                <Tag icon={<LinkOutlined />} color="processing">
+                  来自: {pageTitle}
+                </Tag>
+              </div>
+
+              {/* 选中的文本 */}
+              <Card
+                size="small"
+                className="selected-text-card"
+                title={
+                  <Space>
+                    <FontSizeOutlined />
+                    <span>选中的文本</span>
+                  </Space>
+                }
+              >
+                <div className="selected-text-highlight">
                   <Markdown content={text} />
                 </div>
               </Card>
 
-              <Card size="small" title={`完整消息 (来自: ${pageTitle})`}>
-                <Tag color={fullMessage.role === 'user' ? 'green' : 'blue'} style={{ marginBottom: 8 }}>
-                  {fullMessage.role === 'user' ? '用户' : 'AI'}
-                </Tag>
-                <div style={{ marginTop: 8 }}>
-                  <Markdown content={highlightedText} />
-                </div>
-              </Card>
+              {/* 完整消息 */}
+              <Divider orientation="left">完整消息</Divider>
+              <MessagePreview message={{ ...fullMessage, content: highlightedText }} />
             </div>
           )
         }
@@ -318,13 +429,15 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
         <Space split={<Divider type="vertical" />}>
           <span>
             <ClockCircleOutlined /> 收藏于:{' '}
-            {new Date(favorite.createdAt).toLocaleString('zh-CN')}
+            <RelativeTime timestamp={favorite.createdAt} />
           </span>
           <span>
             <EyeOutlined /> 查看: {favorite.viewCount || 0} 次
           </span>
           {favorite.lastViewedAt && (
-            <span>上次查看: {new Date(favorite.lastViewedAt).toLocaleString('zh-CN')}</span>
+            <span>
+              上次查看: <RelativeTime timestamp={favorite.lastViewedAt} />
+            </span>
           )}
         </Space>
       </div>
