@@ -301,7 +301,7 @@ const FavoriteTreeNode = React.memo(function FavoriteTreeNode({
       <div className="tree-node-content">
         <div className="tree-node-icon">{getIcon()}</div>
         {item?.starred && (
-          <StarFilled style={{ color: '#faad14', fontSize: '12px', marginRight: '4px' }} />
+          <StarFilled style={{ color: '#faad14', fontSize: '12px' }} />
         )}
         <div className="tree-node-title">
           {isInlineEditing ? (

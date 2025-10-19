@@ -353,7 +353,7 @@ const ChatHistoryTreeNode = React.memo(function ChatHistoryTreeNode({
           </Tooltip>
         )}
         {chat?.starred && (
-          <StarFilled style={{ color: '#faad14', fontSize: '12px', marginRight: '4px' }} />
+          <StarFilled style={{ color: '#faad14', fontSize: '12px'}} />
         )}
         <div className="tree-node-title">
           {isInlineEditing ? (
