@@ -40,6 +40,7 @@ export interface ChatMessage {
   branchIndex?: number
   isStreaming?: boolean
   attachments?: FileAttachment[] // 文件附件数组
+  hasError?: boolean // 标记消息生成时是否发生错误
 }
 
 // 页面溯源信息

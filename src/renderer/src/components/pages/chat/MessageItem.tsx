@@ -209,7 +209,7 @@ const MessageItem = React.memo(
         <div
           ref={messageRef}
           data-message-id={message.id}
-          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isBookmarked ? ' bookmarked' : ''}`}
+          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isBookmarked ? ' bookmarked' : ''}${message.hasError ? ' has-error' : ''}`}
         >
           <div className="message-avatar">
             <Avatar
@@ -342,7 +342,8 @@ const MessageItem = React.memo(
       prevProps.message.isStreaming !== nextProps.message.isStreaming ||
       prevProps.message.isBookmarked !== nextProps.message.isBookmarked ||
       prevProps.message.modelId !== nextProps.message.modelId ||
-      prevProps.message.attachments !== nextProps.message.attachments
+      prevProps.message.attachments !== nextProps.message.attachments ||
+      prevProps.message.hasError !== nextProps.message.hasError
     ) {
       return false
     }

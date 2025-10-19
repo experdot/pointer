@@ -165,6 +165,17 @@
   border-color: #d9d9d9;
 }
 
+/* Error Message Styles */
+.message-item.has-error .message-card {
+  background: #fff2f0 !important;
+  border-color: #ffccc7 !important;
+  border-left: 3px solid #ff4d4f !important;
+}
+
+.message-item.has-error .message-card .ant-typography {
+  color: #cf1322 !important;
+}
+
 .chat-window-error {
   height: 100%;
   display: flex;

@@ -148,15 +148,37 @@ export function useAIService(chatId: string): UseAIServiceReturn {
             resolve(finalContent)
           },
           onError: (error: Error) => {
-            removeMessage(chatId, messageId)
-            clearStreamingMessage(chatId, messageId)
-            
+            console.log('[sendAIMessage] 发生错误:', messageId, error.message)
+
+            // 保留消息，但显示错误信息
+            const errorMessage = `生成失败：${error.message}\n\n请检查模型配置或网络连接后重试。`
+
+            // 完成消息并设置错误内容
+            completeStreamingMessage(chatId, messageId, errorMessage, undefined)
+
+            // 标记消息为错误状态（通过在消息中添加特殊标记）
+            const { updatePage } = usePagesStore.getState()
+            const page = usePagesStore.getState().findPageById(chatId)
+            if (page && page.type === 'regular' && page.messages) {
+              const updatedMessages = page.messages.map((msg) =>
+                msg.id === messageId
+                  ? {
+                      ...msg,
+                      content: errorMessage,
+                      isStreaming: false,
+                      hasError: true // 添加错误标记
+                    }
+                  : msg
+              )
+              updatePage(chatId, { messages: updatedMessages })
+            }
+
             updateTask(messageId, {
               status: 'failed',
               endTime: Date.now(),
               error: error.message
             })
-            
+
             // 从活跃服务列表中移除并检查是否需要重置 loading 状态
             setActiveAIServices((prev) => {
               const newMap = new Map(prev)
@@ -167,7 +189,7 @@ export function useAIService(chatId: string): UseAIServiceReturn {
               }
               return newMap
             })
-            
+
             reject(error)
           }
         })
