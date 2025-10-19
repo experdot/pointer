@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
+import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, HeartOutlined, HeartFilled, MoreOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
 import { formatExactDateTime } from '../../../utils/timeFormatter'
 import ExportModal, { ExportSettings } from './ExportModal'
+import AddToFavoritesModal from './AddToFavoritesModal'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
 
@@ -46,10 +47,11 @@ export default function ChatHeader({
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editingTitle, setEditingTitle] = useState(chatTitle || '')
   const [isHoveringTitle, setIsHoveringTitle] = useState(false)
+  const [isFavoritesModalVisible, setIsFavoritesModalVisible] = useState(false)
   const inputRef = useRef<any>(null)
   const { message, modal } = App.useApp()
   const { updatePage } = usePagesStore()
-  const { favoriteCurrentPage, items: favoriteItems } = useFavoritesStore()
+  const { items: favoriteItems } = useFavoritesStore()
 
   // 检查当前会话是否已被收藏
   const isFavorited = useMemo(() => {
@@ -109,28 +111,14 @@ export default function ChatHeader({
     }
   }
 
-  // 处理收藏会话
+  // 处理收藏会话 - 打开Modal
   const handleFavoritePage = () => {
-    try {
-      if (isFavorited) {
-        message.info('此会话已在收藏夹中')
-        return
-      }
+    setIsFavoritesModalVisible(true)
+  }
 
-      const favoriteId = favoriteCurrentPage(chatId, undefined, chatTitle)
-      modal.success({
-        title: '添加成功',
-        content: '会话已添加到收藏夹',
-        okText: '确定'
-      })
-    } catch (error) {
-      console.error('添加收藏失败:', error)
-      modal.error({
-        title: '添加失败',
-        content: '添加到收藏夹失败，请重试',
-        okText: '确定'
-      })
-    }
+  // 收藏成功回调
+  const handleFavoriteSuccess = () => {
+    // 可以在这里添加额外的成功处理逻辑
   }
 
   // 获取当前路径的消息
@@ -178,6 +166,15 @@ export default function ChatHeader({
       key: 'collapse-ai',
       label: '仅折叠AI消息',
       onClick: onCollapseAI
+    }
+  ]
+
+  const moreOptions: MenuProps['items'] = [
+    {
+      key: 'favorite',
+      label: '添加到收藏',
+      icon: isFavorited ? <HeartFilled /> : <HeartOutlined />,
+      onClick: handleFavoritePage
     }
   ]
 
@@ -379,20 +376,6 @@ export default function ChatHeader({
               >
                 <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>{chatTitle || '未命名聊天'}</h3>
               </Tooltip>
-              <Tooltip title={isFavorited ? '已收藏' : '收藏会话'}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={isFavorited ? <HeartFilled /> : <HeartOutlined />}
-                  onClick={handleFavoritePage}
-                  style={{
-                    opacity: isHoveringTitle || isFavorited ? 1 : 0,
-                    transition: 'opacity 0.2s',
-                    visibility: isHoveringTitle || isFavorited ? 'visible' : 'hidden',
-                    color: isFavorited ? '#ff4d4f' : undefined
-                  }}
-                />
-              </Tooltip>
               <Button
                 type="text"
                 size="small"
@@ -434,6 +417,12 @@ export default function ChatHeader({
                 导出
               </Button>
             </Dropdown>
+            {/* 更多选项按钮 */}
+            <Dropdown menu={{ items: moreOptions }} trigger={['click']}>
+              <Button type="text" size="small" icon={<MoreOutlined />}>
+                更多
+              </Button>
+            </Dropdown>
           </Space>
         </div>
       </div>
@@ -447,6 +436,14 @@ export default function ChatHeader({
         selectMode={selectMode}
         onExport={handleExport}
         llmConfigs={llmConfigs}
+      />
+
+      <AddToFavoritesModal
+        visible={isFavoritesModalVisible}
+        onClose={() => setIsFavoritesModalVisible(false)}
+        pageId={chatId}
+        pageTitle={chatTitle || '未命名聊天'}
+        onSuccess={handleFavoriteSuccess}
       />
     </>
   )

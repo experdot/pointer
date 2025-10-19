@@ -1,10 +1,12 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { Avatar, App } from 'antd'
 import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined, HeartOutlined } from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import SingleMessageExportContainer from './SingleMessageExportContainer'
 import ImagePreviewModal, { ImageExportWidth } from './ImagePreviewModal'
+import AddMessageToFavoritesModal from './AddMessageToFavoritesModal'
+import AddTextFragmentToFavoritesModal from './AddTextFragmentToFavoritesModal'
 import { useMessageActions } from './messageItem/useMessageActions'
 import { useMessageImageExport } from './messageItem/useMessageImageExport'
 import { useReasoningContent } from './messageItem/useReasoningContent'
@@ -13,6 +15,7 @@ import { MessageContent } from './messageItem/MessageContent'
 import { MessageEditForm } from './messageItem/MessageEditForm'
 import { CollapsedMessagePreview } from './messageItem/CollapsedMessagePreview'
 import { MessageActionButtons } from './messageItem/MessageActionButtons'
+import { usePagesStore } from '../../../stores/pagesStore'
 
 interface MessageItemProps {
   message: ChatMessage
@@ -88,6 +91,15 @@ const MessageItem = React.memo(
     const messageRef = useRef<HTMLDivElement>(null)
     const editContainerRef = useRef<HTMLDivElement>(null)
 
+    // Modal状态
+    const [isMessageFavoritesModalVisible, setIsMessageFavoritesModalVisible] = useState(false)
+    const [isTextFragmentModalVisible, setIsTextFragmentModalVisible] = useState(false)
+    const [selectedTextForFavorite, setSelectedTextForFavorite] = useState({
+      text: '',
+      startOffset: 0,
+      endOffset: 0
+    })
+
     // 订阅流式消息状态
     const streamingMessage = useStreamingMessage(chatId, message.id)
 
@@ -144,19 +156,36 @@ const MessageItem = React.memo(
       }
     }, [messageActions.isEditing])
 
+    // 获取当前页面标题
+    const pageTitle = usePagesStore((state) => {
+      const page = state.pages.find((p) => p.id === chatId)
+      return page?.title || '未命名聊天'
+    })
+
+    // 处理添加消息到收藏
+    const handleAddMessageToFavorites = () => {
+      setIsMessageFavoritesModalVisible(true)
+    }
+
     // 处理收藏文本片段
     const handleFavoriteTextFragment = () => {
       const selection = window.getSelection()
       const selectedText = selection?.toString()
 
-      if (selectedText && selectedText.trim() && onFavoriteTextFragment) {
+      if (selectedText && selectedText.trim()) {
         // 计算选中文本在消息内容中的偏移量
         const content = message.content
         const startOffset = content.indexOf(selectedText)
         const endOffset = startOffset + selectedText.length
 
         if (startOffset !== -1) {
-          onFavoriteTextFragment(message.id, selectedText, startOffset, endOffset)
+          // 保存选中文本信息并打开Modal
+          setSelectedTextForFavorite({
+            text: selectedText,
+            startOffset,
+            endOffset
+          })
+          setIsTextFragmentModalVisible(true)
           selection?.removeAllRanges()
         }
       }
@@ -294,7 +323,7 @@ const MessageItem = React.memo(
                 onCopy={messageActions.handleCopy}
                 onCopyAsImage={imageExport.handleCopyAsImage}
                 onToggleBookmark={messageActions.handleToggleBookmark}
-                onAddToFavorites={onAddToFavorites ? messageActions.handleAddToFavorites : undefined}
+                onAddToFavorites={onAddToFavorites ? handleAddMessageToFavorites : undefined}
                 onEdit={messageActions.handleEdit}
                 onRetry={onRetry ? messageActions.handleRetry : undefined}
                 onContinue={onContinue ? messageActions.handleContinue : undefined}
@@ -303,6 +332,33 @@ const MessageItem = React.memo(
             </div>
           </div>
         </div>
+
+        {/* 消息收藏Modal */}
+        {isMessageFavoritesModalVisible && (
+          <AddMessageToFavoritesModal
+            visible={isMessageFavoritesModalVisible}
+            onClose={() => setIsMessageFavoritesModalVisible(false)}
+            chatId={chatId}
+            messageId={message.id}
+            message={message}
+            pageTitle={pageTitle}
+          />
+        )}
+
+        {/* 文本片段收藏Modal */}
+        {isTextFragmentModalVisible && (
+          <AddTextFragmentToFavoritesModal
+            visible={isTextFragmentModalVisible}
+            onClose={() => setIsTextFragmentModalVisible(false)}
+            chatId={chatId}
+            messageId={message.id}
+            message={message}
+            selectedText={selectedTextForFavorite.text}
+            startOffset={selectedTextForFavorite.startOffset}
+            endOffset={selectedTextForFavorite.endOffset}
+            pageTitle={pageTitle}
+          />
+        )}
 
         {/* 只在需要时渲染导出容器 */}
         {imageExport.shouldRenderExportContainer && (

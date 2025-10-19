@@ -54,6 +54,7 @@ export interface FavoritesActions {
   getFavoritesByFolder: (folderId?: string) => FavoriteItem[]
   getFavoritesByType: (type: FavoriteItemType) => FavoriteItem[]
   getFavoritesByTag: (tag: string) => FavoriteItem[]
+  getFavoritesByPage: (pageId: string) => FavoriteItem[]
   searchFavorites: (query: string) => FavoriteItem[]
   getPinnedFavorites: () => FavoriteItem[]
 
@@ -360,6 +361,10 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
 
         getFavoritesByTag: (tag) => {
           return get().items.filter((i) => i.tags?.includes(tag))
+        },
+
+        getFavoritesByPage: (pageId) => {
+          return get().items.filter((i) => i.source?.pageId === pageId)
         },
 
         searchFavorites: (query) => {
