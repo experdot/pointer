@@ -75,6 +75,11 @@
   color: #fff;
 }
 
+.title-bar-logo {
+  font-size: 16px;
+  padding: 0 16px;
+}
+
 .title-bar-title {
   margin: 0;
   font-size: 12px;

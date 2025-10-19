@@ -153,11 +153,6 @@ export default function ChatHeader({
 
   const collapseOptions: MenuProps['items'] = [
     {
-      key: 'collapse-all',
-      label: '折叠全部消息',
-      onClick: onCollapseAll
-    },
-    {
       key: 'expand-all',
       label: '展开全部消息',
       onClick: onExpandAll
@@ -392,25 +387,17 @@ export default function ChatHeader({
         </div>
         <div className="chat-header-right">
           <Space>
-            {/* 消息树切换按钮 */}
-            {onToggleMessageTree && (
-              <Button
-                type="text"
-                size="small"
-                icon={<BranchesOutlined />}
-                onClick={onToggleMessageTree}
-                title={messageTreeCollapsed ? '展开消息树' : '收起消息树'}
-              >
-                消息树
-              </Button>
-            )}
             {/* 消息折叠/展开下拉按钮 */}
             {messages.length > 0 && (
-              <Dropdown menu={{ items: collapseOptions }} trigger={['click']}>
-                <Button type="text" size="small" icon={<DownOutlined />}>
-                  折叠展开
-                </Button>
-              </Dropdown>
+              <Dropdown.Button
+                type="text"
+                menu={{ items: collapseOptions }}
+                trigger={['click']}
+                onClick={onCollapseAll}
+                icon={<DownOutlined />}
+              >
+                折叠全部
+              </Dropdown.Button>
             )}
             <Dropdown menu={{ items: exportOptions }} trigger={['click']}>
               <Button icon={<ExportOutlined />} type="text">
@@ -419,8 +406,7 @@ export default function ChatHeader({
             </Dropdown>
             {/* 更多选项按钮 */}
             <Dropdown menu={{ items: moreOptions }} trigger={['click']}>
-              <Button type="text" size="small" icon={<MoreOutlined />}>
-                更多
+              <Button type="text" icon={<MoreOutlined />}>
               </Button>
             </Dropdown>
           </Space>

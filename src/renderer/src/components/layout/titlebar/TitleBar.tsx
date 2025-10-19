@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { Button, Tooltip } from 'antd'
-import { 
-  MenuUnfoldOutlined, 
-  MenuFoldOutlined, 
-  MinusOutlined, 
-  BorderOutlined, 
+import {
+  MinusOutlined,
+  BorderOutlined,
   CloseOutlined,
-  CopyOutlined 
+  CopyOutlined,
+  SendOutlined
 } from '@ant-design/icons'
 import './titlebar.css'
 
 interface TitleBarProps {
   title: string
-  sidebarCollapsed: boolean
-  onToggleSidebar: () => void
 }
 
-export default function TitleBar({ title, sidebarCollapsed, onToggleSidebar }: TitleBarProps) {
+export default function TitleBar({ title }: TitleBarProps) {
   const [isMaximized, setIsMaximized] = useState(false)
   const [isMac, setIsMac] = useState(false)
 
@@ -65,14 +62,7 @@ export default function TitleBar({ title, sidebarCollapsed, onToggleSidebar }: T
     <div className={`custom-title-bar ${isMac ? 'mac' : ''}`}>
       <div className="title-bar-drag-region">
         <div className="title-bar-left">
-          <Tooltip title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}>
-            <Button
-              type="text"
-              icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={onToggleSidebar}
-              className="title-bar-button"
-            />
-          </Tooltip>
+          <SendOutlined className="title-bar-logo" />
           <h2 className="title-bar-title">{title}</h2>
         </div>
         {!isMac && (

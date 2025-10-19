@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Layout as AntLayout, Button, Tooltip } from 'antd'
+import { Layout as AntLayout, Button, Tooltip, Drawer } from 'antd'
 import { useUIStore } from '../../stores/uiStore'
 import { useSearchStore } from '../../stores/searchStore'
 import Sidebar from './sidebar/Sidebar'
@@ -11,11 +11,30 @@ import TitleBar from './titlebar/TitleBar'
 
 const { Sider, Content } = AntLayout
 
+// 定义窄屏幕的阈值
+const NARROW_SCREEN_THRESHOLD = 768
+
 export default function Layout() {
   const { sidebarCollapsed, sidebarWidth, toggleSidebar } = useUIStore()
   const { clearSearch, setFilterFolderId } = useSearchStore()
   const [activeTab, setActiveTab] = useState<ActivityBarTab>('explore')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false)
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsNarrowScreen(window.innerWidth < NARROW_SCREEN_THRESHOLD)
+    }
+
+    // 初始化
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   // 处理键盘快捷键
   useEffect(() => {
@@ -46,10 +65,23 @@ export default function Layout() {
   }
 
   const handleActivityTabChange = (tab: ActivityBarTab) => {
-    setActiveTab(tab)
-    // 如果侧边栏折叠，自动展开
-    if (sidebarCollapsed) {
-      toggleSidebar()
+    // 如果点击的是当前已激活的标签
+    if (tab === activeTab) {
+      // 如果侧边栏是展开状态，则切换为收起
+      if (!sidebarCollapsed) {
+        toggleSidebar()
+      }
+      // 如果已经是收起状态，则展开（复用下面的逻辑）
+      else {
+        toggleSidebar()
+      }
+    } else {
+      // 点击的是不同的标签
+      setActiveTab(tab)
+      // 如果侧边栏折叠，自动展开
+      if (sidebarCollapsed) {
+        toggleSidebar()
+      }
     }
   }
 
@@ -70,11 +102,7 @@ export default function Layout() {
   return (
     <div className="app-layout">
       {/* 自定义标题栏 */}
-      <TitleBar
-        title="Pointer - AI聊天助手"
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={toggleSidebar}
-      />
+      <TitleBar title="Pointer - AI聊天助手" />
 
       <AntLayout className="app-main-layout">
         {/* ActivityBar */}
@@ -82,24 +110,46 @@ export default function Layout() {
           <ActivityBar activeTab={activeTab} onTabChange={handleActivityTabChange} />
         </Sider>
 
-        {/* Sidebar */}
-        <Sider
-          width={sidebarWidth}
-          collapsedWidth={0}
-          collapsed={sidebarCollapsed}
-          theme="light"
-          className="app-sider"
-          style={{ position: 'relative' }}
-        >
-          <Sidebar
+        {/* 窄屏模式：使用 Drawer */}
+        {isNarrowScreen ? (
+          <Drawer
+            placement="left"
+            open={!sidebarCollapsed}
+            onClose={toggleSidebar}
+            width={sidebarWidth}
+            styles={{ body: { padding: 0 } }}
+            mask={true}
+            maskClosable={true}
+            closable={false}
+          >
+            <Sidebar
+              collapsed={false}
+              activeTab={activeTab}
+              onSearchOpen={handleSearchOpen}
+              onSettingsOpen={handleSearchOpen}
+              onFindInFolder={handleFindInFolder}
+            />
+          </Drawer>
+        ) : (
+          /* 宽屏模式：使用 Sider */
+          <Sider
+            width={sidebarWidth}
+            collapsedWidth={0}
             collapsed={sidebarCollapsed}
-            activeTab={activeTab}
-            onSearchOpen={handleSearchOpen}
-            onSettingsOpen={handleSearchOpen}
-            onFindInFolder={handleFindInFolder}
-          />
-          <ResizeHandle />
-        </Sider>
+            theme="light"
+            className="app-sider"
+            style={{ position: 'relative' }}
+          >
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              activeTab={activeTab}
+              onSearchOpen={handleSearchOpen}
+              onSettingsOpen={handleSearchOpen}
+              onFindInFolder={handleFindInFolder}
+            />
+            <ResizeHandle />
+          </Sider>
+        )}
 
         <Content className="app-content">
           <TabsArea />
