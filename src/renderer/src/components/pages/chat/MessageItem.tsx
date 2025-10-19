@@ -94,11 +94,7 @@ const MessageItem = React.memo(
     // Modal状态
     const [isMessageFavoritesModalVisible, setIsMessageFavoritesModalVisible] = useState(false)
     const [isTextFragmentModalVisible, setIsTextFragmentModalVisible] = useState(false)
-    const [selectedTextForFavorite, setSelectedTextForFavorite] = useState({
-      text: '',
-      startOffset: 0,
-      endOffset: 0
-    })
+    const [selectedTextForFavorite, setSelectedTextForFavorite] = useState('')
 
     // 订阅流式消息状态
     const streamingMessage = useStreamingMessage(chatId, message.id)
@@ -173,21 +169,10 @@ const MessageItem = React.memo(
       const selectedText = selection?.toString()
 
       if (selectedText && selectedText.trim()) {
-        // 计算选中文本在消息内容中的偏移量
-        const content = message.content
-        const startOffset = content.indexOf(selectedText)
-        const endOffset = startOffset + selectedText.length
-
-        if (startOffset !== -1) {
-          // 保存选中文本信息并打开Modal
-          setSelectedTextForFavorite({
-            text: selectedText,
-            startOffset,
-            endOffset
-          })
-          setIsTextFragmentModalVisible(true)
-          selection?.removeAllRanges()
-        }
+        // 保存选中文本并打开Modal
+        setSelectedTextForFavorite(selectedText)
+        setIsTextFragmentModalVisible(true)
+        selection?.removeAllRanges()
       }
     }
 
@@ -353,9 +338,7 @@ const MessageItem = React.memo(
             chatId={chatId}
             messageId={message.id}
             message={message}
-            selectedText={selectedTextForFavorite.text}
-            startOffset={selectedTextForFavorite.startOffset}
-            endOffset={selectedTextForFavorite.endOffset}
+            selectedText={selectedTextForFavorite}
             pageTitle={pageTitle}
           />
         )}

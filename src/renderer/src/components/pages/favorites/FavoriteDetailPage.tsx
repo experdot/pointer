@@ -345,7 +345,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
 
       case 'text-fragment':
         if ('text' in favorite.data) {
-          const { text, highlightedText, fullMessage, pageTitle } = favorite.data
+          const { text, fullMessage, pageTitle } = favorite.data
           return (
             <div className="favorite-text-fragment-content">
               {/* 来源页面信息 */}
@@ -373,7 +373,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
 
               {/* 完整消息 */}
               <Divider orientation="left">完整消息</Divider>
-              <MessagePreview message={{ ...fullMessage, content: highlightedText }} />
+              <MessagePreview message={fullMessage} />
             </div>
           )
         }

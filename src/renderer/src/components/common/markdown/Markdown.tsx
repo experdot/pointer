@@ -305,6 +305,8 @@ export function PreCode(props: { children: any }) {
 }
 
 function escapeDollarNumber(text: string) {
+  if (!text) return ''
+
   let escapedText = ''
 
   for (let i = 0; i < text.length; i += 1) {
@@ -322,6 +324,8 @@ function escapeDollarNumber(text: string) {
 }
 
 function escapeBrackets(text: string) {
+  if (!text) return ''
+
   const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g
   return text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
     if (codeBlock) {

@@ -71,8 +71,6 @@ export interface FavoritesActions {
     chatId: string,
     messageId: string,
     text: string,
-    startOffset: number,
-    endOffset: number,
     folderId?: string,
     title?: string
   ) => string
@@ -481,8 +479,6 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
           chatId,
           messageId,
           text,
-          startOffset,
-          endOffset,
           folderId,
           title
         ) => {
@@ -499,12 +495,6 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
 
             const favoriteTitle = title || text.slice(0, 30) + '...'
 
-            // 生成带高亮的消息内容
-            const before = message.content.slice(0, startOffset)
-            const selected = message.content.slice(startOffset, endOffset)
-            const after = message.content.slice(endOffset)
-            const highlightedText = `${before}**【${selected}】**${after}`
-
             return get().addFavorite({
               type: 'text-fragment',
               title: favoriteTitle,
@@ -520,9 +510,6 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
               data: {
                 text,
                 fullMessage: JSON.parse(JSON.stringify(message)),
-                startOffset,
-                endOffset,
-                highlightedText,
                 pageTitle: page.title || '未命名聊天',
                 pageType: page.type
               }

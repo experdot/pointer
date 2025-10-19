@@ -33,8 +33,6 @@ interface AddTextFragmentToFavoritesModalProps {
   messageId: string
   message: ChatMessage
   selectedText: string
-  startOffset: number
-  endOffset: number
   pageTitle: string
   onSuccess?: () => void
 }
@@ -46,8 +44,6 @@ export default function AddTextFragmentToFavoritesModal({
   messageId,
   message,
   selectedText,
-  startOffset,
-  endOffset,
   pageTitle,
   onSuccess
 }: AddTextFragmentToFavoritesModalProps) {
@@ -141,8 +137,6 @@ export default function AddTextFragmentToFavoritesModal({
         chatId,
         messageId,
         selectedText,
-        startOffset,
-        endOffset,
         selectedFolderId,
         customTitle.trim()
       )
