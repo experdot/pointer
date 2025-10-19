@@ -28,17 +28,33 @@ interface ChatLogicProps {
   }) => React.ReactNode
 }
 
-export default function ChatLogic({ 
-  chatId, 
+export default function ChatLogic({
+  chatId,
   autoQuestionEnabled = false,
   autoQuestionMode = 'ai',
   autoQuestionListId,
-  children 
+  children
 }: ChatLogicProps) {
   const { pages } = usePagesStore()
   const { settings, getModelConfigForLLM } = useSettingsStore()
   const [selectedModel, setSelectedModel] = useState<string | undefined>(settings.defaultLLMId)
   const [isLoading, setIsLoading] = useState(false)
+
+  // 使用 ref 来存储最新的 selectedModel，避免闭包陷阱
+  const selectedModelRef = useRef<string | undefined>(selectedModel)
+
+  // 同步 selectedModel 到 ref
+  useEffect(() => {
+    selectedModelRef.current = selectedModel
+    console.log('[ChatLogic] selectedModel 更新到 ref:', selectedModel)
+  }, [selectedModel])
+
+  // 同步 defaultLLMId 的变化到 selectedModel (仅当 selectedModel 未设置时)
+  useEffect(() => {
+    if (!selectedModel && settings.defaultLLMId) {
+      setSelectedModel(settings.defaultLLMId)
+    }
+  }, [settings.defaultLLMId, selectedModel])
 
   const chat = pages.find((c) => c.id === chatId)
 
@@ -107,7 +123,8 @@ export default function ChatLogic({
     messageTree,
     isLoading,
     setIsLoading,
-    selectedModel
+    selectedModel,
+    selectedModelRef
   })
 
   // 设置 sendMessage 引用，确保自动追问也使用增强的消息发送

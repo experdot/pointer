@@ -16,6 +16,7 @@ export interface UseMessageOperationsProps {
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
   selectedModel?: string
+  selectedModelRef?: React.MutableRefObject<string | undefined>
 }
 
 export interface UseMessageOperationsReturn {
@@ -41,7 +42,8 @@ export function useMessageOperations({
   messageTree,
   isLoading,
   setIsLoading,
-  selectedModel
+  selectedModel,
+  selectedModelRef
 }: UseMessageOperationsProps): UseMessageOperationsReturn {
   const { addMessageToParent, toggleMessageBookmark, deleteMessageAndChildren } = useMessagesStore()
   const { settings } = useSettingsStore()
@@ -218,8 +220,9 @@ export function useMessageOperations({
       const targetMessage = chat.messages.find((msg: any) => msg.id === messageId)
       if (!targetMessage || targetMessage.role !== 'user') return
 
-      // 使用当前选中的模型
-      const llmConfig = aiService.getLLMConfig(selectedModel)
+      // 使用当前选中的模型 - 优先使用 ref 获取最新值
+      const currentSelectedModel = selectedModelRef?.current ?? selectedModel
+      const llmConfig = aiService.getLLMConfig(currentSelectedModel)
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
         return
@@ -257,7 +260,7 @@ export function useMessageOperations({
         setIsLoading(false)
       }
     },
-    [chat, isLoading, aiService, chatId, messageTree, setIsLoading, selectedModel]
+    [chat, isLoading, aiService, chatId, messageTree, setIsLoading, selectedModel, selectedModelRef]
   )
 
   const handleEditMessage = useCallback(
@@ -286,7 +289,9 @@ export function useMessageOperations({
       const hasChildren = chat.messages.some((msg: any) => msg.parentId === messageId)
 
       // 如果是用户消息，使用当前选中的模型；如果是AI消息，使用原消息的模型
-      const modelIdToUse = targetMessage.role === 'user' ? selectedModel : targetMessage.modelId
+      // 优先使用 ref 获取最新值，避免闭包陷阱
+      const currentSelectedModel = selectedModelRef?.current ?? selectedModel
+      const modelIdToUse = targetMessage.role === 'user' ? currentSelectedModel : targetMessage.modelId
       const llmConfig = aiService.getLLMConfig(modelIdToUse)
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
@@ -466,7 +471,8 @@ export function useMessageOperations({
       messageTree,
       addMessageToParent,
       setIsLoading,
-      selectedModel
+      selectedModel,
+      selectedModelRef
     ]
   )
 
