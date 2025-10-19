@@ -35,7 +35,7 @@ interface MessageItemProps {
   onEditAndResend?: (messageId: string, newContent: string) => void
   onToggleBookmark?: (messageId: string) => void
   onAddToFavorites?: (messageId: string) => void
-  onFavoriteTextFragment?: (messageId: string, text: string, startOffset: number, endOffset: number) => void
+  onFavoriteTextFragment?: (messageId: string, text: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
   onQuote?: (text: string) => void

@@ -175,7 +175,7 @@ export default function AddMessageToFavoritesModal({
             <HeartFilled style={{ color: '#ff4d4f', fontSize: '14px' }} />
             <Text strong>{item.title}</Text>
             <Tag color="blue">{typeLabel}</Tag>
-            {item.pinned && <Tag color="red">置顶</Tag>}
+            {item.starred && <Tag color="red">星标</Tag>}
           </div>
           {item.description && (
             <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>

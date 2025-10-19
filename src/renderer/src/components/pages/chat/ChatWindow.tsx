@@ -183,14 +183,12 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   )
 
   const handleFavoriteTextFragment = useCallback(
-    async (messageId: string, text: string, startOffset: number, endOffset: number) => {
+    async (messageId: string, text: string) => {
       try {
         const favoriteId = favoriteTextFragment(
           chatId,
           messageId,
           text,
-          startOffset,
-          endOffset,
           undefined,
           undefined
         )

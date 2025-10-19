@@ -22,7 +22,7 @@ interface MessageListProps {
   onEditAndResendMessage?: (messageId: string, newContent: string) => void
   onToggleBookmark?: (messageId: string) => void
   onAddToFavorites?: (messageId: string) => void
-  onFavoriteTextFragment?: (messageId: string, text: string, startOffset: number, endOffset: number) => void
+  onFavoriteTextFragment?: (messageId: string, text: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDeleteMessage?: (messageId: string) => void
   onSwitchBranch?: (messageId: string, branchIndex: number) => void

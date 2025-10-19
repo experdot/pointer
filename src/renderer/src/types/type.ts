@@ -449,9 +449,6 @@ export interface MessageFavoriteData {
 export interface TextFragmentFavoriteData {
   text: string // 选中的文本内容
   fullMessage: ChatMessage // 完整的消息快照
-  startOffset: number // 文本在消息中的起始位置
-  endOffset: number // 文本在消息中的结束位置
-  highlightedText: string // 带高亮标记的完整消息（用于展示）
   pageTitle: string
   pageType: 'regular' | 'crosstab' | 'object'
 }

@@ -139,22 +139,10 @@ export default function MessageQueuePanel({
             return (
               <Tag
                 key={attachment.id}
-                icon={isImage ? undefined : <FileOutlined />}
+                icon={<FileOutlined />}
                 color="blue"
                 style={{ margin: 0 }}
               >
-                {isImage && attachment.url ? (
-                  <Image
-                    src={attachment.url}
-                    alt={attachment.name}
-                    width={40}
-                    height={40}
-                    style={{ objectFit: 'cover', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }}
-                    preview={{
-                      mask: <span style={{ fontSize: 12 }}>{attachment.name}</span>
-                    }}
-                  />
-                ) : null}
                 <span style={{ fontSize: 12 }}>
                   {attachment.name}
                   {attachment.size && ` (${(attachment.size / 1024).toFixed(1)}KB)`}

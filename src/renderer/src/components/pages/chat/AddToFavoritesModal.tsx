@@ -138,7 +138,7 @@ export default function AddToFavoritesModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <HeartFilled style={{ color: '#ff4d4f', fontSize: '14px' }} />
             <Text strong>{item.title}</Text>
-            {item.pinned && <Tag color="red">置顶</Tag>}
+            {item.starred && <Tag color="red">星标</Tag>}
           </div>
           {item.description && (
             <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>

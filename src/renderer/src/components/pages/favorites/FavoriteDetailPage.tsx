@@ -168,7 +168,7 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({ message, showContext = 
 export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPageProps) {
   const {
     getFavoriteById,
-    togglePinFavorite,
+    toggleStarFavorite,
     deleteFavorite,
     checkSourceExists,
     incrementViewCount
@@ -214,9 +214,9 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
     }
   }
 
-  // 处理置顶切换
-  const handleTogglePin = () => {
-    togglePinFavorite(favoriteId)
+  // 处理星标切换
+  const handleToggleStar = () => {
+    toggleStarFavorite(favoriteId)
   }
 
   // 处理删除
@@ -395,7 +395,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
               <Title level={3} style={{ margin: 0 }}>
                 {favorite.title}
               </Title>
-              {favorite.pinned && <StarFilled style={{ color: '#faad14', fontSize: 20 }} />}
+              {favorite.starred && <StarFilled style={{ color: '#faad14', fontSize: 20 }} />}
             </div>
             <Space size="small" style={{ marginTop: 8 }}>
               {renderTypeTag()}
@@ -408,10 +408,10 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
 
         <div className="favorite-actions">
           <Button
-            icon={favorite.pinned ? <StarFilled /> : <StarOutlined />}
-            onClick={handleTogglePin}
+            icon={favorite.starred ? <StarFilled /> : <StarOutlined />}
+            onClick={handleToggleStar}
           >
-            {favorite.pinned ? '取消置顶' : '置顶'}
+            {favorite.starred ? '取消星标' : '设为星标'}
           </Button>
           {sourceExists && (
             <Button icon={<LinkOutlined />} onClick={handleNavigateToSource}>
