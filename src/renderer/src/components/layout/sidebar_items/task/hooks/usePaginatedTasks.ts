@@ -9,7 +9,11 @@ interface PaginationState {
   failed: number
 }
 
-export function usePaginatedTasks(runningTasks: AITask[], completedTasks: AITask[], failedTasks: AITask[]) {
+export function usePaginatedTasks(
+  runningTasks: AITask[],
+  completedTasks: AITask[],
+  failedTasks: AITask[]
+) {
   const [pages, setPages] = useState<PaginationState>({
     running: 1,
     completed: 1,

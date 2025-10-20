@@ -101,7 +101,16 @@ export const MessageContent: React.FC<MessageContentProps> = ({
                       mask: <div style={{ fontSize: 12 }}>预览</div>
                     }}
                   />
-                  <div style={{ fontSize: 11, marginTop: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      marginTop: 4,
+                      maxWidth: 120,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
                     {attachment.name}
                   </div>
                 </div>

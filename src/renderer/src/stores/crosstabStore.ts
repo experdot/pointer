@@ -49,7 +49,7 @@ export const useCrosstabStore = create<CrosstabState & CrosstabActions>()(
 
           if (page && page.type === 'crosstab') {
             let updatedCrosstabData = { ...page.crosstabData }
-            
+
             // 特殊处理tableData的合并，避免对象不可扩展的问题
             if (data.tableData && page.crosstabData.tableData) {
               updatedCrosstabData = {
@@ -60,7 +60,7 @@ export const useCrosstabStore = create<CrosstabState & CrosstabActions>()(
             } else {
               updatedCrosstabData = { ...updatedCrosstabData, ...data }
             }
-            
+
             updatePage(chatId, { crosstabData: updatedCrosstabData })
           }
         } catch (error) {

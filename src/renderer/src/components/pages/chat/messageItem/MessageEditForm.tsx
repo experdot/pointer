@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Card, Input, Button, Space, Image, Tooltip } from 'antd'
-import { CheckOutlined, CloseOutlined, SendOutlined, FileImageOutlined, PaperClipOutlined } from '@ant-design/icons'
+import {
+  CheckOutlined,
+  CloseOutlined,
+  SendOutlined,
+  FileImageOutlined,
+  PaperClipOutlined
+} from '@ant-design/icons'
 import { FileAttachment } from '../../../../types/type'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -77,7 +83,13 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
 
       if (result.success && result.files) {
         const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-        const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
+        const SUPPORTED_IMAGE_TYPES = [
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'image/bmp',
+          'image/webp'
+        ]
 
         const newAttachments: FileAttachment[] = []
         const errors: string[] = []
@@ -127,7 +139,7 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
 
         if (errors.length > 0) {
           const { message } = await import('antd/es')
-          errors.forEach(err => message.error(err))
+          errors.forEach((err) => message.error(err))
         }
 
         if (newAttachments.length > 0 && onAttachmentsChange) {
@@ -146,7 +158,7 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
   // 移除附件
   const handleRemoveAttachment = (attachmentId: string) => {
     if (onAttachmentsChange) {
-      onAttachmentsChange(attachments.filter(att => att.id !== attachmentId))
+      onAttachmentsChange(attachments.filter((att) => att.id !== attachmentId))
     }
   }
 
@@ -201,7 +213,16 @@ export const MessageEditForm: React.FC<MessageEditFormProps> = ({
                         }}
                       />
                     )}
-                    <div style={{ fontSize: 11, marginTop: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        marginTop: 4,
+                        maxWidth: 120,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
                       {attachment.name}
                     </div>
                   </div>

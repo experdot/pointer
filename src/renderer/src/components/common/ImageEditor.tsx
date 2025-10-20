@@ -214,7 +214,13 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
     }
 
     // 处理文本拖拽
-    if (isDraggingText && selectedTextId && dragOffset && containerRef.current && canvasRef.current) {
+    if (
+      isDraggingText &&
+      selectedTextId &&
+      dragOffset &&
+      containerRef.current &&
+      canvasRef.current
+    ) {
       const containerRect = containerRef.current.getBoundingClientRect()
       const canvas = canvasRef.current
 
@@ -228,7 +234,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
       const canvasX = (screenX - canvasCenterX - offset.x) / scale + canvas.width / 2
       const canvasY = (screenY - canvasCenterY - offset.y) / scale + canvas.height / 2
 
-      const newItems = textItems.map(t =>
+      const newItems = textItems.map((t) =>
         t.id === selectedTextId ? { ...t, x: canvasX, y: canvasY } : t
       )
       setTextItems(newItems)
@@ -316,17 +322,17 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
 
     if (drawMode === 'text') {
       // 检查是否有正在编辑的文本框
-      const hasEditingText = textItems.some(item => item.isEditing)
+      const hasEditingText = textItems.some((item) => item.isEditing)
 
       if (hasEditingText) {
         // 如果有正在编辑的文本框，检查是否为空并移除
-        const editingItem = textItems.find(item => item.isEditing)
+        const editingItem = textItems.find((item) => item.isEditing)
         if (editingItem && !editingItem.text.trim()) {
           // 移除空文本框
-          setTextItems(textItems.filter(t => t.id !== editingItem.id))
+          setTextItems(textItems.filter((t) => t.id !== editingItem.id))
         } else {
           // 退出编辑状态
-          setTextItems(textItems.map(t => ({ ...t, isEditing: false })))
+          setTextItems(textItems.map((t) => ({ ...t, isEditing: false })))
         }
         setSelectedTextId(null)
 
@@ -493,7 +499,9 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
         const imageData = ctx.getImageData(startX, startY, width, height)
         const data = imageData.data
 
-        let r = 0, g = 0, b = 0
+        let r = 0,
+          g = 0,
+          b = 0
         const pixelCount = width * height
 
         for (let i = 0; i < data.length; i += 4) {
@@ -598,7 +606,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    textItems.forEach(item => {
+    textItems.forEach((item) => {
       if (item.text) {
         ctx.font = `${item.size}px Arial`
         ctx.fillStyle = item.color
@@ -610,7 +618,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
         lines.forEach((line, index) => {
           // 编辑器中文本显示位置：left: item.x, top: item.y, padding: 4
           // 所以 canvas 中也应该从 (item.x + padding, item.y + padding) 开始绘制
-          ctx.fillText(line, item.x + padding, item.y + padding + (index * item.size * 1.2))
+          ctx.fillText(line, item.x + padding, item.y + padding + index * item.size * 1.2)
         })
       }
     })
@@ -640,10 +648,23 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
       {/* 工具栏 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 8
+        }}
+      >
         <Space wrap>
           <span>工具：</span>
-          <Radio.Group value={drawMode} onChange={(e) => handleModeChange(e.target.value)} buttonStyle="solid" size="small">
+          <Radio.Group
+            value={drawMode}
+            onChange={(e) => handleModeChange(e.target.value)}
+            buttonStyle="solid"
+            size="small"
+          >
             <Radio.Button value="none">
               <Tooltip title="选择">选择</Tooltip>
             </Radio.Button>
@@ -684,7 +705,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
             </Radio.Button>
           </Radio.Group>
 
-          {(drawMode !== 'none' && drawMode !== 'text') && (
+          {drawMode !== 'none' && drawMode !== 'text' && (
             <>
               <span style={{ marginLeft: 8 }}>大小：</span>
               <Slider
@@ -698,7 +719,11 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
             </>
           )}
 
-          {(drawMode === 'draw' || drawMode === 'rect' || drawMode === 'arrow' || drawMode === 'highlight' || drawMode === 'text') && (
+          {(drawMode === 'draw' ||
+            drawMode === 'rect' ||
+            drawMode === 'arrow' ||
+            drawMode === 'highlight' ||
+            drawMode === 'text') && (
             <>
               <span style={{ marginLeft: 8 }}>颜色：</span>
               <ColorPicker
@@ -731,9 +756,17 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
           </Button>
 
           <span style={{ marginLeft: 16 }}>缩放：</span>
-          <Button icon={<ZoomOutOutlined />} onClick={() => setScale(s => Math.max(0.1, s * 0.9))} size="small" />
+          <Button
+            icon={<ZoomOutOutlined />}
+            onClick={() => setScale((s) => Math.max(0.1, s * 0.9))}
+            size="small"
+          />
           <span style={{ margin: '0 8px' }}>{Math.round(scale * 100)}%</span>
-          <Button icon={<ZoomInOutlined />} onClick={() => setScale(s => Math.min(5, s * 1.1))} size="small" />
+          <Button
+            icon={<ZoomInOutlined />}
+            onClick={() => setScale((s) => Math.min(5, s * 1.1))}
+            size="small"
+          />
           <Tooltip title="重置视图（适应大小）">
             <Button icon={<FullscreenExitOutlined />} onClick={handleResetView} size="small" />
           </Tooltip>
@@ -758,7 +791,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: '#f5f5f5',
-            cursor: isPanning ? 'grabbing' : (drawMode === 'none' ? 'default' : 'crosshair'),
+            cursor: isPanning ? 'grabbing' : drawMode === 'none' ? 'default' : 'crosshair',
             flex: 1,
             position: 'relative'
           }}
@@ -778,7 +811,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
           />
 
           {/* 文本框覆盖层 */}
-          {textItems.map(item => {
+          {textItems.map((item) => {
             const canvas = canvasRef.current
             if (!canvas || !containerRef.current) return null
 
@@ -821,7 +854,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
                 onDoubleClick={(e) => {
                   if (!item.isEditing) {
                     e.stopPropagation()
-                    const newItems = textItems.map(t =>
+                    const newItems = textItems.map((t) =>
                       t.id === item.id ? { ...t, isEditing: true } : t
                     )
                     setTextItems(newItems)
@@ -833,7 +866,7 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
                     autoFocus
                     value={item.text}
                     onChange={(e) => {
-                      const newItems = textItems.map(t =>
+                      const newItems = textItems.map((t) =>
                         t.id === item.id ? { ...t, text: e.target.value } : t
                       )
                       setTextItems(newItems)
@@ -871,8 +904,10 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
                     style={{
                       fontSize: item.size * scale,
                       color: item.color,
-                      backgroundColor: selectedTextId === item.id ? 'rgba(24, 144, 255, 0.1)' : 'transparent',
-                      border: selectedTextId === item.id ? '2px dashed #1890ff' : '2px solid transparent',
+                      backgroundColor:
+                        selectedTextId === item.id ? 'rgba(24, 144, 255, 0.1)' : 'transparent',
+                      border:
+                        selectedTextId === item.id ? '2px dashed #1890ff' : '2px solid transparent',
                       borderRadius: 4,
                       padding: 4,
                       fontFamily: 'Arial',
@@ -889,7 +924,14 @@ export default function ImageEditor({ imageUrl, onSave, onCancel }: ImageEditorP
         </div>
 
         {/* 底部按钮和提示 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 16
+          }}
+        >
           <div style={{ fontSize: '12px', color: '#666' }}>
             💡 滚轮缩放 · 右键/Shift+左键拖动视图
           </div>

@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Markdown } from './Markdown'
-import { captureElementToCanvas, canvasToDataURL, canvasToBlob, copyBlobToClipboard, dataURLtoBlob } from '../../../utils/exporter'
+import {
+  captureElementToCanvas,
+  canvasToDataURL,
+  canvasToBlob,
+  copyBlobToClipboard,
+  dataURLtoBlob
+} from '../../../utils/exporter'
 import { copyToClipboard } from './utils'
 import ImagePreviewModal, { ImageExportWidth } from '../../pages/chat/ImagePreviewModal'
 import './tableViewModal.scss'
@@ -105,7 +111,7 @@ export default function TableViewModal({
       throw new Error('容器未找到')
     }
 
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     const canvas = await captureElementToCanvas(targetRef, 20, 20)
     const dataUrl = canvasToDataURL(canvas)
@@ -131,7 +137,7 @@ export default function TableViewModal({
     setIsRegeneratingImage(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       await generateImage()
     } catch (error) {
       console.error('Failed to regenerate image:', error)
@@ -295,7 +301,12 @@ export default function TableViewModal({
           top: '-9999px',
           backgroundColor: '#ffffff',
           padding: '20px',
-          width: imageExportWidth === 'small' ? '375px' : imageExportWidth === 'medium' ? '600px' : '800px'
+          width:
+            imageExportWidth === 'small'
+              ? '375px'
+              : imageExportWidth === 'medium'
+                ? '600px'
+                : '800px'
         }}
         dangerouslySetInnerHTML={{ __html: tableHtml }}
       />
@@ -307,7 +318,12 @@ export default function TableViewModal({
           top: '-9999px',
           backgroundColor: '#ffffff',
           padding: '20px',
-          width: imageExportWidth === 'small' ? '375px' : imageExportWidth === 'medium' ? '600px' : '800px'
+          width:
+            imageExportWidth === 'small'
+              ? '375px'
+              : imageExportWidth === 'medium'
+                ? '600px'
+                : '800px'
         }}
       >
         <Markdown content={tableTextMarkdown} />

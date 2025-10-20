@@ -118,7 +118,6 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
     return String(value)
   }
 
-
   // 渲染属性项
   const renderPropertyItem = (label: string, value: any, field?: string, isEditable = false) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
@@ -259,10 +258,16 @@ const ObjectPropertyView: React.FC<ObjectPropertyViewProps> = ({ chatId }) => {
               元数据
             </Title>
             <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px' }}>
-              {renderPropertyItem('创建时间', <RelativeTime timestamp={selectedNode.metadata.createdAt} />)}
+              {renderPropertyItem(
+                '创建时间',
+                <RelativeTime timestamp={selectedNode.metadata.createdAt} />
+              )}
               {renderPropertyItem('来源', selectedNode.metadata.source)}
               {selectedNode.metadata.updatedAt &&
-                renderPropertyItem('修改时间', <RelativeTime timestamp={selectedNode.metadata.updatedAt} />)}
+                renderPropertyItem(
+                  '修改时间',
+                  <RelativeTime timestamp={selectedNode.metadata.updatedAt} />
+                )}
             </div>
           </Card>
         )}

@@ -428,8 +428,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
       <div className="favorite-meta">
         <Space split={<Divider type="vertical" />}>
           <span>
-            <ClockCircleOutlined /> 收藏于:{' '}
-            <RelativeTime timestamp={favorite.createdAt} />
+            <ClockCircleOutlined /> 收藏于: <RelativeTime timestamp={favorite.createdAt} />
           </span>
           <span>
             <EyeOutlined /> 查看: {favorite.viewCount || 0} 次

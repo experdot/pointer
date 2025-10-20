@@ -10,7 +10,6 @@ export type {
   ParseResult
 } from './types'
 
-
 // 导出格式检测
 export { detectChatFormat } from './formatDetector'
 

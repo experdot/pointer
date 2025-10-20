@@ -3,7 +3,13 @@ import { Modal, Checkbox, Space, Button, App, Divider } from 'antd'
 import { FileImageOutlined } from '@ant-design/icons'
 import { ChatMessage } from '../../../types/type'
 import { formatExactDateTime } from '../../../utils/timeFormatter'
-import { captureElementToCanvas, canvasToDataURL, canvasToBlob, copyBlobToClipboard, dataURLtoBlob } from '../../../utils/exporter'
+import {
+  captureElementToCanvas,
+  canvasToDataURL,
+  canvasToBlob,
+  copyBlobToClipboard,
+  dataURLtoBlob
+} from '../../../utils/exporter'
 import ImagePreviewModal, { ImageExportWidth } from './ImagePreviewModal'
 import { Markdown } from '../../common/markdown/Markdown'
 
@@ -60,7 +66,7 @@ export default function ExportModal({
 
   const getModelDisplayName = (modelId?: string) => {
     if (!modelId) return ''
-    const config = llmConfigs.find(config => config.id === modelId)
+    const config = llmConfigs.find((config) => config.id === modelId)
     return config?.name || modelId
   }
 
@@ -132,7 +138,7 @@ export default function ExportModal({
 
     try {
       // 等待DOM更新后重新生成图片
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       await generateImage()
     } catch (error) {
       console.error('Failed to regenerate image:', error)
@@ -151,36 +157,36 @@ export default function ExportModal({
     if (previewImageUrl && previewImageUrl.startsWith('data:')) {
       try {
         const blob = dataURLtoBlob(previewImageUrl)
-      const now = new Date()
-      const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
-      const fileName = `${chatTitle || '聊天记录'}_${timeString}.png`
+        const now = new Date()
+        const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+        const fileName = `${chatTitle || '聊天记录'}_${timeString}.png`
 
-      // 将 blob 转换为 Uint8Array
-      const arrayBuffer = await blob.arrayBuffer()
-      const buffer = new Uint8Array(arrayBuffer)
+        // 将 blob 转换为 Uint8Array
+        const arrayBuffer = await blob.arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
 
-      // 调用主进程保存文件
-      const result = await window.api.saveFile({
-        content: buffer,
-        defaultPath: fileName,
-        filters: [
-          { name: 'PNG Images', extensions: ['png'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
-      })
+        // 调用主进程保存文件
+        const result = await window.api.saveFile({
+          content: buffer,
+          defaultPath: fileName,
+          filters: [
+            { name: 'PNG Images', extensions: ['png'] },
+            { name: 'All Files', extensions: ['*'] }
+          ]
+        })
 
-      if (result.success) {
-        message.success(`图片已保存: ${result.filePath}`)
-        setIsImagePreviewVisible(false)
-      } else if (!result.cancelled) {
-        message.error(`保存失败: ${result.error}`)
-      }
-        } catch (error) {
-          console.error('Failed to save image:', error)
-          message.error('保存图片失败')
+        if (result.success) {
+          message.success(`图片已保存: ${result.filePath}`)
+          setIsImagePreviewVisible(false)
+        } else if (!result.cancelled) {
+          message.error(`保存失败: ${result.error}`)
         }
-        return
+      } catch (error) {
+        console.error('Failed to save image:', error)
+        message.error('保存图片失败')
       }
+      return
+    }
 
     // 原有的canvas保存逻辑
     if (!currentCanvas) {
@@ -291,7 +297,6 @@ export default function ExportModal({
     return baseStyles[imageExportWidth]
   }
 
-
   return (
     <>
       <Modal
@@ -353,7 +358,10 @@ export default function ExportModal({
             <Checkbox
               checked={exportSettings.includeReasoningContent}
               onChange={(e) =>
-                setExportSettings((prev) => ({ ...prev, includeReasoningContent: e.target.checked }))
+                setExportSettings((prev) => ({
+                  ...prev,
+                  includeReasoningContent: e.target.checked
+                }))
               }
             >
               包含思考过程
@@ -418,15 +426,29 @@ export default function ExportModal({
             fontFamily: 'Arial, sans-serif'
           }}
         >
-          <h2 style={{ marginBottom: '10px', color: '#000', fontSize: getExportStyles().titleSize }}>
+          <h2
+            style={{ marginBottom: '10px', color: '#000', fontSize: getExportStyles().titleSize }}
+          >
             {chatTitle || '聊天记录'}
           </h2>
           {exportSettings.includeMetadata && (
             <>
-              <p style={{ color: '#666', marginBottom: '10px', fontSize: getExportStyles().metaSize }}>
+              <p
+                style={{
+                  color: '#666',
+                  marginBottom: '10px',
+                  fontSize: getExportStyles().metaSize
+                }}
+              >
                 导出时间: {formatExactDateTime(Date.now())}
               </p>
-              <p style={{ color: '#666', marginBottom: '20px', fontSize: getExportStyles().metaSize }}>
+              <p
+                style={{
+                  color: '#666',
+                  marginBottom: '20px',
+                  fontSize: getExportStyles().metaSize
+                }}
+              >
                 消息数量: {selectedMessageIds.length}
               </p>
             </>
@@ -462,7 +484,9 @@ export default function ExportModal({
                     {index + 1}. {role}
                   </span>
                   {model && (
-                    <span style={{ fontSize: styles.metaSize, color: '#666', fontWeight: 'normal' }}>
+                    <span
+                      style={{ fontSize: styles.metaSize, color: '#666', fontWeight: 'normal' }}
+                    >
                       {model}
                     </span>
                   )}
@@ -499,7 +523,10 @@ export default function ExportModal({
                         color: '#333'
                       }}
                     >
-                      <Markdown content={msg.reasoning_content} fontSize={parseInt(styles.contentSize)} />
+                      <Markdown
+                        content={msg.reasoning_content}
+                        fontSize={parseInt(styles.contentSize)}
+                      />
                     </div>
                   </div>
                 )}
@@ -517,9 +544,7 @@ export default function ExportModal({
                   <Markdown content={msg.content} fontSize={parseInt(styles.contentSize)} />
                 </div>
                 {index < getSelectedMessages().length - 1 && (
-                  <div
-                    style={{ borderTop: '1px solid #e8e8e8', marginTop: '16px' }}
-                  ></div>
+                  <div style={{ borderTop: '1px solid #e8e8e8', marginTop: '16px' }}></div>
                 )}
               </div>
             )

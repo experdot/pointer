@@ -88,9 +88,7 @@ class AttachmentHandler {
    * 删除附件
    * @param localPath 相对路径
    */
-  async deleteAttachment(
-    localPath: string
-  ): Promise<{ success: boolean; error?: string }> {
+  async deleteAttachment(localPath: string): Promise<{ success: boolean; error?: string }> {
     try {
       const fullPath = path.join(this.attachmentsDir, localPath)
       await unlink(fullPath)
@@ -167,9 +165,7 @@ class AttachmentHandler {
    * 清理指定页面的所有附件
    * @param pageId 页面ID
    */
-  async cleanupPageAttachments(
-    pageId: string
-  ): Promise<{ success: boolean; error?: string }> {
+  async cleanupPageAttachments(pageId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const targetDir = path.join(this.attachmentsDir, pageId)
       await rm(targetDir, { recursive: true, force: true })

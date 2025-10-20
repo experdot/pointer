@@ -45,7 +45,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     clearCheckedNodes
   } = useUIStore()
   const { modal } = App.useApp()
-  
+
   // 添加编辑状态管理
   const [editingNodeKey, setEditingNodeKey] = useState<string | null>(null)
 
@@ -130,7 +130,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     (folderId: string) => {
       modal.confirm({
         title: '清空文件夹',
-        content: '确定要清空这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
+        content:
+          '确定要清空这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
         okText: '确定',
         cancelText: '取消',
         okType: 'danger',
@@ -141,23 +142,25 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
             const currentState = usePagesStore.getState()
 
             // 获取该文件夹下的所有聊天
-            const chatsToDelete = currentState.pages.filter(p => p.folderId === parentId && p.type !== 'settings')
+            const chatsToDelete = currentState.pages.filter(
+              (p) => p.folderId === parentId && p.type !== 'settings'
+            )
 
             // 获取该文件夹下的所有子文件夹
-            const subFolders = currentState.folders.filter(f => f.parentId === parentId)
+            const subFolders = currentState.folders.filter((f) => f.parentId === parentId)
 
             // 先递归清理子文件夹的内容
-            subFolders.forEach(subFolder => {
+            subFolders.forEach((subFolder) => {
               clearFolderContents(subFolder.id)
             })
 
             // 删除所有子文件夹
-            subFolders.forEach(subFolder => {
+            subFolders.forEach((subFolder) => {
               currentState.deleteFolder(subFolder.id)
             })
 
             // 删除所有聊天
-            chatsToDelete.forEach(chat => {
+            chatsToDelete.forEach((chat) => {
               currentState.deletePage(chat.id)
             })
           }
@@ -173,7 +176,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     (folderId: string) => {
       modal.confirm({
         title: '删除文件夹',
-        content: '确定要删除这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
+        content:
+          '确定要删除这个文件夹吗？文件夹中的所有聊天和子文件夹都将被永久删除，此操作无法撤销。',
         okText: '确定',
         cancelText: '取消',
         okType: 'danger',
@@ -181,12 +185,14 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
           // 递归删除文件夹及其所有内容
           const deleteRecursive = (parentId: string) => {
             // 删除该文件夹下的所有聊天
-            const chatsToDelete = pages.filter(p => p.folderId === parentId && p.type !== 'settings')
-            chatsToDelete.forEach(chat => deletePage(chat.id))
+            const chatsToDelete = pages.filter(
+              (p) => p.folderId === parentId && p.type !== 'settings'
+            )
+            chatsToDelete.forEach((chat) => deletePage(chat.id))
 
             // 递归删除子文件夹
-            const subFolders = folders.filter(f => f.parentId === parentId)
-            subFolders.forEach(subFolder => {
+            const subFolders = folders.filter((f) => f.parentId === parentId)
+            subFolders.forEach((subFolder) => {
               deleteRecursive(subFolder.id)
               deleteFolder(subFolder.id)
             })
@@ -218,7 +224,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
   const handleCopyChat = useCallback(
     (chatId: string) => {
       try {
-        const originalPage = pages.find(p => p.id === chatId)
+        const originalPage = pages.find((p) => p.id === chatId)
         if (!originalPage) return
 
         // 复制聊天，标题自动添加"副本"后缀，保持在同一文件夹
@@ -244,7 +250,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
 
   const handleFindInFolder = useCallback(
     (folderId: string) => {
-      const folder = folders.find(f => f.id === folderId)
+      const folder = folders.find((f) => f.id === folderId)
       if (folder && onFindInFolder) {
         onFindInFolder(folderId, folder.name)
       }
@@ -254,14 +260,13 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
 
   const handleMoveFolder = useCallback(
     (folderId: string, targetFolderId: string | undefined) => {
-      const folder = folders.find(f => f.id === folderId)
+      const folder = folders.find((f) => f.id === folderId)
       if (!folder) return
 
       // 计算新的order值，放在目标文件夹的最后
-      const siblings = folders.filter(f => f.parentId === targetFolderId)
-      const newOrder = siblings.length > 0
-        ? Math.max(...siblings.map(f => f.order || 0)) + 1000
-        : 1000
+      const siblings = folders.filter((f) => f.parentId === targetFolderId)
+      const newOrder =
+        siblings.length > 0 ? Math.max(...siblings.map((f) => f.order || 0)) + 1000 : 1000
 
       moveFolder(folderId, newOrder, targetFolderId)
     },
@@ -270,14 +275,13 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
 
   const handleMoveChat = useCallback(
     (chatId: string, targetFolderId: string | undefined) => {
-      const chat = pages.find(p => p.id === chatId)
+      const chat = pages.find((p) => p.id === chatId)
       if (!chat) return
 
       // 计算新的order值，放在目标文件夹的最后
-      const siblings = pages.filter(p => p.folderId === targetFolderId && p.type !== 'settings')
-      const newOrder = siblings.length > 0
-        ? Math.max(...siblings.map(p => p.order || 0)) + 1000
-        : 1000
+      const siblings = pages.filter((p) => p.folderId === targetFolderId && p.type !== 'settings')
+      const newOrder =
+        siblings.length > 0 ? Math.max(...siblings.map((p) => p.order || 0)) + 1000 : 1000
 
       movePage(chatId, targetFolderId, newOrder)
     },
@@ -293,7 +297,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       if (!dragNodeInfo || !dropNodeInfo) return
 
       const { dropPosition, dropToGap } = info
-      
+
       // 如果拖拽到文件夹内部（非gap位置）
       if (!dropToGap && dropNodeInfo.type === 'folder') {
         // 检查是否会形成循环引用（文件夹不能拖入自己的子文件夹中）
@@ -314,19 +318,21 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
         }
 
         // 获取目标文件夹
-        const targetFolder = folders.find(f => f.id === dropNodeInfo.id)
-        
+        const targetFolder = folders.find((f) => f.id === dropNodeInfo.id)
+
         // 如果文件夹是展开的，且有子节点，根据dropPosition确定插入位置
         // dropPosition为0表示放在文件夹内部作为第一个子节点
         // 否则作为最后一个子节点
-        const folderChildren = folders.filter((f) => f.parentId === dropNodeInfo.id)
-          .map(f => ({ type: 'folder' as const, id: f.id, order: f.order || 0 }))
-        const folderChats = pages.filter((chat) => chat.folderId === dropNodeInfo.id && chat.type !== 'settings')
-          .map(c => ({ type: 'chat' as const, id: c.id, order: c.order || 0 }))
+        const folderChildren = folders
+          .filter((f) => f.parentId === dropNodeInfo.id)
+          .map((f) => ({ type: 'folder' as const, id: f.id, order: f.order || 0 }))
+        const folderChats = pages
+          .filter((chat) => chat.folderId === dropNodeInfo.id && chat.type !== 'settings')
+          .map((c) => ({ type: 'chat' as const, id: c.id, order: c.order || 0 }))
         const allChildren = [...folderChildren, ...folderChats].sort((a, b) => a.order - b.order)
-        
+
         let newOrder: number
-        
+
         // 如果文件夹是展开的，且dropPosition为0，放在最前面
         // 注意：Ant Design Tree的dropPosition在拖入文件夹时通常为0
         if (targetFolder?.expanded && allChildren.length > 0) {
@@ -393,7 +399,11 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
         const allSiblings = [
           ...folders
             .filter((folder) => folder.parentId === targetParentId)
-            .map((folder) => ({ type: 'folder' as const, id: folder.id, order: folder.order || 0 })),
+            .map((folder) => ({
+              type: 'folder' as const,
+              id: folder.id,
+              order: folder.order || 0
+            })),
           ...pages
             .filter((chat) => chat.folderId === targetParentId && chat.type !== 'settings')
             .map((chat) => ({ type: 'chat' as const, id: chat.id, order: chat.order || 0 }))
@@ -415,10 +425,11 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
           // - dropPosition === -1: 拖到目标节点上方
           // - dropPosition === 1: 拖到目标节点下方
           // - dropPosition > 1: 拖到更后面的位置
-          
+
           // 判断是插入到目标节点的前面还是后面
-          const insertBefore = dropPosition === -1 || (dropPosition > 0 && dropPosition <= dropIndex)
-          
+          const insertBefore =
+            dropPosition === -1 || (dropPosition > 0 && dropPosition <= dropIndex)
+
           if (insertBefore) {
             // 插入到目标节点前面
             if (dropIndex === 0) {
@@ -444,7 +455,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
           }
         } else {
           // 如果找不到目标节点，添加到末尾
-          newOrder = allSiblings.length > 0 ? allSiblings[allSiblings.length - 1].order + 1000 : 1000
+          newOrder =
+            allSiblings.length > 0 ? allSiblings[allSiblings.length - 1].order + 1000 : 1000
         }
 
         // 根据拖拽节点类型移动节点
@@ -469,7 +481,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       // 获取指定父级下的文件夹
       const childFolders = folders
         .filter((folder) => folder.parentId === parentId)
-        .map(folder => ({
+        .map((folder) => ({
           type: 'folder' as const,
           data: folder,
           order: folder.order || 0
@@ -478,7 +490,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       // 获取指定父级下的聊天（过滤掉设置页面）
       const chats = pages
         .filter((chat) => chat.folderId === parentId && chat.type !== 'settings')
-        .map(chat => ({
+        .map((chat) => ({
           type: 'chat' as const,
           data: chat,
           order: chat.order || 0
@@ -488,14 +500,15 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
       const allItems = [...childFolders, ...chats].sort((a, b) => a.order - b.order)
 
       // 构建树节点
-      const result: DataNode[] = allItems.map(item => {
+      const result: DataNode[] = allItems.map((item) => {
         if (item.type === 'folder') {
-          const folder = item.data as typeof folders[0]
+          const folder = item.data as (typeof folders)[0]
           const nodeKey = `folder-${folder.id}`
 
           // 检查文件夹是否有子节点
-          const hasChildren = folders.some(f => f.parentId === folder.id) ||
-                             pages.some(p => p.folderId === folder.id && p.type !== 'settings')
+          const hasChildren =
+            folders.some((f) => f.parentId === folder.id) ||
+            pages.some((p) => p.folderId === folder.id && p.type !== 'settings')
 
           // 只在展开时递归构建子节点
           const folderChildren = folder.expanded ? buildFolderTree(folder.id) : undefined
@@ -527,7 +540,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
           nodeCache.set(nodeKey, node)
           return node
         } else {
-          const chat = item.data as typeof pages[0]
+          const chat = item.data as (typeof pages)[0]
           const nodeKey = `chat-${chat.id}`
 
           const node: DataNode = {
@@ -586,13 +599,15 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     return buildFolderTree()
   }, [
     // 只在数据结构发生实质性变化时重新构建
-    folders.map(f => `${f.id}-${f.name}-${f.parentId}-${f.order}-${f.expanded}`).join(','),
-    pages.map(p => {
-      // 对于聊天页面，需要包含消息状态以便正确更新状态指示器
-      const streamingCount = p.messages?.filter(msg => msg.isStreaming)?.length || 0
-      const hasStreamingMessage = !!p.streamingMessage
-      return `${p.id}-${p.title}-${p.folderId}-${p.order}-${p.messages?.length || 0}-${streamingCount}-${hasStreamingMessage}-${p.starred}`
-    }).join(','),
+    folders.map((f) => `${f.id}-${f.name}-${f.parentId}-${f.order}-${f.expanded}`).join(','),
+    pages
+      .map((p) => {
+        // 对于聊天页面，需要包含消息状态以便正确更新状态指示器
+        const streamingCount = p.messages?.filter((msg) => msg.isStreaming)?.length || 0
+        const hasStreamingMessage = !!p.streamingMessage
+        return `${p.id}-${p.title}-${p.folderId}-${p.order}-${p.messages?.length || 0}-${streamingCount}-${hasStreamingMessage}-${p.starred}`
+      })
+      .join(','),
     editingNodeKey
   ])
 
@@ -702,32 +717,35 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
         treeData={treeData}
         onSelect={handleTreeSelect}
         onDrop={handleDrop}
-      allowDrop={({ dropNode, dragNode, dropPosition }) => {
-        const dragNodeInfo = parseNodeKey(dragNode.key)
-        const dropNodeInfo = parseNodeKey(dropNode.key)
+        allowDrop={({ dropNode, dragNode, dropPosition }) => {
+          const dragNodeInfo = parseNodeKey(dragNode.key)
+          const dropNodeInfo = parseNodeKey(dropNode.key)
 
-        // 不允许拖拽到自己身上
-        if (dragNode.key === dropNode.key) {
-          return false
-        }
-
-        // 不允许任何节点拖拽到聊天节点内部（聊天是叶子节点，不应该有子节点）
-        // dropPosition === 0 表示拖拽到节点内部作为子节点
-        if (dropNodeInfo?.type === 'chat' && dropPosition === 0) {
-          return false
-        }
-
-        return true
-      }}
-      onExpand={useCallback((expandedKeys: React.Key[]) => {
-        // Update folder expanded state
-        folders.forEach((folder) => {
-          const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
-          if (folder.expanded !== isExpanded) {
-            updateFolder(folder.id, { expanded: isExpanded })
+          // 不允许拖拽到自己身上
+          if (dragNode.key === dropNode.key) {
+            return false
           }
-        })
-      }, [folders, updateFolder])}
+
+          // 不允许任何节点拖拽到聊天节点内部（聊天是叶子节点，不应该有子节点）
+          // dropPosition === 0 表示拖拽到节点内部作为子节点
+          if (dropNodeInfo?.type === 'chat' && dropPosition === 0) {
+            return false
+          }
+
+          return true
+        }}
+        onExpand={useCallback(
+          (expandedKeys: React.Key[]) => {
+            // Update folder expanded state
+            folders.forEach((folder) => {
+              const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
+              if (folder.expanded !== isExpanded) {
+                updateFolder(folder.id, { expanded: isExpanded })
+              }
+            })
+          },
+          [folders, updateFolder]
+        )}
       />
     </div>
   )

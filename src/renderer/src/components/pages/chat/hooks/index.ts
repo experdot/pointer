@@ -5,4 +5,4 @@ export { useAutoQuestion } from './useAutoQuestion'
 export type { UseAutoQuestionProps, UseAutoQuestionReturn } from './useAutoQuestion'
 
 export { useMessageOperations } from './useMessageOperations'
-export type { UseMessageOperationsProps, UseMessageOperationsReturn } from './useMessageOperations' 
+export type { UseMessageOperationsProps, UseMessageOperationsReturn } from './useMessageOperations'

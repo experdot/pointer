@@ -216,9 +216,9 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
 
               const findChildrenRecursively = (currentMessageId: string) => {
                 messagesToDelete.add(currentMessageId)
-                const message = page.messages?.find(msg => msg.id === currentMessageId)
+                const message = page.messages?.find((msg) => msg.id === currentMessageId)
                 if (message && message.children) {
-                  message.children.forEach(childId => {
+                  message.children.forEach((childId) => {
                     findChildrenRecursively(childId)
                   })
                 }
@@ -227,19 +227,20 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
               findChildrenRecursively(messageId)
 
               // 找到要删除的根消息（用于更新父消息）
-              const messageToDelete = page.messages?.find(msg => msg.id === messageId)
+              const messageToDelete = page.messages?.find((msg) => msg.id === messageId)
 
               // 过滤掉要删除的消息
-              let updatedMessages = page.messages?.filter(msg => !messagesToDelete.has(msg.id)) || []
+              let updatedMessages =
+                page.messages?.filter((msg) => !messagesToDelete.has(msg.id)) || []
 
               // 更新父消息的children数组（如果被删除的消息有父消息）
               if (messageToDelete?.parentId) {
-                updatedMessages = updatedMessages.map(msg => {
+                updatedMessages = updatedMessages.map((msg) => {
                   if (msg.id === messageToDelete.parentId) {
                     // 从父消息的children中移除被删除的messageId（不是所有被删除的消息）
                     return {
                       ...msg,
-                      children: (msg.children || []).filter(childId => childId !== messageId)
+                      children: (msg.children || []).filter((childId) => childId !== messageId)
                     }
                   }
                   return msg
@@ -248,7 +249,7 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
 
               // 重建消息映射
               const newMessageMap: { [key: string]: ChatMessage } = {}
-              updatedMessages.forEach(msg => {
+              updatedMessages.forEach((msg) => {
                 newMessageMap[msg.id] = msg
               })
 
@@ -256,16 +257,18 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
               let newCurrentPath = page.currentPath || []
 
               // 如果当前路径包含被删除的消息，需要调整路径
-              if (newCurrentPath.some(id => messagesToDelete.has(id))) {
+              if (newCurrentPath.some((id) => messagesToDelete.has(id))) {
                 // 找到第一个被删除消息在路径中的位置
-                const deletedMessageIndex = newCurrentPath.findIndex(id => messagesToDelete.has(id))
+                const deletedMessageIndex = newCurrentPath.findIndex((id) =>
+                  messagesToDelete.has(id)
+                )
                 if (deletedMessageIndex !== -1) {
                   // 截取到被删除消息之前的路径
                   newCurrentPath = newCurrentPath.slice(0, deletedMessageIndex)
 
                   // 递归构建路径到节点的函数
                   const buildPathToNode = (nodeId: string): string[] => {
-                    const node = updatedMessages.find(msg => msg.id === nodeId)
+                    const node = updatedMessages.find((msg) => msg.id === nodeId)
                     if (!node) return []
                     if (!node.parentId) return [nodeId]
                     const parentPath = buildPathToNode(node.parentId)
@@ -276,11 +279,11 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                   const extendPathToLeaf = (path: string[]): string[] => {
                     if (path.length === 0) return path
                     const lastNodeId = path[path.length - 1]
-                    const lastNode = updatedMessages.find(msg => msg.id === lastNodeId)
+                    const lastNode = updatedMessages.find((msg) => msg.id === lastNodeId)
 
                     if (lastNode?.children && lastNode.children.length > 0) {
                       const children = lastNode.children
-                        .map(id => updatedMessages.find(msg => msg.id === id))
+                        .map((id) => updatedMessages.find((msg) => msg.id === id))
                         .filter(Boolean) as ChatMessage[]
 
                       if (children.length > 0) {
@@ -295,11 +298,13 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                   // 处理不同情况
                   if (messageToDelete?.parentId) {
                     // 情况1：删除的消息有父节点
-                    const parentMessage = updatedMessages.find(msg => msg.id === messageToDelete.parentId)
+                    const parentMessage = updatedMessages.find(
+                      (msg) => msg.id === messageToDelete.parentId
+                    )
                     if (parentMessage?.children && parentMessage.children.length > 0) {
                       // 找到最近的同级兄弟
                       const siblings = parentMessage.children
-                        .map(id => updatedMessages.find(msg => msg.id === id))
+                        .map((id) => updatedMessages.find((msg) => msg.id === id))
                         .filter(Boolean) as ChatMessage[]
 
                       if (siblings.length > 0) {
@@ -314,7 +319,7 @@ export const useMessagesStore = create<MessagesState & MessagesActions>()(
                   } else {
                     // 情况2：删除的是根级别的消息（没有父节点）
                     // 找到其他根级别的消息
-                    const rootMessages = updatedMessages.filter(msg => !msg.parentId)
+                    const rootMessages = updatedMessages.filter((msg) => !msg.parentId)
                     if (rootMessages.length > 0) {
                       // 选择最新的根消息
                       rootMessages.sort((a, b) => b.timestamp - a.timestamp)

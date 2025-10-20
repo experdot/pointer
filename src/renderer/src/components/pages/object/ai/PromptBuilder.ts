@@ -147,10 +147,7 @@ ${context.userPrompt}
 请开始生成：`
   }
 
-  static buildPromptRecommendationsRequest(
-    taskType: string,
-    context: PromptContext
-  ): string {
+  static buildPromptRecommendationsRequest(taskType: string, context: PromptContext): string {
     const taskDescriptions: Record<string, string> = {
       children: '生成子节点',
       description: '生成节点描述',

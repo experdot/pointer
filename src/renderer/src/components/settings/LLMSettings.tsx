@@ -96,7 +96,7 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       const result = await window.api.ai.getModels({
         apiHost,
         apiKey,
-        modelName: '',
+        modelName: ''
       })
 
       if (result.success && result.models) {
@@ -122,7 +122,7 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
       const result = await window.api.ai.testConnection({
         apiHost: values.apiHost,
         apiKey: values.apiKey,
-        modelName: values.modelName,
+        modelName: values.modelName
       })
 
       if (result.success) {

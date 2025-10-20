@@ -42,7 +42,10 @@ export async function captureElementToCanvas(
 /**
  * 将 canvas 转换为 blob
  */
-export async function canvasToBlob(canvas: HTMLCanvasElement, type: string = 'image/png'): Promise<Blob> {
+export async function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string = 'image/png'
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) {

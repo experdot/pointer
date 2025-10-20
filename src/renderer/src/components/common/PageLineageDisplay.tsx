@@ -249,7 +249,8 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
               {lineage.generatedAt && (
                 <div style={{ marginLeft: '16px' }}>
                   <Text type="secondary" style={{ fontSize: size === 'small' ? '11px' : '12px' }}>
-                    生成时间：<RelativeTime timestamp={lineage.generatedAt} />
+                    生成时间：
+                    <RelativeTime timestamp={lineage.generatedAt} />
                   </Text>
                 </div>
               )}

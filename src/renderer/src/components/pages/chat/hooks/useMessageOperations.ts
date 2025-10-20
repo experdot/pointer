@@ -29,7 +29,11 @@ export interface UseMessageOperationsReturn {
   handleRetryMessage: (messageId: string) => Promise<void>
   handleContinueMessage: (messageId: string) => Promise<void>
   handleEditMessage: (messageId: string, newContent: string) => Promise<void>
-  handleEditAndResendMessage: (messageId: string, newContent: string, newAttachments?: FileAttachment[]) => Promise<void>
+  handleEditAndResendMessage: (
+    messageId: string,
+    newContent: string,
+    newAttachments?: FileAttachment[]
+  ) => Promise<void>
   handleToggleBookmark: (messageId: string) => void
   handleModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
   handleDeleteMessage: (messageId: string) => Promise<void>
@@ -50,7 +54,12 @@ export function useMessageOperations({
   const { message, modal } = App.useApp()
 
   const handleSendMessage = useCallback(
-    async (content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => {
+    async (
+      content: string,
+      customModelId?: string,
+      customParentId?: string,
+      attachments?: FileAttachment[]
+    ) => {
       // 允许空内容但有附件的情况
       if (!content.trim() && (!attachments || attachments.length === 0)) return
       if (isLoading) return
@@ -291,7 +300,8 @@ export function useMessageOperations({
       // 如果是用户消息，使用当前选中的模型；如果是AI消息，使用原消息的模型
       // 优先使用 ref 获取最新值，避免闭包陷阱
       const currentSelectedModel = selectedModelRef?.current ?? selectedModel
-      const modelIdToUse = targetMessage.role === 'user' ? currentSelectedModel : targetMessage.modelId
+      const modelIdToUse =
+        targetMessage.role === 'user' ? currentSelectedModel : targetMessage.modelId
       const llmConfig = aiService.getLLMConfig(modelIdToUse)
       if (!llmConfig) {
         message.error('请先在设置中配置LLM')
@@ -306,7 +316,9 @@ export function useMessageOperations({
             // 没有后继消息时，直接编辑原消息内容，然后追加AI回复
             const { updatePage } = usePagesStore.getState()
             const updatedMessages = chat.messages.map((msg: any) =>
-              msg.id === messageId ? { ...msg, content: newContent.trim(), timestamp: Date.now() } : msg
+              msg.id === messageId
+                ? { ...msg, content: newContent.trim(), timestamp: Date.now() }
+                : msg
             )
             updatePage(chatId, { messages: updatedMessages })
 
@@ -335,7 +347,8 @@ export function useMessageOperations({
             const newMessageId = uuidv4()
 
             // 处理附件：如果有新附件，需要移动到正式目录
-            let finalAttachments = newAttachments !== undefined ? newAttachments : targetMessage.attachments
+            let finalAttachments =
+              newAttachments !== undefined ? newAttachments : targetMessage.attachments
             if (newAttachments && newAttachments.length > 0) {
               try {
                 const movedAttachments: FileAttachment[] = []
@@ -394,7 +407,10 @@ export function useMessageOperations({
                 (msg) => msg.id === targetMessage.parentId
               )
               if (parentIndex >= 0) {
-                messagesToSend = [...currentPathMessages.slice(0, parentIndex + 1), editedUserMessage]
+                messagesToSend = [
+                  ...currentPathMessages.slice(0, parentIndex + 1),
+                  editedUserMessage
+                ]
               } else {
                 messagesToSend = [editedUserMessage]
               }
@@ -421,7 +437,9 @@ export function useMessageOperations({
             // AI消息没有后继消息时，只需要直接编辑内容，不需要重新生成
             const { updatePage } = usePagesStore.getState()
             const updatedMessages = chat.messages.map((msg: any) =>
-              msg.id === messageId ? { ...msg, content: newContent.trim(), timestamp: Date.now() } : msg
+              msg.id === messageId
+                ? { ...msg, content: newContent.trim(), timestamp: Date.now() }
+                : msg
             )
             updatePage(chatId, { messages: updatedMessages })
           } else {

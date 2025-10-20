@@ -121,7 +121,8 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
 
             // 计算新的 order 值（放在同级最后）
             const siblings = get().items.filter((i) => i.folderId === item.folderId)
-            const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : 0
+            const maxOrder =
+              siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : 0
             const newOrder = maxOrder + 1000
 
             const newItem: FavoriteItem = {
@@ -234,7 +235,8 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
 
             // 计算新的 order 值（放在同级最后）
             const siblings = get().folders.filter((f) => f.parentId === folder.parentId)
-            const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : 0
+            const maxOrder =
+              siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : 0
             const newOrder = maxOrder + 1000
 
             const newFolder: FavoriteFolder = {
@@ -475,13 +477,7 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
           }
         },
 
-        favoriteTextFragment: (
-          chatId,
-          messageId,
-          text,
-          folderId,
-          title
-        ) => {
+        favoriteTextFragment: (chatId, messageId, text, folderId, title) => {
           try {
             const page = usePagesStore.getState().pages.find((p) => p.id === chatId)
             if (!page || page.type !== 'regular') {

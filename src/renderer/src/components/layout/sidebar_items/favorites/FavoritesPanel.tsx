@@ -1,10 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { Input, Button, Tree, Empty, Space, App, Tag } from 'antd'
 import type { DataNode } from 'antd/es/tree'
-import {
-  SearchOutlined,
-  FolderAddOutlined
-} from '@ant-design/icons'
+import { SearchOutlined, FolderAddOutlined } from '@ant-design/icons'
 import { useFavoritesStore } from '../../../../stores/favoritesStore'
 import { useTabsStore } from '../../../../stores/tabsStore'
 import { useUIStore } from '../../../../stores/uiStore'
@@ -45,75 +42,90 @@ export default function FavoritesPanel() {
   }
 
   // 处理打开收藏项
-  const handleOpenFavorite = useCallback((itemId: string) => {
-    // 更新选中状态
-    setSelectedFavorite(itemId, 'item')
+  const handleOpenFavorite = useCallback(
+    (itemId: string) => {
+      // 更新选中状态
+      setSelectedFavorite(itemId, 'item')
 
-    // 创建一个新tab页来显示收藏详情
-    // 使用特殊的 favorite- 前缀来标识收藏详情页
-    const favoriteTabId = `favorite-${itemId}`
+      // 创建一个新tab页来显示收藏详情
+      // 使用特殊的 favorite- 前缀来标识收藏详情页
+      const favoriteTabId = `favorite-${itemId}`
 
-    // 直接打开tab，TabsArea会识别favorite-前缀并渲染收藏详情页
-    openTab(favoriteTabId)
-  }, [openTab, setSelectedFavorite])
+      // 直接打开tab，TabsArea会识别favorite-前缀并渲染收藏详情页
+      openTab(favoriteTabId)
+    },
+    [openTab, setSelectedFavorite]
+  )
 
   // 处理删除收藏项
-  const handleDeleteFavorite = useCallback((itemId: string) => {
-    const item = items.find((i) => i.id === itemId)
-    if (!item) return
+  const handleDeleteFavorite = useCallback(
+    (itemId: string) => {
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
 
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除收藏项 "${item.title}" 吗？`,
-      okText: '删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => {
-        deleteFavorite(itemId)
-      }
-    })
-  }, [modal, deleteFavorite, items])
+      modal.confirm({
+        title: '确认删除',
+        content: `确定要删除收藏项 "${item.title}" 吗？`,
+        okText: '删除',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => {
+          deleteFavorite(itemId)
+        }
+      })
+    },
+    [modal, deleteFavorite, items]
+  )
 
   // 处理删除文件夹
-  const handleDeleteFolder = useCallback((folderId: string) => {
-    const folder = folders.find((f) => f.id === folderId)
-    if (!folder) return
+  const handleDeleteFolder = useCallback(
+    (folderId: string) => {
+      const folder = folders.find((f) => f.id === folderId)
+      if (!folder) return
 
-    modal.confirm({
-      title: '删除文件夹',
-      content: `确定要删除文件夹 "${folder.name}" 吗？文件夹中的所有收藏项也将被删除。`,
-      okText: '删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => {
-        deleteFolder(folderId)
-      }
-    })
-  }, [modal, deleteFolder, folders])
+      modal.confirm({
+        title: '删除文件夹',
+        content: `确定要删除文件夹 "${folder.name}" 吗？文件夹中的所有收藏项也将被删除。`,
+        okText: '删除',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => {
+          deleteFolder(folderId)
+        }
+      })
+    },
+    [modal, deleteFolder, folders]
+  )
 
   // 处理清空文件夹
-  const handleClearFolder = useCallback((folderId: string) => {
-    const folder = folders.find((f) => f.id === folderId)
-    if (!folder) return
+  const handleClearFolder = useCallback(
+    (folderId: string) => {
+      const folder = folders.find((f) => f.id === folderId)
+      if (!folder) return
 
-    modal.confirm({
-      title: '清空文件夹',
-      content: `确定要清空文件夹 "${folder.name}" 吗？文件夹中的所有收藏项将被删除，但文件夹本身会保留。`,
-      okText: '清空',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => {
-        // 删除该文件夹下的所有收藏项
-        const itemsToDelete = items.filter((item) => item.folderId === folderId)
-        itemsToDelete.forEach((item) => deleteFavorite(item.id))
-      }
-    })
-  }, [modal, folders, items, deleteFavorite])
+      modal.confirm({
+        title: '清空文件夹',
+        content: `确定要清空文件夹 "${folder.name}" 吗？文件夹中的所有收藏项将被删除，但文件夹本身会保留。`,
+        okText: '清空',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => {
+          // 删除该文件夹下的所有收藏项
+          const itemsToDelete = items.filter((item) => item.folderId === folderId)
+          itemsToDelete.forEach((item) => deleteFavorite(item.id))
+        }
+      })
+    },
+    [modal, folders, items, deleteFavorite]
+  )
 
   // 处理创建子文件夹
-  const handleCreateSubFolder = useCallback((parentId: string) => {
-    createFolder({ name: '新建文件夹', parentId })
-  }, [createFolder])
+  const handleCreateSubFolder = useCallback(
+    (parentId: string) => {
+      createFolder({ name: '新建文件夹', parentId })
+    },
+    [createFolder]
+  )
 
   // 处理保存编辑
   const handleSaveEdit = useCallback(
@@ -139,9 +151,8 @@ export default function FavoritesPanel() {
       let finalOrder = newOrder
       if (finalOrder === undefined) {
         const siblings = folders.filter((f) => f.parentId === targetFolderId)
-        finalOrder = siblings.length > 0
-          ? Math.max(...siblings.map((f) => f.order || 0)) + 1000
-          : 1000
+        finalOrder =
+          siblings.length > 0 ? Math.max(...siblings.map((f) => f.order || 0)) + 1000 : 1000
       }
 
       // 更新文件夹的 parentId 和 order
@@ -164,9 +175,8 @@ export default function FavoritesPanel() {
       let finalOrder = newOrder
       if (finalOrder === undefined) {
         const siblings = items.filter((i) => i.folderId === targetFolderId)
-        finalOrder = siblings.length > 0
-          ? Math.max(...siblings.map((i) => i.order || 0)) + 1000
-          : 1000
+        finalOrder =
+          siblings.length > 0 ? Math.max(...siblings.map((i) => i.order || 0)) + 1000 : 1000
       }
 
       moveFavorite(itemId, targetFolderId, finalOrder)
@@ -192,17 +202,19 @@ export default function FavoritesPanel() {
         const nodeKey = `folder-${folder.id}`
 
         // 只在展开时递归构建子节点
-        const children = folder.expanded ? [
-          ...buildFolderTree(folder.id),
-          ...folderItems
-            .sort((a, b) => {
-              return (b.order || 0) - (a.order || 0)
-            })
-            .map((item) => buildItemNode(item))
-        ] : undefined
+        const children = folder.expanded
+          ? [
+              ...buildFolderTree(folder.id),
+              ...folderItems
+                .sort((a, b) => {
+                  return (b.order || 0) - (a.order || 0)
+                })
+                .map((item) => buildItemNode(item))
+            ]
+          : undefined
 
         // 检查文件夹是否有子节点
-        const hasChildren = folders.some(f => f.parentId === folder.id) || folderItems.length > 0
+        const hasChildren = folders.some((f) => f.parentId === folder.id) || folderItems.length > 0
 
         result.push({
           key: nodeKey,
@@ -288,19 +300,22 @@ export default function FavoritesPanel() {
   }
 
   // 处理树节点选择
-  const handleSelect = useCallback((keys: React.Key[], info: any) => {
-    const key = keys[0] as string
-    if (!key) return
+  const handleSelect = useCallback(
+    (keys: React.Key[], info: any) => {
+      const key = keys[0] as string
+      if (!key) return
 
-    if (key.startsWith('item-')) {
-      const itemId = key.substring(5)
-      handleOpenFavorite(itemId)
-    } else if (key.startsWith('folder-')) {
-      const folderId = key.substring(7)
-      setSelectedFavorite(folderId, 'folder')
-      toggleFolderExpanded(folderId)
-    }
-  }, [handleOpenFavorite, toggleFolderExpanded, setSelectedFavorite])
+      if (key.startsWith('item-')) {
+        const itemId = key.substring(5)
+        handleOpenFavorite(itemId)
+      } else if (key.startsWith('folder-')) {
+        const folderId = key.substring(7)
+        setSelectedFavorite(folderId, 'folder')
+        toggleFolderExpanded(folderId)
+      }
+    },
+    [handleOpenFavorite, toggleFolderExpanded, setSelectedFavorite]
+  )
 
   // 计算选中的节点keys
   const selectedKeys = useMemo(() => {
@@ -317,16 +332,19 @@ export default function FavoritesPanel() {
   )
 
   // 处理树节点展开/折叠
-  const handleExpand = useCallback((expandedKeys: React.Key[]) => {
-    // 更新文件夹展开状态
-    folders.forEach((folder) => {
-      const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
-      if (folder.expanded !== isExpanded) {
-        const { updateFolder } = useFavoritesStore.getState()
-        updateFolder(folder.id, { expanded: isExpanded })
-      }
-    })
-  }, [folders])
+  const handleExpand = useCallback(
+    (expandedKeys: React.Key[]) => {
+      // 更新文件夹展开状态
+      folders.forEach((folder) => {
+        const isExpanded = expandedKeys.includes(`folder-${folder.id}`)
+        if (folder.expanded !== isExpanded) {
+          const { updateFolder } = useFavoritesStore.getState()
+          updateFolder(folder.id, { expanded: isExpanded })
+        }
+      })
+    },
+    [folders]
+  )
 
   // 解析节点键，获取节点类型和ID
   const parseNodeKey = useCallback(
@@ -447,7 +465,11 @@ export default function FavoritesPanel() {
         const allSiblings = [
           ...folders
             .filter((folder) => folder.parentId === targetParentId)
-            .map((folder) => ({ type: 'folder' as const, id: folder.id, order: folder.order || 0 })),
+            .map((folder) => ({
+              type: 'folder' as const,
+              id: folder.id,
+              order: folder.order || 0
+            })),
           ...items
             .filter((item) => item.folderId === targetParentId)
             .map((item) => ({ type: 'item' as const, id: item.id, order: item.order || 0 }))
@@ -471,7 +493,8 @@ export default function FavoritesPanel() {
           // - dropPosition > 1: 拖到更后面的位置
 
           // 判断是插入到目标节点的前面还是后面
-          const insertBefore = dropPosition === -1 || (dropPosition > 0 && dropPosition <= dropIndex)
+          const insertBefore =
+            dropPosition === -1 || (dropPosition > 0 && dropPosition <= dropIndex)
 
           if (insertBefore) {
             // 插入到目标节点前面
@@ -498,7 +521,8 @@ export default function FavoritesPanel() {
           }
         } else {
           // 如果找不到目标节点，添加到末尾
-          newOrder = allSiblings.length > 0 ? allSiblings[allSiblings.length - 1].order + 1000 : 1000
+          newOrder =
+            allSiblings.length > 0 ? allSiblings[allSiblings.length - 1].order + 1000 : 1000
         }
 
         // 根据拖拽节点类型移动节点

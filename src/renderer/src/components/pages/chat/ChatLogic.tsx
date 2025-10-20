@@ -15,7 +15,12 @@ interface ChatLogicProps {
     isLoading: boolean
     selectedModel: string | undefined
     onModelChange: (modelId: string) => void
-    onSendMessage: (content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => Promise<void>
+    onSendMessage: (
+      content: string,
+      customModelId?: string,
+      customParentId?: string,
+      attachments?: FileAttachment[]
+    ) => Promise<void>
     onStopGeneration: () => void
     onRetryMessage: (messageId: string) => Promise<void>
     onContinueMessage: (messageId: string) => Promise<void>
@@ -68,7 +73,15 @@ export default function ChatLogic({
   const aiService = useAIService(chatId)
 
   // 创建 ref 来解决循环依赖问题
-  const sendMessageRef = useRef<((content: string, customModelId?: string, customParentId?: string, attachments?: FileAttachment[]) => Promise<void>) | null>(null)
+  const sendMessageRef = useRef<
+    | ((
+        content: string,
+        customModelId?: string,
+        customParentId?: string,
+        attachments?: FileAttachment[]
+      ) => Promise<void>)
+    | null
+  >(null)
 
   // 使用自动提问 hook
   const autoQuestion = useAutoQuestion({
@@ -82,32 +95,35 @@ export default function ChatLogic({
   })
 
   // 创建带有自动提问回调的 AI 消息发送函数
-  const sendAIMessageWithAutoQuestion = useCallback(async (
-    messages: any[],
-    llmConfig: any,
-    parentId?: string,
-    taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat',
-    taskContext?: any
-  ) => {
-    return aiService.sendAIMessage(
-      messages,
-      llmConfig,
-      parentId,
-      taskType,
-      taskContext,
-      async (messageId: string) => {
-        if (autoQuestionEnabled) {
-          try {
-            setTimeout(async () => {
-              await autoQuestion.generateAndSendFollowUpQuestion(messageId)
-            }, 1000)
-          } catch (error) {
-            console.error('Auto follow-up question failed:', error)
+  const sendAIMessageWithAutoQuestion = useCallback(
+    async (
+      messages: any[],
+      llmConfig: any,
+      parentId?: string,
+      taskType: 'chat' | 'retry' | 'edit_resend' | 'model_change' = 'chat',
+      taskContext?: any
+    ) => {
+      return aiService.sendAIMessage(
+        messages,
+        llmConfig,
+        parentId,
+        taskType,
+        taskContext,
+        async (messageId: string) => {
+          if (autoQuestionEnabled) {
+            try {
+              setTimeout(async () => {
+                await autoQuestion.generateAndSendFollowUpQuestion(messageId)
+              }, 1000)
+            } catch (error) {
+              console.error('Auto follow-up question failed:', error)
+            }
           }
         }
-      }
-    )
-  }, [aiService, autoQuestionEnabled, autoQuestion])
+      )
+    },
+    [aiService, autoQuestionEnabled, autoQuestion]
+  )
 
   // 重写 aiService 的 sendAIMessage 方法以支持自动提问
   const enhancedAIService = {
@@ -135,11 +151,11 @@ export default function ChatLogic({
   // 获取最新的AI消息ID
   const getLatestAIMessageId = useCallback(() => {
     if (!chat?.messages) return null
-    
+
     // 获取当前路径的消息
     const currentPath = chat.currentPath || []
     let messages: any[] = []
-    
+
     if (currentPath.length > 0) {
       // 使用当前路径
       messages = currentPath
@@ -149,14 +165,14 @@ export default function ChatLogic({
       // 使用消息树获取默认路径
       messages = messageTree.getCurrentPathMessages()
     }
-    
+
     // 从后往前找最新的AI消息
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'assistant') {
         return messages[i].id
       }
     }
-    
+
     return null
   }, [chat, messageTree])
 
@@ -166,13 +182,13 @@ export default function ChatLogic({
       console.warn('自动追问功能未开启')
       return
     }
-    
+
     const latestAIMessageId = getLatestAIMessageId()
     if (!latestAIMessageId) {
       console.warn('未找到AI消息，无法触发追问')
       return
     }
-    
+
     try {
       await autoQuestion.generateAndSendFollowUpQuestion(latestAIMessageId)
     } catch (error) {

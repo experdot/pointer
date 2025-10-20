@@ -126,18 +126,18 @@
   position: relative;
   display: inline-block;
   border: 1px solid #d9d9d9;
-  borderRadius: 4px;
+  borderradius: 4px;
   padding: 4px;
   background: #fafafa;
 }
 
 .favorite-message-preview .attachment-name {
-  fontSize: 11px;
-  marginTop: 4px;
-  maxWidth: 120px;
+  fontsize: 11px;
+  margintop: 4px;
+  maxwidth: 120px;
   overflow: hidden;
-  textOverflow: ellipsis;
-  whiteSpace: nowrap;
+  textoverflow: ellipsis;
+  whitespace: nowrap;
 }
 
 /* 消息推理卡片 - 与 MessageContent 一致 */

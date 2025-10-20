@@ -209,12 +209,13 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           set((state) => {
             if (state.settings.promptLists) {
               state.settings.promptLists = state.settings.promptLists.filter((c) => c.id !== id)
-              
+
               // 如果删除的是默认配置，重新选择默认
               if (state.settings.defaultPromptListId === id) {
-                state.settings.defaultPromptListId = state.settings.promptLists.length > 0
-                  ? state.settings.promptLists[0].id
-                  : undefined
+                state.settings.defaultPromptListId =
+                  state.settings.promptLists.length > 0
+                    ? state.settings.promptLists[0].id
+                    : undefined
               }
             }
           })

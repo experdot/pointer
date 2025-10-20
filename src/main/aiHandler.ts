@@ -26,7 +26,9 @@ export interface FileAttachment {
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
+  content:
+    | string
+    | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
   attachments?: FileAttachment[]
 }
 
@@ -52,55 +54,64 @@ class AIHandler {
   /**
    * 准备 API 消息数组，处理 systemPrompt 和文件附件
    */
-  private async prepareApiMessages(messages: ChatMessage[], modelConfig: ModelConfig): Promise<ChatMessage[]> {
+  private async prepareApiMessages(
+    messages: ChatMessage[],
+    modelConfig: ModelConfig
+  ): Promise<ChatMessage[]> {
     const attachmentsDir = path.join(app.getPath('userData'), 'attachments')
 
-    const apiMessages = await Promise.all(messages.map(async (msg) => {
-      // 如果消息有附件，需要转换为多模态格式
-      if (msg.attachments && msg.attachments.length > 0) {
-        const contentParts: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = []
+    const apiMessages = await Promise.all(
+      messages.map(async (msg) => {
+        // 如果消息有附件，需要转换为多模态格式
+        if (msg.attachments && msg.attachments.length > 0) {
+          const contentParts: Array<{
+            type: 'text' | 'image_url'
+            text?: string
+            image_url?: { url: string }
+          }> = []
 
-        // 添加文本内容
-        if (typeof msg.content === 'string' && msg.content.trim()) {
-          contentParts.push({
-            type: 'text',
-            text: msg.content
-          })
-        }
+          // 添加文本内容
+          if (typeof msg.content === 'string' && msg.content.trim()) {
+            contentParts.push({
+              type: 'text',
+              text: msg.content
+            })
+          }
 
-        // 添加图片附件 - 从文件系统读取
-        for (const attachment of msg.attachments) {
-          if (attachment.type.startsWith('image/')) {
-            try {
-              const fullPath = path.join(attachmentsDir, attachment.localPath)
-              const buffer = await readFile(fullPath)
-              const base64Content = buffer.toString('base64')
+          // 添加图片附件 - 从文件系统读取
+          for (const attachment of msg.attachments) {
+            if (attachment.type.startsWith('image/')) {
+              try {
+                const fullPath = path.join(attachmentsDir, attachment.localPath)
+                const buffer = await readFile(fullPath)
+                const base64Content = buffer.toString('base64')
 
-              contentParts.push({
-                type: 'image_url',
-                image_url: {
-                  url: `data:${attachment.type};base64,${base64Content}`
-                }
-              })
-            } catch (error) {
-              console.error('Failed to read attachment file:', attachment.localPath, error)
-              // 跳过无法读取的附件
+                contentParts.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${attachment.type};base64,${base64Content}`
+                  }
+                })
+              } catch (error) {
+                console.error('Failed to read attachment file:', attachment.localPath, error)
+                // 跳过无法读取的附件
+              }
             }
+          }
+
+          return {
+            role: msg.role,
+            content: contentParts
           }
         }
 
+        // 普通文本消息
         return {
           role: msg.role,
-          content: contentParts
+          content: msg.content
         }
-      }
-
-      // 普通文本消息
-      return {
-        role: msg.role,
-        content: msg.content
-      }
-    }))
+      })
+    )
 
     // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
     if (
@@ -298,12 +309,7 @@ class AIHandler {
       const fullResponse = { value: '' }
       const fullReasoning = { value: '' }
 
-      const parser = this.createStreamParser(
-        event,
-        eventChannel,
-        fullResponse,
-        fullReasoning
-      )
+      const parser = this.createStreamParser(event, eventChannel, fullResponse, fullReasoning)
 
       await this.processStreamResponse(
         reader,
@@ -368,7 +374,9 @@ class AIHandler {
     }
   }
 
-  public async getModels(config: LLMConfig): Promise<{ success: boolean; models?: string[]; error?: string }> {
+  public async getModels(
+    config: LLMConfig
+  ): Promise<{ success: boolean; models?: string[]; error?: string }> {
     try {
       const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/models`, {
         method: 'GET',
@@ -402,7 +410,11 @@ export function setupAIHandlers() {
   ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest, eventChannel: string) =>
     aiHandler.sendMessageStreaming(event, request, eventChannel)
   )
-  ipcMain.handle('ai:stop-streaming', (_event, requestId: string) => aiHandler.stopStreaming(requestId))
-  ipcMain.handle('ai:test-connection', (_event, config: LLMConfig) => aiHandler.testConnection(config))
+  ipcMain.handle('ai:stop-streaming', (_event, requestId: string) =>
+    aiHandler.stopStreaming(requestId)
+  )
+  ipcMain.handle('ai:test-connection', (_event, config: LLMConfig) =>
+    aiHandler.testConnection(config)
+  )
   ipcMain.handle('ai:get-models', (_event, config: LLMConfig) => aiHandler.getModels(config))
 }

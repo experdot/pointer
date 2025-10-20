@@ -65,7 +65,9 @@ declare global {
         defaultPath: string
         filters?: Array<{ name: string; extensions: string[] }>
       }) => Promise<{ success: boolean; cancelled?: boolean; filePath?: string; error?: string }>
-      readFile: (filePath: string) => Promise<{ success: boolean; content?: string; error?: string }>
+      readFile: (
+        filePath: string
+      ) => Promise<{ success: boolean; content?: string; error?: string }>
       selectFiles: (options?: {
         multiple?: boolean
         filters?: Array<{ name: string; extensions: string[] }>

@@ -291,9 +291,7 @@ export default function TabsArea() {
       const overIndex = openTabs.indexOf(overId)
 
       // 找到对应的 DOM 元素
-      const overTab = document.querySelector(
-        `.tabs-area .ant-tabs-tab[data-node-key="${overId}"]`
-      )
+      const overTab = document.querySelector(`.tabs-area .ant-tabs-tab[data-node-key="${overId}"]`)
 
       if (overTab && activeIndex !== -1 && overIndex !== -1) {
         // 使用统一的 pinned 状态检查

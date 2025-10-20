@@ -341,21 +341,23 @@ export class MessageTree {
 
     const targetSibling = siblings[siblingBranchIndex]
     const sourceMessage = this.messageMap.get(messageId)
-    
+
     if (!sourceMessage) {
       return this.currentPath
     }
 
     // 构建从根到目标兄弟消息的路径
     const pathToParent: string[] = []
-    let currentMsg: ChatMessage | undefined = sourceMessage.parentId ? this.messageMap.get(sourceMessage.parentId) : undefined
-    
+    let currentMsg: ChatMessage | undefined = sourceMessage.parentId
+      ? this.messageMap.get(sourceMessage.parentId)
+      : undefined
+
     // 从父消息回溯到根
     while (currentMsg) {
       pathToParent.unshift(currentMsg.id)
       currentMsg = currentMsg.parentId ? this.messageMap.get(currentMsg.parentId) : undefined
     }
-    
+
     // 新路径 = 到父节点的路径 + 目标兄弟节点
     const newPath = [...pathToParent, targetSibling.id]
 

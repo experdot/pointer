@@ -42,7 +42,11 @@ interface MessageQueuePanelProps {
   config: MessageQueueConfig
   currentlyProcessing: string | null
   selectedModel?: string
-  onAddToQueue: (content: string, modelId?: string, options?: { autoResume?: boolean; attachments?: FileAttachment[] }) => string
+  onAddToQueue: (
+    content: string,
+    modelId?: string,
+    options?: { autoResume?: boolean; attachments?: FileAttachment[] }
+  ) => string
   onRemoveFromQueue: (itemId: string) => void
   onEditQueueItem: (itemId: string, newContent: string) => void
   onClearQueue: () => void
@@ -84,14 +88,17 @@ export default function MessageQueuePanel({
     }
   }, [editingItemId, editContent, onEditQueueItem])
 
-  const handleCancelEdit = useCallback((itemId: string, isNewItem: boolean) => {
-    // 如果是新添加的空项且用户取消了，则删除它
-    if (isNewItem && !editContent.trim()) {
-      onRemoveFromQueue(itemId)
-    }
-    setEditingItemId(null)
-    setEditContent('')
-  }, [editContent, onRemoveFromQueue])
+  const handleCancelEdit = useCallback(
+    (itemId: string, isNewItem: boolean) => {
+      // 如果是新添加的空项且用户取消了，则删除它
+      if (isNewItem && !editContent.trim()) {
+        onRemoveFromQueue(itemId)
+      }
+      setEditingItemId(null)
+      setEditContent('')
+    },
+    [editContent, onRemoveFromQueue]
+  )
 
   const handleAddMessage = useCallback(() => {
     // 直接添加一个空的待编辑项
@@ -137,12 +144,7 @@ export default function MessageQueuePanel({
           {attachments.map((attachment) => {
             const isImage = attachment.type.startsWith('image/')
             return (
-              <Tag
-                key={attachment.id}
-                icon={<FileOutlined />}
-                color="blue"
-                style={{ margin: 0 }}
-              >
+              <Tag key={attachment.id} icon={<FileOutlined />} color="blue" style={{ margin: 0 }}>
                 <span style={{ fontSize: 12 }}>
                   {attachment.name}
                   {attachment.size && ` (${(attachment.size / 1024).toFixed(1)}KB)`}
@@ -178,12 +180,7 @@ export default function MessageQueuePanel({
         extra={
           <Space>
             <Tooltip title="添加消息">
-              <Button
-                type="text"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={handleAddMessage}
-              />
+              <Button type="text" size="small" icon={<PlusOutlined />} onClick={handleAddMessage} />
             </Tooltip>
             <Dropdown
               menu={{
@@ -268,7 +265,11 @@ export default function MessageQueuePanel({
                 className={`queue-item queue-item-${item.status}`}
                 style={{
                   backgroundColor:
-                    item.status === 'processing' ? '#e6f7ff' : item.status === 'failed' ? '#fff1f0' : undefined,
+                    item.status === 'processing'
+                      ? '#e6f7ff'
+                      : item.status === 'failed'
+                        ? '#fff1f0'
+                        : undefined,
                   padding: '8px 12px',
                   marginBottom: 8,
                   borderRadius: 4,
@@ -277,7 +278,9 @@ export default function MessageQueuePanel({
               >
                 <div style={{ width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div style={{ marginRight: 8, paddingTop: 2 }}>{getStatusIcon(item.status)}</div>
+                    <div style={{ marginRight: 8, paddingTop: 2 }}>
+                      {getStatusIcon(item.status)}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {editingItemId === item.id ? (
                         <div>
@@ -293,7 +296,10 @@ export default function MessageQueuePanel({
                             <Button type="primary" size="small" onClick={handleSaveEdit}>
                               保存
                             </Button>
-                            <Button size="small" onClick={() => handleCancelEdit(item.id, item.content === '')}>
+                            <Button
+                              size="small"
+                              onClick={() => handleCancelEdit(item.id, item.content === '')}
+                            >
                               取消
                             </Button>
                           </Space>
@@ -310,19 +316,21 @@ export default function MessageQueuePanel({
                               fontStyle: item.content ? undefined : 'italic'
                             }}
                           >
-                            {item.content ? (
-                              item.content.length > 100
+                            {item.content
+                              ? item.content.length > 100
                                 ? item.content.substring(0, 100) + '...'
                                 : item.content
-                            ) : (
-                              '(空消息 - 点击编辑按钮添加内容)'
-                            )}
+                              : '(空消息 - 点击编辑按钮添加内容)'}
                           </div>
                           {renderAttachments(item.attachments)}
                           <Space size="small" wrap style={{ marginTop: 4 }}>
                             {getStatusTag(item.status)}
                             {item.attachments && item.attachments.length > 0 && (
-                              <Tag icon={<PaperClipOutlined />} color="blue" style={{ fontSize: 11 }}>
+                              <Tag
+                                icon={<PaperClipOutlined />}
+                                color="blue"
+                                style={{ fontSize: 11 }}
+                              >
                                 {item.attachments.length} 个附件
                               </Tag>
                             )}
@@ -370,12 +378,7 @@ export default function MessageQueuePanel({
                           cancelText="取消"
                         >
                           <Tooltip title="删除">
-                            <Button
-                              type="text"
-                              size="small"
-                              danger
-                              icon={<DeleteOutlined />}
-                            />
+                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                           </Tooltip>
                         </Popconfirm>
                       )}

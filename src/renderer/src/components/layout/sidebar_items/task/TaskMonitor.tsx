@@ -108,7 +108,6 @@ const formatDuration = (startTime: number, endTime?: number) => {
   return `${seconds}秒`
 }
 
-
 export default function TaskMonitor() {
   const { aiTasks, cancelTask, removeTask, clearCompletedTasks, clearAllTasks } = useAITasksStore()
   const { settings } = useSettingsStore()

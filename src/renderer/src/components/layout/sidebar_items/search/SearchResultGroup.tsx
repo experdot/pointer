@@ -85,10 +85,7 @@ const SearchResultGroup = React.memo(function SearchResultGroup({
             </Text>
           </div>
           <div className="result-item-snippet">
-            <Paragraph
-              ellipsis={{ rows: 2 }}
-              style={{ marginBottom: 0, fontSize: '13px' }}
-            >
+            <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 0, fontSize: '13px' }}>
               {highlightText(snippet, highlightIndices)}
             </Paragraph>
           </div>
@@ -140,7 +137,8 @@ const SearchResultGroup = React.memo(function SearchResultGroup({
                 }}
                 style={{ fontSize: '12px', padding: '4px 36px' }}
               >
-                显示更多 (还有 {results.length - displayCount} 条，显示接下来 {Math.min(results.length - displayCount, INCREMENT_COUNT)} 条)
+                显示更多 (还有 {results.length - displayCount} 条，显示接下来{' '}
+                {Math.min(results.length - displayCount, INCREMENT_COUNT)} 条)
               </Button>
               {displayCount > INITIAL_DISPLAY_COUNT && (
                 <Button

@@ -33,7 +33,12 @@ export interface SearchActions {
 
   // 搜索执行
   performSearch: (query?: string) => void
-  searchMessages: (pages: any[], query: string, options?: SearchOptions, filterFolderId?: string | null) => SearchResult[]
+  searchMessages: (
+    pages: any[],
+    query: string,
+    options?: SearchOptions,
+    filterFolderId?: string | null
+  ) => SearchResult[]
 
   // 工具方法
   hasSearchResults: () => boolean
@@ -145,7 +150,12 @@ export const useSearchStore = create<SearchState & SearchActions>()(
 
           // 获取所有页面进行搜索
           const pages = usePagesStore.getState().pages
-          const results = get().searchMessages(pages, searchQuery, state.searchOptions, state.filterFolderId)
+          const results = get().searchMessages(
+            pages,
+            searchQuery,
+            state.searchOptions,
+            state.filterFolderId
+          )
 
           // 更新搜索结果
           set((state) => {
@@ -178,7 +188,7 @@ export const useSearchStore = create<SearchState & SearchActions>()(
 
           // 递归查找所有子文件夹
           const findSubFolders = (parentId: string) => {
-            folders.forEach(folder => {
+            folders.forEach((folder) => {
               if (folder.parentId === parentId && !folderIds!.has(folder.id)) {
                 folderIds!.add(folder.id)
                 findSubFolders(folder.id)

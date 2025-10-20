@@ -49,11 +49,21 @@ export interface PagesActions {
   getFoldersByParentId: (parentId?: string) => PageFolder[]
 
   // 页面创建和打开
-  createAndOpenChat: (title: string, folderId?: string, order?: number, lineage?: PageLineage) => string
+  createAndOpenChat: (
+    title: string,
+    folderId?: string,
+    order?: number,
+    lineage?: PageLineage
+  ) => string
   createAndOpenCrosstabChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenObjectChat: (title: string, folderId?: string, lineage?: PageLineage) => string
   createAndOpenSettingsPage: (defaultActiveTab?: string) => string
-  createChatWithInitialMessage: (title: string, initialMessage: string, folderId?: string, sourcePageId?: string) => string
+  createChatWithInitialMessage: (
+    title: string,
+    initialMessage: string,
+    folderId?: string,
+    sourcePageId?: string
+  ) => string
 
   // 复杂页面创建功能
   createChatFromCell: (params: {
@@ -134,7 +144,8 @@ export const usePagesStore = create<PagesState & PagesActions>()(
                 const updatedPage = {
                   ...page,
                   currentPath: path,
-                  selectedMessageId: messageId || (path.length > 0 ? path[path.length - 1] : undefined),
+                  selectedMessageId:
+                    messageId || (path.length > 0 ? path[path.length - 1] : undefined),
                   updatedAt: Date.now()
                 }
                 state.pages[pageIndex] = updatedPage
@@ -320,18 +331,18 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           // 如果没有指定order，获取同级文件夹的最小order值
           let finalOrder = order
           if (finalOrder === undefined) {
-            const siblingFolders = get().folders.filter(f => f.parentId === parentId)
-            const siblingPages = get().pages.filter(p => p.folderId === parentId && p.type !== 'settings')
+            const siblingFolders = get().folders.filter((f) => f.parentId === parentId)
+            const siblingPages = get().pages.filter(
+              (p) => p.folderId === parentId && p.type !== 'settings'
+            )
 
             // 获取所有同级项的最小order值
             const allOrders = [
-              ...siblingFolders.map(f => f.order || 0),
-              ...siblingPages.map(p => p.order || 0)
+              ...siblingFolders.map((f) => f.order || 0),
+              ...siblingPages.map((p) => p.order || 0)
             ]
 
-            const minOrder = allOrders.length > 0
-              ? Math.min(...allOrders)
-              : 1000
+            const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 1000
             finalOrder = minOrder - 1000 // 新文件夹添加到最前面
           }
 
@@ -339,7 +350,7 @@ export const usePagesStore = create<PagesState & PagesActions>()(
             ...createNewFolder(name, parentId),
             order: finalOrder
           }
-          
+
           set((state) => {
             state.folders.push(newFolder)
           })
@@ -446,18 +457,18 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           // 如果没有指定order，获取同文件夹下的最小order值
           let finalOrder = order
           if (finalOrder === undefined) {
-            const siblingFolders = get().folders.filter(f => f.parentId === folderId)
-            const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+            const siblingFolders = get().folders.filter((f) => f.parentId === folderId)
+            const siblingPages = get().pages.filter(
+              (p) => p.folderId === folderId && p.type !== 'settings'
+            )
 
             // 获取所有同级项的最小order值
             const allOrders = [
-              ...siblingFolders.map(f => f.order || 0),
-              ...siblingPages.map(p => p.order || 0)
+              ...siblingFolders.map((f) => f.order || 0),
+              ...siblingPages.map((p) => p.order || 0)
             ]
 
-            const minOrder = allOrders.length > 0
-              ? Math.min(...allOrders)
-              : 1000
+            const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 1000
             finalOrder = minOrder - 1000 // 新聊天添加到最前面
           }
 
@@ -497,19 +508,19 @@ export const usePagesStore = create<PagesState & PagesActions>()(
       createAndOpenCrosstabChat: (title, folderId, lineage) => {
         try {
           // 获取同文件夹下的最小order值
-          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
-          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+          const siblingFolders = get().folders.filter((f) => f.parentId === folderId)
+          const siblingPages = get().pages.filter(
+            (p) => p.folderId === folderId && p.type !== 'settings'
+          )
 
           // 获取所有同级项的最小order值
           const allOrders = [
-            ...siblingFolders.map(f => f.order || 0),
-            ...siblingPages.map(p => p.order || 0)
+            ...siblingFolders.map((f) => f.order || 0),
+            ...siblingPages.map((p) => p.order || 0)
           ]
 
-          const minOrder = allOrders.length > 0
-            ? Math.min(...allOrders)
-            : 1000
-          
+          const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 1000
+
           const newPage: Page = {
             title,
             folderId,
@@ -540,19 +551,19 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           const timestamp = Date.now()
 
           // 获取同文件夹下的最小order值
-          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
-          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+          const siblingFolders = get().folders.filter((f) => f.parentId === folderId)
+          const siblingPages = get().pages.filter(
+            (p) => p.folderId === folderId && p.type !== 'settings'
+          )
 
           // 获取所有同级项的最小order值
           const allOrders = [
-            ...siblingFolders.map(f => f.order || 0),
-            ...siblingPages.map(p => p.order || 0)
+            ...siblingFolders.map((f) => f.order || 0),
+            ...siblingPages.map((p) => p.order || 0)
           ]
 
-          const minOrder = allOrders.length > 0
-            ? Math.min(...allOrders)
-            : 1000
-          
+          const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 1000
+
           const newPage: Page = {
             id: uuidv4(),
             title,
@@ -645,18 +656,18 @@ export const usePagesStore = create<PagesState & PagesActions>()(
           const timestamp = Date.now()
 
           // 如果没有指定order，获取同文件夹下的最小order值
-          const siblingFolders = get().folders.filter(f => f.parentId === folderId)
-          const siblingPages = get().pages.filter(p => p.folderId === folderId && p.type !== 'settings')
+          const siblingFolders = get().folders.filter((f) => f.parentId === folderId)
+          const siblingPages = get().pages.filter(
+            (p) => p.folderId === folderId && p.type !== 'settings'
+          )
 
           // 获取所有同级项的最小order值
           const allOrders = [
-            ...siblingFolders.map(f => f.order || 0),
-            ...siblingPages.map(p => p.order || 0)
+            ...siblingFolders.map((f) => f.order || 0),
+            ...siblingPages.map((p) => p.order || 0)
           ]
 
-          const minOrder = allOrders.length > 0
-            ? Math.min(...allOrders)
-            : 1000
+          const minOrder = allOrders.length > 0 ? Math.min(...allOrders) : 1000
 
           // 创建用户消息
           const userMessage = {
@@ -1029,14 +1040,14 @@ ${params.nodeContext}
 
             // 为messages数组中的每个消息生成新ID
             if (messages) {
-              messages.forEach(msg => {
+              messages.forEach((msg) => {
                 idMap.set(msg.id, uuidv4())
               })
             }
 
             // 为messageMap中可能存在但不在messages数组中的消息生成新ID
             if (messageMap) {
-              Object.keys(messageMap).forEach(oldId => {
+              Object.keys(messageMap).forEach((oldId) => {
                 if (!idMap.has(oldId)) {
                   idMap.set(oldId, uuidv4())
                 }
@@ -1053,12 +1064,14 @@ ${params.nodeContext}
           const copyMessagesWithNewIds = (messages?: any[]): any[] => {
             if (!messages || messages.length === 0) return []
 
-            return messages.map(msg => ({
+            return messages.map((msg) => ({
               ...msg,
               id: idMap.get(msg.id)!,
               parentId: msg.parentId ? idMap.get(msg.parentId) : undefined,
-              replies: msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
-              children: msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
+              replies:
+                msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
+              children:
+                msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
               // 保持branchIndex（分支索引在消息关系中是相对的，不需要重新生成）
               branchIndex: msg.branchIndex,
               // 重置流式状态
@@ -1067,7 +1080,9 @@ ${params.nodeContext}
           }
 
           // 深度复制消息映射并重新生成ID
-          const copyMessageMapWithNewIds = (messageMap?: { [messageId: string]: any }): { [messageId: string]: any } => {
+          const copyMessageMapWithNewIds = (messageMap?: {
+            [messageId: string]: any
+          }): { [messageId: string]: any } => {
             if (!messageMap) return {}
 
             const newMessageMap: { [messageId: string]: any } = {}
@@ -1078,8 +1093,10 @@ ${params.nodeContext}
                 ...msg,
                 id: newId,
                 parentId: msg.parentId ? idMap.get(msg.parentId) : undefined,
-                replies: msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
-                children: msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
+                replies:
+                  msg.replies?.map((replyId: string) => idMap.get(replyId)).filter(Boolean) || [],
+                children:
+                  msg.children?.map((childId: string) => idMap.get(childId)).filter(Boolean) || [],
                 // 保持branchIndex（分支索引在消息关系中是相对的，不需要重新生成）
                 branchIndex: msg.branchIndex,
                 // 重置流式状态
@@ -1094,7 +1111,7 @@ ${params.nodeContext}
           const updateCurrentPath = (currentPath?: string[]): string[] => {
             if (!currentPath) return []
 
-            return currentPath.map(oldId => idMap.get(oldId)).filter(Boolean) as string[]
+            return currentPath.map((oldId) => idMap.get(oldId)).filter(Boolean) as string[]
           }
 
           // 深度复制特定类型的数据
@@ -1130,20 +1147,22 @@ ${params.nodeContext}
             streamingMessage: undefined,
             selectedMessageId: undefined,
             // 处理溯源信息
-            lineage: originalPage.lineage ? {
-              ...originalPage.lineage,
-              source: 'user' as const, // 标记为用户手动复制
-              sourcePageId: pageId, // 记录原始页面ID
-              generatedPageIds: [], // 重置生成的页面列表
-              generatedAt: timestamp,
-              description: `复制自 "${originalPage.title}"`
-            } : {
-              source: 'user' as const,
-              sourcePageId: pageId,
-              generatedPageIds: [],
-              generatedAt: timestamp,
-              description: `复制自 "${originalPage.title}"`
-            }
+            lineage: originalPage.lineage
+              ? {
+                  ...originalPage.lineage,
+                  source: 'user' as const, // 标记为用户手动复制
+                  sourcePageId: pageId, // 记录原始页面ID
+                  generatedPageIds: [], // 重置生成的页面列表
+                  generatedAt: timestamp,
+                  description: `复制自 "${originalPage.title}"`
+                }
+              : {
+                  source: 'user' as const,
+                  sourcePageId: pageId,
+                  generatedPageIds: [],
+                  generatedAt: timestamp,
+                  description: `复制自 "${originalPage.title}"`
+                }
           }
 
           // 更新当前路径

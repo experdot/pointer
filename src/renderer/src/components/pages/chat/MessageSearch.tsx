@@ -30,28 +30,34 @@ const MessageSearch: React.FC<MessageSearchProps> = ({
   }, [isVisible])
 
   // 处理搜索输入变化
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value
-    setSearchQuery(query)
-    // 立即触发搜索，包括空查询（用于清除高亮）
-    onSearch(query, 0, 'next')
-  }, [onSearch])
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const query = e.target.value
+      setSearchQuery(query)
+      // 立即触发搜索，包括空查询（用于清除高亮）
+      onSearch(query, 0, 'next')
+    },
+    [onSearch]
+  )
 
   // 处理键盘事件
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (searchQuery.trim()) {
-        if (e.shiftKey) {
-          onSearch(searchQuery, currentIndex, 'previous')
-        } else {
-          onSearch(searchQuery, currentIndex, 'next')
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (searchQuery.trim()) {
+          if (e.shiftKey) {
+            onSearch(searchQuery, currentIndex, 'previous')
+          } else {
+            onSearch(searchQuery, currentIndex, 'next')
+          }
         }
+      } else if (e.key === 'Escape') {
+        onClose()
       }
-    } else if (e.key === 'Escape') {
-      onClose()
-    }
-  }, [searchQuery, currentIndex, onSearch, onClose])
+    },
+    [searchQuery, currentIndex, onSearch, onClose]
+  )
 
   // 处理上一个/下一个按钮点击
   const handlePrevious = useCallback(() => {
@@ -112,12 +118,7 @@ const MessageSearch: React.FC<MessageSearchProps> = ({
           </Tooltip>
 
           <Tooltip title="关闭 (Esc)">
-            <Button
-              type="text"
-              size="small"
-              icon={<CloseOutlined />}
-              onClick={onClose}
-            />
+            <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} />
           </Tooltip>
         </div>
       </div>

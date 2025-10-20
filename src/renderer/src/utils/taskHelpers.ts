@@ -24,7 +24,10 @@ export const sortTasksByTime = (tasks: AITask[], descending: boolean = true): AI
   })
 }
 
-export const filterTasksByStatus = (tasks: AITask[], status: AITaskStatus | AITaskStatus[]): AITask[] => {
+export const filterTasksByStatus = (
+  tasks: AITask[],
+  status: AITaskStatus | AITaskStatus[]
+): AITask[] => {
   const statuses = Array.isArray(status) ? status : [status]
   return tasks.filter((task) => statuses.includes(task.status))
 }

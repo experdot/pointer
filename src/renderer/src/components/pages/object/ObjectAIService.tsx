@@ -29,10 +29,7 @@ export class ObjectAIService {
     this.taskManager = new AITaskManager(llmConfig.id, aiService.id, dispatch, chatId)
   }
 
-  private buildPromptContext(
-    context: AIGenerationContext,
-    userPrompt: string
-  ): PromptContext {
+  private buildPromptContext(context: AIGenerationContext, userPrompt: string): PromptContext {
     const { node, existingChildren, getFullContextInformation } = context
     return {
       fullContextInfo: getFullContextInformation ? getFullContextInformation() : '',
@@ -45,10 +42,7 @@ export class ObjectAIService {
   }
 
   // 生成子节点名称
-  async generateChildrenNames(
-    context: AIGenerationContext,
-    userPrompt: string
-  ): Promise<string[]> {
+  async generateChildrenNames(context: AIGenerationContext, userPrompt: string): Promise<string[]> {
     const { node: parentNode } = context
 
     return this.taskManager.executeWithTask(
@@ -341,7 +335,11 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
               role: '关系参与者',
               description: `通过关系"${relData.name}"连接`,
               strength: 'medium',
-              metadata: { createdAt: timestamp, source: 'ai', aiPrompt: userPrompt || '生成关系节点' }
+              metadata: {
+                createdAt: timestamp,
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
+              }
             }
           },
           {
@@ -351,7 +349,11 @@ ${userPrompt || '请分析这两个节点之间可能存在的关系，并生成
               role: '关系参与者',
               description: `通过关系"${relData.name}"连接`,
               strength: 'medium',
-              metadata: { createdAt: timestamp, source: 'ai', aiPrompt: userPrompt || '生成关系节点' }
+              metadata: {
+                createdAt: timestamp,
+                source: 'ai',
+                aiPrompt: userPrompt || '生成关系节点'
+              }
             }
           }
         )

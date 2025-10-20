@@ -1,5 +1,13 @@
 import { v4 as uuidv4 } from 'uuid'
-import { RegularChat, CrosstabChat, ObjectChat, CrosstabData, CrosstabStep, ObjectData, PageLineage } from '../../types/type'
+import {
+  RegularChat,
+  CrosstabChat,
+  ObjectChat,
+  CrosstabData,
+  CrosstabStep,
+  ObjectData,
+  PageLineage
+} from '../../types/type'
 import { createObjectRootWithMetaRelations } from './objectRootFactory'
 
 // 创建新的普通聊天

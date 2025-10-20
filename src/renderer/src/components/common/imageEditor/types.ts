@@ -1,4 +1,12 @@
-export type DrawMode = 'none' | 'mosaic' | 'draw' | 'rect' | 'text' | 'eraser' | 'highlight' | 'arrow'
+export type DrawMode =
+  | 'none'
+  | 'mosaic'
+  | 'draw'
+  | 'rect'
+  | 'text'
+  | 'eraser'
+  | 'highlight'
+  | 'arrow'
 
 export interface TextItem {
   id: string

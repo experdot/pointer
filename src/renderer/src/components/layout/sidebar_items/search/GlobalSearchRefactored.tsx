@@ -252,18 +252,21 @@ export default function GlobalSearchRefactored({
   }, [setFilterFolderId, inputValue, performSearch])
 
   // 切换单个组的展开状态
-  const handleToggleGroup = useCallback((chatId: string) => {
-    setExpandedGroups((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(chatId)) {
-        newSet.delete(chatId)
-      } else {
-        newSet.add(chatId)
-      }
-      setAllExpanded(newSet.size === groupedResults.length)
-      return newSet
-    })
-  }, [groupedResults.length])
+  const handleToggleGroup = useCallback(
+    (chatId: string) => {
+      setExpandedGroups((prev) => {
+        const newSet = new Set(prev)
+        if (newSet.has(chatId)) {
+          newSet.delete(chatId)
+        } else {
+          newSet.add(chatId)
+        }
+        setAllExpanded(newSet.size === groupedResults.length)
+        return newSet
+      })
+    },
+    [groupedResults.length]
+  )
 
   // 切换全部展开/收起
   const handleToggleAll = useCallback(() => {
@@ -271,7 +274,7 @@ export default function GlobalSearchRefactored({
       setExpandedGroups(new Set())
       setAllExpanded(false)
     } else {
-      const allIds = new Set(groupedResults.map(g => g.chatId))
+      const allIds = new Set(groupedResults.map((g) => g.chatId))
       setExpandedGroups(allIds)
       setAllExpanded(true)
     }
@@ -349,12 +352,7 @@ export default function GlobalSearchRefactored({
     <div className="vscode-search-input-section">
       {activeFolderId && (
         <div style={{ marginBottom: 8 }}>
-          <Tag
-            icon={<FolderOutlined />}
-            closable
-            onClose={handleClearFolderFilter}
-            color="blue"
-          >
+          <Tag icon={<FolderOutlined />} closable onClose={handleClearFolderFilter} color="blue">
             {filterFolderName || '文件夹过滤'}
           </Tag>
         </div>
@@ -363,7 +361,7 @@ export default function GlobalSearchRefactored({
         <Input
           ref={inputRef}
           className="vscode-search-input"
-          placeholder={activeFolderId ? "在文件夹中搜索" : "搜索"}
+          placeholder={activeFolderId ? '在文件夹中搜索' : '搜索'}
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -428,16 +426,14 @@ export default function GlobalSearchRefactored({
           <Text type="secondary">搜索中...</Text>
         </div>
       ) : inputValue && searchResults.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="无结果"
-          className="search-empty"
-        />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无结果" className="search-empty" />
       ) : searchResults.length > 0 ? (
         <>
           <div className="vscode-search-results-header">
             <div className="results-count">
-              <Text>{searchResults.length} 个结果在 {groupedResults.length} 个对话中</Text>
+              <Text>
+                {searchResults.length} 个结果在 {groupedResults.length} 个对话中
+              </Text>
             </div>
             <div className="results-actions">
               <Tooltip title={allExpanded ? '全部折叠' : '全部展开'}>
@@ -467,7 +463,9 @@ export default function GlobalSearchRefactored({
               <div className="load-more-container">
                 <Button
                   type="link"
-                  onClick={() => setVisibleGroups(prev => Math.min(prev + 10, groupedResults.length))}
+                  onClick={() =>
+                    setVisibleGroups((prev) => Math.min(prev + 10, groupedResults.length))
+                  }
                 >
                   显示更多结果 ({visibleGroups} / {groupedResults.length} 个对话)
                 </Button>

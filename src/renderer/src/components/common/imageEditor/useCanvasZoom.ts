@@ -12,13 +12,16 @@ export function useCanvasZoom() {
     setScale((prev) => Math.max(0.1, Math.min(5, prev * delta)))
   }, [])
 
-  const handlePanStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-      e.preventDefault()
-      setIsPanning(true)
-      setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
-    }
-  }, [offset])
+  const handlePanStart = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button === 1 || (e.button === 0 && e.altKey)) {
+        e.preventDefault()
+        setIsPanning(true)
+        setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
+      }
+    },
+    [offset]
+  )
 
   const handlePanMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

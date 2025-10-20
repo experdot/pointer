@@ -1,9 +1,5 @@
 // Chat creation helpers
-export {
-  createNewChat,
-  createNewCrosstabChat,
-  createNewObjectChat
-} from './chatHelpers'
+export { createNewChat, createNewCrosstabChat, createNewObjectChat } from './chatHelpers'
 
 // Object node helpers
 export {
@@ -18,17 +14,10 @@ export {
 } from './objectNodeHelpers'
 
 // Page helpers
-export {
-  updatePageById,
-  removeFromArray,
-  constrainSidebarWidth
-} from './pageHelpers'
+export { updatePageById, removeFromArray, constrainSidebarWidth } from './pageHelpers'
 
 // Folder helpers
-export {
-  createNewFolder,
-  updateFolderById
-} from './folderHelpers'
+export { createNewFolder, updateFolderById } from './folderHelpers'
 
 // Object root factory
 export { createObjectRootWithMetaRelations } from './objectRootFactory'

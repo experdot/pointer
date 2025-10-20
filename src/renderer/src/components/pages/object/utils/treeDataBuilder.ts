@@ -21,7 +21,8 @@ export const buildTreeData = (
       title: node.name,
       value: nodeId,
       key: nodeId,
-      children: node.children?.map((childId) => buildNode(childId)).filter(Boolean) as TreeNode[] || []
+      children:
+        (node.children?.map((childId) => buildNode(childId)).filter(Boolean) as TreeNode[]) || []
     }
   }
 

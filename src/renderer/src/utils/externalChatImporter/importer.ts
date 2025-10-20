@@ -1,13 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { Page, ChatMessage, RegularChat } from '../../types/type'
 import { MessageTree } from '../../components/pages/chat/messageTree'
-import {
-  SelectableChatItem,
-  ParseResult,
-  ImportResult,
-  DeepSeekChat,
-  OpenAIChat
-} from './types'
+import { SelectableChatItem, ParseResult, ImportResult, DeepSeekChat, OpenAIChat } from './types'
 import { detectChatFormat } from './formatDetector'
 import { convertDeepSeekMessages, convertOpenAIMessages } from './converters'
 
@@ -176,4 +170,3 @@ export function importSelectedChats(
     }
   }
 }
-

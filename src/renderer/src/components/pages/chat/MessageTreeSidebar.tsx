@@ -165,7 +165,10 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
         if (stillInPath) {
           // 如果选中的消息还在新路径中，更新索引位置但不重置
           const newIndex = currentPath.indexOf(currentSelectedId)
-          console.log('[MessageTreeSidebar] Path changed but message still in path, updating index to:', newIndex)
+          console.log(
+            '[MessageTreeSidebar] Path changed but message still in path, updating index to:',
+            newIndex
+          )
           setLocalNavigationIndex(newIndex)
           prevPathRef.current = currentPath
           return
@@ -193,7 +196,10 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
       // 设置导航索引到点击的消息在新路径中的位置
       const indexInNewPath = newPath.indexOf(messageId)
       if (indexInNewPath !== -1) {
-        console.log('[MessageTreeSidebar] Setting navigation index to clicked message:', indexInNewPath)
+        console.log(
+          '[MessageTreeSidebar] Setting navigation index to clicked message:',
+          indexInNewPath
+        )
         setLocalNavigationIndex(indexInNewPath)
       } else {
         // 如果找不到（不应该发生），重置到默认
@@ -304,10 +310,14 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
     } else {
       if (direction === 'prev') {
         targetIndex =
-          currentBookmarkedIndex > 0 ? currentBookmarkedIndex - 1 : stats.bookmarkedMessages.length - 1
+          currentBookmarkedIndex > 0
+            ? currentBookmarkedIndex - 1
+            : stats.bookmarkedMessages.length - 1
       } else {
         targetIndex =
-          currentBookmarkedIndex < stats.bookmarkedMessages.length - 1 ? currentBookmarkedIndex + 1 : 0
+          currentBookmarkedIndex < stats.bookmarkedMessages.length - 1
+            ? currentBookmarkedIndex + 1
+            : 0
       }
     }
 
@@ -335,7 +345,12 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
 
     const targetMessageId = pathNodes[targetIndex].messageId
 
-    console.log('[MessageTreeSidebar] navigateToFirstOrLast:', position, 'targetIndex:', targetIndex)
+    console.log(
+      '[MessageTreeSidebar] navigateToFirstOrLast:',
+      position,
+      'targetIndex:',
+      targetIndex
+    )
 
     // 更新本地导航索引
     setLocalNavigationIndex(targetIndex)
@@ -362,7 +377,12 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
       currentIndex = pathNodes.length - 1
     }
 
-    console.log('[MessageTreeSidebar] Current index:', currentIndex, 'Total nodes:', pathNodes.length)
+    console.log(
+      '[MessageTreeSidebar] Current index:',
+      currentIndex,
+      'Total nodes:',
+      pathNodes.length
+    )
 
     // 计算目标索引
     let targetIndex: number
@@ -534,7 +554,9 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                     onClick={() => navigateToPrevOrNext('next')}
                     title="下一条消息"
                     className="nav-btn-collapsed"
-                    disabled={currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0}
+                    disabled={
+                      currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0
+                    }
                   />
                 </div>
               </>
@@ -649,7 +671,9 @@ const MessageTreeSidebar: React.FC<MessageTreeSidebarProps> = ({
                   icon={<NextIcon />}
                   onClick={() => navigateToPrevOrNext('next')}
                   className="nav-btn path-nav-btn"
-                  disabled={currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0}
+                  disabled={
+                    currentNavigationIndex >= pathNodes.length - 1 || pathNodes.length === 0
+                  }
                 />
               </Tooltip>
             </>

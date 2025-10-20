@@ -9,7 +9,9 @@ export interface UseAutoQuestionProps {
   autoQuestionEnabled: boolean
   autoQuestionMode: 'ai' | 'preset'
   autoQuestionListId?: string
-  onSendMessageRef: React.MutableRefObject<((content: string, customModelId?: string, customParentId?: string) => Promise<void>) | null>
+  onSendMessageRef: React.MutableRefObject<
+    ((content: string, customModelId?: string, customParentId?: string) => Promise<void>) | null
+  >
   getLLMConfig: () => any
   getModelConfigForLLM: (id: string) => any
 }
@@ -30,17 +32,17 @@ export function useAutoQuestion({
   getModelConfigForLLM
 }: UseAutoQuestionProps): UseAutoQuestionReturn {
   const { settings } = useSettingsStore()
-  
+
   // 使用ref存储最新的自动提问状态，避免闭包问题
   const autoQuestionRef = useRef({
     enabled: autoQuestionEnabled,
     mode: autoQuestionMode,
     listId: autoQuestionListId
   })
-  
+
   // 为预设列表维护独立的计数器
   const promptCounterRef = useRef<Map<string, number>>(new Map())
-  
+
   // 每次props变化时更新ref
   useEffect(() => {
     autoQuestionRef.current = {
@@ -55,17 +57,20 @@ export function useAutoQuestion({
     promptCounterRef.current.set(listId, 0)
     console.log(`预设列表计数器已重置: ${listId}`)
   }, [])
-  
+
   // 获取预设列表的当前进度
-  const getPromptProgress = useCallback((listId: string) => {
-    const count = promptCounterRef.current.get(listId) || 0
-    const list = settings.promptLists?.find(l => l.id === listId)
-    return {
-      current: count,
-      total: list?.prompts.length || 0,
-      completed: list ? count >= list.prompts.length : false
-    }
-  }, [settings.promptLists])
+  const getPromptProgress = useCallback(
+    (listId: string) => {
+      const count = promptCounterRef.current.get(listId) || 0
+      const list = settings.promptLists?.find((l) => l.id === listId)
+      return {
+        current: count,
+        total: list?.prompts.length || 0,
+        completed: list ? count >= list.prompts.length : false
+      }
+    },
+    [settings.promptLists]
+  )
 
   // 生成并发送追问的函数
   const generateAndSendFollowUpQuestion = useCallback(
@@ -92,7 +97,10 @@ export function useAutoQuestion({
           .map((id) => currentChat.messages.find((msg) => msg.id === id))
           .filter(Boolean) as ChatMessage[]
 
-        console.log('generateAndSendFollowUpQuestion - currentMessages.length:', currentMessages.length)
+        console.log(
+          'generateAndSendFollowUpQuestion - currentMessages.length:',
+          currentMessages.length
+        )
 
         if (currentMessages.length < 2) {
           console.log('generateAndSendFollowUpQuestion - 对话历史不足，跳过自动追问')
@@ -116,7 +124,7 @@ export function useAutoQuestion({
   const handlePresetMode = useCallback(
     async (currentAutoQuestion: typeof autoQuestionRef.current) => {
       const listId = currentAutoQuestion.listId!
-      const promptList = settings.promptLists?.find(list => list.id === listId)
+      const promptList = settings.promptLists?.find((list) => list.id === listId)
       if (!promptList || !promptList.prompts.length) {
         console.log('generateAndSendFollowUpQuestion - 未找到有效的提示词列表')
         return
@@ -124,14 +132,14 @@ export function useAutoQuestion({
 
       // 获取当前预设列表的计数器
       const currentCount = promptCounterRef.current.get(listId) || 0
-      
+
       // 检查是否已经问完所有提示词
       if (currentCount >= promptList.prompts.length) {
         console.log(`预设模式，列表 "${promptList.name}" 所有提示词已问完，停止自动提问`)
         promptCounterRef.current.set(listId, 0)
         return
       }
-      
+
       const nextQuestion = `针对以上探讨的关键信息，请完成以下任务：
 ## 任务
 ${promptList.name}
@@ -145,8 +153,10 @@ ${promptList.prompts.map((prompt, index) => `${index + 1}. ${prompt}`).join('\n'
 ## 当前任务内容
 请完成：${promptList.prompts[currentCount]}`
 
-      console.log(`预设模式，列表 "${promptList.name}" 使用提示词 ${currentCount + 1}/${promptList.prompts.length}`)
-      
+      console.log(
+        `预设模式，列表 "${promptList.name}" 使用提示词 ${currentCount + 1}/${promptList.prompts.length}`
+      )
+
       // 发送预设问题
       setTimeout(async () => {
         try {
@@ -161,16 +171,21 @@ ${promptList.prompts.map((prompt, index) => `${index + 1}. ${prompt}`).join('\n'
           const latestChat = latestPages.find((c) => c.id === chatId)
           if (latestChat) {
             const latestCurrentPath = latestChat.currentPath || []
-            const parentId = latestCurrentPath.length > 0 ? latestCurrentPath[latestCurrentPath.length - 1] : undefined
-            
+            const parentId =
+              latestCurrentPath.length > 0
+                ? latestCurrentPath[latestCurrentPath.length - 1]
+                : undefined
+
             if (onSendMessageRef.current) {
               await onSendMessageRef.current(nextQuestion, undefined, parentId)
             }
-            
+
             // 发送成功后，更新计数器
             const newCount = (promptCounterRef.current.get(listId) || 0) + 1
             promptCounterRef.current.set(listId, newCount)
-            console.log(`预设模式，列表 "${promptList.name}" 计数器更新: ${newCount}/${promptList.prompts.length}`)
+            console.log(
+              `预设模式，列表 "${promptList.name}" 计数器更新: ${newCount}/${promptList.prompts.length}`
+            )
           }
         } catch (error) {
           console.error('Auto follow-up preset question failed:', error)
@@ -190,10 +205,12 @@ ${promptList.prompts.map((prompt, index) => `${index + 1}. ${prompt}`).join('\n'
 4. 只返回问题本身，不要添加额外说明
 
 对话历史：
-${currentMessages.map((msg) => {
-  const role = msg.role === 'user' ? '用户' : 'AI'
-  return `${role}: ${msg.content}`
-}).join('\n\n')}
+${currentMessages
+  .map((msg) => {
+    const role = msg.role === 'user' ? '用户' : 'AI'
+    return `${role}: ${msg.content}`
+  })
+  .join('\n\n')}
 
 请生成一个合适的追问问题：`
 
@@ -221,7 +238,7 @@ ${currentMessages.map((msg) => {
           },
           onComplete: async (fullResponse: string) => {
             const finalQuestion = (fullResponse || generatedQuestion).trim()
-            
+
             if (finalQuestion && finalQuestion.length > 0) {
               setTimeout(async () => {
                 try {
@@ -236,7 +253,10 @@ ${currentMessages.map((msg) => {
                   const latestChat = latestPages.find((c) => c.id === chatId)
                   if (latestChat) {
                     const latestCurrentPath = latestChat.currentPath || []
-                    const parentId = latestCurrentPath.length > 0 ? latestCurrentPath[latestCurrentPath.length - 1] : undefined
+                    const parentId =
+                      latestCurrentPath.length > 0
+                        ? latestCurrentPath[latestCurrentPath.length - 1]
+                        : undefined
                     if (onSendMessageRef.current) {
                       await onSendMessageRef.current(finalQuestion, undefined, parentId)
                     }
@@ -263,4 +283,4 @@ ${currentMessages.map((msg) => {
     resetPromptCounter,
     getPromptProgress
   }
-} 
+}

@@ -9,9 +9,7 @@ export const calculateTopInsertOrder = (
   parentOrFolderId?: string
 ): number => {
   const siblingFolders = folders.filter((f) => f.parentId === parentOrFolderId)
-  const siblingPages = pages.filter(
-    (p) => p.folderId === parentOrFolderId && p.type !== 'settings'
-  )
+  const siblingPages = pages.filter((p) => p.folderId === parentOrFolderId && p.type !== 'settings')
 
   const allOrders = [
     ...siblingFolders.map((f) => f.order || 0),
@@ -65,10 +63,7 @@ export const createMessageIdMapping = (
 /**
  * 使用ID映射复制消息数组
  */
-export const copyMessagesWithIdMap = (
-  messages: any[],
-  idMap: Map<string, string>
-): any[] => {
+export const copyMessagesWithIdMap = (messages: any[], idMap: Map<string, string>): any[] => {
   return messages.map((msg) => ({
     ...msg,
     id: idMap.get(msg.id)!,

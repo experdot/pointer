@@ -174,7 +174,10 @@ export default function AddTextFragmentToFavoritesModal({
             {item.starred && <Tag color="red">星标</Tag>}
           </div>
           {item.description && (
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+            <Text
+              type="secondary"
+              style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}
+            >
               {item.description}
             </Text>
           )}
@@ -260,7 +263,10 @@ export default function AddTextFragmentToFavoritesModal({
                   overflow: 'auto'
                 }}
               />
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}>
+              <Text
+                type="secondary"
+                style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}
+              >
                 您可以继续添加新的收藏项
               </Text>
             </div>

@@ -1,6 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Avatar, App } from 'antd'
-import { UserOutlined, RobotOutlined, CopyOutlined, MessageOutlined, PlusCircleOutlined, HeartOutlined } from '@ant-design/icons'
+import {
+  UserOutlined,
+  RobotOutlined,
+  CopyOutlined,
+  MessageOutlined,
+  PlusCircleOutlined,
+  HeartOutlined
+} from '@ant-design/icons'
 import { ChatMessage, LLMConfig } from '../../../types/type'
 import { useStreamingMessage } from '../../../stores/messagesStore'
 import SingleMessageExportContainer from './SingleMessageExportContainer'
@@ -235,7 +242,9 @@ const MessageItem = React.memo(
           </div>
           <div
             className={
-              messageActions.isEditing ? 'message-content message-content-editing' : 'message-content'
+              messageActions.isEditing
+                ? 'message-content message-content-editing'
+                : 'message-content'
             }
           >
             <MessageHeader

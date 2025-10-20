@@ -1,6 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
-import { ExportOutlined, DownOutlined, UpOutlined, BranchesOutlined, EditOutlined, HeartOutlined, HeartFilled, MoreOutlined } from '@ant-design/icons'
+import {
+  ExportOutlined,
+  DownOutlined,
+  UpOutlined,
+  BranchesOutlined,
+  EditOutlined,
+  HeartOutlined,
+  HeartFilled,
+  MoreOutlined
+} from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { ChatMessage, Page, PageFolder } from '../../../types/type'
 import { MessageTree } from './messageTree'
@@ -55,10 +64,7 @@ export default function ChatHeader({
 
   // 检查当前会话是否已被收藏
   const isFavorited = useMemo(() => {
-    return favoriteItems.some(item =>
-      item.type === 'page' &&
-      item.source?.pageId === chatId
-    )
+    return favoriteItems.some((item) => item.type === 'page' && item.source?.pageId === chatId)
   }, [favoriteItems, chatId])
 
   // 创建消息树实例
@@ -198,10 +204,13 @@ export default function ChatHeader({
         const timestamp = exportSettings.includeTimestamp ? formatExactDateTime(msg.timestamp) : ''
         const getModelDisplayName = (modelId?: string) => {
           if (!modelId) return ''
-          const config = llmConfigs.find(config => config.id === modelId)
+          const config = llmConfigs.find((config) => config.id === modelId)
           return config?.name || modelId
         }
-        const model = exportSettings.includeModelName && msg.modelId ? ` (${getModelDisplayName(msg.modelId)})` : ''
+        const model =
+          exportSettings.includeModelName && msg.modelId
+            ? ` (${getModelDisplayName(msg.modelId)})`
+            : ''
 
         exportContent += `## ${index + 1}. ${role}${model}\n`
         if (exportSettings.includeTimestamp) {
@@ -248,7 +257,6 @@ export default function ChatHeader({
     }
   }
 
-
   // 获取文件夹路径
   const getFolderPath = (folderId: string | undefined): string => {
     const { folders } = usePagesStore.getState()
@@ -258,7 +266,7 @@ export default function ChatHeader({
     let currentFolderId: string | undefined = folderId
 
     while (currentFolderId) {
-      const folder = folders.find(f => f.id === currentFolderId)
+      const folder = folders.find((f) => f.id === currentFolderId)
       if (!folder) break
       path.unshift(folder.name)
       currentFolderId = folder.parentId
@@ -274,7 +282,9 @@ export default function ChatHeader({
     const metadata: string[] = []
 
     // 基本信息
-    metadata.push(`类型: ${chat.type === 'regular' ? '普通聊天' : chat.type === 'crosstab' ? '交叉表' : chat.type === 'object' ? '对象' : chat.type}`)
+    metadata.push(
+      `类型: ${chat.type === 'regular' ? '普通聊天' : chat.type === 'crosstab' ? '交叉表' : chat.type === 'object' ? '对象' : chat.type}`
+    )
     metadata.push(`创建时间: ${formatExactDateTime(chat.createdAt)}`)
     metadata.push(`更新时间: ${formatExactDateTime(chat.updatedAt)}`)
 
@@ -290,12 +300,12 @@ export default function ChatHeader({
     if (chat.lineage) {
       metadata.push(`\n--- 溯源信息 ---`)
       const sourceMap = {
-        'user': '用户创建',
-        'object_to_crosstab': '对象→交叉表',
-        'crosstab_to_chat': '交叉表→聊天',
-        'object_to_chat': '对象→聊天',
-        'chat_to_object': '聊天→对象',
-        'other': '其他'
+        user: '用户创建',
+        object_to_crosstab: '对象→交叉表',
+        crosstab_to_chat: '交叉表→聊天',
+        object_to_chat: '对象→聊天',
+        chat_to_object: '聊天→对象',
+        other: '其他'
       }
       metadata.push(`来源: ${sourceMap[chat.lineage.source] || chat.lineage.source}`)
       if (chat.lineage.sourcePageId) {
@@ -316,13 +326,13 @@ export default function ChatHeader({
     if (messages.length > 0) {
       metadata.push(`\n--- 消息统计 ---`)
       metadata.push(`总消息数: ${messages.length}`)
-      const userMessages = messages.filter(m => m.role === 'user').length
-      const assistantMessages = messages.filter(m => m.role === 'assistant').length
+      const userMessages = messages.filter((m) => m.role === 'user').length
+      const assistantMessages = messages.filter((m) => m.role === 'assistant').length
       metadata.push(`用户消息: ${userMessages}`)
       metadata.push(`AI消息: ${assistantMessages}`)
 
       // 书签消息
-      const bookmarkedMessages = messages.filter(m => m.isBookmarked).length
+      const bookmarkedMessages = messages.filter((m) => m.isBookmarked).length
       if (bookmarkedMessages > 0) {
         metadata.push(`书签消息: ${bookmarkedMessages}`)
       }
@@ -369,7 +379,9 @@ export default function ChatHeader({
                 placement="bottomLeft"
                 overlayStyle={{ maxWidth: '400px' }}
               >
-                <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>{chatTitle || '未命名聊天'}</h3>
+                <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>
+                  {chatTitle || '未命名聊天'}
+                </h3>
               </Tooltip>
               <Button
                 type="text"
@@ -406,8 +418,7 @@ export default function ChatHeader({
             </Dropdown>
             {/* 更多选项按钮 */}
             <Dropdown menu={{ items: moreOptions }} trigger={['click']}>
-              <Button type="text" icon={<MoreOutlined />}>
-              </Button>
+              <Button type="text" icon={<MoreOutlined />}></Button>
             </Dropdown>
           </Space>
         </div>

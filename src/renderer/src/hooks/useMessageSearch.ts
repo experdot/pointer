@@ -19,7 +19,10 @@ interface UseMessageSearchResult {
   showSearch: () => void
   hideSearch: () => void
   search: (query: string, currentIndex: number, direction: 'next' | 'previous') => void
-  getHighlightInfo: (text: string, messageId: string) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
+  getHighlightInfo: (
+    text: string,
+    messageId: string
+  ) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
   getCurrentMatch: () => SearchMatch | null
 }
 
@@ -140,9 +143,7 @@ export const useMessageSearch = (messages: ChatMessage[]): UseMessageSearchResul
         // 检查是否是当前选中的匹配项
         const currentMatch = getCurrentMatch()
         const isCurrentMatch =
-          currentMatch &&
-          currentMatch.messageId === messageId &&
-          currentMatch.startIndex === index
+          currentMatch && currentMatch.messageId === messageId && currentMatch.startIndex === index
 
         highlights.push({
           start: index,

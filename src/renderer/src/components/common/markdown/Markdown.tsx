@@ -136,9 +136,7 @@ export function TableWrapper(props: { children: ReactElement }) {
     const result: string[] = []
 
     bodyRows.forEach((tr, index) => {
-      const cells = Array.from(tr.querySelectorAll('td')).map(
-        (td) => td.textContent?.trim() || ''
-      )
+      const cells = Array.from(tr.querySelectorAll('td')).map((td) => td.textContent?.trim() || '')
 
       const items: string[] = []
       cells.forEach((cell, cellIndex) => {

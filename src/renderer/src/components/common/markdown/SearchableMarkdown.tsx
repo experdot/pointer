@@ -6,7 +6,10 @@ interface SearchableMarkdownProps {
   searchQuery?: string
   messageId?: string
   getCurrentMatch?: () => { messageId: string; startIndex: number; endIndex: number } | null
-  getHighlightInfo?: (text: string, messageId: string) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
+  getHighlightInfo?: (
+    text: string,
+    messageId: string
+  ) => { text: string; highlights: Array<{ start: number; end: number; isCurrentMatch: boolean }> }
   currentMatchIndex?: number
   loading?: boolean
   fontSize?: number
@@ -37,7 +40,7 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
     // 清除所有高亮
     const removeHighlights = () => {
       const highlights = container.querySelectorAll('.search-highlight')
-      highlights.forEach(highlight => {
+      highlights.forEach((highlight) => {
         const parent = highlight.parentNode
         if (parent) {
           const text = document.createTextNode(highlight.textContent || '')
@@ -57,15 +60,11 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
 
     // 应用新高亮
     const applyHighlights = () => {
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        null
-      )
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null)
 
       const textNodes: Text[] = []
       let node
-      while (node = walker.nextNode()) {
+      while ((node = walker.nextNode())) {
         textNodes.push(node as Text)
       }
 
@@ -76,7 +75,7 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
       let globalCharIndex = 0
       const allMatches: Array<{ node: Text; start: number; end: number; globalStart: number }> = []
 
-      textNodes.forEach(textNode => {
+      textNodes.forEach((textNode) => {
         const text = textNode.textContent || ''
         const lowerText = text.toLowerCase()
         let localIndex = 0
@@ -102,7 +101,7 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
       if (currentMatch?.messageId === messageId && allMatches.length > 0) {
         // 这个消息包含当前匹配
         // 使用startIndex来找到对应的匹配项
-        const matchIndex = allMatches.findIndex(m => m.globalStart === currentMatch.startIndex)
+        const matchIndex = allMatches.findIndex((m) => m.globalStart === currentMatch.startIndex)
 
         if (matchIndex !== -1) {
           currentMatchIndexInMessage = matchIndex
@@ -113,10 +112,10 @@ const SearchableMarkdown: React.FC<SearchableMarkdownProps> = ({
       }
 
       // 处理每个文本节点的高亮
-      textNodes.forEach(textNode => {
+      textNodes.forEach((textNode) => {
         const text = textNode.textContent || ''
         const lowerText = text.toLowerCase()
-        const nodeMatches = allMatches.filter(m => m.node === textNode)
+        const nodeMatches = allMatches.filter((m) => m.node === textNode)
 
         if (nodeMatches.length > 0) {
           const fragment = document.createDocumentFragment()

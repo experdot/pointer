@@ -58,9 +58,7 @@ export class CrosstabGenerator {
     onTaskCreated?: (taskId: string, aiService: any) => void
   ) {
     const dimensions =
-      dimensionType === 'horizontal'
-        ? metadata.horizontalDimensions
-        : metadata.verticalDimensions
+      dimensionType === 'horizontal' ? metadata.horizontalDimensions : metadata.verticalDimensions
 
     const dimension = dimensions.find((d) => d.id === dimensionId)
     if (!dimension) {

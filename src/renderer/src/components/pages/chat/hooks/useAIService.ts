@@ -123,14 +123,14 @@ export function useAIService(chatId: string): UseAIServiceReturn {
           onComplete: async (fullResponse: string, reasoning_content?: string) => {
             const finalContent = fullResponse || streamingContent
             const finalReasoning = reasoning_content || streamingReasoning || undefined
-            
+
             completeStreamingMessage(chatId, messageId, finalContent, finalReasoning)
-            
+
             updateTask(messageId, {
               status: 'completed',
               endTime: Date.now()
             })
-            
+
             // 从活跃服务列表中移除并检查是否需要重置 loading 状态
             setActiveAIServices((prev) => {
               const newMap = new Map(prev)
@@ -144,7 +144,7 @@ export function useAIService(chatId: string): UseAIServiceReturn {
 
             // 调用完成回调
             onComplete?.(messageId)
-            
+
             resolve(finalContent)
           },
           onError: (error: Error) => {
@@ -219,7 +219,7 @@ export function useAIService(chatId: string): UseAIServiceReturn {
     // 停止所有活跃的AI服务
     activeAIServices.forEach((aiService, messageId) => {
       aiService.stopStreaming()
-      
+
       updateTask(messageId, {
         status: 'cancelled',
         endTime: Date.now()
@@ -258,7 +258,7 @@ export function useAIService(chatId: string): UseAIServiceReturn {
 
       clearStreamingMessage(chatId, messageId)
     })
-    
+
     // 清空活跃服务并重置 loading 状态
     setActiveAIServices(new Map())
     setIsLoading(false)
@@ -271,4 +271,4 @@ export function useAIService(chatId: string): UseAIServiceReturn {
     stopGeneration,
     getLLMConfig
   }
-} 
+}

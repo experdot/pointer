@@ -143,7 +143,7 @@ export default function Sidebar({
           </div>
         )
       case 'search':
-        const filterFolder = filterFolderId ? folders.find(f => f.id === filterFolderId) : null
+        const filterFolder = filterFolderId ? folders.find((f) => f.id === filterFolderId) : null
         return (
           <div className="sidebar-search">
             <div className="sidebar-header">

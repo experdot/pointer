@@ -111,8 +111,9 @@ const MessageList = React.memo(function MessageList({
   }, [messages, currentPath, messageTree])
 
   // 获取最后一条消息的ID，用于订阅其流式内容
-  const lastMessageId = displayMessages.length > 0 ? displayMessages[displayMessages.length - 1].id : null
-  
+  const lastMessageId =
+    displayMessages.length > 0 ? displayMessages[displayMessages.length - 1].id : null
+
   // 只订阅最后一条消息的流式内容
   const lastMessageStreaming = useStreamingMessage(chatId, lastMessageId || '')
 
@@ -124,30 +125,33 @@ const MessageList = React.memo(function MessageList({
   const isNearBottom = useCallback(() => {
     const container = messagesContainerRef.current
     if (!container) return true
-    
+
     const threshold = 100 // 100px 的阈值，仅用于判断是否接近底部以恢复自动滚动
     const { scrollTop, scrollHeight, clientHeight } = container
     return scrollHeight - scrollTop - clientHeight <= threshold
   }, [])
 
   // 处理鼠标滚轮事件
-  const handleWheel = useCallback((event: WheelEvent) => {
-    if (isInitialRender.current) return // 忽略初次渲染时的滚动事件
-    
-    const deltaY = event.deltaY
-    
-    if (deltaY < 0) {
-      // 向上滚动，停止自动滚动
-      if (isAutoScrollEnabled) {
-        setIsAutoScrollEnabled(false)
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      if (isInitialRender.current) return // 忽略初次渲染时的滚动事件
+
+      const deltaY = event.deltaY
+
+      if (deltaY < 0) {
+        // 向上滚动，停止自动滚动
+        if (isAutoScrollEnabled) {
+          setIsAutoScrollEnabled(false)
+        }
+      } else if (deltaY > 0) {
+        // 向下滚动，如果接近底部就恢复自动滚动
+        if (!isAutoScrollEnabled && isNearBottom()) {
+          setIsAutoScrollEnabled(true)
+        }
       }
-    } else if (deltaY > 0) {
-      // 向下滚动，如果接近底部就恢复自动滚动
-      if (!isAutoScrollEnabled && isNearBottom()) {
-        setIsAutoScrollEnabled(true)
-      }
-    }
-  }, [isAutoScrollEnabled, isNearBottom])
+    },
+    [isAutoScrollEnabled, isNearBottom]
+  )
 
   // 添加和移除滚轮事件监听器
   useEffect(() => {
@@ -312,9 +316,12 @@ const MessageList = React.memo(function MessageList({
   }
 
   // 处理搜索导航
-  const handleSearch = useCallback((query: string, currentIndex: number, direction: 'next' | 'previous') => {
-    search(query, currentIndex, direction)
-  }, [search])
+  const handleSearch = useCallback(
+    (query: string, currentIndex: number, direction: 'next' | 'previous') => {
+      search(query, currentIndex, direction)
+    },
+    [search]
+  )
 
   useEffect(() => {
     const currentMessagesLength = messages.length
@@ -323,9 +330,10 @@ const MessageList = React.memo(function MessageList({
 
     // 检查路径是否发生变化（排除初次渲染）
     const pathChanged = !isInitialRender.current && currentPathString !== prevPathString
-    
+
     // 检查选中消息是否发生变化
-    const selectedMessageChanged = !isInitialRender.current && selectedMessageId !== prevSelectedMessageId.current
+    const selectedMessageChanged =
+      !isInitialRender.current && selectedMessageId !== prevSelectedMessageId.current
 
     // 如果正在搜索，不进行自动滚动
     const isSearching = isSearchVisible && searchQuery
@@ -337,13 +345,12 @@ const MessageList = React.memo(function MessageList({
     // 4. 当前路径发生变化（用户点击消息树切换分支）- 滚动到底部
     // 5. 选中消息发生变化（用户点击消息树中的特定消息）- 滚动到选中消息
     const shouldScrollToBottom =
-      !isSearching && (
-        currentMessagesLength > prevMessagesLength.current ||
+      !isSearching &&
+      (currentMessagesLength > prevMessagesLength.current ||
         currentStreamingContent !== prevStreamingContent.current ||
         currentStreamingReasoningContent !== prevStreamingReasoningContent.current ||
         (isInitialRender.current && currentMessagesLength > 0) ||
-        (pathChanged && !selectedMessageChanged)
-      )
+        (pathChanged && !selectedMessageChanged))
 
     const shouldScrollToMessage = selectedMessageChanged && selectedMessageId
 
@@ -372,7 +379,16 @@ const MessageList = React.memo(function MessageList({
     prevStreamingReasoningContent.current = currentStreamingReasoningContent
     prevCurrentPath.current = [...currentPath]
     prevSelectedMessageId.current = selectedMessageId
-  }, [messages.length, currentStreamingContent, currentStreamingReasoningContent, currentPath, selectedMessageId, isAutoScrollEnabled, isSearchVisible, searchQuery])
+  }, [
+    messages.length,
+    currentStreamingContent,
+    currentStreamingReasoningContent,
+    currentPath,
+    selectedMessageId,
+    isAutoScrollEnabled,
+    isSearchVisible,
+    searchQuery
+  ])
 
   // 单独处理搜索滚动
   useEffect(() => {
@@ -481,7 +497,7 @@ const MessageList = React.memo(function MessageList({
               onBranchPrevious={(messageId) => handleSiblingBranchSwitch(messageId, 'previous')}
               onBranchNext={(messageId) => handleSiblingBranchSwitch(messageId, 'next')}
               // 消息状态
-              hasChildren={messages.some(msg => msg.parentId === message.id)}
+              hasChildren={messages.some((msg) => msg.parentId === message.id)}
               // 原有的回调
               onRetry={onRetryMessage}
               onContinue={onContinueMessage}

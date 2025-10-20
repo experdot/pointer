@@ -1,12 +1,7 @@
 import { DrawMode, Point } from './types'
 
 export class CanvasDrawing {
-  static applyMosaic(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    brushSize: number
-  ): void {
+  static applyMosaic(ctx: CanvasRenderingContext2D, x: number, y: number, brushSize: number): void {
     const pixelSize = Math.max(8, brushSize)
     const imageData = ctx.getImageData(x - pixelSize, y - pixelSize, pixelSize * 2, pixelSize * 2)
 

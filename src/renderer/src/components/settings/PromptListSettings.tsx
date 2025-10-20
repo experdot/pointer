@@ -65,8 +65,8 @@ function PromptListForm({ open, config, onSave, onCancel }: PromptListFormProps)
     try {
       setLoading(true)
       const values = await form.validateFields()
-      
-      const filteredPrompts = prompts.filter(p => p.trim().length > 0)
+
+      const filteredPrompts = prompts.filter((p) => p.trim().length > 0)
       if (filteredPrompts.length === 0) {
         message.error('至少需要一个提示词')
         return
@@ -132,10 +132,7 @@ function PromptListForm({ open, config, onSave, onCancel }: PromptListFormProps)
         </Form.Item>
 
         <Form.Item name="description" label="描述">
-          <TextArea 
-            placeholder="描述此提示词列表的用途和特点" 
-            rows={2}
-          />
+          <TextArea placeholder="描述此提示词列表的用途和特点" rows={2} />
         </Form.Item>
 
         <Form.Item label="提示词列表" required>
@@ -146,7 +143,15 @@ function PromptListForm({ open, config, onSave, onCancel }: PromptListFormProps)
           </div>
           {prompts.map((prompt, index) => (
             <div key={index} style={{ display: 'flex', marginBottom: 8, alignItems: 'center' }}>
-              <span style={{ marginRight: 8, minWidth: 20, textAlign: 'center', fontSize: '12px', color: '#999' }}>
+              <span
+                style={{
+                  marginRight: 8,
+                  minWidth: 20,
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  color: '#999'
+                }}
+              >
                 {index + 1}.
               </span>
               <Input
@@ -176,13 +181,8 @@ function PromptListForm({ open, config, onSave, onCancel }: PromptListFormProps)
 }
 
 export default function PromptListSettings() {
-  const { 
-    settings, 
-    addPromptList, 
-    updatePromptList, 
-    deletePromptList, 
-    setDefaultPromptList 
-  } = useSettingsStore()
+  const { settings, addPromptList, updatePromptList, deletePromptList, setDefaultPromptList } =
+    useSettingsStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConfig, setEditingConfig] = useState<PromptListConfig | undefined>()
   const { message, modal } = App.useApp()
@@ -363,12 +363,8 @@ export default function PromptListSettings() {
                   }
                   description={
                     <Space direction="vertical" size="small">
-                      {config.description && (
-                        <Text type="secondary">{config.description}</Text>
-                      )}
-                      <Text type="secondary">
-                        共 {config.prompts.length} 个提示词
-                      </Text>
+                      {config.description && <Text type="secondary">{config.description}</Text>}
+                      <Text type="secondary">共 {config.prompts.length} 个提示词</Text>
                       <div style={{ marginTop: 4 }}>
                         {config.prompts.slice(0, 2).map((prompt, index) => (
                           <Tag key={index} style={{ marginBottom: 4 }}>
@@ -376,9 +372,7 @@ export default function PromptListSettings() {
                           </Tag>
                         ))}
                         {config.prompts.length > 2 && (
-                          <Tag style={{ marginBottom: 4 }}>
-                            +{config.prompts.length - 2} 更多
-                          </Tag>
+                          <Tag style={{ marginBottom: 4 }}>+{config.prompts.length - 2} 更多</Tag>
                         )}
                       </div>
                     </Space>
@@ -401,4 +395,4 @@ export default function PromptListSettings() {
       />
     </Card>
   )
-} 
+}

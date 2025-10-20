@@ -1,5 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { Modal, Input, Select, Divider, Button, Space, List, Typography, Tag, Empty, App } from 'antd'
+import {
+  Modal,
+  Input,
+  Select,
+  Divider,
+  Button,
+  Space,
+  List,
+  Typography,
+  Tag,
+  Empty,
+  App
+} from 'antd'
 import { FolderOutlined, PlusOutlined, HeartFilled, CalendarOutlined } from '@ant-design/icons'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
 import { FavoriteItem } from '../../../types/type'
@@ -36,9 +48,7 @@ export default function AddToFavoritesModal({
 
   // 查找该页面相关的已有收藏项
   const existingFavorites = useMemo(() => {
-    return items.filter(
-      (item) => item.type === 'page' && item.source?.pageId === pageId
-    )
+    return items.filter((item) => item.type === 'page' && item.source?.pageId === pageId)
   }, [items, pageId])
 
   // 重置表单
@@ -71,10 +81,7 @@ export default function AddToFavoritesModal({
       return result
     }
 
-    return [
-      { label: '根目录', value: undefined },
-      ...buildFolderOptions()
-    ]
+    return [{ label: '根目录', value: undefined }, ...buildFolderOptions()]
   }, [folders])
 
   // 处理创建新文件夹
@@ -141,7 +148,10 @@ export default function AddToFavoritesModal({
             {item.starred && <Tag color="red">星标</Tag>}
           </div>
           {item.description && (
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+            <Text
+              type="secondary"
+              style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}
+            >
               {item.description}
             </Text>
           )}
@@ -197,7 +207,10 @@ export default function AddToFavoritesModal({
                   overflow: 'auto'
                 }}
               />
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}>
+              <Text
+                type="secondary"
+                style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}
+              >
                 您可以继续添加新的收藏项
               </Text>
             </div>
@@ -243,10 +256,12 @@ export default function AddToFavoritesModal({
               <Button type="primary" onClick={handleCreateFolder}>
                 创建
               </Button>
-              <Button onClick={() => {
-                setIsCreatingFolder(false)
-                setNewFolderName('')
-              }}>
+              <Button
+                onClick={() => {
+                  setIsCreatingFolder(false)
+                  setNewFolderName('')
+                }}
+              >
                 取消
               </Button>
             </Space.Compact>

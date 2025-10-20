@@ -61,7 +61,7 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
       key: 'favorites' as ActivityBarTab,
       icon: <HeartOutlined />,
       label: '收藏夹',
-      tooltip: `收藏夹 - ${favoritesStats.totalCount} 个收藏`,
+      tooltip: `收藏夹 - ${favoritesStats.totalCount} 个收藏`
     },
     {
       key: 'tasks' as ActivityBarTab,
@@ -77,7 +77,7 @@ export default function ActivityBar({ activeTab, onTabChange }: ActivityBarProps
     setClickLocked(true)
     // 关闭所有 tooltip
     const allClosed: Record<string, boolean> = {}
-    items.forEach(item => {
+    items.forEach((item) => {
       allClosed[item.key] = false
     })
     setTooltipVisible(allClosed)

@@ -92,7 +92,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
     return recommendations?.timestamp || null
   }
 
-
   // 获取生成历史
   const generationHistory = chat.objectData.generationHistory || []
   const recentPrompts = generationHistory
@@ -602,7 +601,6 @@ const ObjectAIGenerator: React.FC<ObjectAIGeneratorProps> = ({
       textareaRef.current.focus()
     }
   }
-
 
   // 获取当前功能的处理函数
   const getCurrentHandler = () => {

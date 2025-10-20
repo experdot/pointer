@@ -96,4 +96,4 @@ export default function TitleBar({ title }: TitleBarProps) {
       </div>
     </div>
   )
-} 
+}

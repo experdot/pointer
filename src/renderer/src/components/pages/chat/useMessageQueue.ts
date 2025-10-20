@@ -1,9 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { MessageQueueItem, MessageQueueConfig, MessageQueueItemStatus, FileAttachment } from '../../../types/type'
+import {
+  MessageQueueItem,
+  MessageQueueConfig,
+  MessageQueueItemStatus,
+  FileAttachment
+} from '../../../types/type'
 import { nanoid } from 'nanoid'
 
 interface UseMessageQueueProps {
-  onProcessMessage: (content: string, modelId?: string, parentId?: string, attachments?: FileAttachment[]) => Promise<void>
+  onProcessMessage: (
+    content: string,
+    modelId?: string,
+    parentId?: string,
+    attachments?: FileAttachment[]
+  ) => Promise<void>
   isLoading: boolean
 }
 
@@ -19,26 +29,33 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
   const processingRef = useRef(false)
 
   // 添加消息到队列
-  const addToQueue = useCallback((content: string, modelId?: string, options?: { autoResume?: boolean; attachments?: FileAttachment[] }) => {
-    const newItem: MessageQueueItem = {
-      id: nanoid(),
-      content,
-      modelId,
-      attachments: options?.attachments,
-      status: 'pending',
-      createdAt: Date.now(),
-      order: Date.now() // 使用时间戳作为顺序
-    }
+  const addToQueue = useCallback(
+    (
+      content: string,
+      modelId?: string,
+      options?: { autoResume?: boolean; attachments?: FileAttachment[] }
+    ) => {
+      const newItem: MessageQueueItem = {
+        id: nanoid(),
+        content,
+        modelId,
+        attachments: options?.attachments,
+        status: 'pending',
+        createdAt: Date.now(),
+        order: Date.now() // 使用时间戳作为顺序
+      }
 
-    setQueue((prev) => [...prev, newItem])
+      setQueue((prev) => [...prev, newItem])
 
-    // 如果指定了 autoResume，则自动恢复队列
-    if (options?.autoResume) {
-      setConfig((prev) => ({ ...prev, paused: false }))
-    }
+      // 如果指定了 autoResume，则自动恢复队列
+      if (options?.autoResume) {
+        setConfig((prev) => ({ ...prev, paused: false }))
+      }
 
-    return newItem.id
-  }, [])
+      return newItem.id
+    },
+    []
+  )
 
   // 从队列中移除消息
   const removeFromQueue = useCallback((itemId: string) => {
@@ -46,19 +63,17 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
   }, [])
 
   // 更新队列项状态
-  const updateQueueItem = useCallback((
-    itemId: string,
-    updates: Partial<MessageQueueItem>
-  ) => {
-    setQueue((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item))
-    )
+  const updateQueueItem = useCallback((itemId: string, updates: Partial<MessageQueueItem>) => {
+    setQueue((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item)))
   }, [])
 
   // 编辑队列项内容
-  const editQueueItem = useCallback((itemId: string, newContent: string) => {
-    updateQueueItem(itemId, { content: newContent })
-  }, [updateQueueItem])
+  const editQueueItem = useCallback(
+    (itemId: string, newContent: string) => {
+      updateQueueItem(itemId, { content: newContent })
+    },
+    [updateQueueItem]
+  )
 
   // 清空队列
   const clearQueue = useCallback(() => {
@@ -88,14 +103,17 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
   }, [])
 
   // 重试失败的消息
-  const retryQueueItem = useCallback((itemId: string) => {
-    updateQueueItem(itemId, {
-      status: 'pending',
-      error: undefined,
-      startedAt: undefined,
-      completedAt: undefined
-    })
-  }, [updateQueueItem])
+  const retryQueueItem = useCallback(
+    (itemId: string) => {
+      updateQueueItem(itemId, {
+        status: 'pending',
+        error: undefined,
+        startedAt: undefined,
+        completedAt: undefined
+      })
+    },
+    [updateQueueItem]
+  )
 
   // 处理队列中的下一条消息
   const processNextInQueue = useCallback(async () => {
@@ -117,7 +135,12 @@ export function useMessageQueue({ onProcessMessage, isLoading }: UseMessageQueue
         startedAt: Date.now()
       })
 
-      await onProcessMessage(pendingItem.content, pendingItem.modelId, undefined, pendingItem.attachments)
+      await onProcessMessage(
+        pendingItem.content,
+        pendingItem.modelId,
+        undefined,
+        pendingItem.attachments
+      )
 
       updateQueueItem(pendingItem.id, {
         status: 'completed',

@@ -135,17 +135,20 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     chatInputRef.current?.insertQuote(text)
   }, [])
 
-  const handleCreateNewChat = useCallback((text: string) => {
-    // 生成对话标题（取前30个字符）
-    const title = text.length > 30 ? text.substring(0, 30) + '...' : text
+  const handleCreateNewChat = useCallback(
+    (text: string) => {
+      // 生成对话标题（取前30个字符）
+      const title = text.length > 30 ? text.substring(0, 30) + '...' : text
 
-    // 创建新对话并打开
-    const { createChatWithInitialMessage } = usePagesStore.getState()
-    const newChatId = createChatWithInitialMessage(title, text, chat?.folderId, chatId)
+      // 创建新对话并打开
+      const { createChatWithInitialMessage } = usePagesStore.getState()
+      const newChatId = createChatWithInitialMessage(title, text, chat?.folderId, chatId)
 
-    // 切换到新创建的对话
-    setActiveTab(newChatId)
-  }, [chat?.folderId, chatId, setActiveTab])
+      // 切换到新创建的对话
+      setActiveTab(newChatId)
+    },
+    [chat?.folderId, chatId, setActiveTab]
+  )
 
   const handleOpenSettings = useCallback(() => {
     const settingsPageId = createAndOpenSettingsPage('llm') // 从聊天窗口点击设置通常是想配置模型
@@ -185,13 +188,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const handleFavoriteTextFragment = useCallback(
     async (messageId: string, text: string) => {
       try {
-        const favoriteId = favoriteTextFragment(
-          chatId,
-          messageId,
-          text,
-          undefined,
-          undefined
-        )
+        const favoriteId = favoriteTextFragment(chatId, messageId, text, undefined, undefined)
         modal.success({
           title: '添加成功',
           content: '文本片段已添加到收藏夹',
@@ -405,160 +402,172 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             }, [onStopGeneration, messageQueue])
 
             return (
-            <>
-              {/* 消息树侧边栏 */}
-              <MessageTreeSidebar
-                messages={chat.messages || []}
-                currentPath={chat.currentPath}
-                onNodeSelect={handleMessageTreeNodeSelect}
-                onPathChange={handleMessageTreePathChange}
-                collapsed={messageTreeCollapsed}
-                onToggleCollapse={handleToggleMessageTree}
-                width={messageTreeWidth}
-                onWidthChange={handleMessageTreeWidthChange}
-                scrollTriggeredMessageId={scrollTriggeredSelection ? visibleMessageId : null}
-              />
-
-              {/* 聊天主内容区 */}
-              <div
-                className="chat-content"
-                style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-              >
-                <ChatHeader
-                  chatId={chatId}
-                  chatTitle={chat.title}
-                  messages={chat.messages}
+              <>
+                {/* 消息树侧边栏 */}
+                <MessageTreeSidebar
+                  messages={chat.messages || []}
                   currentPath={chat.currentPath}
-                  allMessagesCollapsed={allMessagesCollapsed[chatId] || false}
-                  onCollapseAll={handleCollapseAll}
-                  onExpandAll={handleExpandAll}
-                  onCollapseAI={handleCollapseAI}
-                  messageTreeCollapsed={messageTreeCollapsed}
-                  onToggleMessageTree={handleToggleMessageTree}
-                  llmConfigs={settings.llmConfigs}
-                  chat={chat}
-                />
-                <MessageList
-                  chatId={chatId}
-                  messages={chat.messages}
-                  currentPath={chat.currentPath}
-                  isLoading={isLoading}
-                  streamingContent={chat.streamingMessage?.content}
-                  streamingTimestamp={chat.streamingMessage?.timestamp}
-                  llmConfigs={settings.llmConfigs || []}
-                  selectedMessageId={selectedMessageId}
-                  onRetryMessage={onRetryMessage}
-                  onContinueMessage={onContinueMessage}
-                  onEditMessage={onEditMessage}
-                  onEditAndResendMessage={onEditAndResendMessage}
-                  onToggleBookmark={onToggleBookmark}
-                  onAddToFavorites={handleAddToFavorites}
-                  onFavoriteTextFragment={handleFavoriteTextFragment}
-                  onModelChange={onModelChangeForMessage}
-                  onDeleteMessage={onDeleteMessage}
-                  onSwitchBranch={handleSwitchBranch}
-                  // 引用相关props
-                  onQuote={handleQuote}
-                  onCreateNewChat={handleCreateNewChat}
-                  // 折叠相关props
-                  collapsedMessages={collapsedMessagesForChat}
-                  onToggleMessageCollapse={handleToggleMessageCollapse}
-                  // 设置相关props
-                  onOpenSettings={handleOpenSettings}
-                  // 可见消息变化回调
-                  onVisibleMessageChange={handleVisibleMessageChange}
-                />
-                <ChatInput
-                  ref={chatInputRef}
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSend={useCallback(async () => {
-                    if (inputValue.trim() || attachments.length > 0) {
-                      // 判断是否应该加入队列：队列已启用且（AI正在回答或队列中有待处理消息）
-                      const shouldAddToQueue = messageQueue.config.enabled &&
-                        (isLoading || messageQueue.getQueueStats().pending > 0)
-
-                      const messageContent = inputValue.trim()
-                      const messageAttachments = [...attachments]
-
-                      setInputValue('') // 立即清空输入框
-                      setAttachments([]) // 立即清空附件
-
-                      if (shouldAddToQueue) {
-                        // 添加到队列，包含附件
-                        messageQueue.addToQueue(messageContent, selectedModel, {
-                          autoResume: true,
-                          attachments: messageAttachments.length > 0 ? messageAttachments : undefined
-                        })
-                      } else {
-                        // 发送消息，如果有附件则传递附件参数
-                        await onSendMessage(
-                          messageContent || '请分析这张图片',
-                          selectedModel,
-                          undefined,
-                          messageAttachments.length > 0 ? messageAttachments : undefined
-                        )
-                      }
-
-                      // 在下一个tick中聚焦，确保界面更新完成
-                      setTimeout(() => {
-                        chatInputRef.current?.focus()
-                      }, 0)
-                    }
-                  }, [inputValue, attachments, onSendMessage, selectedModel, isLoading, messageQueue, chat, chatId, settings])}
-                  onStop={handleStopWithQueue}
-                  disabled={isLoading}
-                  loading={isLoading}
-                  llmConfigs={settings.llmConfigs || []}
-                  selectedModel={selectedModel}
-                  defaultModelId={settings.defaultLLMId}
-                  onModelChange={onModelChange}
-                  onOpenSettings={handleOpenSettings}
-                  // 自动提问相关props
-                  autoQuestionEnabled={autoQuestionEnabled}
-                  autoQuestionMode={autoQuestionMode}
-                  autoQuestionListId={autoQuestionListId}
-                  onAutoQuestionChange={handleAutoQuestionChange}
-                  onTriggerFollowUpQuestion={onTriggerFollowUpQuestion}
-                  // 消息队列相关props
-                  queueEnabled={messageQueue.config.enabled}
-                  queuePendingCount={messageQueue.getQueueStats().pending}
-                  queuePaused={messageQueue.config.paused}
-                  queueAutoProcess={messageQueue.config.autoProcess}
-                  onToggleQueuePanel={handleToggleQueuePanel}
-                  onResumeQueue={messageQueue.resumeQueue}
-                  // 文件附件相关props
-                  attachments={attachments}
-                  onAttachmentsChange={setAttachments}
+                  onNodeSelect={handleMessageTreeNodeSelect}
+                  onPathChange={handleMessageTreePathChange}
+                  collapsed={messageTreeCollapsed}
+                  onToggleCollapse={handleToggleMessageTree}
+                  width={messageTreeWidth}
+                  onWidthChange={handleMessageTreeWidthChange}
+                  scrollTriggeredMessageId={scrollTriggeredSelection ? visibleMessageId : null}
                 />
 
-                {/* 消息队列面板 */}
-                <Drawer
-                  title="消息队列"
-                  placement="right"
-                  open={queuePanelVisible}
-                  onClose={() => setQueuePanelVisible(false)}
-                  width={400}
-                  destroyOnClose={false}
+                {/* 聊天主内容区 */}
+                <div
+                  className="chat-content"
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
                 >
-                  <MessageQueuePanel
-                    queue={messageQueue.queue}
-                    config={messageQueue.config}
-                    currentlyProcessing={messageQueue.currentlyProcessing}
-                    selectedModel={selectedModel}
-                    onAddToQueue={messageQueue.addToQueue}
-                    onRemoveFromQueue={messageQueue.removeFromQueue}
-                    onEditQueueItem={messageQueue.editQueueItem}
-                    onClearQueue={messageQueue.clearQueue}
-                    onClearCompletedItems={messageQueue.clearCompletedItems}
-                    onRetryQueueItem={messageQueue.retryQueueItem}
-                    onProcessNext={messageQueue.processNextInQueue}
-                    onUpdateConfig={messageQueue.updateConfig}
-                    onReorderQueue={messageQueue.reorderQueue}
+                  <ChatHeader
+                    chatId={chatId}
+                    chatTitle={chat.title}
+                    messages={chat.messages}
+                    currentPath={chat.currentPath}
+                    allMessagesCollapsed={allMessagesCollapsed[chatId] || false}
+                    onCollapseAll={handleCollapseAll}
+                    onExpandAll={handleExpandAll}
+                    onCollapseAI={handleCollapseAI}
+                    messageTreeCollapsed={messageTreeCollapsed}
+                    onToggleMessageTree={handleToggleMessageTree}
+                    llmConfigs={settings.llmConfigs}
+                    chat={chat}
                   />
-                </Drawer>
-              </div>
-            </>
+                  <MessageList
+                    chatId={chatId}
+                    messages={chat.messages}
+                    currentPath={chat.currentPath}
+                    isLoading={isLoading}
+                    streamingContent={chat.streamingMessage?.content}
+                    streamingTimestamp={chat.streamingMessage?.timestamp}
+                    llmConfigs={settings.llmConfigs || []}
+                    selectedMessageId={selectedMessageId}
+                    onRetryMessage={onRetryMessage}
+                    onContinueMessage={onContinueMessage}
+                    onEditMessage={onEditMessage}
+                    onEditAndResendMessage={onEditAndResendMessage}
+                    onToggleBookmark={onToggleBookmark}
+                    onAddToFavorites={handleAddToFavorites}
+                    onFavoriteTextFragment={handleFavoriteTextFragment}
+                    onModelChange={onModelChangeForMessage}
+                    onDeleteMessage={onDeleteMessage}
+                    onSwitchBranch={handleSwitchBranch}
+                    // 引用相关props
+                    onQuote={handleQuote}
+                    onCreateNewChat={handleCreateNewChat}
+                    // 折叠相关props
+                    collapsedMessages={collapsedMessagesForChat}
+                    onToggleMessageCollapse={handleToggleMessageCollapse}
+                    // 设置相关props
+                    onOpenSettings={handleOpenSettings}
+                    // 可见消息变化回调
+                    onVisibleMessageChange={handleVisibleMessageChange}
+                  />
+                  <ChatInput
+                    ref={chatInputRef}
+                    value={inputValue}
+                    onChange={setInputValue}
+                    onSend={useCallback(async () => {
+                      if (inputValue.trim() || attachments.length > 0) {
+                        // 判断是否应该加入队列：队列已启用且（AI正在回答或队列中有待处理消息）
+                        const shouldAddToQueue =
+                          messageQueue.config.enabled &&
+                          (isLoading || messageQueue.getQueueStats().pending > 0)
+
+                        const messageContent = inputValue.trim()
+                        const messageAttachments = [...attachments]
+
+                        setInputValue('') // 立即清空输入框
+                        setAttachments([]) // 立即清空附件
+
+                        if (shouldAddToQueue) {
+                          // 添加到队列，包含附件
+                          messageQueue.addToQueue(messageContent, selectedModel, {
+                            autoResume: true,
+                            attachments:
+                              messageAttachments.length > 0 ? messageAttachments : undefined
+                          })
+                        } else {
+                          // 发送消息，如果有附件则传递附件参数
+                          await onSendMessage(
+                            messageContent || '请分析这张图片',
+                            selectedModel,
+                            undefined,
+                            messageAttachments.length > 0 ? messageAttachments : undefined
+                          )
+                        }
+
+                        // 在下一个tick中聚焦，确保界面更新完成
+                        setTimeout(() => {
+                          chatInputRef.current?.focus()
+                        }, 0)
+                      }
+                    }, [
+                      inputValue,
+                      attachments,
+                      onSendMessage,
+                      selectedModel,
+                      isLoading,
+                      messageQueue,
+                      chat,
+                      chatId,
+                      settings
+                    ])}
+                    onStop={handleStopWithQueue}
+                    disabled={isLoading}
+                    loading={isLoading}
+                    llmConfigs={settings.llmConfigs || []}
+                    selectedModel={selectedModel}
+                    defaultModelId={settings.defaultLLMId}
+                    onModelChange={onModelChange}
+                    onOpenSettings={handleOpenSettings}
+                    // 自动提问相关props
+                    autoQuestionEnabled={autoQuestionEnabled}
+                    autoQuestionMode={autoQuestionMode}
+                    autoQuestionListId={autoQuestionListId}
+                    onAutoQuestionChange={handleAutoQuestionChange}
+                    onTriggerFollowUpQuestion={onTriggerFollowUpQuestion}
+                    // 消息队列相关props
+                    queueEnabled={messageQueue.config.enabled}
+                    queuePendingCount={messageQueue.getQueueStats().pending}
+                    queuePaused={messageQueue.config.paused}
+                    queueAutoProcess={messageQueue.config.autoProcess}
+                    onToggleQueuePanel={handleToggleQueuePanel}
+                    onResumeQueue={messageQueue.resumeQueue}
+                    // 文件附件相关props
+                    attachments={attachments}
+                    onAttachmentsChange={setAttachments}
+                  />
+
+                  {/* 消息队列面板 */}
+                  <Drawer
+                    title="消息队列"
+                    placement="right"
+                    open={queuePanelVisible}
+                    onClose={() => setQueuePanelVisible(false)}
+                    width={400}
+                    destroyOnClose={false}
+                  >
+                    <MessageQueuePanel
+                      queue={messageQueue.queue}
+                      config={messageQueue.config}
+                      currentlyProcessing={messageQueue.currentlyProcessing}
+                      selectedModel={selectedModel}
+                      onAddToQueue={messageQueue.addToQueue}
+                      onRemoveFromQueue={messageQueue.removeFromQueue}
+                      onEditQueueItem={messageQueue.editQueueItem}
+                      onClearQueue={messageQueue.clearQueue}
+                      onClearCompletedItems={messageQueue.clearCompletedItems}
+                      onRetryQueueItem={messageQueue.retryQueueItem}
+                      onProcessNext={messageQueue.processNextInQueue}
+                      onUpdateConfig={messageQueue.updateConfig}
+                      onReorderQueue={messageQueue.reorderQueue}
+                    />
+                  </Drawer>
+                </div>
+              </>
             )
           }}
         </ChatLogic>
