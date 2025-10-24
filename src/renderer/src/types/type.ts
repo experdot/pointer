@@ -472,10 +472,8 @@ export interface FavoriteItem {
   color?: string // 可选的标记颜色
   starred?: boolean // 是否标记为星标
 
-  // 笔记和统计
+  // 笔记
   notes?: string // 用户笔记
-  viewCount?: number // 查看次数
-  lastViewedAt?: number // 最后查看时间
 }
 
 // 收藏文件夹

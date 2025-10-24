@@ -78,8 +78,7 @@ export interface FavoritesActions {
   // 溯源操作
   checkSourceExists: (source: FavoriteSource) => boolean
   navigateToSource: (favoriteId: string) => void
-  incrementViewCount: (id: string) => void
-
+  
   // UI 状态
   setSelectedItem: (id?: string) => void
   setSelectedFolder: (id?: string) => void
@@ -130,7 +129,6 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
               id,
               createdAt: now,
               updatedAt: now,
-              viewCount: 0,
               order: item.order ?? newOrder
             }
 
@@ -554,29 +552,13 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
             // 由于 tabsStore 可能还没导入，这里先预留接口
             // 实际实现时需要导入 useTabsStore
             console.log('Navigate to source:', { type, pageId, messageId })
-
-            // 增加查看次数
-            get().incrementViewCount(favoriteId)
           } catch (error) {
             handleStoreError('favoritesStore', 'navigateToSource', error)
             throw error
           }
         },
 
-        incrementViewCount: (id) => {
-          try {
-            set((state) => {
-              const item = state.items.find((i) => i.id === id)
-              if (item) {
-                item.viewCount = (item.viewCount || 0) + 1
-                item.lastViewedAt = Date.now()
-              }
-            })
-          } catch (error) {
-            handleStoreError('favoritesStore', 'incrementViewCount', error)
-          }
-        },
-
+        
         // ==================== UI 状态 ====================
 
         setSelectedItem: (id) => {

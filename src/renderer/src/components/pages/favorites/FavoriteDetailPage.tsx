@@ -4,36 +4,34 @@ import {
   Typography,
   Tag,
   Space,
-  Button,
   Descriptions,
   Empty,
   Divider,
   message,
   Collapse,
-  Image
+  Image,
+  Dropdown,
+  App
 } from 'antd'
+import type { MenuProps } from 'antd'
 import {
-  ClockCircleOutlined,
-  EyeOutlined,
-  StarFilled,
-  StarOutlined,
-  DeleteOutlined,
-  EditOutlined,
   LinkOutlined,
-  FileOutlined,
   MessageOutlined,
   FontSizeOutlined,
   BulbOutlined,
   UserOutlined,
   RobotOutlined,
-  FileImageOutlined
+  FileImageOutlined,
+  CopyOutlined,
+  PlusCircleOutlined
 } from '@ant-design/icons'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { Markdown } from '../../common/markdown/Markdown'
 import { RelativeTime } from '../../common/RelativeTime'
-import { ChatMessage, FileAttachment } from '../../../types/type'
+import { ChatMessage } from '../../../types/type'
+import FavoriteDetailHeader from './FavoriteDetailHeader'
 import './favorite-detail-page.css'
 
 const { Title, Text, Paragraph } = Typography
@@ -51,6 +49,8 @@ interface MessagePreviewProps {
 const MessagePreview: React.FC<MessagePreviewProps> = ({ message, showContext = true }) => {
   const [reasoningExpanded, setReasoningExpanded] = useState<string[]>([])
   const [attachmentUrls, setAttachmentUrls] = useState<Map<string, string>>(new Map())
+  const { message: messageApi } = App.useApp()
+  const { openTab } = useTabsStore()
 
   // 加载附件的预览 URL
   useEffect(() => {
@@ -81,6 +81,97 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({ message, showContext = 
 
     loadAttachments()
   }, [message.attachments])
+
+  // 处理复制
+  const handleCopy = () => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+
+    if (selectedText && selectedText.trim()) {
+      // 如果有选中文本，复制选中内容
+      navigator.clipboard.writeText(selectedText)
+      messageApi.success('已复制选中内容')
+    } else {
+      // 否则复制整个消息
+      navigator.clipboard.writeText(message.content)
+      messageApi.success('已复制消息内容')
+    }
+  }
+
+  // 处理新建对话
+  const handleCreateNewChat = () => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+    const contentToUse = selectedText && selectedText.trim() ? selectedText : message.content
+
+    // 生成对话标题（取前30个字符）
+    const title = contentToUse.length > 30 ? contentToUse.substring(0, 30) + '...' : contentToUse
+
+    // 创建新对话并打开
+    const { createChatWithInitialMessage } = usePagesStore.getState()
+    const newChatId = createChatWithInitialMessage(title, contentToUse, undefined, undefined)
+
+    // 切换到新创建的对话
+    openTab(newChatId)
+
+    messageApi.success('已创建新对话')
+  }
+
+  // 处理复制文本片段
+  const handleCopyTextFragment = (content: string) => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+
+    if (selectedText && selectedText.trim()) {
+      // 如果有选中文本，复制选中内容
+      navigator.clipboard.writeText(selectedText)
+      messageApi.success('已复制选中内容')
+    } else {
+      // 否则复制整个文本片段
+      navigator.clipboard.writeText(content)
+      messageApi.success('已复制文本片段')
+    }
+  }
+
+  // 处理从文本片段新建对话
+  const handleCreateNewChatFromTextFragment = (content: string) => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+    const contentToUse = selectedText && selectedText.trim() ? selectedText : content
+
+    // 生成对话标题（取前30个字符）
+    const title = contentToUse.length > 30 ? contentToUse.substring(0, 30) + '...' : contentToUse
+
+    // 创建新对话并打开
+    const { createChatWithInitialMessage } = usePagesStore.getState()
+    const newChatId = createChatWithInitialMessage(title, contentToUse, undefined, undefined)
+
+    // 切换到新创建的对话
+    openTab(newChatId)
+
+    messageApi.success('已创建新对话')
+  }
+
+  // 右键菜单项
+  const getContextMenuItems = (): MenuProps['items'] => {
+    return [
+      {
+        key: 'copy',
+        label: '复制',
+        icon: <CopyOutlined />,
+        onClick: handleCopy
+      },
+      {
+        type: 'divider'
+      },
+      {
+        key: 'newChat',
+        label: '新建对话',
+        icon: <PlusCircleOutlined />,
+        onClick: handleCreateNewChat
+      }
+    ]
+  }
 
   return (
     <div className="favorite-message-preview">
@@ -129,61 +220,110 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({ message, showContext = 
 
       {/* 推理内容 */}
       {message.reasoning_content && (
-        <Card size="small" className="message-reasoning-card">
-          <Collapse
-            size="small"
-            ghost
-            activeKey={reasoningExpanded}
-            onChange={(keys) => setReasoningExpanded(Array.isArray(keys) ? keys : [keys])}
-            items={[
-              {
-                key: 'reasoning_content',
-                label: (
-                  <Text type="secondary">
-                    <BulbOutlined style={{ marginRight: 4 }} />
-                    思考过程
-                  </Text>
-                ),
-                children: (
-                  <div className="reasoning-content">
-                    <Markdown content={message.reasoning_content} />
-                  </div>
-                )
-              }
-            ]}
-          />
-        </Card>
+        <Dropdown menu={{ items: getContextMenuItems() }} trigger={['contextMenu']}>
+          <Card size="small" className="message-reasoning-card">
+            <Collapse
+              size="small"
+              ghost
+              activeKey={reasoningExpanded}
+              onChange={(keys) => setReasoningExpanded(Array.isArray(keys) ? keys : [keys])}
+              items={[
+                {
+                  key: 'reasoning_content',
+                  label: (
+                    <Text type="secondary">
+                      <BulbOutlined style={{ marginRight: 4 }} />
+                      思考过程
+                    </Text>
+                  ),
+                  children: (
+                    <div className="reasoning-content">
+                      <Markdown content={message.reasoning_content} />
+                    </div>
+                  )
+                }
+              ]}
+            />
+          </Card>
+        </Dropdown>
       )}
 
       {/* 主要内容 */}
-      <Card size="small" className="message-card">
-        <div className="message-body">
-          <Markdown content={message.content} />
-        </div>
-      </Card>
+      <Dropdown menu={{ items: getContextMenuItems() }} trigger={['contextMenu']}>
+        <Card size="small" className="message-card">
+          <div className="message-body">
+            <Markdown content={message.content} />
+          </div>
+        </Card>
+      </Dropdown>
     </div>
   )
 }
 
 export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPageProps) {
-  const {
-    getFavoriteById,
-    toggleStarFavorite,
-    deleteFavorite,
-    checkSourceExists,
-    incrementViewCount
-  } = useFavoritesStore()
-  const { pages } = usePagesStore()
-  const { openTab, closeTab } = useTabsStore()
+  const { getFavoriteById, checkSourceExists } = useFavoritesStore()
+  const { openTab } = useTabsStore()
+  const { message: messageApi } = App.useApp()
 
   const favorite = useMemo(() => {
-    const fav = getFavoriteById(favoriteId)
-    if (fav) {
-      // 增加查看次数
-      incrementViewCount(favoriteId)
-    }
-    return fav
+    return getFavoriteById(favoriteId)
   }, [favoriteId, getFavoriteById])
+
+  // 处理复制文本片段
+  const handleCopyTextFragment = (content: string) => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+
+    if (selectedText && selectedText.trim()) {
+      // 如果有选中文本，复制选中内容
+      navigator.clipboard.writeText(selectedText)
+      messageApi.success('已复制选中内容')
+    } else {
+      // 否则复制整个文本片段
+      navigator.clipboard.writeText(content)
+      messageApi.success('已复制文本片段')
+    }
+  }
+
+  // 处理从文本片段新建对话
+  const handleCreateNewChatFromTextFragment = (content: string) => {
+    const selection = window.getSelection()
+    const selectedText = selection?.toString()
+    const contentToUse = selectedText && selectedText.trim() ? selectedText : content
+
+    // 生成对话标题（取前30个字符）
+    const title = contentToUse.length > 30 ? contentToUse.substring(0, 30) + '...' : contentToUse
+
+    // 创建新对话并打开
+    const { createChatWithInitialMessage } = usePagesStore.getState()
+    const newChatId = createChatWithInitialMessage(title, contentToUse, undefined, undefined)
+
+    // 切换到新创建的对话
+    openTab(newChatId)
+
+    messageApi.success('已创建新对话')
+  }
+
+  // 获取文本片段的右键菜单项
+  const getTextFragmentContextMenuItems = (content: string): MenuProps['items'] => {
+    return [
+      {
+        key: 'copy',
+        label: '复制',
+        icon: <CopyOutlined />,
+        onClick: () => handleCopyTextFragment(content)
+      },
+      {
+        type: 'divider'
+      },
+      {
+        key: 'newChat',
+        label: '新建对话',
+        icon: <PlusCircleOutlined />,
+        onClick: () => handleCreateNewChatFromTextFragment(content)
+      }
+    ]
+  }
 
   if (!favorite) {
     return (
@@ -214,51 +354,36 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
     }
   }
 
-  // 处理星标切换
-  const handleToggleStar = () => {
-    toggleStarFavorite(favoriteId)
-  }
-
-  // 处理删除
-  const handleDelete = () => {
-    deleteFavorite(favoriteId)
-    closeTab(`favorite-${favoriteId}`)
-    message.success('已删除收藏')
-  }
-
-  // 渲染图标
-  const renderIcon = () => {
-    switch (favorite.type) {
-      case 'page':
-        return <FileOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-      case 'message':
-        return <MessageOutlined style={{ fontSize: 24, color: '#52c41a' }} />
-      case 'text-fragment':
-        return <FontSizeOutlined style={{ fontSize: 24, color: '#faad14' }} />
-      default:
-        return <FileOutlined style={{ fontSize: 24 }} />
-    }
-  }
-
-  // 渲染类型标签
-  const renderTypeTag = () => {
-    const typeMap = {
-      page: { text: '页面', color: 'blue' },
-      message: { text: '消息', color: 'green' },
-      'text-fragment': { text: '文本片段', color: 'orange' }
-    }
-    const typeInfo = typeMap[favorite.type]
-    return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>
-  }
-
+  
   // 渲染内容
   const renderContent = () => {
     switch (favorite.type) {
       case 'page':
         if ('pageSnapshot' in favorite.data) {
           const { pageSnapshot } = favorite.data
+          // 获取源页面标题
+          const sourcePageTitle = favorite.source?.pageTitle || pageSnapshot.title || '未命名页面'
+
           return (
             <div className="favorite-page-content">
+              {/* 来源页面信息 */}
+              {favorite.source && (
+                <div className="source-info" style={{ marginBottom: 16 }}>
+                  <Tag
+                    icon={<LinkOutlined />}
+                    color={sourceExists ? 'processing' : 'default'}
+                    style={{
+                      cursor: sourceExists ? 'pointer' : 'not-allowed',
+                      textDecoration: sourceExists ? 'none' : 'line-through',
+                      opacity: sourceExists ? 1 : 0.6
+                    }}
+                    onClick={sourceExists ? handleNavigateToSource : undefined}
+                  >
+                    来自: {sourcePageTitle}
+                  </Tag>
+                </div>
+              )}
+
               <Descriptions bordered size="small" column={1}>
                 <Descriptions.Item label="页面类型">
                   {pageSnapshot.type === 'regular' && '普通聊天'}
@@ -281,7 +406,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
 
               {pageSnapshot.type === 'regular' && pageSnapshot.messages && (
                 <div className="messages-preview-section">
-                  <Divider orientation="left">
+                  <Divider orientation="center">
                     <Space>
                       <MessageOutlined />
                       <span>会话内容</span>
@@ -309,7 +434,16 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
             <div className="favorite-message-content">
               {/* 来源页面信息 */}
               <div className="source-info">
-                <Tag icon={<LinkOutlined />} color="processing">
+                <Tag
+                  icon={<LinkOutlined />}
+                  color={sourceExists ? 'processing' : 'default'}
+                  style={{
+                    cursor: sourceExists ? 'pointer' : 'not-allowed',
+                    textDecoration: sourceExists ? 'none' : 'line-through',
+                    opacity: sourceExists ? 1 : 0.6
+                  }}
+                  onClick={sourceExists ? handleNavigateToSource : undefined}
+                >
                   来自: {pageTitle}
                 </Tag>
               </div>
@@ -322,7 +456,7 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
               {/* 上下文消息 */}
               {contextMessages && contextMessages.length > 0 && (
                 <div className="context-messages-section">
-                  <Divider orientation="left">
+                  <Divider orientation="center">
                     <Space>
                       <MessageOutlined />
                       <span>上下文消息</span>
@@ -350,29 +484,37 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
             <div className="favorite-text-fragment-content">
               {/* 来源页面信息 */}
               <div className="source-info">
-                <Tag icon={<LinkOutlined />} color="processing">
+                <Tag
+                  icon={<LinkOutlined />}
+                  color={sourceExists ? 'processing' : 'default'}
+                  style={{
+                    cursor: sourceExists ? 'pointer' : 'not-allowed',
+                    textDecoration: sourceExists ? 'none' : 'line-through',
+                    opacity: sourceExists ? 1 : 0.6
+                  }}
+                  onClick={sourceExists ? handleNavigateToSource : undefined}
+                >
                   来自: {pageTitle}
                 </Tag>
               </div>
 
               {/* 选中的文本 */}
-              <Card
-                size="small"
-                className="selected-text-card"
-                title={
+              <div className="selected-text-container">
+                <div className="selected-text-label">
                   <Space>
                     <FontSizeOutlined />
                     <span>选中的文本</span>
                   </Space>
-                }
-              >
-                <div className="selected-text-highlight">
-                  <Markdown content={text} />
                 </div>
-              </Card>
+                <Dropdown menu={{ items: getTextFragmentContextMenuItems(text) }} trigger={['contextMenu']}>
+                  <div className="selected-text-highlight">
+                    <Markdown content={text} />
+                  </div>
+                </Dropdown>
+              </div>
 
               {/* 完整消息 */}
-              <Divider orientation="left">完整消息</Divider>
+              <Divider orientation="center">完整消息</Divider>
               <MessagePreview message={fullMessage} />
             </div>
           )
@@ -387,107 +529,81 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
   return (
     <div className="favorite-detail-page">
       {/* 头部信息 */}
-      <div className="favorite-header">
-        <div className="favorite-header-left">
-          {renderIcon()}
-          <div className="favorite-title-section">
-            <div className="favorite-title-row">
-              <Title level={3} style={{ margin: 0 }}>
-                {favorite.title}
-              </Title>
-              {favorite.starred && <StarFilled style={{ color: '#faad14', fontSize: 20 }} />}
-            </div>
-            <Space size="small" style={{ marginTop: 8 }}>
-              {renderTypeTag()}
-              {favorite.tags?.map((tag) => (
-                <Tag key={tag}>{tag}</Tag>
-              ))}
-            </Space>
-          </div>
-        </div>
+      <FavoriteDetailHeader
+        favoriteId={favoriteId}
+        sourceExists={sourceExists}
+        onNavigateToSource={handleNavigateToSource}
+      />
 
-        <div className="favorite-actions">
-          <Button
-            icon={favorite.starred ? <StarFilled /> : <StarOutlined />}
-            onClick={handleToggleStar}
+      {/* 主要内容区域 */}
+      <div className="favorite-main-content">
+        {/* 描述 */}
+        {favorite.description && (
+          <Card size="small" title="描述" style={{ marginBottom: 16 }}>
+            <Markdown content={favorite.description} />
+          </Card>
+        )}
+
+        {/* 笔记 */}
+        {favorite.notes && (
+          <Card size="small" title="笔记" style={{ marginBottom: 16 }}>
+            <Markdown content={favorite.notes} />
+          </Card>
+        )}
+
+        {/* 内容 */}
+        {renderContent()}
+
+        {/* 溯源信息 */}
+        {favorite.source && (
+          <Card
+            size="small"
+            title="溯源信息"
+            style={{ marginTop: 16 }}
+            extra={
+              <Tag
+                icon={<LinkOutlined />}
+                color={sourceExists ? 'success' : 'error'}
+                style={{
+                  cursor: sourceExists ? 'pointer' : 'not-allowed',
+                  textDecoration: sourceExists ? 'none' : 'line-through'
+                }}
+                onClick={sourceExists ? handleNavigateToSource : undefined}
+              >
+                {sourceExists ? '跳转到源' : '源已删除'}
+              </Tag>
+            }
           >
-            {favorite.starred ? '取消星标' : '设为星标'}
-          </Button>
-          {sourceExists && (
-            <Button icon={<LinkOutlined />} onClick={handleNavigateToSource}>
-              跳转到源
-            </Button>
-          )}
-          <Button icon={<DeleteOutlined />} danger onClick={handleDelete}>
-            删除
-          </Button>
-        </div>
-      </div>
-
-      {/* 元信息 */}
-      <div className="favorite-meta">
-        <Space split={<Divider type="vertical" />}>
-          <span>
-            <ClockCircleOutlined /> 收藏于: <RelativeTime timestamp={favorite.createdAt} />
-          </span>
-          <span>
-            <EyeOutlined /> 查看: {favorite.viewCount || 0} 次
-          </span>
-          {favorite.lastViewedAt && (
-            <span>
-              上次查看: <RelativeTime timestamp={favorite.lastViewedAt} />
-            </span>
-          )}
-        </Space>
-      </div>
-
-      {/* 描述 */}
-      {favorite.description && (
-        <Card size="small" title="描述" style={{ marginBottom: 16 }}>
-          <Markdown content={favorite.description} />
-        </Card>
-      )}
-
-      {/* 笔记 */}
-      {favorite.notes && (
-        <Card size="small" title="笔记" style={{ marginBottom: 16 }}>
-          <Markdown content={favorite.notes} />
-        </Card>
-      )}
-
-      {/* 主要内容 */}
-      <div className="favorite-main-content">{renderContent()}</div>
-
-      {/* 溯源信息 */}
-      {favorite.source && (
-        <Card
-          size="small"
-          title="溯源信息"
-          style={{ marginTop: 16 }}
-          extra={
-            sourceExists ? <Tag color="success">源存在</Tag> : <Tag color="error">源已删除</Tag>
-          }
-        >
-          <Descriptions size="small" column={1}>
-            <Descriptions.Item label="源类型">
-              {favorite.source.type === 'page' ? '页面' : '消息'}
-            </Descriptions.Item>
-            {favorite.source.pageTitle && (
-              <Descriptions.Item label="源页面">{favorite.source.pageTitle}</Descriptions.Item>
-            )}
-            {favorite.source.pageType && (
-              <Descriptions.Item label="页面类型">
-                {favorite.source.pageType === 'regular' && '普通聊天'}
-                {favorite.source.pageType === 'crosstab' && '交叉分析'}
-                {favorite.source.pageType === 'object' && '对象页面'}
+            <Descriptions size="small" column={1}>
+              <Descriptions.Item label="源类型">
+                {favorite.source.type === 'page' ? '页面' : '消息'}
               </Descriptions.Item>
-            )}
-            <Descriptions.Item label="收藏时间">
-              {new Date(favorite.source.timestamp).toLocaleString('zh-CN')}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-      )}
+              {favorite.source.pageTitle && (
+                <Descriptions.Item label="源页面">
+                  <span
+                    style={{
+                      textDecoration: sourceExists ? 'none' : 'line-through',
+                      opacity: sourceExists ? 1 : 0.6
+                    }}
+                  >
+                    {favorite.source.pageTitle}
+                  </span>
+                </Descriptions.Item>
+              )}
+              {favorite.source.pageType && (
+                <Descriptions.Item label="页面类型">
+                  {favorite.source.pageType === 'regular' && '普通聊天'}
+                  {favorite.source.pageType === 'crosstab' && '交叉分析'}
+                  {favorite.source.pageType === 'object' && '对象页面'}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="收藏时间">
+                {new Date(favorite.source.timestamp).toLocaleString('zh-CN')}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }
