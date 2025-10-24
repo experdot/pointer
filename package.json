@@ -1,6 +1,6 @@
 {
   "name": "pointer",
-  "version": "1.0.0-preview.20",
+  "version": "1.0.0-preview.21",
   "description": "AI desktop app with object tree, cross-table, and chat tree.",
   "main": "./out/main/index.js",
   "author": "experdot@foxmail.com",
