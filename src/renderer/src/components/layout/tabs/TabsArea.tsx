@@ -103,7 +103,7 @@ const SortableTabLabel: React.FC<SortableTabLabelProps> = ({
     // 不应用 transform，让标签保持在原位
     transform: isDragging ? 'none' : undefined,
     opacity: isDragging ? 0 : 1, // 拖拽时完全透明，因为会显示在 DragOverlay 中
-    cursor: 'grab',
+    cursor: 'pointer',
     position: 'relative'
   }
 
@@ -681,12 +681,13 @@ export default function TabsArea() {
             activeKey={activeTabId || undefined}
             onChange={handleTabChange}
             onEdit={(targetKey, action) => {
-              if (action === 'remove' && typeof targetKey === 'string') {
+              if (action === 'add') {
+                handleCreateChat()
+              } else if (action === 'remove' && typeof targetKey === 'string') {
                 handleTabClose(targetKey)
               }
             }}
             items={tabItems}
-            hideAdd
             size="small"
             style={
               {

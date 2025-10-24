@@ -126,7 +126,7 @@
 
 /* 拖拽相关样式 - VSCode 风格 */
 .tab-label-content {
-  cursor: grab;
+  cursor: pointer;
   user-select: none;
 }
 
