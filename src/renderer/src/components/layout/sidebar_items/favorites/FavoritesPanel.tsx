@@ -33,8 +33,61 @@ export default function FavoritesPanel() {
   const { selectedFavoriteId, selectedFavoriteType, setSelectedFavorite } = useUIStore()
 
   const [editingNodeKey, setEditingNodeKey] = useState<string | null>(null)
+  const treeRef = React.useRef<any>(null)
+  const lastSelectedFavoriteIdRef = React.useRef<string | null>(null)
 
   const stats = getStats()
+
+  // 展开父级文件夹并滚动到选中的节点
+  useEffect(() => {
+    // 只有当选中的节点真正改变时才执行滚动
+    if (selectedFavoriteId && selectedFavoriteType === 'item' && selectedFavoriteId !== lastSelectedFavoriteIdRef.current) {
+      lastSelectedFavoriteIdRef.current = selectedFavoriteId
+
+      // 找到该收藏项所在的文件夹链
+      const item = items.find((i) => i.id === selectedFavoriteId)
+      if (item && item.folderId) {
+        const foldersToExpand: string[] = []
+        let currentFolderId: string | undefined = item.folderId
+
+        // 收集所有需要展开的父级文件夹
+        while (currentFolderId) {
+          foldersToExpand.push(currentFolderId)
+          const folder = folders.find((f) => f.id === currentFolderId)
+          currentFolderId = folder?.parentId
+        }
+
+        // 展开所有父级文件夹
+        const { updateFolder } = useFavoritesStore.getState()
+        foldersToExpand.forEach((folderId) => {
+          const folder = folders.find((f) => f.id === folderId)
+          if (folder && !folder.expanded) {
+            updateFolder(folderId, { expanded: true })
+          }
+        })
+      }
+
+      // 滚动到选中的节点
+      setTimeout(() => {
+        const nodeKey = `item-${selectedFavoriteId}`
+
+        // 优先使用Tree的scrollTo API（如果可用）
+        if (treeRef.current && treeRef.current.scrollTo) {
+          treeRef.current.scrollTo({ key: nodeKey, align: 'auto' })
+        } else {
+          // 备用方案：使用DOM查询（适用于非虚拟化Tree）
+          let selectedNode =
+            document.querySelector(`.favorites-tree [data-node-key="${nodeKey}"]`) ||
+            document.querySelector(`.favorites-tree [data-key="${nodeKey}"]`) ||
+            document.querySelector(`.favorites-tree .ant-tree-treenode-selected`)
+
+          if (selectedNode) {
+            selectedNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          }
+        }
+      }, 300) // 增加延迟确保文件夹展开完成
+    }
+  }, [selectedFavoriteId, selectedFavoriteType, items, folders])
 
   // 处理搜索
   const handleSearch = (value: string) => {
@@ -578,6 +631,7 @@ export default function FavoritesPanel() {
           />
         ) : (
           <Tree
+            ref={treeRef}
             className="favorites-tree"
             showIcon={false}
             blockNode

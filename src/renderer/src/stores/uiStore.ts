@@ -18,6 +18,7 @@ export interface UIState {
   // 侧边栏状态
   sidebarCollapsed: boolean
   sidebarWidth: number
+  activeTab: 'explore' | 'search' | 'tasks' | 'favorites'
 
   // 消息折叠状态
   collapsedMessages: { [chatId: string]: string[] }
@@ -42,6 +43,7 @@ export interface UIActions {
   setSidebarWidth: (width: number) => void
   collapseSidebar: () => void
   expandSidebar: () => void
+  setActiveTab: (tab: 'explore' | 'search' | 'tasks' | 'favorites') => void
 
   // 消息折叠
   toggleMessageCollapse: (chatId: string, messageId: string) => void
@@ -67,6 +69,7 @@ const initialState: UIState = {
   selectedFavoriteType: null,
   sidebarCollapsed: false,
   sidebarWidth: 300,
+  activeTab: 'explore',
   collapsedMessages: {},
   allMessagesCollapsed: {},
   lineageDisplayCollapsed: {}
@@ -147,6 +150,12 @@ export const useUIStore = create<UIState & UIActions>()(
       expandSidebar: () => {
         set((state) => {
           state.sidebarCollapsed = false
+        })
+      },
+
+      setActiveTab: (tab) => {
+        set((state) => {
+          state.activeTab = tab
         })
       },
 
@@ -252,6 +261,7 @@ export const useUIStore = create<UIState & UIActions>()(
       selectedFavoriteType: state.selectedFavoriteType,
       sidebarCollapsed: state.sidebarCollapsed,
       sidebarWidth: state.sidebarWidth,
+      activeTab: state.activeTab,
       collapsedMessages: state.collapsedMessages,
       allMessagesCollapsed: state.allMessagesCollapsed
     }))

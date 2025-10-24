@@ -15,9 +15,8 @@ const { Sider, Content } = AntLayout
 const NARROW_SCREEN_THRESHOLD = 768
 
 export default function Layout() {
-  const { sidebarCollapsed, sidebarWidth, toggleSidebar } = useUIStore()
+  const { sidebarCollapsed, sidebarWidth, activeTab, toggleSidebar, setActiveTab } = useUIStore()
   const { clearSearch, setFilterFolderId } = useSearchStore()
-  const [activeTab, setActiveTab] = useState<ActivityBarTab>('explore')
   const [searchOpen, setSearchOpen] = useState(false)
   const [isNarrowScreen, setIsNarrowScreen] = useState(false)
 

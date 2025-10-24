@@ -52,6 +52,8 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
   // 添加虚拟滚动高度状态
   const [virtualHeight, setVirtualHeight] = useState(800)
   const treeContainerRef = useRef<HTMLDivElement>(null)
+  const treeRef = useRef<any>(null)
+  const lastSelectedNodeIdRef = useRef<string | null>(null)
 
   // 动态计算虚拟滚动高度
   useEffect(() => {
@@ -66,6 +68,44 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     window.addEventListener('resize', calculateHeight)
     return () => window.removeEventListener('resize', calculateHeight)
   }, [])
+
+  // 展开父级文件夹并滚动到选中的节点
+  useEffect(() => {
+    // 只有当选中的节点真正改变时才执行滚动
+    if (selectedNodeId && selectedNodeType === 'chat' && selectedNodeId !== lastSelectedNodeIdRef.current) {
+      lastSelectedNodeIdRef.current = selectedNodeId
+
+      // 找到该聊天所在的文件夹链
+      const chat = pages.find((p) => p.id === selectedNodeId)
+      if (chat && chat.folderId) {
+        const foldersToExpand: string[] = []
+        let currentFolderId: string | undefined = chat.folderId
+
+        // 收集所有需要展开的父级文件夹
+        while (currentFolderId) {
+          foldersToExpand.push(currentFolderId)
+          const folder = folders.find((f) => f.id === currentFolderId)
+          currentFolderId = folder?.parentId
+        }
+
+        // 展开所有父级文件夹
+        foldersToExpand.forEach((folderId) => {
+          const folder = folders.find((f) => f.id === folderId)
+          if (folder && !folder.expanded) {
+            updateFolder(folderId, { expanded: true })
+          }
+        })
+      }
+
+      // 使用虚拟化Tree的scrollTo API滚动到选中的节点
+      setTimeout(() => {
+        const nodeKey = `chat-${selectedNodeId}`
+        if (treeRef.current && treeRef.current.scrollTo) {
+          treeRef.current.scrollTo({ key: nodeKey, align: 'auto' })
+        }
+      }, 300) // 增加延迟确保文件夹展开完成
+    }
+  }, [selectedNodeId, selectedNodeType, pages, folders, updateFolder])
 
   // 解析节点键，获取节点类型和ID
   const parseNodeKey = useCallback(
@@ -704,6 +744,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
   return (
     <div ref={treeContainerRef} style={{ height: '100%' }}>
       <Tree
+        ref={treeRef}
         className="chat-history-tree"
         showIcon
         blockNode
