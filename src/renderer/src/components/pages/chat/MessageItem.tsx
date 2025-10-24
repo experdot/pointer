@@ -40,7 +40,7 @@ interface MessageItemProps {
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string) => void
-  onToggleBookmark?: (messageId: string) => void
+  onToggleStar?: (messageId: string) => void
   onAddToFavorites?: (messageId: string) => void
   onFavoriteTextFragment?: (messageId: string, text: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
@@ -81,7 +81,7 @@ const MessageItem = React.memo(
     onContinue,
     onEdit,
     onEditAndResend,
-    onToggleBookmark,
+    onToggleStar,
     onAddToFavorites,
     onFavoriteTextFragment,
     onModelChange,
@@ -120,7 +120,7 @@ const MessageItem = React.memo(
       onContinue,
       onEdit,
       onEditAndResend,
-      onToggleBookmark,
+      onToggleStar,
       onAddToFavorites,
       onModelChange,
       onDelete,
@@ -230,7 +230,7 @@ const MessageItem = React.memo(
         <div
           ref={messageRef}
           data-message-id={message.id}
-          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.isBookmarked ? ' bookmarked' : ''}${message.hasError ? ' has-error' : ''}`}
+          className={`message-item ${message.role === 'user' ? 'user-message' : 'assistant-message'}${message.starred ? ' starred' : ''}${message.hasError ? ' has-error' : ''}`}
         >
           <div className="message-avatar">
             <Avatar
@@ -309,14 +309,14 @@ const MessageItem = React.memo(
             <div className={`message-actions ${isLastMessage ? 'visible' : ''}`}>
               <MessageActionButtons
                 role={message.role}
-                isBookmarked={message.isBookmarked || false}
+                starred={message.starred || false}
                 isCurrentlyStreaming={isCurrentlyStreaming}
                 isEditing={messageActions.isEditing}
                 hasChildren={hasChildren}
                 isLoading={isLoading}
                 onCopy={messageActions.handleCopy}
                 onCopyAsImage={imageExport.handleCopyAsImage}
-                onToggleBookmark={messageActions.handleToggleBookmark}
+                onToggleStar={messageActions.handleToggleStar}
                 onAddToFavorites={onAddToFavorites ? handleAddMessageToFavorites : undefined}
                 onEdit={messageActions.handleEdit}
                 onRetry={onRetry ? messageActions.handleRetry : undefined}
@@ -388,7 +388,7 @@ const MessageItem = React.memo(
       prevProps.message.content !== nextProps.message.content ||
       prevProps.message.reasoning_content !== nextProps.message.reasoning_content ||
       prevProps.message.isStreaming !== nextProps.message.isStreaming ||
-      prevProps.message.isBookmarked !== nextProps.message.isBookmarked ||
+      prevProps.message.starred !== nextProps.message.starred ||
       prevProps.message.modelId !== nextProps.message.modelId ||
       prevProps.message.attachments !== nextProps.message.attachments ||
       prevProps.message.hasError !== nextProps.message.hasError

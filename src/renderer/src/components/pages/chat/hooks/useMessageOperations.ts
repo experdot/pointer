@@ -34,7 +34,7 @@ export interface UseMessageOperationsReturn {
     newContent: string,
     newAttachments?: FileAttachment[]
   ) => Promise<void>
-  handleToggleBookmark: (messageId: string) => void
+  handleToggleStar: (messageId: string) => void
   handleModelChangeForMessage: (messageId: string, newModelId: string) => Promise<void>
   handleDeleteMessage: (messageId: string) => Promise<void>
 }
@@ -49,7 +49,7 @@ export function useMessageOperations({
   selectedModel,
   selectedModelRef
 }: UseMessageOperationsProps): UseMessageOperationsReturn {
-  const { addMessageToParent, toggleMessageBookmark, deleteMessageAndChildren } = useMessagesStore()
+  const { addMessageToParent, toggleMessageStar, deleteMessageAndChildren } = useMessagesStore()
   const { settings } = useSettingsStore()
   const { message, modal } = App.useApp()
 
@@ -494,12 +494,12 @@ export function useMessageOperations({
     ]
   )
 
-  const handleToggleBookmark = useCallback(
+  const handleToggleStar = useCallback(
     (messageId: string) => {
       if (!chat) return
-      toggleMessageBookmark(chatId, messageId)
+      toggleMessageStar(chatId, messageId)
     },
-    [chat, chatId, toggleMessageBookmark]
+    [chat, chatId, toggleMessageStar]
   )
 
   const handleModelChangeForMessage = useCallback(
@@ -641,7 +641,7 @@ export function useMessageOperations({
     handleContinueMessage,
     handleEditMessage,
     handleEditAndResendMessage,
-    handleToggleBookmark,
+    handleToggleStar,
     handleModelChangeForMessage,
     handleDeleteMessage
   }

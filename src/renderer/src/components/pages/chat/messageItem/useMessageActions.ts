@@ -9,7 +9,7 @@ interface UseMessageActionsProps {
   onContinue?: (messageId: string) => void
   onEdit?: (messageId: string, newContent: string) => void
   onEditAndResend?: (messageId: string, newContent: string, newAttachments?: FileAttachment[]) => void
-  onToggleBookmark?: (messageId: string) => void
+  onToggleStar?: (messageId: string) => void
   onAddToFavorites?: (messageId: string) => void
   onModelChange?: (messageId: string, newModelId: string) => void
   onDelete?: (messageId: string) => void
@@ -72,9 +72,9 @@ export function useMessageActions(props: UseMessageActionsProps) {
     setEditAttachments(message.attachments || [])
   }, [message.content, message.attachments])
 
-  const handleToggleBookmark = useCallback(() => {
-    props.onToggleBookmark?.(message.id)
-  }, [props.onToggleBookmark, message.id])
+  const handleToggleStar = useCallback(() => {
+    props.onToggleStar?.(message.id)
+  }, [props.onToggleStar, message.id])
 
   const handleAddToFavorites = useCallback(() => {
     props.onAddToFavorites?.(message.id)
@@ -157,7 +157,7 @@ export function useMessageActions(props: UseMessageActionsProps) {
     handleSaveEdit,
     handleSaveAndResend,
     handleCancelEdit,
-    handleToggleBookmark,
+    handleToggleStar,
     handleAddToFavorites,
     handleModelChange,
     handleBranchPrevious,

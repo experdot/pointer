@@ -237,7 +237,6 @@
   opacity: 0;
   transition: opacity 0.2s ease;
   margin-top: 8px;
-  padding: 0 8px;
 }
 
 /* 用户消息操作按钮对齐 */
@@ -273,22 +272,22 @@
   background-color: rgba(0, 0, 0, 0.06);
 }
 
-.message-action-buttons .ant-btn.bookmarked {
+.message-action-buttons .ant-btn.starred {
   color: #faad14;
 }
 
-.message-action-buttons .ant-btn.bookmarked:hover {
+.message-action-buttons .ant-btn.starred:hover {
   color: #d48806;
   background-color: rgba(250, 173, 20, 0.1);
 }
 
-/* Bookmarked Message Highlighting */
-.message-item.bookmarked .message-card {
+/* Starred Message Highlighting */
+.message-item.starred .message-card {
   border: 1px solid #faad14 !important;
   box-shadow: 0 2px 8px rgba(250, 173, 20, 0.15) !important;
 }
 
-.message-item.bookmarked .message-reasoning-card {
+.message-item.starred .message-reasoning-card {
   border: 1px solid #faad14 !important;
   box-shadow: 0 1px 4px rgba(250, 173, 20, 0.1) !important;
 }

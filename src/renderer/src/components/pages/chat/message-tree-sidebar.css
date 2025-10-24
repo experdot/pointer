@@ -112,12 +112,8 @@
   color: #666;
 }
 
-.stat-item .anticon-book {
-  color: #ffc107;
-}
-
-/* 书签消息导航样式 */
-.stat-item-bookmarked {
+/* 星标消息导航样式 */
+.stat-item-starred {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -125,26 +121,26 @@
   width: 100%;
 }
 
-.bookmarked-info {
+.starred-info {
   display: flex;
   align-items: center;
   gap: 4px;
   flex: 1;
 }
 
-.bookmarked-position {
+.starred-position {
   font-size: 10px;
   color: #999;
 }
 
-.bookmarked-navigation {
+.starred-navigation {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.bookmarked-navigation .nav-btn {
+.starred-navigation .nav-btn {
   width: 20px;
   height: 20px;
   padding: 0;
@@ -152,12 +148,12 @@
   transition: all 0.2s;
 }
 
-.bookmarked-navigation .nav-btn:hover {
+.starred-navigation .nav-btn:hover {
   background-color: #f0f0f0;
   color: #ffc107;
 }
 
-.bookmarked-navigation .nav-btn .anticon {
+.starred-navigation .nav-btn .anticon {
   font-size: 10px;
 }
 
@@ -203,16 +199,12 @@
   font-size: 14px;
 }
 
-.tree-stats-collapsed .stat-item .anticon-book {
-  color: #ffc107;
-}
-
 .tree-stats-collapsed .stat-item .ant-typography {
   font-size: 10px;
 }
 
-/* 折叠状态下的书签导航 */
-.stat-item-bookmarked-collapsed {
+/* 折叠状态下的星标导航 */
+.stat-item-starred-collapsed {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -220,14 +212,14 @@
   position: relative;
 }
 
-.bookmarked-navigation-collapsed {
+.starred-navigation-collapsed {
   display: flex;
   justify-content: center;
   gap: 2px;
   margin-top: 2px;
 }
 
-.bookmarked-navigation-collapsed .nav-btn-collapsed {
+.starred-navigation-collapsed .nav-btn-collapsed {
   width: 16px;
   height: 16px;
   padding: 0;
@@ -235,12 +227,12 @@
   transition: all 0.2s;
 }
 
-.bookmarked-navigation-collapsed .nav-btn-collapsed:hover {
+.starred-navigation-collapsed .nav-btn-collapsed:hover {
   background-color: #f0f0f0;
   color: #ffc107;
 }
 
-.bookmarked-navigation-collapsed .nav-btn-collapsed .anticon {
+.starred-navigation-collapsed .nav-btn-collapsed .anticon {
   font-size: 8px;
 }
 
@@ -411,29 +403,29 @@
   color: #fff;
 }
 
-/* 书签消息样式 */
-.path-node.bookmarked {
+/* 星标消息样式 */
+.path-node.starred {
   border-right: 4px solid #ffc107;
   background: rgba(255, 193, 7, 0.05);
 }
 
-.path-node.bookmarked:hover {
+.path-node.starred:hover {
   background: rgba(255, 193, 7, 0.08);
 }
 
-.path-node.bookmarked.selected {
+.path-node.starred.selected {
   background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
 }
 
-/* 书签图标样式 */
-.path-node-role .bookmark-icon {
+/* 星标图标样式 */
+.path-node-role .star-icon {
   color: #ffc107;
   font-size: 11px;
-  animation: bookmark-pulse 2s infinite;
+  animation: star-pulse 2s infinite;
   flex-shrink: 0;
 }
 
-@keyframes bookmark-pulse {
+@keyframes star-pulse {
   0% {
     transform: scale(1);
     opacity: 1;
@@ -573,24 +565,24 @@
   color: #fff;
 }
 
-/* 兄弟节点书签样式 */
-.sibling-node.bookmarked {
+/* 兄弟节点星标样式 */
+.sibling-node.starred {
   border-right: 3px solid #ffc107;
   background: rgba(255, 193, 7, 0.05);
 }
 
-.sibling-node.bookmarked:hover {
+.sibling-node.starred:hover {
   background: rgba(255, 193, 7, 0.08);
 }
 
-.sibling-node.bookmarked.selected {
+.sibling-node.starred.selected {
   background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(255, 193, 7, 0.08) 100%);
 }
 
-.sibling-node-role .bookmark-icon {
+.sibling-node-role .star-icon {
   color: #ffc107;
   font-size: 10px;
-  animation: bookmark-pulse 2s infinite;
+  animation: star-pulse 2s infinite;
   flex-shrink: 0;
 }
 

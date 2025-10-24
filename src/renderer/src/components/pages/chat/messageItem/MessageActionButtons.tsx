@@ -3,27 +3,26 @@ import { Button, Tooltip, Dropdown, type MenuProps } from 'antd'
 import {
   CopyOutlined,
   PictureOutlined,
-  BookOutlined,
-  BookFilled,
+  StarOutlined,
+  StarFilled,
   EditOutlined,
   RedoOutlined,
   SendOutlined,
   DeleteOutlined,
-  StarOutlined,
   MoreOutlined,
   HeartOutlined
 } from '@ant-design/icons'
 
 interface MessageActionButtonsProps {
   role: string
-  isBookmarked: boolean
+  starred: boolean
   isCurrentlyStreaming: boolean
   isEditing: boolean
   hasChildren: boolean
   isLoading: boolean
   onCopy: () => void
   onCopyAsImage: () => void
-  onToggleBookmark: () => void
+  onToggleStar: () => void
   onAddToFavorites?: () => void
   onEdit: () => void
   onRetry?: () => void
@@ -33,14 +32,14 @@ interface MessageActionButtonsProps {
 
 export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
   role,
-  isBookmarked,
+  starred,
   isCurrentlyStreaming,
   isEditing,
   hasChildren,
   isLoading,
   onCopy,
   onCopyAsImage,
-  onToggleBookmark,
+  onToggleStar,
   onAddToFavorites,
   onEdit,
   onRetry,
@@ -81,13 +80,13 @@ export const MessageActionButtons: React.FC<MessageActionButtonsProps> = ({
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>
-      <Tooltip title="书签">
+      <Tooltip title="星标">
         <Button
           type="text"
           size="small"
-          icon={isBookmarked ? <BookFilled /> : <BookOutlined />}
-          onClick={onToggleBookmark}
-          className={isBookmarked ? 'bookmarked' : ''}
+          icon={starred ? <StarFilled /> : <StarOutlined />}
+          onClick={onToggleStar}
+          className={starred ? 'starred' : ''}
           disabled={isCurrentlyStreaming}
         />
       </Tooltip>

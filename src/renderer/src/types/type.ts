@@ -33,7 +33,7 @@ export interface ChatMessage {
   content: string
   reasoning_content?: string
   timestamp: number
-  isBookmarked?: boolean
+  starred?: boolean
   modelId?: string
   parentId?: string
   children?: string[]

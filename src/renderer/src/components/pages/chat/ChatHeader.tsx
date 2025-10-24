@@ -3,11 +3,11 @@ import { Button, Dropdown, Space, App, Tooltip, Input } from 'antd'
 import {
   ExportOutlined,
   DownOutlined,
-  UpOutlined,
-  BranchesOutlined,
   EditOutlined,
   HeartOutlined,
   HeartFilled,
+  StarOutlined,
+  StarFilled,
   MoreOutlined
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
@@ -88,6 +88,12 @@ export default function ChatHeader({
   // 处理编辑标题
   const handleEditTitle = () => {
     setIsEditingTitle(true)
+  }
+
+  // 处理页面星标切换
+  const handleTogglePageStar = () => {
+    const currentStarred = chat?.starred || false
+    updatePage(chatId, { starred: !currentStarred })
   }
 
   // 保存标题
@@ -331,10 +337,10 @@ export default function ChatHeader({
       metadata.push(`用户消息: ${userMessages}`)
       metadata.push(`AI消息: ${assistantMessages}`)
 
-      // 书签消息
-      const bookmarkedMessages = messages.filter((m) => m.isBookmarked).length
-      if (bookmarkedMessages > 0) {
-        metadata.push(`书签消息: ${bookmarkedMessages}`)
+      // 星标消息
+      const starredMessages = messages.filter((m) => m.starred).length
+      if (starredMessages > 0) {
+        metadata.push(`星标消息: ${starredMessages}`)
       }
 
       // 当前路径信息
@@ -382,6 +388,20 @@ export default function ChatHeader({
                 <h3 className="chat-title" style={{ cursor: 'help', margin: 0 }}>
                   {chatTitle || '未命名聊天'}
                 </h3>
+              </Tooltip>
+                            <Tooltip title={chat?.starred ? '取消星标' : '添加星标'}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={chat?.starred ? <StarFilled /> : <StarOutlined />}
+                  onClick={handleTogglePageStar}
+                  style={{
+                    opacity: isHoveringTitle || chat?.starred ? 1 : 0,
+                    transition: 'opacity 0.2s',
+                    visibility: isHoveringTitle || chat?.starred ? 'visible' : 'hidden',
+                    color: chat?.starred ? '#faad14' : undefined
+                  }}
+                />
               </Tooltip>
               <Button
                 type="text"
