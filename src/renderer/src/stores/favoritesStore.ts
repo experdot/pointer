@@ -96,6 +96,11 @@ export interface FavoritesActions {
     textFragmentCount: number
     folderCount: number
   }
+
+  // 导入导出
+  importFavorites: (items: FavoriteItem[]) => void
+  importFavoriteFolders: (folders: FavoriteFolder[]) => void
+  clearAllFavorites: () => void
 }
 
 const initialState: FavoritesState = {
@@ -603,6 +608,39 @@ export const useFavoritesStore = create<FavoritesState & FavoritesActions>()(
             messageCount: items.filter((i) => i.type === 'message').length,
             textFragmentCount: items.filter((i) => i.type === 'text-fragment').length,
             folderCount: get().folders.length
+          }
+        },
+
+        // ==================== 导入导出 ====================
+
+        importFavorites: (items) => {
+          try {
+            set((state) => {
+              state.items = items
+            })
+          } catch (error) {
+            handleStoreError('favoritesStore', 'importFavorites', error)
+          }
+        },
+
+        importFavoriteFolders: (folders) => {
+          try {
+            set((state) => {
+              state.folders = folders
+            })
+          } catch (error) {
+            handleStoreError('favoritesStore', 'importFavoriteFolders', error)
+          }
+        },
+
+        clearAllFavorites: () => {
+          try {
+            set((state) => {
+              state.items = []
+              state.folders = []
+            })
+          } catch (error) {
+            handleStoreError('favoritesStore', 'clearAllFavorites', error)
           }
         }
       })),

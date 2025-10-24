@@ -11,17 +11,24 @@ import {
   Table,
   Checkbox,
   Input,
-  Tag
+  Tag,
+  Dropdown,
+  MenuProps
 } from 'antd'
 import {
   DownloadOutlined,
   UploadOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  SelectOutlined
+  SelectOutlined,
+  SettingOutlined,
+  MessageOutlined,
+  StarOutlined,
+  MoreOutlined
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { usePagesStore } from '../../stores/pagesStore'
+import { useFavoritesStore } from '../../stores/favoritesStore'
 import { clearAllStores } from '../../stores/useAppStores'
 import { clearStoreState } from '../../stores/persistence/storeConfig'
 import { useMessagesStore } from '../../stores/messagesStore'
@@ -38,7 +45,8 @@ const { Text, Paragraph } = Typography
 
 export default function DataManagement() {
   const { importSettings, exportSettings } = useSettingsStore()
-  const { pages, folders, importPages, importFolders, clearAllPages } = usePagesStore()
+  const { pages, folders, importPages, importFolders, clearAllPages, clearChatPages } = usePagesStore()
+  const { items: favoriteItems, folders: favoriteFolders, importFavorites, importFavoriteFolders, clearAllFavorites } = useFavoritesStore()
   const [importing, setImporting] = useState(false)
   const [selectiveImportModal, setSelectiveImportModal] = useState(false)
   const [selectableChatItems, setSelectableChatItems] = useState<SelectableChatItem[]>([])
@@ -61,6 +69,10 @@ export default function DataManagement() {
         settings,
         pages,
         folders,
+        favorites: {
+          items: favoriteItems,
+          folders: favoriteFolders
+        },
         version: '1.0.0',
         exportTime: Date.now()
       }
@@ -129,6 +141,31 @@ export default function DataManagement() {
     }
   }
 
+  // 单独导出收藏
+  const handleExportFavorites = () => {
+    try {
+      const favoritesData = {
+        type: 'favorites-only',
+        items: favoriteItems,
+        folders: favoriteFolders,
+        version: '1.0.0',
+        exportTime: Date.now()
+      }
+      const blob = new Blob([JSON.stringify(favoritesData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+
+      link.href = url
+      link.download = `ai-chat-favorites-${getTimestamp()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      message.error('收藏导出失败')
+    }
+  }
+
   const handleImport = (file: File) => {
     setImporting(true)
 
@@ -151,7 +188,17 @@ export default function DataManagement() {
             importFolders(parsedData.folders)
           }
 
-          message.success('所有数据导入成功（包含设置和聊天历史）')
+          // 导入收藏数据
+          if (parsedData.favorites) {
+            if (parsedData.favorites.items && parsedData.favorites.items.length > 0) {
+              importFavorites(parsedData.favorites.items)
+            }
+            if (parsedData.favorites.folders && parsedData.favorites.folders.length > 0) {
+              importFavoriteFolders(parsedData.favorites.folders)
+            }
+          }
+
+          message.success('所有数据导入成功（包含设置、聊天历史和收藏）')
         } else if (parsedData.type === 'settings-only') {
           // 只有设置数据
           importSettings(parsedData.settings)
@@ -167,6 +214,16 @@ export default function DataManagement() {
           }
 
           message.success('聊天记录导入成功')
+        } else if (parsedData.type === 'favorites-only') {
+          // 只有收藏数据
+          if (parsedData.items && parsedData.items.length > 0) {
+            importFavorites(parsedData.items)
+          }
+          if (parsedData.folders && parsedData.folders.length > 0) {
+            importFavoriteFolders(parsedData.folders)
+          }
+
+          message.success('收藏数据导入成功')
         } else if (
           parsedData.settings &&
           parsedData.pages !== undefined &&
@@ -352,7 +409,10 @@ export default function DataManagement() {
           // 第二步：清除 messagesStore 中的流式消息状态
           useMessagesStore.setState({ streamingMessages: {} })
 
-          // 第三步：清除 IndexedDB 中的所有持久化数据
+          // 第三步：清除收藏数据
+          clearAllFavorites()
+
+          // 第四步：清除 IndexedDB 中的所有持久化数据
           await Promise.all([
             clearStoreState('settings-store'),
             clearStoreState('messages-store'),
@@ -361,7 +421,8 @@ export default function DataManagement() {
             clearStoreState('ui-store'),
             clearStoreState('object-store'),
             clearStoreState('crosstab-store'),
-            clearStoreState('ai-tasks-store')
+            clearStoreState('ai-tasks-store'),
+            clearStoreState('favorites-store')
             // pages 和 folders 已经在 clearAllPages() 中处理了
           ])
 
@@ -385,15 +446,14 @@ export default function DataManagement() {
       cancelText: '取消',
       onOk: async () => {
         try {
-          // 清除聊天相关的存储
-          clearAllPages()
+          // 清除聊天相关的存储（保留settings页面）
+          clearChatPages()
 
-          // 清除相关的持久化数据
+          // 清除相关的持久化数据（仅清除与聊天记录直接相关的存储）
           await Promise.all([
             clearStoreState('messages-store'),
-            clearStoreState('search-store'),
-            clearStoreState('tabs-store'),
-            clearStoreState('ui-store')
+            clearStoreState('search-store')
+            // 注意：不清除 tabs-store 和 ui-store，因为它们包含settings页面状态
           ])
 
           // 重置消息存储的流式消息状态
@@ -436,6 +496,79 @@ export default function DataManagement() {
     })
   }
 
+  // 单独清空收藏
+  const handleResetFavorites = () => {
+    modal.confirm({
+      title: '确认清空收藏',
+      icon: <ExclamationCircleOutlined />,
+      content: '这将清除所有收藏项和收藏文件夹，但保留您的设置和聊天记录。此操作不可恢复，确定要继续吗？',
+      okText: '确定清空',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          // 清除收藏数据
+          clearAllFavorites()
+
+          // 清除收藏相关的持久化数据
+          await clearStoreState('favorites-store')
+
+          message.success('收藏已清空')
+        } catch (error) {
+          console.error('清空收藏失败:', error)
+          message.error('清空收藏失败')
+        }
+      }
+    })
+  }
+
+  // 导出下拉菜单项（仅包含部分导出选项）
+  const exportMenuItems: MenuProps['items'] = [
+    {
+      key: 'settings',
+      label: '仅导出设置',
+      icon: <SettingOutlined />,
+      onClick: handleExportSettings
+    },
+    {
+      key: 'chats',
+      label: '仅导出聊天记录',
+      icon: <MessageOutlined />,
+      onClick: handleExportChats
+    },
+    {
+      key: 'favorites',
+      label: '仅导出收藏',
+      icon: <StarOutlined />,
+      onClick: handleExportFavorites
+    }
+  ]
+
+  // 重置下拉菜单项（仅包含部分重置选项）
+  const resetMenuItems: MenuProps['items'] = [
+    {
+      key: 'settings',
+      label: '仅清空设置',
+      icon: <SettingOutlined />,
+      onClick: handleResetSettings,
+      danger: true
+    },
+    {
+      key: 'chats',
+      label: '仅清空聊天记录',
+      icon: <MessageOutlined />,
+      onClick: handleResetChats,
+      danger: true
+    },
+    {
+      key: 'favorites',
+      label: '仅清空收藏',
+      icon: <StarOutlined />,
+      onClick: handleResetFavorites,
+      danger: true
+    }
+  ]
+
   const getCurrentDataSize = () => {
     try {
       const settings = exportSettings()
@@ -444,6 +577,10 @@ export default function DataManagement() {
         settings,
         pages,
         folders,
+        favorites: {
+          items: favoriteItems,
+          folders: favoriteFolders
+        },
         version: '1.0.0',
         exportTime: Date.now()
       }
@@ -453,9 +590,17 @@ export default function DataManagement() {
       const chatsSize = (
         JSON.stringify({ type: 'chats-only', pages, folders, version: '1.0.0' }).length / 1024
       ).toFixed(2)
+      const favoritesSize = (
+        JSON.stringify({
+          type: 'favorites-only',
+          items: favoriteItems,
+          folders: favoriteFolders,
+          version: '1.0.0'
+        }).length / 1024
+      ).toFixed(2)
       const totalSize = (JSON.stringify(allData).length / 1024).toFixed(2)
 
-      return `总计: ${totalSize} KB (设置: ${settingsSize} KB, 聊天: ${chatsSize} KB)`
+      return `总计: ${totalSize} KB (设置: ${settingsSize} KB, 聊天: ${chatsSize} KB, 收藏: ${favoritesSize} KB)`
     } catch {
       return '计算中...'
     }
@@ -483,16 +628,13 @@ export default function DataManagement() {
             <Button icon={<DownloadOutlined />} onClick={handleExportAll} type="primary" ghost>
               导出所有数据
             </Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExportSettings} type="default">
-              仅导出设置
-            </Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExportChats} type="default">
-              仅导出聊天记录
-            </Button>
+            <Dropdown menu={{ items: exportMenuItems }} placement="bottomLeft">
+              <Button icon={<MoreOutlined />} type="default" style={{ padding: '4px 8px' }} />
+            </Dropdown>
           </Space>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              您可以选择导出所有数据，或者分别导出设置和聊天记录
+              您可以选择导出所有数据，或者分别导出设置、聊天记录和收藏
             </Text>
           </div>
         </div>
@@ -520,7 +662,7 @@ export default function DataManagement() {
           </Upload>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              支持导入完整数据文件、设置文件或聊天记录文件，系统会自动识别文件类型进行相应处理
+              支持导入完整数据文件、设置文件、聊天记录文件或收藏文件，系统会自动识别文件类型进行相应处理
             </Text>
           </div>
         </div>
@@ -552,19 +694,16 @@ export default function DataManagement() {
             <Text strong>重置数据</Text>
           </div>
           <Space direction="horizontal" size="small" wrap style={{ marginBottom: '4px' }}>
-            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetAll}>
+            <Button icon={<DeleteOutlined />} onClick={handleResetAll} danger type="default">
               重置所有数据
             </Button>
-            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetSettings}>
-              仅清空设置
-            </Button>
-            <Button icon={<DeleteOutlined />} danger type="default" onClick={handleResetChats}>
-              仅清空聊天记录
-            </Button>
+            <Dropdown menu={{ items: resetMenuItems }} placement="bottomLeft">
+              <Button icon={<MoreOutlined />} danger type="default" style={{ padding: '4px 8px' }} />
+            </Dropdown>
           </Space>
           <div>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              您可以选择重置所有数据，或者分别清空聊天记录、重置设置配置
+              您可以选择重置所有数据，或者分别清空聊天记录、收藏或重置设置配置
             </Text>
           </div>
         </div>

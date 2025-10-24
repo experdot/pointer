@@ -97,6 +97,7 @@ export interface PagesActions {
 
   // 工具方法
   clearAllPages: () => void
+  clearChatPages: () => void
   importPages: (pages: Page[]) => void
   importFolders: (folders: PageFolder[]) => void
   exportPages: () => Page[]
@@ -999,6 +1000,20 @@ ${params.nodeContext}
 
         // 同时清除 IndexedDB 中的数据
         pagesStorage.clearAllPages()
+        foldersStorage.clearAllFolders()
+      },
+
+      clearChatPages: () => {
+        set((state) => {
+          // 只清除聊天相关页面（regular, crosstab, object类型），保留settings页面
+          state.pages = state.pages.filter(page => page.type === 'settings')
+          // 清除所有文件夹（文件夹主要用于组织聊天页面）
+          state.folders = []
+        })
+
+        // 同步到 IndexedDB
+        const remainingPages = get().pages.filter(page => page.type === 'settings')
+        pagesStorage.savePages(remainingPages)
         foldersStorage.clearAllFolders()
       },
 
