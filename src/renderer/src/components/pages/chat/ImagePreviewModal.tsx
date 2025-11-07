@@ -154,9 +154,13 @@ export default function ImagePreviewModal({
                 src={currentImageUrl}
                 alt="导出预览"
                 style={{
+                  width: `${IMAGE_WIDTH_CONFIG[imageWidth].width}px`,
                   maxWidth: '100%',
+                  height: 'auto',
                   border: '1px solid #d9d9d9',
-                  opacity: isRegenerating ? 0.5 : 1
+                  opacity: isRegenerating ? 0.5 : 1,
+                  display: 'block',
+                  margin: '0 auto'
                 }}
               />
             )}
