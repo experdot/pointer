@@ -59,7 +59,7 @@ interface MessageQueuePanelProps {
   onProcessNext: () => void
   onUpdateConfig: (config: Partial<MessageQueueConfig>) => void
   onReorderQueue: (fromIndex: number, toIndex: number) => void
-  onGenerateAIQuestion?: () => Promise<void>
+  onGenerateAIQuestion?: () => Promise<string>
   onImportPromptList?: (listId: string) => void
 }
 
@@ -135,13 +135,13 @@ export default function MessageQueuePanel({
         onImportPromptList?.(listId)
         const promptList = settings.promptLists?.find((list) => list.id === listId)
         if (promptList) {
-          const { message } = import('antd/es').then(({ message }) => {
+          import('antd/es').then(({ message }) => {
             message.success(`已导入 ${promptList.prompts.length} 个提示词到队列`)
           })
         }
       } catch (error) {
         console.error('导入提示词列表失败:', error)
-        const { message } = import('antd/es').then(({ message }) => {
+        import('antd/es').then(({ message }) => {
           message.error('导入提示词列表失败')
         })
       }

@@ -39,9 +39,7 @@ export interface SettingsActions {
   addPromptList: (config: PromptListConfig) => void
   updatePromptList: (id: string, updates: Partial<PromptListConfig>) => void
   deletePromptList: (id: string) => void
-  setDefaultPromptList: (id: string) => void
   getPromptList: (id: string) => PromptListConfig | undefined
-  getDefaultPromptList: () => PromptListConfig | undefined
 
   // 工具方法
   exportSettings: () => Settings
