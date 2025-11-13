@@ -987,15 +987,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   return (
     <div className="crosstab-page">
       {/* 页面溯源信息 */}
-      <div
-        style={{
-          borderBottom: '1px solid #f0f0f0',
-          backgroundColor: '#fafafa',
-          padding: '8px 16px'
-        }}
-      >
-        <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
-      </div>
+      <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
 
       <div className="crosstab-header">
         <div

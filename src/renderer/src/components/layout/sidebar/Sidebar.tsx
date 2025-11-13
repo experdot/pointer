@@ -123,7 +123,7 @@ export default function Sidebar({
         return (
           <div className="sidebar-explore">
             <div className="sidebar-header">
-              <h3>资源管理器</h3>
+              <h4>资源管理器</h4>
               <SidebarActions
                 collapsed={false}
                 hasCheckedItems={hasCheckedItems}
@@ -147,7 +147,7 @@ export default function Sidebar({
         return (
           <div className="sidebar-search">
             <div className="sidebar-header">
-              <h3>搜索</h3>
+              <h4>搜索</h4>
             </div>
             <div className="sidebar-content">
               <GlobalSearch
@@ -164,7 +164,7 @@ export default function Sidebar({
         return (
           <div className="sidebar-favorites">
             <div className="sidebar-header">
-              <h3>收藏夹</h3>
+              <h4>收藏夹</h4>
             </div>
             <div className="sidebar-content">
               <FavoritesPanel />
@@ -175,7 +175,7 @@ export default function Sidebar({
         return (
           <div className="sidebar-tasks">
             <div className="sidebar-header">
-              <h3>任务监控</h3>
+              <h4>任务监控</h4>
             </div>
             <div className="sidebar-content">
               <TaskMonitor />

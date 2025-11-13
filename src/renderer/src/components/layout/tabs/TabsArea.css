@@ -10,6 +10,14 @@
   flex-direction: column;
 }
 
+.tabs-area .ant-tabs-nav {
+  height: 42px;
+}
+
+.ant-tabs-top > .ant-tabs-nav {
+  margin: 0;
+}
+
 .tabs-area .ant-tabs-content-holder {
   flex: 1;
   overflow: hidden;

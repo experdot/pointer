@@ -290,9 +290,7 @@ export default function ModelConfigSettings() {
 
   return (
     <Card
-      size="small"
       title="模型配置管理"
-      bordered={false}
       extra={
         <Button
           type="primary"

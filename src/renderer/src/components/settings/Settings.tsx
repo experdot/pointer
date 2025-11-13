@@ -68,7 +68,6 @@ export default function Settings({
       className="settings-embedded"
       style={{
         height: '100%',
-        maxHeight: 'calc(100vh - 120px)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column'

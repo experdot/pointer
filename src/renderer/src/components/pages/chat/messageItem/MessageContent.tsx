@@ -136,10 +136,10 @@ export const MessageContent: React.FC<MessageContentProps> = ({
               {
                 key: 'reasoning_content',
                 label: (
-                  <Text type="secondary">
+                  <Space size="small">
                     <BulbOutlined style={{ marginRight: 4 }} />
                     思考过程
-                  </Text>
+                  </Space>
                 ),
                 children: (
                   <Dropdown

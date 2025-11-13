@@ -78,7 +78,6 @@ export default function SettingsDemo() {
 
   return (
     <Card
-      size="small"
       title={
         <Space>
           <DatabaseOutlined />

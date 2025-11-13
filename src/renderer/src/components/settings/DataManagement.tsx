@@ -607,7 +607,7 @@ export default function DataManagement() {
   }
 
   return (
-    <Card size="small" title="数据管理">
+    <Card title="数据管理">
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {/* 说明信息 */}
         <div style={{ marginBottom: '12px' }}>

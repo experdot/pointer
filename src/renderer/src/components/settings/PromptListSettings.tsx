@@ -255,7 +255,6 @@ export default function PromptListSettings() {
 
   return (
     <Card
-      size="small"
       title="提示词列表管理"
       bordered={false}
       extra={

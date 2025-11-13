@@ -59,7 +59,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
   useEffect(() => {
     const calculateHeight = () => {
       if (treeContainerRef.current) {
-        const containerHeight = window.innerHeight - treeContainerRef.current.offsetTop - 100
+        const containerHeight = window.innerHeight - treeContainerRef.current.offsetTop - 48
         setVirtualHeight(Math.max(400, Math.min(containerHeight, 1200)))
       }
     }

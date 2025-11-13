@@ -593,7 +593,7 @@ export default function FavoritesPanel() {
     <div className="favorites-panel">
       {/* 头部：搜索和操作 */}
       <div className="favorites-header">
-        <Search
+        <Input
           placeholder="搜索收藏"
           allowClear
           onChange={(e) => handleSearch(e.target.value)}

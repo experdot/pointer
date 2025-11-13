@@ -17,7 +17,7 @@ export default function AppearanceSettings({ form }: AppearanceSettingsProps) {
   }
 
   return (
-    <Card size="small" title="外观设置">
+    <Card title="外观设置">
       <Form.Item name="fontSize" label="字体大小">
         <Select onChange={handleFontSizeChange}>
           <Option value="small">小</Option>

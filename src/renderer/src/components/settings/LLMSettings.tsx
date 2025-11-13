@@ -354,7 +354,6 @@ export default function LLMSettings() {
 
   return (
     <Card
-      size="small"
       title="LLM配置管理"
       bordered={false}
       extra={

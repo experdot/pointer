@@ -240,16 +240,7 @@ const ObjectPage: React.FC<ObjectPageProps> = ({ chatId }) => {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* 顶部：页面溯源信息 */}
-      <div
-        style={{
-          flexShrink: 0,
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
-          padding: '0 16px'
-        }}
-      >
-        <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
-      </div>
+      <PageLineageDisplay pageId={chatId} size="small" showInCard={false} />
 
       {/* 页面标题和模型选择器 */}
       <div

@@ -186,7 +186,14 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   )
 
   const content = (
-    <div style={{ fontSize: size === 'small' ? '12px' : '14px' }}>
+    <div
+      style={{
+        fontSize: size === 'small' ? '12px' : '14px',
+        borderBottom: '1px solid #f0f0f0',
+        backgroundColor: '#fafafa',
+        padding: '8px 16px'
+      }}
+    >
       <Space direction="vertical" size={size === 'small' ? 8 : 16} style={{ width: '100%' }}>
         {/* 折叠标题 */}
         {collapseHeader}

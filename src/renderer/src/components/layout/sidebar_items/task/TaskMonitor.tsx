@@ -526,7 +526,7 @@ export default function TaskMonitor() {
         }}
       >
         <Title level={5} style={{ margin: 0 }}>
-          AI任务监控 ({aiTasks.length})
+          任务列表 ({aiTasks.length})
         </Title>
         <Space>
           {groupedTasks.completed.length > 0 && (
