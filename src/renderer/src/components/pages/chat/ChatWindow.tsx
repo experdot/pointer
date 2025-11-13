@@ -57,14 +57,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
   const [scrollTriggeredSelection, setScrollTriggeredSelection] = useState(false)
   const isUserNavigatingRef = useRef(false)
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  // 自动提问相关状态
-  const [autoQuestionEnabled, setAutoQuestionEnabled] = useState(false)
-  const [autoQuestionMode, setAutoQuestionMode] = useState<'ai' | 'preset'>('ai')
-  const [autoQuestionListId, setAutoQuestionListId] = useState<string | undefined>(() => {
-    // 确保有可用的提示词列表时才设置默认值
-    const lists = settings.promptLists || []
-    return lists.length > 0 ? settings.defaultPromptListId || lists[0].id : undefined
-  })
   // 队列面板状态
   const [queuePanelVisible, setQueuePanelVisible] = useState(false)
   const chatInputRef = useRef<ChatInputRef>(null)
@@ -316,30 +308,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
     localStorage.setItem('messageTreeWidth', width.toString())
   }, [])
 
-  const handleAutoQuestionChange = useCallback(
-    (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => {
-      console.log('ChatWindow handleAutoQuestionChange:', {
-        enabled,
-        mode,
-        listId,
-        currentEnabled: autoQuestionEnabled,
-        currentMode: autoQuestionMode,
-        currentListId: autoQuestionListId
-      })
-
-      setAutoQuestionEnabled(enabled)
-      setAutoQuestionMode(mode)
-      if (listId) {
-        setAutoQuestionListId(listId)
-      } else if (mode === 'preset' && !listId && settings.promptLists?.length > 0) {
-        // 如果选择预设模式但没有指定listId，使用默认的
-        const defaultListId = settings.defaultPromptListId || settings.promptLists[0].id
-        setAutoQuestionListId(defaultListId)
-        console.log('ChatWindow 自动设置 defaultListId:', defaultListId)
-      }
-    },
-    [settings.promptLists, settings.defaultPromptListId]
-  )
+  // 自动提问功能已移除，相关功能已整合到消息队列中
 
   if (!chat) {
     return <div className="chat-window-error">聊天不存在</div>
@@ -363,12 +332,7 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
       </div>
 
       <div className="chat-window-content">
-        <ChatLogic
-          chatId={chatId}
-          autoQuestionEnabled={autoQuestionEnabled}
-          autoQuestionMode={autoQuestionMode}
-          autoQuestionListId={autoQuestionListId}
-        >
+        <ChatLogic chatId={chatId}>
           {({
             isLoading,
             selectedModel,
@@ -382,12 +346,15 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
             onToggleStar,
             onModelChangeForMessage,
             onDeleteMessage,
-            onTriggerFollowUpQuestion
+            getLLMConfig
           }) => {
             // 在这里初始化消息队列
             const messageQueue = useMessageQueue({
+              chatId,
               onProcessMessage: onSendMessage,
-              isLoading
+              isLoading,
+              selectedModel,
+              getLLMConfig
             })
 
             const handleToggleQueuePanel = useCallback(() => {
@@ -523,12 +490,6 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                     defaultModelId={settings.defaultLLMId}
                     onModelChange={onModelChange}
                     onOpenSettings={handleOpenSettings}
-                    // 自动提问相关props
-                    autoQuestionEnabled={autoQuestionEnabled}
-                    autoQuestionMode={autoQuestionMode}
-                    autoQuestionListId={autoQuestionListId}
-                    onAutoQuestionChange={handleAutoQuestionChange}
-                    onTriggerFollowUpQuestion={onTriggerFollowUpQuestion}
                     // 消息队列相关props
                     queueEnabled={messageQueue.config.enabled}
                     queuePendingCount={messageQueue.getQueueStats().pending}
@@ -564,6 +525,8 @@ const ChatWindow = forwardRef<ChatWindowRef, ChatWindowProps>(({ chatId }, ref) 
                       onProcessNext={messageQueue.processNextInQueue}
                       onUpdateConfig={messageQueue.updateConfig}
                       onReorderQueue={messageQueue.reorderQueue}
+                      onGenerateAIQuestion={messageQueue.generateAIQuestion}
+                      onImportPromptList={messageQueue.importPromptList}
                     />
                   </Drawer>
                 </div>

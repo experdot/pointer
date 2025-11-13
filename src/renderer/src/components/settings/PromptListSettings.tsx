@@ -11,17 +11,13 @@ import {
   Tag,
   Empty,
   Dropdown,
-  Select,
-  App,
-  Divider
+  App
 } from 'antd'
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   CopyOutlined,
-  StarOutlined,
-  StarFilled,
   MoreOutlined,
   BulbOutlined
 } from '@ant-design/icons'
@@ -181,8 +177,7 @@ function PromptListForm({ open, config, onSave, onCancel }: PromptListFormProps)
 }
 
 export default function PromptListSettings() {
-  const { settings, addPromptList, updatePromptList, deletePromptList, setDefaultPromptList } =
-    useSettingsStore()
+  const { settings, addPromptList, updatePromptList, deletePromptList } = useSettingsStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConfig, setEditingConfig] = useState<PromptListConfig | undefined>()
   const { message, modal } = App.useApp()
@@ -203,22 +198,9 @@ export default function PromptListSettings() {
   }
 
   const handleDeleteConfig = (config: PromptListConfig) => {
-    const currentConfigs = settings.promptLists || []
-    const isDefaultConfig = settings.defaultPromptListId === config.id
-    const isLastConfig = currentConfigs.length === 1
-
-    const title = isDefaultConfig ? '删除默认配置' : '删除配置'
-    let content = `确定要删除提示词列表 "${config.name}" 吗？`
-
-    if (isDefaultConfig && !isLastConfig) {
-      content += '\n\n删除后，系统将自动选择另一个配置作为默认配置。'
-    } else if (isLastConfig) {
-      content += '\n\n这是最后一个配置，删除后您将无法使用预设提示词功能。'
-    }
-
     modal.confirm({
-      title,
-      content,
+      title: '删除配置',
+      content: `确定要删除提示词列表 "${config.name}" 吗？`,
       okText: '确定删除',
       cancelText: '取消',
       okButtonProps: { danger: true },
@@ -241,14 +223,7 @@ export default function PromptListSettings() {
     message.success('配置已复制')
   }
 
-  const handleSetDefault = (id: string) => {
-    setDefaultPromptList(id)
-    message.success('已设为默认配置')
-  }
-
   const getDropdownItems = (config: PromptListConfig) => {
-    const isDefault = settings.defaultPromptListId === config.id
-
     return [
       {
         key: 'edit',
@@ -264,13 +239,6 @@ export default function PromptListSettings() {
         label: '复制',
         icon: <CopyOutlined />,
         onClick: () => handleCopyConfig(config)
-      },
-      {
-        key: 'setDefault',
-        label: isDefault ? '已是默认' : '设为默认',
-        icon: isDefault ? <StarFilled /> : <StarOutlined />,
-        disabled: isDefault,
-        onClick: () => handleSetDefault(config.id)
       },
       {
         type: 'divider' as const
@@ -318,23 +286,6 @@ export default function PromptListSettings() {
         </Empty>
       ) : (
         <div>
-          <div style={{ marginBottom: 16 }}>
-            <Text strong>默认列表：</Text>
-            <Select
-              value={settings.defaultPromptListId}
-              onChange={handleSetDefault}
-              style={{ width: 200, marginLeft: 8 }}
-              placeholder="选择默认列表"
-            >
-              {settings.promptLists.map((config) => (
-                <Select.Option key={config.id} value={config.id}>
-                  {config.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-          <Divider />
-
           <List
             dataSource={settings.promptLists}
             renderItem={(config) => (
@@ -351,16 +302,7 @@ export default function PromptListSettings() {
               >
                 <List.Item.Meta
                   avatar={<BulbOutlined style={{ color: '#1890ff' }} />}
-                  title={
-                    <Space>
-                      <Text strong>{config.name}</Text>
-                      {settings.defaultPromptListId === config.id && (
-                        <Tag color="gold" icon={<StarFilled />}>
-                          默认
-                        </Tag>
-                      )}
-                    </Space>
-                  }
+                  title={<Text strong>{config.name}</Text>}
                   description={
                     <Space direction="vertical" size="small">
                       {config.description && <Text type="secondary">{config.description}</Text>}

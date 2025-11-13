@@ -166,6 +166,5 @@ export const INITIAL_SETTINGS = {
   modelConfigs: [DEFAULT_MODEL_CONFIG],
   defaultModelConfigId: DEFAULT_MODEL_CONFIG.id,
   fontSize: 'medium' as const,
-  promptLists: DEFAULT_PROMPT_LISTS,
-  defaultPromptListId: DEFAULT_PROMPT_LISTS[0].id
+  promptLists: DEFAULT_PROMPT_LISTS
 }

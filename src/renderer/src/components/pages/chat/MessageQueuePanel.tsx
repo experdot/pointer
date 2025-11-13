@@ -30,9 +30,13 @@ import {
   MoreOutlined,
   PlusOutlined,
   FileOutlined,
-  PaperClipOutlined
+  PaperClipOutlined,
+  BulbOutlined,
+  RobotOutlined,
+  ImportOutlined
 } from '@ant-design/icons'
 import { MessageQueueItem, MessageQueueConfig, FileAttachment } from '../../../types/type'
+import { useSettingsStore } from '../../../stores/settingsStore'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -55,6 +59,8 @@ interface MessageQueuePanelProps {
   onProcessNext: () => void
   onUpdateConfig: (config: Partial<MessageQueueConfig>) => void
   onReorderQueue: (fromIndex: number, toIndex: number) => void
+  onGenerateAIQuestion?: () => Promise<void>
+  onImportPromptList?: (listId: string) => void
 }
 
 export default function MessageQueuePanel({
@@ -70,10 +76,13 @@ export default function MessageQueuePanel({
   onRetryQueueItem,
   onProcessNext,
   onUpdateConfig,
-  onReorderQueue
+  onReorderQueue,
+  onGenerateAIQuestion,
+  onImportPromptList
 }: MessageQueuePanelProps) {
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const { settings } = useSettingsStore()
 
   const handleStartEdit = useCallback((item: MessageQueueItem) => {
     setEditingItemId(item.id)
@@ -108,6 +117,38 @@ export default function MessageQueuePanel({
     setEditContent('')
   }, [onAddToQueue, selectedModel])
 
+  const handleGenerateAI = useCallback(async () => {
+    try {
+      await onGenerateAIQuestion?.()
+      const { message } = await import('antd/es')
+      message.success('AI追问已添加到队列')
+    } catch (error) {
+      console.error('生成AI追问失败:', error)
+      const { message } = await import('antd/es')
+      message.error('生成AI追问失败')
+    }
+  }, [onGenerateAIQuestion])
+
+  const handleImportPromptList = useCallback(
+    (listId: string) => {
+      try {
+        onImportPromptList?.(listId)
+        const promptList = settings.promptLists?.find((list) => list.id === listId)
+        if (promptList) {
+          const { message } = import('antd/es').then(({ message }) => {
+            message.success(`已导入 ${promptList.prompts.length} 个提示词到队列`)
+          })
+        }
+      } catch (error) {
+        console.error('导入提示词列表失败:', error)
+        const { message } = import('antd/es').then(({ message }) => {
+          message.error('导入提示词列表失败')
+        })
+      }
+    },
+    [onImportPromptList, settings.promptLists]
+  )
+
   const getStatusIcon = (status: MessageQueueItem['status']) => {
     switch (status) {
       case 'pending':
@@ -132,6 +173,25 @@ export default function MessageQueuePanel({
     }
     const config = statusConfig[status]
     return <Tag color={config.color}>{config.text}</Tag>
+  }
+
+  const getTypeTag = (item: MessageQueueItem) => {
+    if (item.type === 'ai-generated') {
+      return (
+        <Tag icon={<RobotOutlined />} color="blue" style={{ fontSize: 11 }}>
+          AI生成
+        </Tag>
+      )
+    }
+    if (item.type === 'prompt-list') {
+      const promptList = settings.promptLists?.find((list) => list.id === item.promptListId)
+      return (
+        <Tag icon={<BulbOutlined />} color="purple" style={{ fontSize: 11 }}>
+          {promptList?.name || '预设列表'} ({(item.promptIndex ?? 0) + 1})
+        </Tag>
+      )
+    }
+    return null
   }
 
   const renderAttachments = (attachments?: FileAttachment[]) => {
@@ -182,9 +242,42 @@ export default function MessageQueuePanel({
             <Tooltip title="添加消息">
               <Button type="text" size="small" icon={<PlusOutlined />} onClick={handleAddMessage} />
             </Tooltip>
+            <Tooltip title="生成AI追问">
+              <Button
+                type="text"
+                size="small"
+                icon={<RobotOutlined />}
+                onClick={handleGenerateAI}
+                disabled={!onGenerateAIQuestion}
+              />
+            </Tooltip>
             <Dropdown
               menu={{
                 items: [
+                  ...(settings.promptLists && settings.promptLists.length > 0
+                    ? [
+                        {
+                          key: 'import-submenu',
+                          label: '导入提示词列表',
+                          icon: <ImportOutlined />,
+                          children: settings.promptLists.map((list) => ({
+                            key: `import-${list.id}`,
+                            label: (
+                              <Space>
+                                <BulbOutlined />
+                                {list.name}
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                  ({list.prompts.length}项)
+                                </Text>
+                              </Space>
+                            ),
+                            onClick: () => handleImportPromptList(list.id),
+                            disabled: !onImportPromptList
+                          }))
+                        },
+                        { type: 'divider' as const }
+                      ]
+                    : []),
                   {
                     key: 'clearCompleted',
                     label: '清除已完成',
@@ -325,6 +418,7 @@ export default function MessageQueuePanel({
                           {renderAttachments(item.attachments)}
                           <Space size="small" wrap style={{ marginTop: 4 }}>
                             {getStatusTag(item.status)}
+                            {getTypeTag(item)}
                             {item.attachments && item.attachments.length > 0 && (
                               <Tag
                                 icon={<PaperClipOutlined />}

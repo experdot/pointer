@@ -171,11 +171,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       addPromptList: (config) => {
         try {
           set((state) => {
-            // 如果是第一个配置，自动设为默认
-            if (!state.settings.promptLists || state.settings.promptLists.length === 0) {
-              state.settings.defaultPromptListId = config.id
-            }
-
             if (!state.settings.promptLists) {
               state.settings.promptLists = []
             }
@@ -209,14 +204,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           set((state) => {
             if (state.settings.promptLists) {
               state.settings.promptLists = state.settings.promptLists.filter((c) => c.id !== id)
-
-              // 如果删除的是默认配置，重新选择默认
-              if (state.settings.defaultPromptListId === id) {
-                state.settings.defaultPromptListId =
-                  state.settings.promptLists.length > 0
-                    ? state.settings.promptLists[0].id
-                    : undefined
-              }
             }
           })
         } catch (error) {
@@ -224,23 +211,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         }
       },
 
-      setDefaultPromptList: (id) => {
-        try {
-          set((state) => {
-            state.settings.defaultPromptListId = id
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'setDefaultPromptList', error)
-        }
-      },
-
       getPromptList: (id) => {
         return get().settings.promptLists?.find((config) => config.id === id)
-      },
-
-      getDefaultPromptList: () => {
-        const { settings } = get()
-        return settings.promptLists?.find((config) => config.id === settings.defaultPromptListId)
       },
 
       // ModelConfig管理

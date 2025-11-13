@@ -10,14 +10,10 @@ import {
   Input,
   Button,
   Alert,
-  Switch,
   Tooltip,
   Space,
-  Select,
-  Dropdown,
   Flex,
   Badge,
-  Upload,
   Image,
   Tag
 } from 'antd'
@@ -25,12 +21,7 @@ import {
   SendOutlined,
   StopOutlined,
   SettingOutlined,
-  QuestionCircleOutlined,
-  BulbOutlined,
-  DownOutlined,
-  PlaySquareOutlined,
   HourglassOutlined,
-  PlusOutlined,
   CaretRightOutlined,
   PaperClipOutlined,
   CloseOutlined,
@@ -151,141 +142,8 @@ const AttachmentPreview: React.FC<{
 }
 
 const { TextArea } = Input
-const { Option } = Select
 
-// 自动提问控件组件
-interface AutoQuestionControlsProps {
-  enabled: boolean
-  mode: 'ai' | 'preset'
-  selectedListId?: string
-  promptLists: any[]
-  disabled: boolean
-  onChange?: (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => void
-}
-
-function AutoQuestionControls({
-  enabled,
-  mode,
-  selectedListId,
-  promptLists,
-  disabled,
-  onChange
-}: AutoQuestionControlsProps) {
-  const handleEnabledChange = (checked: boolean) => {
-    let finalListId = selectedListId
-    // 如果开启自动提问且是预设模式，但没有选择列表，使用第一个可用列表
-    if (checked && mode === 'preset' && !selectedListId && promptLists.length > 0) {
-      finalListId = promptLists[0].id
-    }
-    console.log('AutoQuestionControls handleEnabledChange:', {
-      checked,
-      mode,
-      selectedListId,
-      finalListId,
-      promptListsLength: promptLists.length
-    })
-    onChange?.(checked, mode, finalListId)
-  }
-
-  const handleModeChange = (newMode: 'ai' | 'preset') => {
-    onChange?.(
-      enabled,
-      newMode,
-      newMode === 'preset' ? selectedListId || promptLists[0]?.id : undefined
-    )
-  }
-
-  const handleListChange = (listId: string) => {
-    onChange?.(enabled, mode, listId)
-  }
-
-  const getCurrentPromptList = () => {
-    return promptLists.find((list) => list.id === selectedListId)
-  }
-
-  const modeOptions = [
-    {
-      key: 'ai',
-      label: (
-        <Space>
-          <QuestionCircleOutlined />
-          AI自动追问
-        </Space>
-      )
-    },
-    {
-      key: 'preset',
-      label: (
-        <Space>
-          <BulbOutlined />
-          预设列表提问
-        </Space>
-      )
-    }
-  ]
-
-  const dropdownMenu = {
-    items: modeOptions.map((option) => ({
-      key: option.key,
-      label: option.label,
-      onClick: () => handleModeChange(option.key as 'ai' | 'preset')
-    }))
-  }
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <Tooltip title="开启后，AI回答完成将自动继续提问">
-        <Space align="center" size="small">
-          <Switch
-            size="small"
-            checked={enabled}
-            onChange={handleEnabledChange}
-            disabled={disabled}
-          />
-          <span style={{ fontSize: '12px' }}>自动提问</span>
-        </Space>
-      </Tooltip>
-
-      {enabled && (
-        <>
-          <Dropdown menu={dropdownMenu} trigger={['click']} disabled={disabled}>
-            <Button size="small" style={{ fontSize: '11px' }}>
-              {mode === 'ai' ? (
-                <Space size={4}>
-                  <QuestionCircleOutlined />
-                  AI追问
-                </Space>
-              ) : (
-                <Space size={4}>
-                  <BulbOutlined />
-                  预设列表
-                </Space>
-              )}
-              <DownOutlined />
-            </Button>
-          </Dropdown>
-
-          {mode === 'preset' && (
-            <Select
-              size="small"
-              value={selectedListId}
-              onChange={handleListChange}
-              placeholder="选择列表"
-              style={{ minWidth: 120, fontSize: '11px' }}
-              disabled={disabled || promptLists.length === 0}
-            >
-              {promptLists.map((list) => (
-                <Option key={list.id} value={list.id}>
-                  {list.name}
-                </Option>
-              ))}
-            </Select>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
+// 注意：自动提问功能已整合到消息队列中，可通过消息队列面板访问AI追问和导入提示词列表功能
 
 interface ChatInputProps {
   value: string
@@ -299,12 +157,6 @@ interface ChatInputProps {
   defaultModelId?: string
   onModelChange: (modelId: string) => void
   onOpenSettings?: () => void
-  // 自动提问相关
-  autoQuestionEnabled?: boolean
-  autoQuestionMode?: 'ai' | 'preset'
-  autoQuestionListId?: string
-  onAutoQuestionChange?: (enabled: boolean, mode: 'ai' | 'preset', listId?: string) => void
-  onTriggerFollowUpQuestion?: () => Promise<void>
   // 消息队列相关
   queueEnabled?: boolean
   queuePendingCount?: number
@@ -337,11 +189,6 @@ const ChatInput = React.memo(
         defaultModelId,
         onModelChange,
         onOpenSettings,
-        autoQuestionEnabled = false,
-        autoQuestionMode = 'ai',
-        autoQuestionListId,
-        onAutoQuestionChange,
-        onTriggerFollowUpQuestion,
         queueEnabled = false,
         queuePendingCount = 0,
         queuePaused = false,
@@ -699,42 +546,6 @@ const ChatInput = React.memo(
                     size="small"
                   />
                 </div>
-
-                {/* 自动提问控件 */}
-                <div>
-                  <AutoQuestionControls
-                    enabled={autoQuestionEnabled}
-                    mode={autoQuestionMode}
-                    selectedListId={autoQuestionListId}
-                    promptLists={settings.promptLists || []}
-                    disabled={false}
-                    onChange={onAutoQuestionChange}
-                  />
-                </div>
-
-                {/* 立即追问按钮 */}
-                {autoQuestionEnabled && (
-                  <Tooltip
-                    title={`立即触发一次${autoQuestionMode === 'ai' ? 'AI' : '预设列表'}追问`}
-                  >
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<PlaySquareOutlined />}
-                      onClick={async () => {
-                        try {
-                          await onTriggerFollowUpQuestion?.()
-                        } catch (error) {
-                          console.error('立即追问失败:', error)
-                        }
-                      }}
-                      disabled={disabled || loading}
-                      style={{ fontSize: '11px', color: '#1890ff' }}
-                    >
-                      立即追问
-                    </Button>
-                  </Tooltip>
-                )}
               </Space>
 
               {/* 发送/停止/队列按钮 */}

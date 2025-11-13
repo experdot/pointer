@@ -322,7 +322,6 @@ export interface Settings {
   defaultModelConfigId?: string
   fontSize: 'small' | 'medium' | 'large'
   promptLists: PromptListConfig[]
-  defaultPromptListId?: string
 }
 
 export interface SearchResult {
@@ -494,10 +493,14 @@ export interface FavoriteFolder {
 // 消息队列项状态
 export type MessageQueueItemStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
+// 消息队列项类型
+export type MessageQueueItemType = 'normal' | 'ai-generated' | 'prompt-list'
+
 // 消息队列项
 export interface MessageQueueItem {
   id: string // 队列项唯一ID
   content: string // 消息内容
+  type: MessageQueueItemType // 消息类型：normal（普通消息）、ai-generated（AI生成的追问）、prompt-list（来自提示词列表）
   modelId?: string // 指定的模型ID（可选）
   attachments?: FileAttachment[] // 文件附件（可选）
   status: MessageQueueItemStatus // 状态
@@ -506,6 +509,9 @@ export interface MessageQueueItem {
   completedAt?: number // 完成时间
   error?: string // 错误信息
   order: number // 队列顺序
+  // 以下字段仅在 type 为 'prompt-list' 时使用
+  promptListId?: string // 提示词列表ID
+  promptIndex?: number // 当前提示词索引
 }
 
 // 消息队列配置
