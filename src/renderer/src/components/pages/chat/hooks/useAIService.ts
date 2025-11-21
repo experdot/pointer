@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { App } from 'antd'
 import { v4 as uuidv4 } from 'uuid'
 import { useSettingsStore } from '../../../../stores/settingsStore'
@@ -7,6 +7,87 @@ import { useAITasksStore } from '../../../../stores/aiTasksStore'
 import { usePagesStore } from '../../../../stores/pagesStore'
 import { ChatMessage, LLMConfig, AITask } from '../../../../types/type'
 import { createAIService } from '../../../../services/aiService'
+
+// 流式更新节流器 - 使用 requestAnimationFrame 限制更新频率
+class StreamingThrottler {
+  private pendingContent: Map<string, string> = new Map()
+  private pendingReasoning: Map<string, string> = new Map()
+  private rafId: number | null = null
+  private updateContentFn: ((chatId: string, messageId: string, content: string) => void) | null =
+    null
+  private updateReasoningFn:
+    | ((chatId: string, messageId: string, reasoning: string) => void)
+    | null = null
+
+  setUpdateFunctions(
+    contentFn: (chatId: string, messageId: string, content: string) => void,
+    reasoningFn: (chatId: string, messageId: string, reasoning: string) => void
+  ) {
+    this.updateContentFn = contentFn
+    this.updateReasoningFn = reasoningFn
+  }
+
+  scheduleContentUpdate(chatId: string, messageId: string, content: string) {
+    const key = `${chatId}:${messageId}`
+    this.pendingContent.set(key, content)
+    this.scheduleFlush()
+  }
+
+  scheduleReasoningUpdate(chatId: string, messageId: string, reasoning: string) {
+    const key = `${chatId}:${messageId}`
+    this.pendingReasoning.set(key, reasoning)
+    this.scheduleFlush()
+  }
+
+  private scheduleFlush() {
+    if (this.rafId !== null) return
+    this.rafId = requestAnimationFrame(() => {
+      this.flush()
+      this.rafId = null
+    })
+  }
+
+  private flush() {
+    // 批量更新所有待处理的内容
+    if (this.updateContentFn) {
+      this.pendingContent.forEach((content, key) => {
+        const [chatId, messageId] = key.split(':')
+        this.updateContentFn!(chatId, messageId, content)
+      })
+    }
+    this.pendingContent.clear()
+
+    // 批量更新所有待处理的推理内容
+    if (this.updateReasoningFn) {
+      this.pendingReasoning.forEach((reasoning, key) => {
+        const [chatId, messageId] = key.split(':')
+        this.updateReasoningFn!(chatId, messageId, reasoning)
+      })
+    }
+    this.pendingReasoning.clear()
+  }
+
+  // 强制立即刷新（用于完成时确保内容同步）
+  forceFlush() {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
+    }
+    this.flush()
+  }
+
+  cleanup() {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
+    }
+    this.pendingContent.clear()
+    this.pendingReasoning.clear()
+  }
+}
+
+// 全局节流器实例
+const streamingThrottler = new StreamingThrottler()
 
 export interface UseAIServiceReturn {
   isLoading: boolean
@@ -37,6 +118,17 @@ export function useAIService(chatId: string): UseAIServiceReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [activeAIServices, setActiveAIServices] = useState<Map<string, any>>(new Map())
   const { message } = App.useApp()
+
+  // 初始化节流器的更新函数
+  useEffect(() => {
+    streamingThrottler.setUpdateFunctions(
+      updateStreamingMessageContent,
+      updateStreamingMessageReasoning
+    )
+    return () => {
+      streamingThrottler.cleanup()
+    }
+  }, [updateStreamingMessageContent, updateStreamingMessageReasoning])
 
   const getLLMConfig = useCallback(
     (modelId?: string): LLMConfig | null => {
@@ -114,13 +206,17 @@ export function useAIService(chatId: string): UseAIServiceReturn {
         aiService.sendMessage(messages, {
           onChunk: (chunk: string) => {
             streamingContent += chunk
-            updateStreamingMessageContent(chatId, messageId, streamingContent)
+            // 使用节流器批量更新，避免高频状态更新导致界面卡顿
+            streamingThrottler.scheduleContentUpdate(chatId, messageId, streamingContent)
           },
           onReasoning: (reasoning_content: string) => {
             streamingReasoning += reasoning_content
-            updateStreamingMessageReasoning(chatId, messageId, streamingReasoning)
+            // 使用节流器批量更新
+            streamingThrottler.scheduleReasoningUpdate(chatId, messageId, streamingReasoning)
           },
           onComplete: async (fullResponse: string, reasoning_content?: string) => {
+            // 完成前强制刷新，确保所有内容都已更新到 UI
+            streamingThrottler.forceFlush()
             const finalContent = fullResponse || streamingContent
             const finalReasoning = reasoning_content || streamingReasoning || undefined
 
