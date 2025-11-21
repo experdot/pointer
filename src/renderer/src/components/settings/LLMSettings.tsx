@@ -70,7 +70,8 @@ function LLMConfigForm({ open, config, onSave, onCancel }: LLMConfigFormProps) {
         apiHost: values.apiHost,
         apiKey: values.apiKey,
         modelName: values.modelName,
-        createdAt: config?.createdAt || Date.now()
+        createdAt: config?.createdAt || Date.now(),
+        modelConfigId: values.modelConfigId
       }
 
       onSave(newConfig)
