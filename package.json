@@ -1,6 +1,6 @@
 {
   "name": "pointer",
-  "version": "1.0.0-preview.22",
+  "version": "1.0.0-preview.23",
   "private": true,
   "description": "A secure AI chat app crafted for deep thinkers",
   "main": "./out/main/index.js",
