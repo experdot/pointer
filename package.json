@@ -1,7 +1,8 @@
 {
   "name": "pointer",
   "version": "1.0.0-preview.22",
-  "description": "AI desktop app with object tree, cross-table, and chat tree.",
+  "private": true,
+  "description": "A secure AI chat app crafted for deep thinkers",
   "main": "./out/main/index.js",
   "author": "experdot@foxmail.com",
   "homepage": "https://github.com/experdot/pointer",

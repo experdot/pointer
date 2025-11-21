@@ -11,6 +11,8 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+extraMetadata:
+  description: pointer
 win:
   executableName: pointer
   # Windows 代码签名配置（生产环境使用）
