@@ -20,16 +20,9 @@
 
 .crosstab-content {
   display: flex;
+  flex-direction: column;
   flex: 1;
-  gap: 16px;
-}
-
-.crosstab-steps {
-  flex: 0 0 320px;
-  background: white;
-  padding: 16px;
-  border-radius: 4px;
-  overflow-y: auto;
+  min-height: 0;
 }
 
 .crosstab-workspace {
@@ -447,17 +440,78 @@
   color: #999;
 }
 
+/* 完成状态提示框 */
+.completion-notice {
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
+  border: 1px solid #b7eb8f;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.completion-notice-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.completion-notice-icon {
+  font-size: 24px;
+  color: #52c41a;
+}
+
+.completion-notice-text {
+  font-size: 14px;
+  color: #262626;
+}
+
+/* 底部操作区 */
+.tab-footer-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Tab 徽章动画 */
+.crosstab-tabs .ant-tabs-tab .anticon-check-circle {
+  animation: badgePop 0.4s ease-out;
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* 响应式样式 */
 @media (max-width: 1200px) {
-  .crosstab-content {
-    flex-direction: column;
-  }
-
-  .crosstab-steps {
-    flex: none;
-    max-height: 300px;
-  }
-
   .axis-data-container {
     flex-direction: column;
     gap: 16px;
@@ -477,14 +531,6 @@
   }
 
   .crosstab-header {
-    padding: 16px;
-  }
-
-  .crosstab-content {
-    gap: 16px;
-  }
-
-  .crosstab-steps {
     padding: 16px;
   }
 

@@ -7,7 +7,8 @@ import {
   PlayCircleOutlined,
   LoadingOutlined,
   DeleteOutlined,
-  CommentOutlined
+  CommentOutlined,
+  MoreOutlined
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabMultiDimensionData } from '../../../types/type'
 import { generateAxisCombinations, generateDimensionPath } from './CrosstabUtils'
@@ -346,14 +347,20 @@ export default function CrosstabTable({
                       position: 'relative'
                     }}
                   >
-                    {value}
+                    <span className="header-text">{value}</span>
                     {(onGenerateColumn || onClearColumn) && (
                       <Dropdown
                         menu={{ items: createColumnMenu(hPath, hasColumnData) }}
-                        trigger={['hover']}
+                        trigger={['click']}
                         placement="bottomRight"
                       >
-                        <div className="cell-menu-trigger" />
+                        <Button
+                          type="text"
+                          size="small"
+                          className="cell-menu-button"
+                          icon={<MoreOutlined />}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </Dropdown>
                     )}
                   </div>
@@ -433,14 +440,20 @@ export default function CrosstabTable({
                       position: 'relative'
                     }}
                   >
-                    {value}
+                    <span className="header-text">{value}</span>
                     {(onGenerateRow || onClearRow) && (
                       <Dropdown
                         menu={{ items: createRowMenu(vPath, hasRowData) }}
-                        trigger={['hover']}
+                        trigger={['click']}
                         placement="bottomRight"
                       >
-                        <div className="cell-menu-trigger" />
+                        <Button
+                          type="text"
+                          size="small"
+                          className="cell-menu-button"
+                          icon={<MoreOutlined />}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </Dropdown>
                     )}
                   </div>
@@ -496,18 +509,20 @@ export default function CrosstabTable({
             return (
               <div
                 key={cellKey}
-                className="grid-data-cell"
+                className={`grid-data-cell ${isGenerating ? 'generating' : ''}`}
                 style={{
                   gridColumn: colDimensions + colIndex + 1,
                   gridRow: rowDimensions + rowIndex + 1,
-                  backgroundColor: isGenerating ? '#f0f0f0' : 'white',
                   border: '1px solid #d9d9d9'
                 }}
               >
                 <div className="cell-content">
                   <div className="cell-text" style={{ fontSize: '12px' }}>
                     {isGenerating ? (
-                      <Text type="secondary">生成中...</Text>
+                      <Text type="secondary">
+                        <LoadingOutlined style={{ marginRight: 4 }} />
+                        生成中...
+                      </Text>
                     ) : cellContent ? (
                       <Text>{cellContent}</Text>
                     ) : (
@@ -517,10 +532,16 @@ export default function CrosstabTable({
                 </div>
                 <Dropdown
                   menu={{ items: createCellMenu(hPath, vPath, cellContent) }}
-                  trigger={['hover']}
+                  trigger={['click', 'contextMenu']}
                   placement="bottomRight"
                 >
-                  <div className="cell-menu-trigger" />
+                  <Button
+                    type="text"
+                    size="small"
+                    className="cell-menu-button"
+                    icon={<MoreOutlined />}
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </Dropdown>
               </div>
             )

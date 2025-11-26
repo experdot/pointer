@@ -130,47 +130,30 @@
   font-weight: 500;
 }
 
-/* 单元格菜单触发器 */
-.cell-menu-trigger {
+/* 单元格菜单按钮 */
+.cell-menu-button {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-  cursor: pointer;
+  top: 4px;
+  right: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 10;
 }
 
-.cell-menu-trigger::before {
-  position: absolute;
-  top: -3px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  color: #666;
-  font-weight: bold;
-  line-height: 1;
-}
-
-.grid-column-header .cell-menu-trigger,
-.grid-row-header .cell-menu-trigger,
-.grid-data-cell .cell-menu-trigger {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.grid-column-header:hover .cell-menu-trigger,
-.grid-row-header:hover .cell-menu-trigger,
-.grid-data-cell:hover .cell-menu-trigger {
+.grid-column-header:hover .cell-menu-button,
+.grid-row-header:hover .cell-menu-button,
+.grid-data-cell:hover .cell-menu-button {
   opacity: 1;
 }
 
-.cell-menu-trigger:hover {
-  background: rgba(0, 0, 0, 0.2);
+/* 表头文本居中 */
+.grid-column-header .header-text,
+.grid-row-header .header-text {
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 响应式设计 */
@@ -254,18 +237,23 @@
 
 /* 加载动画 */
 .grid-data-cell.generating {
+  background-color: #f6f8fa;
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+.grid-data-cell.generating .cell-menu-button {
+  display: none;
 }
 
 @keyframes pulse {
   0% {
-    background-color: #f0f0f0;
+    background-color: #f6f8fa;
   }
   50% {
     background-color: #e6f7ff;
   }
   100% {
-    background-color: #f0f0f0;
+    background-color: #f6f8fa;
   }
 }
 

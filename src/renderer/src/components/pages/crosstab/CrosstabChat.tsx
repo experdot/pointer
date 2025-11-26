@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { Typography, Tabs, App, Space } from 'antd'
+import { Typography, Tabs, App, Space, Badge } from 'antd'
 import {
   FileTextOutlined,
   BorderOutlined,
   ColumnWidthOutlined,
-  TableOutlined
+  TableOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons'
 
 import { usePagesStore } from '../../../stores/pagesStore'
@@ -20,17 +21,16 @@ import {
 } from './CrosstabUtils'
 import { AITask } from '../../../types/type'
 import { v4 as uuidv4 } from 'uuid'
-import StepFlow from './StepFlow'
 import TopicInput from './TopicInput'
 import MetadataDisplay from './MetadataDisplay'
 import AxisDataManager from './AxisDataManager'
 import CrosstabTable from './CrosstabTable'
 import PageLineageDisplay from '../../common/PageLineageDisplay'
 import ModelSelector from '../chat/ModelSelector'
+import { useCrosstabWorkflow } from './hooks/useCrosstabWorkflow'
 import './crosstab-page.css'
 
 const { Title } = Typography
-const { TabPane } = Tabs
 
 interface CrosstabChatProps {
   chatId: string
@@ -56,10 +56,16 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   }>({})
   const { message } = App.useApp()
 
-  const chat = useMemo(() => {
-    const foundChat = pages.find((c) => c.id === chatId)
-    return foundChat && foundChat.type === 'crosstab' ? foundChat : null
-  }, [pages, chatId])
+  // 使用工作流 hook
+  const {
+    chat,
+    workflowStatus,
+    generationState,
+    generateMetadata,
+    generateDimensionValues,
+    generateTableData,
+    stopGeneration
+  } = useCrosstabWorkflow(chatId, selectedModel)
 
   const getLLMConfig = useCallback(() => {
     const targetModelId = selectedModel || settings.defaultLLMId
@@ -69,6 +75,22 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
   const handleModelChange = useCallback((modelId: string) => {
     setSelectedModel(modelId)
   }, [])
+
+  // 生成元数据并在完成后显示继续按钮
+  const handleGenerateMetadata = useCallback(async () => {
+    const success = await generateMetadata(userInput)
+    if (success) {
+      // 生成成功后保持在当前 tab，用户可以点击继续按钮跳转
+    }
+  }, [generateMetadata, userInput])
+
+  // 切换到下一个 tab
+  const handleGoToNextTab = useCallback(
+    (nextTab: string) => {
+      setActiveTab(nextTab)
+    },
+    []
+  )
 
   const handleGenerateColumn = useCallback(
     async (columnPath: string) => {
@@ -95,9 +117,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       setIsGeneratingColumn(columnPath)
 
-      // 生成该列的所有单元格数据
       try {
-        // 使用已经导入的函数
         const verticalCombinations = generateAxisCombinations(
           chat.crosstabData.metadata.verticalDimensions
         )
@@ -110,7 +130,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
         const updatedTableData = { ...chat.crosstabData.tableData }
 
-        // 为该列的每个单元格生成数据
         for (const vCombination of verticalCombinations) {
           const rowPath = generateDimensionPath(vCombination)
           const cellKey = `${columnPath}|${rowPath}`
@@ -154,7 +173,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             const jsonContent = extractJsonContent(response)
             const cellValues = JSON.parse(jsonContent)
 
-            // 处理AI生成的数据格式
             const processedCellValues: { [key: string]: string } = {}
             if (chat.crosstabData.metadata.valueDimensions.length > 0) {
               const valueDimensions = chat.crosstabData.metadata.valueDimensions
@@ -203,13 +221,12 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         }
 
-        // 批量更新表格数据
         updateCrosstabData(chatId, { tableData: updatedTableData })
 
         message.success(`列 "${columnPath}" 数据生成完成`)
       } catch (error) {
         console.error('列数据生成失败:', error)
-        message.error(`列数据生成失败: ${error.message}`)
+        message.error(`列数据生成失败: ${(error as Error).message}`)
       } finally {
         setIsGeneratingColumn(null)
       }
@@ -222,7 +239,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       chatId,
       addTask,
       updateTask,
-      updateCrosstabData
+      updateCrosstabData,
+      getModelConfigForLLM
     ]
   )
 
@@ -251,9 +269,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       setIsGeneratingRow(rowPath)
 
-      // 生成该行的所有单元格数据
       try {
-        // 使用已经导入的函数
         const horizontalCombinations = generateAxisCombinations(
           chat.crosstabData.metadata.horizontalDimensions
         )
@@ -266,7 +282,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
         const updatedTableData = { ...chat.crosstabData.tableData }
 
-        // 为该行的每个单元格生成数据
         for (const hCombination of horizontalCombinations) {
           const columnPath = generateDimensionPath(hCombination)
           const cellKey = `${columnPath}|${rowPath}`
@@ -310,7 +325,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             const jsonContent = extractJsonContent(response)
             const cellValues = JSON.parse(jsonContent)
 
-            // 处理AI生成的数据格式
             const processedCellValues: { [key: string]: string } = {}
             if (chat.crosstabData.metadata.valueDimensions.length > 0) {
               const valueDimensions = chat.crosstabData.metadata.valueDimensions
@@ -359,18 +373,17 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         }
 
-        // 批量更新表格数据
         updateCrosstabData(chatId, { tableData: updatedTableData })
 
         message.success(`行 "${rowPath}" 数据生成完成`)
       } catch (error) {
         console.error('行数据生成失败:', error)
-        message.error(`行数据生成失败: ${error.message}`)
+        message.error(`行数据生成失败: ${(error as Error).message}`)
       } finally {
         setIsGeneratingRow(null)
       }
     },
-    [chat, isGeneratingRow, getLLMConfig, message, chatId, addTask, updateTask, updateCrosstabData]
+    [chat, isGeneratingRow, getLLMConfig, message, chatId, addTask, updateTask, updateCrosstabData, getModelConfigForLLM]
   )
 
   const handleGenerateCell = useCallback(
@@ -437,19 +450,15 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const jsonContent = extractJsonContent(response)
         const cellValues = JSON.parse(jsonContent)
 
-        // 处理AI生成的数据格式，确保键是实际的值维度ID
         const processedCellValues: { [key: string]: string } = {}
 
-        // 如果AI生成的数据使用的是通用键（如value1, value2），需要映射到实际的值维度ID
         if (chat.crosstabData.metadata.valueDimensions.length > 0) {
           const valueDimensions = chat.crosstabData.metadata.valueDimensions
 
-          // 检查是否使用了通用键格式
           const keys = Object.keys(cellValues)
           const hasGenericKeys = keys.some((key) => key.match(/^value\d+$/))
 
           if (hasGenericKeys) {
-            // 映射通用键到实际的值维度ID
             valueDimensions.forEach((dimension, index) => {
               const genericKey = `value${index + 1}`
               if (cellValues[genericKey]) {
@@ -457,7 +466,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
               }
             })
           } else {
-            // 检查是否直接使用了值维度ID
             valueDimensions.forEach((dimension) => {
               if (cellValues[dimension.id]) {
                 processedCellValues[dimension.id] = cellValues[dimension.id]
@@ -465,7 +473,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             })
           }
 
-          // 如果没有找到匹配的键，尝试使用第一个可用的值作为第一个维度的值
           if (Object.keys(processedCellValues).length === 0 && Object.keys(cellValues).length > 0) {
             const firstDimension = valueDimensions[0]
             const firstValue = Object.values(cellValues)[0]
@@ -473,11 +480,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
           }
         }
 
-        console.log('Original cell values:', cellValues)
-        console.log('Processed cell values:', processedCellValues)
-        console.log('Value dimensions:', chat.crosstabData.metadata.valueDimensions)
-
-        // 更新表格数据
         const updatedTableData = { ...chat.crosstabData.tableData }
         updatedTableData[cellKey] = processedCellValues
 
@@ -491,7 +493,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         message.success('单元格数据生成完成')
       } catch (error) {
         console.error('单元格生成失败:', error)
-        message.error(`单元格生成失败: ${error.message}`)
+        message.error(`单元格生成失败: ${(error as Error).message}`)
 
         updateTask(taskId, {
           status: 'failed',
@@ -502,7 +504,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         setIsGeneratingCell(null)
       }
     },
-    [chat, isGeneratingCell, getLLMConfig, addTask, updateTask, updateCrosstabData, chatId, message]
+    [chat, isGeneratingCell, getLLMConfig, addTask, updateTask, updateCrosstabData, chatId, message, getModelConfigForLLM]
   )
 
   const handleClearColumn = useCallback(
@@ -511,7 +513,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       const updatedTableData = { ...chat.crosstabData.tableData }
 
-      // 删除所有以该列路径开头的单元格数据
       Object.keys(updatedTableData).forEach((cellKey) => {
         if (cellKey.startsWith(columnPath + '|')) {
           delete updatedTableData[cellKey]
@@ -531,7 +532,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
 
       const updatedTableData = { ...chat.crosstabData.tableData }
 
-      // 删除所有以该行路径结尾的单元格数据
       Object.keys(updatedTableData).forEach((cellKey) => {
         if (cellKey.endsWith('|' + rowPath)) {
           delete updatedTableData[cellKey]
@@ -567,7 +567,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     (columnPath: string, rowPath: string, cellContent: string, metadata: any) => {
       if (!chat || !metadata) return
 
-      // 使用 pagesStore 的专门方法创建包含上下文的聊天
       const newChatId = usePagesStore.getState().createChatFromCell({
         folderId: chat.folderId,
         horizontalItem: columnPath,
@@ -580,34 +579,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       message.success(`已创建新聊天窗口分析 "${columnPath} × ${rowPath}"`)
     },
     [chat, message]
-  )
-
-  const handleStepComplete = useCallback(
-    (stepIndex: number, data: any) => {
-      // 更新步骤响应
-      if (data.response) {
-        updateCrosstabStep(chatId, stepIndex, data.response)
-      }
-
-      // 更新交叉表数据
-      const updateData: any = {}
-      if (data.metadata) {
-        updateData.metadata = data.metadata
-        setActiveTab('1') // 切换到主题结构tab
-      }
-      if (data.tableData) {
-        updateData.tableData = data.tableData
-        setActiveTab('3') // 切换到交叉分析表tab
-      }
-
-      if (Object.keys(updateData).length > 0) {
-        updateCrosstabData(chatId, updateData)
-      }
-
-      // 完成步骤
-      completeCrosstabStep(chatId, stepIndex)
-    },
-    [updateCrosstabStep, updateCrosstabData, completeCrosstabStep, chatId]
   )
 
   const handleUpdateMetadata = useCallback(
@@ -695,17 +666,16 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         const jsonContent = extractJsonContent(result)
         const values = JSON.parse(jsonContent)
 
-        // 更新维度值
         handleUpdateDimension(dimensionId, dimensionType, { values })
         message.success(`维度"${dimension.name}"的值生成完成`)
       } catch (error) {
         console.error('维度值生成失败:', error)
-        message.error(`维度值生成失败: ${error.message}`)
+        message.error(`维度值生成失败: ${(error as Error).message}`)
       } finally {
         setIsGeneratingDimensionValues((prev) => ({ ...prev, [dimensionId]: false }))
       }
     },
-    [chat, getLLMConfig, handleUpdateDimension, message]
+    [chat, getLLMConfig, handleUpdateDimension, message, getModelConfigForLLM]
   )
 
   const handleGenerateTopicSuggestions = useCallback(async () => {
@@ -772,7 +742,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       try {
         const parsedSuggestions = JSON.parse(extractJsonContent(response))
         if (Array.isArray(parsedSuggestions)) {
-          // 保存候选项到metadata中
           const newMetadata = {
             ...chat.crosstabData.metadata!,
             topicSuggestions: parsedSuggestions
@@ -812,7 +781,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     updateTask,
     updateCrosstabData,
     chatId,
-    message
+    message,
+    getModelConfigForLLM
   ])
 
   const handleGenerateDimensionSuggestions = useCallback(
@@ -840,7 +810,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       }
       const aiService = createAIService(llmConfig, modelConfig)
 
-      // 查找维度
       const allDimensions = [
         ...chat.crosstabData.metadata.horizontalDimensions,
         ...chat.crosstabData.metadata.verticalDimensions,
@@ -887,7 +856,7 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
                 : 'value'
           )
           .replace('[DIMENSION_NAME]', dimension.name)
-          .replace('[DIMENSION_DESCRIPTION]', dimension.description || '')
+          .replace('[DIMENSION_DESCRIPTION]', (dimension as any).description || '')
 
         const response = await new Promise<string>((resolve, reject) => {
           aiService.sendMessage(
@@ -903,11 +872,9 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
         try {
           const parsedSuggestions = JSON.parse(extractJsonContent(response))
           if (Array.isArray(parsedSuggestions)) {
-            // 更新维度的建议
             const metadata = chat.crosstabData.metadata
             let updatedMetadata = { ...metadata }
 
-            // 根据维度类型更新对应的维度
             if (dimension.id.startsWith('h')) {
               updatedMetadata.horizontalDimensions = updatedMetadata.horizontalDimensions.map(
                 (d) => (d.id === dimensionId ? { ...d, suggestions: parsedSuggestions } : d)
@@ -958,7 +925,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       updateTask,
       updateCrosstabData,
       chatId,
-      message
+      message,
+      getModelConfigForLLM
     ]
   )
 
@@ -980,9 +948,89 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
     [chat, updateCrosstabData, chatId, message]
   )
 
+  // 渲染 Tab 标签（带状态徽章）
+  const renderTabLabel = (icon: React.ReactNode, label: string, completed: boolean) => (
+    <Space>
+      {icon}
+      {label}
+      {completed && (
+        <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 14 }} />
+      )}
+    </Space>
+  )
+
   if (!chat) {
     return <div className="crosstab-error">交叉视图聊天不存在</div>
   }
+
+  const tabItems = [
+    {
+      key: '0',
+      label: renderTabLabel(<FileTextOutlined />, '输入主题', workflowStatus.topicCompleted),
+      children: (
+        <TopicInput
+          userInput={userInput}
+          onUserInputChange={setUserInput}
+          onGenerate={handleGenerateMetadata}
+          isGenerating={generationState.isGeneratingMetadata}
+          isCompleted={workflowStatus.topicCompleted}
+          onGoNext={() => handleGoToNextTab('1')}
+        />
+      )
+    },
+    {
+      key: '1',
+      label: renderTabLabel(<BorderOutlined />, '主题结构', workflowStatus.structureCompleted),
+      children: (
+        <MetadataDisplay
+          metadata={chat.crosstabData.metadata}
+          onUpdateMetadata={handleUpdateMetadata}
+          onGenerateTopicSuggestions={handleGenerateTopicSuggestions}
+          onGenerateDimensionSuggestions={handleGenerateDimensionSuggestions}
+          onSelectTopicSuggestion={handleSelectTopicSuggestion}
+          isGeneratingTopicSuggestions={isGeneratingTopicSuggestions}
+          isGeneratingDimensionSuggestions={isGeneratingDimensionSuggestions}
+          onGoNext={() => handleGoToNextTab('2')}
+        />
+      )
+    },
+    {
+      key: '2',
+      label: renderTabLabel(<ColumnWidthOutlined />, '轴数据', workflowStatus.axisDataCompleted),
+      children: (
+        <AxisDataManager
+          metadata={chat.crosstabData.metadata}
+          onUpdateDimension={handleUpdateDimension}
+          onGenerateDimensionValues={handleGenerateDimensionValues}
+          isGeneratingDimensionValues={isGeneratingDimensionValues}
+          onGenerateTableData={generateTableData}
+          isGeneratingTableData={generationState.isGeneratingTableData}
+          canGenerateTableData={workflowStatus.axisDataCompleted}
+          onGoNext={() => handleGoToNextTab('3')}
+        />
+      )
+    },
+    {
+      key: '3',
+      label: renderTabLabel(<TableOutlined />, '交叉分析表', workflowStatus.tableDataCompleted),
+      children: (
+        <CrosstabTable
+          metadata={chat.crosstabData.metadata}
+          tableData={chat.crosstabData.tableData}
+          onGenerateColumn={handleGenerateColumn}
+          isGeneratingColumn={isGeneratingColumn}
+          onGenerateRow={handleGenerateRow}
+          isGeneratingRow={isGeneratingRow}
+          onGenerateCell={handleGenerateCell}
+          isGeneratingCell={isGeneratingCell}
+          onClearColumn={handleClearColumn}
+          onClearRow={handleClearRow}
+          onClearCell={handleClearCell}
+          onCreateChatFromCell={handleCreateChatFromCell}
+        />
+      )
+    }
+  ]
 
   return (
     <div className="crosstab-page">
@@ -1017,13 +1065,6 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
       </div>
 
       <div className="crosstab-content">
-        <StepFlow
-          chat={chat as any}
-          userInput={userInput}
-          onStepComplete={handleStepComplete}
-          getLLMConfig={getLLMConfig}
-        />
-
         <div className="crosstab-workspace">
           <Tabs
             activeKey={activeTab}
@@ -1031,81 +1072,8 @@ export default function CrosstabChat({ chatId }: CrosstabChatProps) {
             type="card"
             size="large"
             className="crosstab-tabs"
-          >
-            <TabPane
-              tab={
-                <Space>
-                  <FileTextOutlined />
-                  输入主题
-                </Space>
-              }
-              key="0"
-            >
-              <TopicInput userInput={userInput} onUserInputChange={setUserInput} />
-            </TabPane>
-
-            <TabPane
-              tab={
-                <Space>
-                  <BorderOutlined />
-                  主题结构
-                </Space>
-              }
-              key="1"
-            >
-              <MetadataDisplay
-                metadata={chat.crosstabData.metadata}
-                onUpdateMetadata={handleUpdateMetadata}
-                onGenerateTopicSuggestions={handleGenerateTopicSuggestions}
-                onGenerateDimensionSuggestions={handleGenerateDimensionSuggestions}
-                onSelectTopicSuggestion={handleSelectTopicSuggestion}
-                isGeneratingTopicSuggestions={isGeneratingTopicSuggestions}
-                isGeneratingDimensionSuggestions={isGeneratingDimensionSuggestions}
-              />
-            </TabPane>
-
-            <TabPane
-              tab={
-                <Space>
-                  <ColumnWidthOutlined />
-                  轴数据
-                </Space>
-              }
-              key="2"
-            >
-              <AxisDataManager
-                metadata={chat.crosstabData.metadata}
-                onUpdateDimension={handleUpdateDimension}
-                onGenerateDimensionValues={handleGenerateDimensionValues}
-                isGeneratingDimensionValues={isGeneratingDimensionValues}
-              />
-            </TabPane>
-
-            <TabPane
-              tab={
-                <Space>
-                  <TableOutlined />
-                  交叉分析表
-                </Space>
-              }
-              key="3"
-            >
-              <CrosstabTable
-                metadata={chat.crosstabData.metadata}
-                tableData={chat.crosstabData.tableData}
-                onGenerateColumn={handleGenerateColumn}
-                isGeneratingColumn={isGeneratingColumn}
-                onGenerateRow={handleGenerateRow}
-                isGeneratingRow={isGeneratingRow}
-                onGenerateCell={handleGenerateCell}
-                isGeneratingCell={isGeneratingCell}
-                onClearColumn={handleClearColumn}
-                onClearRow={handleClearRow}
-                onClearCell={handleClearCell}
-                onCreateChatFromCell={handleCreateChatFromCell}
-              />
-            </TabPane>
-          </Tabs>
+            items={tabItems}
+          />
         </div>
       </div>
     </div>

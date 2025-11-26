@@ -7,7 +7,10 @@ import {
   EditOutlined,
   HolderOutlined,
   SaveOutlined,
-  CloseOutlined
+  CloseOutlined,
+  ArrowRightOutlined,
+  RobotOutlined,
+  LoadingOutlined
 } from '@ant-design/icons'
 import { CrosstabMetadata, CrosstabAxisDimension } from '../../../types/type'
 import {
@@ -38,6 +41,10 @@ interface AxisDataManagerProps {
   ) => void
   onGenerateDimensionValues: (dimensionId: string, dimensionType: 'horizontal' | 'vertical') => void
   isGeneratingDimensionValues?: { [dimensionId: string]: boolean }
+  onGenerateTableData?: () => void
+  isGeneratingTableData?: boolean
+  canGenerateTableData?: boolean
+  onGoNext?: () => void
 }
 
 interface SortableItemProps {
@@ -154,7 +161,11 @@ export default function AxisDataManager({
   metadata,
   onUpdateDimension,
   onGenerateDimensionValues,
-  isGeneratingDimensionValues
+  isGeneratingDimensionValues,
+  onGenerateTableData,
+  isGeneratingTableData,
+  canGenerateTableData,
+  onGoNext
 }: AxisDataManagerProps) {
   const [editingItem, setEditingItem] = useState<{
     dimensionId: string
@@ -426,6 +437,29 @@ export default function AxisDataManager({
 
       {/* 纵轴数据 */}
       {renderAxisSection(metadata.verticalDimensions, 'vertical', '纵轴')}
+
+      {/* 底部操作区 */}
+      <div className="tab-footer-actions">
+        <Button
+          type="primary"
+          size="large"
+          icon={isGeneratingTableData ? <LoadingOutlined /> : <RobotOutlined />}
+          onClick={onGenerateTableData}
+          disabled={!canGenerateTableData || isGeneratingTableData}
+          loading={isGeneratingTableData}
+          style={{ marginRight: 12 }}
+        >
+          {isGeneratingTableData ? '正在生成表格数据...' : '生成表格数据'}
+        </Button>
+        <Button
+          type="primary"
+          size="large"
+          icon={<ArrowRightOutlined />}
+          onClick={onGoNext}
+        >
+          查看交叉分析表
+        </Button>
+      </div>
     </div>
   )
 }

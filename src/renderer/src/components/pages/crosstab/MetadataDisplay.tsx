@@ -21,7 +21,8 @@ import {
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
-  CloseOutlined
+  CloseOutlined,
+  ArrowRightOutlined
 } from '@ant-design/icons'
 import {
   CrosstabMetadata,
@@ -41,6 +42,7 @@ interface MetadataDisplayProps {
   onSelectTopicSuggestion?: (suggestion: string) => void
   isGeneratingTopicSuggestions?: boolean
   isGeneratingDimensionSuggestions?: { [dimensionId: string]: boolean }
+  onGoNext?: () => void
 }
 
 export default function MetadataDisplay({
@@ -50,7 +52,8 @@ export default function MetadataDisplay({
   onGenerateDimensionSuggestions,
   onSelectTopicSuggestion,
   isGeneratingTopicSuggestions,
-  isGeneratingDimensionSuggestions
+  isGeneratingDimensionSuggestions,
+  onGoNext
 }: MetadataDisplayProps) {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
@@ -474,6 +477,18 @@ export default function MetadataDisplay({
         <div className="metadata-section">
           <Title level={5}>值维度</Title>
           {renderValueDimensions(metadata.valueDimensions)}
+        </div>
+
+        {/* 底部操作区 */}
+        <div className="tab-footer-actions">
+          <Button
+            type="primary"
+            size="large"
+            icon={<ArrowRightOutlined />}
+            onClick={onGoNext}
+          >
+            继续到轴数据
+          </Button>
         </div>
       </div>
     </Card>
