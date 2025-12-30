@@ -73,6 +73,7 @@ export interface ChatSession {
 }
 
 export interface PageFolder {
+  type: 'folder'
   id: string
   name: string
   expanded?: boolean
@@ -83,6 +84,7 @@ export interface PageFolder {
 }
 
 export interface Page<T> {
+  type: 'page'
   id: string
   title: string
 

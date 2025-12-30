@@ -66,7 +66,7 @@ export function Explorer(): React.JSX.Element {
         data: folder,
         icon: folder.expanded ? <FolderOpenOutlined /> : <FolderOutlined />,
         children: itemsInFolder.map((item) =>
-          'data' in item ? buildPageNode(item as ChatPage) : buildFolderNode(item as PageFolder)
+          item.type === 'page' ? buildPageNode(item) : buildFolderNode(item)
         )
       }
     }
@@ -81,7 +81,7 @@ export function Explorer(): React.JSX.Element {
     })
 
     return rootItems.map((item) =>
-      'data' in item ? buildPageNode(item as ChatPage) : buildFolderNode(item as PageFolder)
+      item.type === 'page' ? buildPageNode(item) : buildFolderNode(item)
     )
   }, [folders, pages, rootItems, getItemsInFolder])
 
@@ -132,159 +132,53 @@ export function Explorer(): React.JSX.Element {
     newCollapsed.forEach((id) => toggleFolderExpanded(id as string))
   }
 
+  // 批量更新项目的 order 和 parentFolderId
+  const updateItemsOrder = (items: (ChatPage | PageFolder)[], parentFolderId?: string) => {
+    items.forEach((item, index) => {
+      if (item.type === 'page') {
+        updatePage(item.id, { order: index, parentFolderId })
+      } else {
+        updateFolder(item.id, { order: index, parentFolderId })
+      }
+    })
+  }
+
+  // 获取指定层级的所有项目
+  const getItemsAtLevel = (parentFolderId?: string, excludeId?: string) => {
+    return [
+      ...pages.filter((p) => p.parentFolderId === parentFolderId && p.id !== excludeId),
+      ...folders.filter((f) => f.parentFolderId === parentFolderId && f.id !== excludeId)
+    ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  }
+
   const handleDrop: TreeProps['onDrop'] = (info) => {
     const dragKey = info.dragNode.key as string
     const dropKey = info.node.key as string
     const dropNodeData = getTreeNodeData(info.node as TreeDataNode)
 
-    // 检查是否是页面拖拽
-    const draggedPage = pages.find((p) => p.id === dragKey)
-    const draggedFolder = folders.find((f) => f.id === dragKey)
+    // 获取被拖拽的项目
+    const draggedItem = pages.find((p) => p.id === dragKey) || folders.find((f) => f.id === dragKey)
+    if (!draggedItem) return
 
-    if (draggedPage) {
-      // 页面拖拽
-      if (dropNodeData?.isFolder && !info.dropToGap) {
-        // 拖到文件夹内部（不是间隙），放到第一个位置
-        const targetFolderId = dropKey
+    if (dropNodeData?.isFolder && !info.dropToGap) {
+      // 拖到文件夹内部，放到第一个位置
+      const itemsInFolder = getItemsAtLevel(dropKey, dragKey)
+      updateItemsOrder([draggedItem, ...itemsInFolder], dropKey)
+    } else if (info.dropToGap) {
+      // 拖到间隙（同级位置）
+      const targetItem = pages.find((p) => p.id === dropKey) || folders.find((f) => f.id === dropKey)
+      const targetParentFolderId = targetItem?.parentFolderId
 
-        // 获取目标文件夹内的所有项目
-        const itemsInFolder = [
-          ...pages.filter((p) => p.parentFolderId === targetFolderId && p.id !== dragKey),
-          ...folders.filter((f) => f.parentFolderId === targetFolderId)
-        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      const sameLevelItems = getItemsAtLevel(targetParentFolderId, dragKey)
+      const targetIndex = sameLevelItems.findIndex((item) => item.id === dropKey)
 
-        // 在开头插入被拖拽的页面
-        const newItems = [draggedPage, ...itemsInFolder]
+      // 判断插入位置
+      const dropPos = info.dropPosition
+      const targetPos = Number(info.node.pos.split('-').pop())
+      const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
 
-        // 批量更新 order 和 parentFolderId
-        newItems.forEach((item, index) => {
-          if ('data' in item) {
-            updatePage(item.id, {
-              order: index,
-              parentFolderId: targetFolderId
-            })
-          } else {
-            updateFolder(item.id, {
-              order: index,
-              parentFolderId: targetFolderId
-            })
-          }
-        })
-      } else if (info.dropToGap) {
-        // 拖到间隙（同级位置），需要重新计算 order
-        const targetPage = pages.find((p) => p.id === dropKey)
-        const targetFolder = folders.find((f) => f.id === dropKey)
-        const targetParentFolderId = targetPage?.parentFolderId ?? targetFolder?.parentFolderId
-
-        // 获取目标层级的所有项目（文件夹和页面混合）
-        const sameLevelItems = [
-          ...pages.filter((p) => p.parentFolderId === targetParentFolderId),
-          ...folders.filter((f) => f.parentFolderId === targetParentFolderId)
-        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-        // 移除被拖拽的页面
-        const withoutDragged = sameLevelItems.filter((item) => item.id !== dragKey)
-
-        // 找到目标的索引
-        const targetIndex = withoutDragged.findIndex((item) => item.id === dropKey)
-
-        // 判断是放在目标前面还是后面
-        const dropPos = info.dropPosition
-        const targetPos = Number(info.node.pos.split('-').pop())
-        const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
-
-        // 在新位置插入被拖拽的页面
-        withoutDragged.splice(insertIndex, 0, draggedPage)
-
-        // 批量更新 order 和 parentFolderId
-        withoutDragged.forEach((item, index) => {
-          if ('data' in item) {
-            // 是页面
-            updatePage(item.id, {
-              order: index,
-              parentFolderId: targetParentFolderId
-            })
-          } else {
-            // 是文件夹
-            updateFolder(item.id, {
-              order: index,
-              parentFolderId: targetParentFolderId
-            })
-          }
-        })
-      }
-    } else if (draggedFolder) {
-      // 文件夹拖拽
-      if (dropNodeData?.isFolder && !info.dropToGap) {
-        // 拖到另一个文件夹内部，放到第一个位置
-        const targetFolderId = dropKey
-
-        // 获取目标文件夹内的所有项目
-        const itemsInFolder = [
-          ...pages.filter((p) => p.parentFolderId === targetFolderId),
-          ...folders.filter((f) => f.parentFolderId === targetFolderId && f.id !== dragKey)
-        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-        // 在开头插入被拖拽的文件夹
-        const newItems = [draggedFolder, ...itemsInFolder]
-
-        // 批量更新 order 和 parentFolderId
-        newItems.forEach((item, index) => {
-          if ('data' in item) {
-            updatePage(item.id, {
-              order: index,
-              parentFolderId: targetFolderId
-            })
-          } else {
-            updateFolder(item.id, {
-              order: index,
-              parentFolderId: targetFolderId
-            })
-          }
-        })
-      } else if (info.dropToGap) {
-        // 拖到间隙（同级位置），需要重新计算 order
-        const targetPage = pages.find((p) => p.id === dropKey)
-        const targetFolder = folders.find((f) => f.id === dropKey)
-        const targetParentFolderId = targetPage?.parentFolderId ?? targetFolder?.parentFolderId
-
-        // 获取目标层级的所有项目（文件夹和页面混合）
-        const sameLevelItems = [
-          ...pages.filter((p) => p.parentFolderId === targetParentFolderId),
-          ...folders.filter((f) => f.parentFolderId === targetParentFolderId)
-        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-        // 移除被拖拽的文件夹
-        const withoutDragged = sameLevelItems.filter((item) => item.id !== dragKey)
-
-        // 找到目标的索引
-        const targetIndex = withoutDragged.findIndex((item) => item.id === dropKey)
-
-        // 判断是放在目标前面还是后面
-        const dropPos = info.dropPosition
-        const targetPos = Number(info.node.pos.split('-').pop())
-        const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
-
-        // 在新位置插入被拖拽的文件夹
-        withoutDragged.splice(insertIndex, 0, draggedFolder)
-
-        // 批量更新 order 和 parentFolderId
-        withoutDragged.forEach((item, index) => {
-          if ('data' in item) {
-            // 是页面
-            updatePage(item.id, {
-              order: index,
-              parentFolderId: targetParentFolderId
-            })
-          } else {
-            // 是文件夹
-            updateFolder(item.id, {
-              order: index,
-              parentFolderId: targetParentFolderId
-            })
-          }
-        })
-      }
+      sameLevelItems.splice(insertIndex, 0, draggedItem)
+      updateItemsOrder(sameLevelItems, targetParentFolderId)
     }
   }
 

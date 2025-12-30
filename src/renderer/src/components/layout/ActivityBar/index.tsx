@@ -47,12 +47,13 @@ export function ActivityBar(): React.JSX.Element {
       </Flex>
       <Flex vertical className="activity-bar-bottom">
         <Popover
-          content={<UserProfileCard key={popoverOpen ? 'open' : 'closed'} onClose={() => setPopoverOpen(false)} />}
+          content={<UserProfileCard onClose={() => setPopoverOpen(false)} />}
           trigger="click"
           placement="rightBottom"
           arrow={false}
           open={popoverOpen}
           onOpenChange={setPopoverOpen}
+          destroyOnHidden
         >
           <button className="activity-bar-item activity-bar-avatar">
             <Avatar size={28} icon={<UserOutlined />} src={currentAccount?.avatar} />

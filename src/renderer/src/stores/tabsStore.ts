@@ -129,23 +129,31 @@ export const useTabsStore = create<TabsStore>()(
         }),
 
       closeOtherTabs: (tabId) =>
-        set((state) => ({
-          tabs: state.tabs.filter((t) => t.id === tabId),
-          activeTabId: tabId
-        })),
+        set((state) => {
+          const newTabs = state.tabs.filter((t) => t.id === tabId || t.pinned)
+          return { tabs: newTabs, activeTabId: tabId }
+        }),
 
       closeRightTabs: (tabId) =>
         set((state) => {
           const index = state.tabs.findIndex((t) => t.id === tabId)
           if (index === -1) return state
-          const newTabs = state.tabs.slice(0, index + 1)
+          // 保留左侧标签和右侧固定标签
+          const newTabs = state.tabs.filter((t, i) => i <= index || t.pinned)
           const newActiveTabId = newTabs.some((t) => t.id === state.activeTabId)
             ? state.activeTabId
             : tabId
           return { tabs: newTabs, activeTabId: newActiveTabId }
         }),
 
-      closeAllTabs: () => set({ tabs: [], activeTabId: null }),
+      closeAllTabs: () =>
+        set((state) => {
+          const pinnedTabs = state.tabs.filter((t) => t.pinned)
+          return {
+            tabs: pinnedTabs,
+            activeTabId: pinnedTabs[0]?.id || null
+          }
+        }),
 
       cleanupInvalidTabs: (validPageIds) =>
         set((state) => {

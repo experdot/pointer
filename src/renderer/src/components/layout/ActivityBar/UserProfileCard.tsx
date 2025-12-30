@@ -8,7 +8,7 @@ import {
   ArrowLeftOutlined,
   PlusOutlined
 } from '@ant-design/icons'
-import { useAccountStore } from '../../../stores/accountStore'
+import { useAccountStore, getDefaultAccountId } from '../../../stores/accountStore'
 import { switchAccount, createAccount, logout } from '../../../services/accountService'
 
 const { Text } = Typography
@@ -162,6 +162,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
         style={{ justifyContent: 'flex-start' }}
         onClick={handleLogout}
         loading={switching}
+        disabled={currentAccountId === getDefaultAccountId()}
       >
         退出登录
       </Button>

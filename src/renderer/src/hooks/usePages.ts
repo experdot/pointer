@@ -14,12 +14,12 @@ export function usePages() {
   }, [pages, folders])
 
   const rootPages = useMemo(
-    () => rootItems.filter((item) => 'data' in item) as ChatPage[],
+    () => rootItems.filter((item): item is ChatPage => item.type === 'page'),
     [rootItems]
   )
 
   const rootFolders = useMemo(
-    () => rootItems.filter((item) => !('data' in item)) as PageFolder[],
+    () => rootItems.filter((item): item is PageFolder => item.type === 'folder'),
     [rootItems]
   )
 
