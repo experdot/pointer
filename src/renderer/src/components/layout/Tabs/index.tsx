@@ -1,7 +1,7 @@
 import React from 'react'
 import { Tabs as AntTabs, Dropdown } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import { MessageOutlined, SettingOutlined, HomeOutlined } from '@ant-design/icons'
+import { MessageOutlined, SettingOutlined, HomeOutlined, PushpinFilled } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -51,7 +51,7 @@ function DraggableTab({ id, children }: DraggableTabProps) {
 }
 
 export function Tabs(): React.JSX.Element {
-  const { tabs, activeTabId, setActiveTab, closeTab, reorderTabs, closeOtherTabs, closeRightTabs, closeAllTabs } =
+  const { tabs, activeTabId, setActiveTab, closeTab, reorderTabs, togglePinTab, closeOtherTabs, closeRightTabs, closeAllTabs } =
     useTabsStore()
   const { createPage, openPage } = usePages()
 
@@ -70,18 +70,28 @@ export function Tabs(): React.JSX.Element {
     reorderTabs(oldIndex, newIndex)
   }
 
-  const getContextMenuItems = (tabId: string): MenuProps['items'] => [
-    { key: 'close', label: '关闭', onClick: () => closeTab(tabId) },
-    { key: 'closeOthers', label: '关闭其他', onClick: () => closeOtherTabs(tabId) },
-    { key: 'closeRight', label: '关闭右侧', onClick: () => closeRightTabs(tabId) },
-    { key: 'closeAll', label: '关闭全部', onClick: () => closeAllTabs() }
-  ]
+  const getContextMenuItems = (tabId: string): MenuProps['items'] => {
+    const tab = tabs.find(t => t.id === tabId)
+    return [
+      { key: 'close', label: '关闭', onClick: () => closeTab(tabId) },
+      { key: 'closeOthers', label: '关闭其他', onClick: () => closeOtherTabs(tabId) },
+      { key: 'closeRight', label: '关闭右侧', onClick: () => closeRightTabs(tabId) },
+      { key: 'closeAll', label: '关闭全部', onClick: () => closeAllTabs() },
+      { type: 'divider' },
+      {
+        key: 'pin',
+        label: tab?.pinned ? '取消固定' : '固定',
+        onClick: () => togglePinTab(tabId)
+      }
+    ]
+  }
 
   const items: TabsProps['items'] = tabs.map((tab) => ({
     key: tab.id,
     label: (
       <Dropdown menu={{ items: getContextMenuItems(tab.id) }} trigger={['contextMenu']}>
         <span className="tab-label">
+          {tab.pinned && <PushpinFilled className="tab-pin-icon" />}
           <span className="tab-icon">{tabIcons[tab.type]}</span>
           <span className="tab-title">{tab.title}</span>
         </span>

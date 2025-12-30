@@ -4,7 +4,6 @@
 
 .tabs-container .ant-tabs-nav {
   margin: 0;
-  padding: 0 8px;
   background: var(--ant-color-bg-layout);
 }
 
@@ -45,4 +44,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tab-pin-icon {
+  margin-right: 4px;
+  color: var(--ant-color-primary);
+  font-size: 12px;
 }

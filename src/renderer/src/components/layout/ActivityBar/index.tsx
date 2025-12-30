@@ -47,7 +47,7 @@ export function ActivityBar(): React.JSX.Element {
       </Flex>
       <Flex vertical className="activity-bar-bottom">
         <Popover
-          content={<UserProfileCard onClose={() => setPopoverOpen(false)} />}
+          content={<UserProfileCard key={popoverOpen ? 'open' : 'closed'} onClose={() => setPopoverOpen(false)} />}
           trigger="click"
           placement="rightBottom"
           arrow={false}

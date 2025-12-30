@@ -373,7 +373,6 @@ export function Explorer(): React.JSX.Element {
           onPressEnter={() => handleFinishRename(treeNode.isFolder)}
           onClick={(e) => e.stopPropagation()}
           autoFocus
-          style={{ width: 120 }}
         />
       )
     }

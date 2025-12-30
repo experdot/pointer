@@ -12,6 +12,7 @@ export interface Tab {
   title: string
   pageId?: string // 关联的页面ID（chat类型）
   closable?: boolean // 是否可关闭，默认 true
+  pinned?: boolean // 是否固定
 }
 
 const WELCOME_TAB: Tab = {
@@ -32,6 +33,7 @@ interface TabsActions {
   setActiveTab: (tabId: string) => void
   updateTabTitle: (tabId: string, title: string) => void
   reorderTabs: (fromIndex: number, toIndex: number) => void
+  togglePinTab: (tabId: string) => void
   closeOtherTabs: (tabId: string) => void
   closeRightTabs: (tabId: string) => void
   closeAllTabs: () => void
@@ -97,9 +99,34 @@ export const useTabsStore = create<TabsStore>()(
         const { tabs } = get()
         const newTabs = [...tabs]
         const [removed] = newTabs.splice(fromIndex, 1)
+
+        // 如果移动的是固定标签，只能在固定标签区域内移动
+        // 如果移动的是非固定标签，只能在非固定标签区域内移动
+        const pinnedCount = newTabs.filter(t => t.pinned).length
+
+        if (removed.pinned && toIndex > pinnedCount) {
+          // 固定标签不能移动到非固定区域
+          return
+        }
+        if (!removed.pinned && toIndex < pinnedCount) {
+          // 非固定标签不能移动到固定区域
+          return
+        }
+
         newTabs.splice(toIndex, 0, removed)
         set({ tabs: newTabs })
       },
+
+      togglePinTab: (tabId) =>
+        set((state) => {
+          const tabs = state.tabs.map((t) =>
+            t.id === tabId ? { ...t, pinned: !t.pinned } : t
+          )
+          // 重新排序：固定的标签在前
+          const pinnedTabs = tabs.filter(t => t.pinned)
+          const unpinnedTabs = tabs.filter(t => !t.pinned)
+          return { tabs: [...pinnedTabs, ...unpinnedTabs] }
+        }),
 
       closeOtherTabs: (tabId) =>
         set((state) => ({

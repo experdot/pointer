@@ -15,6 +15,10 @@
   align-items: flex-end;
 }
 
+.editor-tabs  .ant-tabs{
+  width: 100%;
+}
+
 .editor-content {
   flex: 1;
   overflow: auto;

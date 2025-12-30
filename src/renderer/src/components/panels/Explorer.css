@@ -17,13 +17,25 @@
   background: transparent;
 }
 
+.explorer-tree .ant-tree-treenode {
+  width: 100%;
+}
+
 .explorer-tree .ant-tree-node-content-wrapper {
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.explorer-tree .ant-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .explorer-tree-title {
-  flex: 1;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
