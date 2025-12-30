@@ -42,8 +42,7 @@ export function Explorer(): React.JSX.Element {
     deleteFolder,
     updateFolder,
     toggleFolderExpanded,
-    openPage,
-    movePage
+    openPage
   } = usePages()
 
   const { showDeleteConfirm } = useConfirmDialog()

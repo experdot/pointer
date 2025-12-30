@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react'
 import { Empty } from 'antd'
-import { Tabs } from './Tabs'
-import { WelcomePage } from '../editors/WelcomePage'
-import { useTabsStore } from '../../stores/tabsStore'
-import { usePagesStore } from '../../stores/pagesStore'
+import { Tabs } from '../Tabs'
+import { WelcomePage } from '../../editors/WelcomePage'
+import { useTabsStore } from '../../../stores/tabsStore'
+import { usePagesStore } from '../../../stores/pagesStore'
 import './EditorArea.css'
 
 export function EditorArea(): React.JSX.Element {

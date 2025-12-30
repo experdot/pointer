@@ -28,3 +28,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 隐藏拖拽图标 */
+.explorer-tree .ant-tree-draggable-icon {
+  display: none;
+}

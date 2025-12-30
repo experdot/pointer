@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useEffect } from 'react'
 import { Typography } from 'antd'
-import { useLayoutStore, type ActivityPanel } from '../../stores/layoutStore'
-import { Explorer } from '../panels/Explorer'
+import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
+import { Explorer } from '../../panels/Explorer'
 import './Sidebar.css'
 
 const { Text } = Typography

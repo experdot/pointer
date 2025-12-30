@@ -16,8 +16,8 @@ import {
   useSortable
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useTabsStore, type TabType } from '../../stores/tabsStore'
-import { usePages } from '../../hooks/usePages'
+import { useTabsStore, type TabType } from '../../../stores/tabsStore'
+import { usePages } from '../../../hooks/usePages'
 import './Tabs.css'
 
 const tabIcons: Record<TabType, React.ReactNode> = {

@@ -1,10 +1,6 @@
 import React, { useState } from 'react'
-import { Flex, Tooltip, Popover, Avatar, Typography, Button, Divider, List, Input } from 'antd'
+import { Flex, Avatar, Typography, Button, Divider, List, Input } from 'antd'
 import {
-  FileOutlined,
-  SearchOutlined,
-  StarOutlined,
-  UnorderedListOutlined,
   UserOutlined,
   SwapOutlined,
   LogoutOutlined,
@@ -12,27 +8,16 @@ import {
   ArrowLeftOutlined,
   PlusOutlined
 } from '@ant-design/icons'
-import { useLayoutStore, type ActivityPanel } from '../../stores/layoutStore'
-import { useAccountStore } from '../../stores/accountStore'
-import { switchAccount, createAccount, logout } from '../../services/accountService'
-import './ActivityBar.css'
+import { useAccountStore } from '../../../stores/accountStore'
+import { switchAccount, createAccount, logout } from '../../../services/accountService'
 
 const { Text } = Typography
 
-interface ActivityItem {
-  key: ActivityPanel
-  icon: React.ReactNode
-  title: string
+interface UserProfileCardProps {
+  onClose: () => void
 }
 
-const activities: ActivityItem[] = [
-  { key: 'explorer', icon: <FileOutlined />, title: '资源管理器' },
-  { key: 'search', icon: <SearchOutlined />, title: '搜索' },
-  { key: 'favorites', icon: <StarOutlined />, title: '收藏' },
-  { key: 'tasks', icon: <UnorderedListOutlined />, title: '任务' }
-]
-
-function UserProfileCard({ onClose }: { onClose: () => void }): React.JSX.Element {
+export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.Element {
   const { accounts, currentAccountId } = useAccountStore()
   const currentAccount = accounts.find((a) => a.id === currentAccountId)
   const [showAccountList, setShowAccountList] = useState(false)
@@ -180,44 +165,6 @@ function UserProfileCard({ onClose }: { onClose: () => void }): React.JSX.Elemen
       >
         退出登录
       </Button>
-    </Flex>
-  )
-}
-
-export function ActivityBar(): React.JSX.Element {
-  const { activePanel, sidebarVisible, setActivePanel } = useLayoutStore()
-  const { accounts, currentAccountId } = useAccountStore()
-  const currentAccount = accounts.find((a) => a.id === currentAccountId)
-  const [popoverOpen, setPopoverOpen] = useState(false)
-
-  return (
-    <Flex className="activity-bar" vertical justify="space-between">
-      <Flex vertical>
-        {activities.map((item) => (
-          <Tooltip key={item.key} title={item.title} placement="right">
-            <button
-              className={`activity-bar-item ${activePanel === item.key && sidebarVisible ? 'active' : ''}`}
-              onClick={() => setActivePanel(item.key)}
-            >
-              {item.icon}
-            </button>
-          </Tooltip>
-        ))}
-      </Flex>
-      <Flex vertical className="activity-bar-bottom">
-        <Popover
-          content={<UserProfileCard onClose={() => setPopoverOpen(false)} />}
-          trigger="click"
-          placement="rightBottom"
-          arrow={false}
-          open={popoverOpen}
-          onOpenChange={setPopoverOpen}
-        >
-          <button className="activity-bar-item activity-bar-avatar">
-            <Avatar size={28} icon={<UserOutlined />} src={currentAccount?.avatar} />
-          </button>
-        </Popover>
-      </Flex>
     </Flex>
   )
 }
