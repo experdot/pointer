@@ -419,8 +419,6 @@ export default function DataManagement() {
             clearStoreState('search-store'),
             clearStoreState('tabs-store'),
             clearStoreState('ui-store'),
-            clearStoreState('object-store'),
-            clearStoreState('crosstab-store'),
             clearStoreState('ai-tasks-store'),
             clearStoreState('favorites-store')
             // pages 和 folders 已经在 clearAllPages() 中处理了

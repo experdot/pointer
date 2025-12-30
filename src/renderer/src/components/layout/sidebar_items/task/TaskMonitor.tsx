@@ -21,8 +21,6 @@ import {
   StopOutlined,
   DeleteOutlined,
   MessageOutlined,
-  TableOutlined,
-  NodeIndexOutlined,
   RedoOutlined,
   EditOutlined,
   SwapOutlined,
@@ -43,10 +41,6 @@ const getTaskIcon = (type: AITaskType) => {
   switch (type) {
     case 'chat':
       return <MessageOutlined />
-    case 'crosstab_cell':
-      return <TableOutlined />
-    case 'object_generation':
-      return <NodeIndexOutlined />
     case 'retry':
       return <RedoOutlined />
     case 'edit_resend':
@@ -81,10 +75,6 @@ const getTaskTypeName = (type: AITaskType) => {
   switch (type) {
     case 'chat':
       return '聊天对话'
-    case 'crosstab_cell':
-      return '交叉分析单元格'
-    case 'object_generation':
-      return '对象生成'
     case 'retry':
       return '重试消息'
     case 'edit_resend':
@@ -279,37 +269,6 @@ export default function TaskMonitor() {
           </Descriptions.Item>
         )
       }
-    }
-
-    if (context.crosstab) {
-      items.push(
-        <Descriptions.Item key="horizontal" label="横轴项">
-          <Text copyable={{ text: context.crosstab.horizontalItem }}>
-            {context.crosstab.horizontalItem}
-          </Text>
-        </Descriptions.Item>,
-        <Descriptions.Item key="vertical" label="纵轴项">
-          <Text copyable={{ text: context.crosstab.verticalItem }}>
-            {context.crosstab.verticalItem}
-          </Text>
-        </Descriptions.Item>,
-        <Descriptions.Item key="metadata" label="元数据">
-          <Text copyable={{ text: JSON.stringify(context.crosstab.metadata, null, 2) }}>
-            {JSON.stringify(context.crosstab.metadata, null, 2)}
-          </Text>
-        </Descriptions.Item>
-      )
-    }
-
-    if (context.object) {
-      items.push(
-        <Descriptions.Item key="node-id" label="节点ID">
-          <Text copyable={{ text: context.object.nodeId }}>{context.object.nodeId}</Text>
-        </Descriptions.Item>,
-        <Descriptions.Item key="prompt" label="生成提示">
-          <Text copyable={{ text: context.object.prompt }}>{context.object.prompt}</Text>
-        </Descriptions.Item>
-      )
     }
 
     if (context.retry) {

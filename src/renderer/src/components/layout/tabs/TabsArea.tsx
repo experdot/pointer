@@ -8,9 +8,7 @@ import {
   CloseCircleOutlined,
   DeleteOutlined,
   SettingOutlined,
-  PlusOutlined,
-  TableOutlined,
-  BlockOutlined
+  PlusOutlined
 } from '@ant-design/icons'
 import {
   DndContext,
@@ -36,8 +34,6 @@ import { useTabsStore } from '../../../stores/tabsStore'
 import { useUIStore } from '../../../stores/uiStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { ChatWindow, ChatWindowRef } from '../../pages/chat/index'
-import { CrosstabChat } from '../../pages/crosstab/index'
-import { ObjectPage } from '../../pages/object/index'
 import SettingsPage from '../../pages/settings/SettingsPage'
 import FavoriteDetailPage from '../../pages/favorites/FavoriteDetailPage'
 import { useFavoritesStore } from '../../../stores/favoritesStore'
@@ -59,11 +55,7 @@ const TabLabelContent: React.FC<TabLabelContentProps> = ({
 }) => {
   return (
     <span className={`tab-label-content ${isDragging ? 'dragging' : ''}`}>
-      {chat.type === 'crosstab' ? (
-        <TableOutlined className="message-icon" />
-      ) : chat.type === 'object' ? (
-        <BlockOutlined className="message-icon" />
-      ) : chat.type === 'settings' ? (
+      {chat.type === 'settings' ? (
         <SettingOutlined className="message-icon" />
       ) : (
         <MessageOutlined className="message-icon" />
@@ -120,8 +112,6 @@ export default function TabsArea() {
   const {
     pages,
     createAndOpenChat,
-    createAndOpenCrosstabChat,
-    createAndOpenObjectChat,
     createAndOpenSettingsPage
   } = usePagesStore()
   const {
@@ -175,16 +165,6 @@ export default function TabsArea() {
   const handleCreateChat = useCallback(() => {
     createAndOpenChat('新建聊天')
   }, [createAndOpenChat])
-
-  // 创建交叉视图聊天
-  const handleCreateCrosstabChat = useCallback(() => {
-    createAndOpenCrosstabChat('新建交叉视图')
-  }, [createAndOpenCrosstabChat])
-
-  // 创建对象页面聊天
-  const handleCreateObjectChat = useCallback(() => {
-    createAndOpenObjectChat('新建对象页面')
-  }, [createAndOpenObjectChat])
 
   // 处理打开设置
   const handleOpenSettings = useCallback(() => {
@@ -437,54 +417,6 @@ export default function TabsArea() {
       }
     }
 
-    // 对于交叉视图聊天，使用不同的状态计算
-    if (chat.type === 'crosstab') {
-      const currentStep = chat.crosstabData?.currentStep || 0
-      const totalSteps = chat.crosstabData?.steps?.length || 4
-      const completedSteps =
-        chat.crosstabData?.steps?.filter((step: any) => step.isCompleted).length || 0
-
-      if (completedSteps === totalSteps) {
-        return {
-          status: 'success' as const,
-          text: '交叉表已完成'
-        }
-      } else if (completedSteps > 0) {
-        return {
-          status: 'processing' as const,
-          text: `进度: ${completedSteps}/${totalSteps}`
-        }
-      } else {
-        return {
-          status: 'default' as const,
-          text: '未开始生成'
-        }
-      }
-    }
-
-    // 对于对象页面，使用节点数量计算状态
-    if (chat.type === 'object') {
-      const nodeCount = chat.objectData?.nodes ? Object.keys(chat.objectData.nodes).length : 0
-      const hasGenerationHistory = chat.objectData?.generationHistory?.length > 0
-
-      if (nodeCount > 1 && hasGenerationHistory) {
-        return {
-          status: 'success' as const,
-          text: `已创建 ${nodeCount} 个节点`
-        }
-      } else if (nodeCount > 1) {
-        return {
-          status: 'processing' as const,
-          text: `包含 ${nodeCount} 个节点`
-        }
-      } else {
-        return {
-          status: 'default' as const,
-          text: '空对象结构'
-        }
-      }
-    }
-
     // 普通聊天的状态计算
     const messageCount = chat.messages?.length || 0
     const hasStreamingMessage = !!chat.streamingMessage
@@ -543,7 +475,7 @@ export default function TabsArea() {
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ color: '#262626', marginBottom: 8 }}>暂无打开的聊天</h3>
                 <p style={{ color: '#8c8c8c', marginBottom: 24 }}>
-                  创建一个新聊天开始对话，或者尝试新的交叉视图分析
+                  创建一个新聊天开始对话
                 </p>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                   <Button
@@ -553,22 +485,6 @@ export default function TabsArea() {
                     onClick={handleCreateChat}
                   >
                     新建聊天
-                  </Button>
-                  <Button
-                    type="default"
-                    size="large"
-                    icon={<TableOutlined />}
-                    onClick={handleCreateCrosstabChat}
-                  >
-                    新建交叉视图
-                  </Button>
-                  <Button
-                    type="default"
-                    size="large"
-                    icon={<BlockOutlined />}
-                    onClick={handleCreateObjectChat}
-                  >
-                    新建对象页面
                   </Button>
                 </div>
               </div>
@@ -637,11 +553,7 @@ export default function TabsArea() {
         key: chatId,
         label: tabLabel,
         children:
-          chat.type === 'crosstab' ? (
-            <CrosstabChat chatId={chatId} />
-          ) : chat.type === 'object' ? (
-            <ObjectPage chatId={chatId} />
-          ) : chat.type === 'settings' ? (
+          chat.type === 'settings' ? (
             <SettingsPage chatId={chatId} defaultActiveTab={chat.data?.defaultActiveTab} />
           ) : (
             <ChatWindow chatId={chatId} ref={(ref) => setChatWindowRef(chatId, ref)} />

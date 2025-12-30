@@ -5,8 +5,6 @@ import {
   PlusOutlined,
   FolderAddOutlined,
   DeleteOutlined,
-  TableOutlined,
-  BlockOutlined,
   DownOutlined
 } from '@ant-design/icons'
 
@@ -14,8 +12,6 @@ interface SidebarActionsProps {
   collapsed?: boolean
   hasCheckedItems?: boolean
   onCreateChat: () => void
-  onCreateCrosstabChat: () => void
-  onCreateObjectChat: () => void
   onCreateFolder: () => void
   onBatchDelete?: () => void
 }
@@ -24,24 +20,10 @@ export default function SidebarActions({
   collapsed = false,
   hasCheckedItems = false,
   onCreateChat,
-  onCreateCrosstabChat,
-  onCreateObjectChat,
   onCreateFolder,
   onBatchDelete
 }: SidebarActionsProps) {
   const createOptions: MenuProps['items'] = [
-    {
-      key: 'crosstab',
-      label: '新建交叉视图',
-      icon: <TableOutlined />,
-      onClick: onCreateCrosstabChat
-    },
-    {
-      key: 'object',
-      label: '新建对象页面',
-      icon: <BlockOutlined />,
-      onClick: onCreateObjectChat
-    },
     {
       key: 'folder',
       label: '新建文件夹',

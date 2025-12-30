@@ -387,8 +387,6 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
               <Descriptions bordered size="small" column={1}>
                 <Descriptions.Item label="页面类型">
                   {pageSnapshot.type === 'regular' && '普通聊天'}
-                  {pageSnapshot.type === 'crosstab' && '交叉分析'}
-                  {pageSnapshot.type === 'object' && '对象页面'}
                   {pageSnapshot.type === 'settings' && '设置'}
                 </Descriptions.Item>
                 <Descriptions.Item label="创建时间">
@@ -593,8 +591,6 @@ export default function FavoriteDetailPage({ favoriteId }: FavoriteDetailPagePro
               {favorite.source.pageType && (
                 <Descriptions.Item label="页面类型">
                   {favorite.source.pageType === 'regular' && '普通聊天'}
-                  {favorite.source.pageType === 'crosstab' && '交叉分析'}
-                  {favorite.source.pageType === 'object' && '对象页面'}
                 </Descriptions.Item>
               )}
               <Descriptions.Item label="收藏时间">

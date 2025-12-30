@@ -12,8 +12,6 @@ const OBJECT_STORES = {
   SEARCH: 'search',
   TABS: 'tabs',
   UI: 'ui',
-  OBJECTS: 'objects',
-  CROSSTAB: 'crosstab',
   AI_TASKS: 'ai_tasks',
   FAVORITES: 'favorites',
   FAVORITE_FOLDERS: 'favorite_folders'
@@ -525,8 +523,6 @@ function getObjectStoreName(storeName: string): string {
     'search-store': OBJECT_STORES.SEARCH,
     'tabs-store': OBJECT_STORES.TABS,
     'ui-store': OBJECT_STORES.UI,
-    'object-store': OBJECT_STORES.OBJECTS,
-    'crosstab-store': OBJECT_STORES.CROSSTAB,
     'ai-tasks-store': OBJECT_STORES.AI_TASKS,
     'favorites-store': OBJECT_STORES.FAVORITES
   }

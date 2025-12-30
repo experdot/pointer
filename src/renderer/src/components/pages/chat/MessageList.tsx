@@ -324,7 +324,7 @@ const MessageList = React.memo(function MessageList({
   )
 
   useEffect(() => {
-    const currentMessagesLength = messages.length
+    const currentMessagesLength = messages?.length ?? 0
     const currentPathString = JSON.stringify(currentPath)
     const prevPathString = JSON.stringify(prevCurrentPath.current)
 
@@ -380,7 +380,7 @@ const MessageList = React.memo(function MessageList({
     prevCurrentPath.current = [...currentPath]
     prevSelectedMessageId.current = selectedMessageId
   }, [
-    messages.length,
+    messages?.length,
     currentStreamingContent,
     currentStreamingReasoningContent,
     currentPath,

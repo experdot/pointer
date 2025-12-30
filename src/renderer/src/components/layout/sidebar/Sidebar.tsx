@@ -33,8 +33,6 @@ export default function Sidebar({
     folders,
     createFolder,
     createAndOpenChat,
-    createAndOpenCrosstabChat,
-    createAndOpenObjectChat,
     deleteMultiplePages
   } = usePagesStore()
   const { openTab } = useTabsStore()
@@ -58,38 +56,6 @@ export default function Sidebar({
 
     createAndOpenChat('新建聊天', folderId)
   }, [selectedNodeType, selectedNodeId, pages, createAndOpenChat])
-
-  const handleCreateCrosstabChat = useCallback(() => {
-    // 根据当前选中的节点决定新交叉视图聊天的位置
-    let folderId: string | undefined = undefined
-
-    if (selectedNodeType === 'folder' && selectedNodeId) {
-      // 如果选中的是文件夹，在文件夹内创建聊天
-      folderId = selectedNodeId
-    } else if (selectedNodeType === 'chat' && selectedNodeId) {
-      // 如果选中的是聊天，找到聊天所在的文件夹（如果有的话）
-      const selectedChat = pages.find((chat) => chat.id === selectedNodeId)
-      folderId = selectedChat?.folderId
-    }
-
-    createAndOpenCrosstabChat('新建交叉视图', folderId)
-  }, [selectedNodeType, selectedNodeId, pages, createAndOpenCrosstabChat])
-
-  const handleCreateObjectChat = useCallback(() => {
-    // 根据当前选中的节点决定新对象页面的位置
-    let folderId: string | undefined = undefined
-
-    if (selectedNodeType === 'folder' && selectedNodeId) {
-      // 如果选中的是文件夹，在文件夹内创建对象页面
-      folderId = selectedNodeId
-    } else if (selectedNodeType === 'chat' && selectedNodeId) {
-      // 如果选中的是聊天，找到聊天所在的文件夹（如果有的话）
-      const selectedChat = pages.find((chat) => chat.id === selectedNodeId)
-      folderId = selectedChat?.folderId
-    }
-
-    createAndOpenObjectChat('新建对象页面', folderId)
-  }, [selectedNodeType, selectedNodeId, pages, createAndOpenObjectChat])
 
   const handleCreateFolder = useCallback(() => {
     createFolder('新建文件夹')
@@ -128,8 +94,6 @@ export default function Sidebar({
                 collapsed={false}
                 hasCheckedItems={hasCheckedItems}
                 onCreateChat={handleCreateChat}
-                onCreateCrosstabChat={handleCreateCrosstabChat}
-                onCreateObjectChat={handleCreateObjectChat}
                 onCreateFolder={handleCreateFolder}
                 onBatchDelete={handleBatchDelete}
               />

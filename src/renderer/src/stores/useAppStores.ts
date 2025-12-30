@@ -5,8 +5,6 @@ import { useSearchStore } from './searchStore'
 import { useSettingsStore } from './settingsStore'
 import { useAITasksStore } from './aiTasksStore'
 import { useMessagesStore } from './messagesStore'
-import { useCrosstabStore } from './crosstabStore'
-import { useObjectStore } from './objectStore'
 
 // 组合所有stores的访问
 export const useAppStores = () => {
@@ -17,8 +15,6 @@ export const useAppStores = () => {
   const settingsStore = useSettingsStore()
   const aiTasksStore = useAITasksStore()
   const messagesStore = useMessagesStore()
-  const crosstabStore = useCrosstabStore()
-  const objectStore = useObjectStore()
 
   return {
     // 页面管理
@@ -40,13 +36,7 @@ export const useAppStores = () => {
     aiTasks: aiTasksStore,
 
     // 消息管理
-    messages: messagesStore,
-
-    // 交叉表管理
-    crosstab: crosstabStore,
-
-    // 对象管理
-    object: objectStore
+    messages: messagesStore
   } as const
 }
 
@@ -58,8 +48,6 @@ export const useSearch = () => useSearchStore()
 export const useSettings = () => useSettingsStore()
 export const useAITasks = () => useAITasksStore()
 export const useMessages = () => useMessagesStore()
-export const useCrosstab = () => useCrosstabStore()
-export const useObject = () => useObjectStore()
 
 // 全局store状态清理
 export const clearAllStores = () => {
@@ -87,9 +75,7 @@ export const subscribeToStores = (callback: () => void) => {
     useSearchStore.subscribe(callback),
     useSettingsStore.subscribe(callback),
     useAITasksStore.subscribe(callback),
-    useMessagesStore.subscribe(callback),
-    useCrosstabStore.subscribe(callback),
-    useObjectStore.subscribe(callback)
+    useMessagesStore.subscribe(callback)
   ]
 
   // 返回清理函数

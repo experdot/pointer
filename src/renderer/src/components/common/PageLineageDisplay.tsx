@@ -2,12 +2,9 @@ import React from 'react'
 import { Card, Typography, Space, Tag, Button, Empty, Divider, Timeline } from 'antd'
 import {
   UserOutlined,
-  NodeIndexOutlined,
-  TableOutlined,
   MessageOutlined,
   ArrowRightOutlined,
   HistoryOutlined,
-  BranchesOutlined,
   InfoCircleOutlined,
   LinkOutlined,
   CaretRightOutlined,
@@ -74,14 +71,6 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     switch (source) {
       case 'user':
         return <UserOutlined />
-      case 'object_to_crosstab':
-        return <NodeIndexOutlined />
-      case 'crosstab_to_chat':
-        return <TableOutlined />
-      case 'object_to_chat':
-        return <NodeIndexOutlined />
-      case 'chat_to_object':
-        return <MessageOutlined />
       default:
         return <InfoCircleOutlined />
     }
@@ -91,14 +80,6 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     switch (source) {
       case 'user':
         return '用户手动创建'
-      case 'object_to_crosstab':
-        return '从对象页面生成'
-      case 'crosstab_to_chat':
-        return '从交叉分析表生成'
-      case 'object_to_chat':
-        return '从对象节点生成'
-      case 'chat_to_object':
-        return '从聊天页面生成'
       default:
         return '其他来源'
     }
@@ -108,10 +89,6 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     switch (type) {
       case 'regular':
         return <MessageOutlined />
-      case 'crosstab':
-        return <TableOutlined />
-      case 'object':
-        return <NodeIndexOutlined />
       default:
         return <InfoCircleOutlined />
     }
@@ -121,10 +98,6 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
     switch (type) {
       case 'regular':
         return '聊天页面'
-      case 'crosstab':
-        return '交叉分析表'
-      case 'object':
-        return '对象页面'
       default:
         return '未知页面'
     }
@@ -142,15 +115,7 @@ const PageLineageDisplay: React.FC<PageLineageDisplayProps> = ({
   const getContextDescription = () => {
     if (!lineage?.sourceContext) return null
 
-    const { objectCrosstab, crosstabChat, customContext } = lineage.sourceContext
-
-    if (objectCrosstab) {
-      return `基于对象节点 "${objectCrosstab.horizontalNodeName}" 和 "${objectCrosstab.verticalNodeName}" 的交叉分析`
-    }
-
-    if (crosstabChat) {
-      return `基于交叉分析表单元格 "${crosstabChat.horizontalItem} × ${crosstabChat.verticalItem}" 的深度分析`
-    }
+    const { customContext } = lineage.sourceContext
 
     if (customContext) {
       return JSON.stringify(customContext, null, 2)

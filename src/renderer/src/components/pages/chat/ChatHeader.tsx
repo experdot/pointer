@@ -289,7 +289,7 @@ export default function ChatHeader({
 
     // 基本信息
     metadata.push(
-      `类型: ${chat.type === 'regular' ? '普通聊天' : chat.type === 'crosstab' ? '交叉表' : chat.type === 'object' ? '对象' : chat.type}`
+      `类型: ${chat.type === 'regular' ? '普通聊天' : chat.type === 'settings' ? '设置' : chat.type}`
     )
     metadata.push(`创建时间: ${formatExactDateTime(chat.createdAt)}`)
     metadata.push(`更新时间: ${formatExactDateTime(chat.updatedAt)}`)
@@ -307,10 +307,6 @@ export default function ChatHeader({
       metadata.push(`\n--- 溯源信息 ---`)
       const sourceMap = {
         user: '用户创建',
-        object_to_crosstab: '对象→交叉表',
-        crosstab_to_chat: '交叉表→聊天',
-        object_to_chat: '对象→聊天',
-        chat_to_object: '聊天→对象',
         other: '其他'
       }
       metadata.push(`来源: ${sourceMap[chat.lineage.source] || chat.lineage.source}`)
@@ -329,7 +325,7 @@ export default function ChatHeader({
     }
 
     // 消息统计
-    if (messages.length > 0) {
+    if (messages && messages.length > 0) {
       metadata.push(`\n--- 消息统计 ---`)
       metadata.push(`总消息数: ${messages.length}`)
       const userMessages = messages.filter((m) => m.role === 'user').length
@@ -420,7 +416,7 @@ export default function ChatHeader({
         <div className="chat-header-right">
           <Space>
             {/* 消息折叠/展开下拉按钮 */}
-            {messages.length > 0 && (
+            {messages && messages.length > 0 && (
               <Dropdown.Button
                 type="text"
                 menu={{ items: collapseOptions }}

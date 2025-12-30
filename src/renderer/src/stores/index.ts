@@ -6,8 +6,6 @@ export { useSearchStore } from './searchStore'
 export { useSettingsStore } from './settingsStore'
 export { useAITasksStore } from './aiTasksStore'
 export { useMessagesStore } from './messagesStore'
-export { useCrosstabStore } from './crosstabStore'
-export { useObjectStore } from './objectStore'
 export { useUpdateStore } from './updateStore'
 
 // 组合所有stores的hooks

@@ -6,12 +6,11 @@
 
 [中文版](README.zh-CN.md) | **English**
 
-An AI chat application built with Electron + React + TypeScript, supporting **multi-model conversations**, **intelligent crosstab data analysis**, and **knowledge organization management**.
+An AI chat application built with Electron + React + TypeScript, supporting **multi-model conversations** and **knowledge organization management**.
 
-基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。
+基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**和**知识组织管理**。
 
 - 博客1：[AI 聊天应用的 10 条高级需求](https://www.cnblogs.com/experdot/p/18924253)
-- 博客2：[解决了AI聊天的 10 个痛点后，新的功能：交叉分析表](https://www.cnblogs.com/experdot/p/18974641)
 
 [查看中文 README 介绍](README.zh-CN.md) 
 
@@ -33,8 +32,6 @@ An AI chat application built with Electron + React + TypeScript, supporting **mu
 
 ### Unique Features
 
-- **AI Crosstab Analysis**: Automatically generate structured comparison analysis tables
-- **AI Object Manager**: Visual knowledge data structure management
 - **Data Import/Export**: Support for mainstream AI platform data migration (OpenAI ChatGPT / Deepseek Chat)
 
 ### Knowledge Management
@@ -47,14 +44,6 @@ An AI chat application built with Electron + React + TypeScript, supporting **mu
 #### Main Interface
 
 ![Main Interface](./Screenshot-1.png)
-
-#### Crosstab Analysis
-
-![Crosstab Analysis](./Screenshot-2.png)
-
-#### Object Manager
-
-![Object Manager](./Screenshot-3.png)
 
 ## Quick Start
 
@@ -89,31 +78,6 @@ pnpm build:linux  # Linux
 3. Select default model and test connection
 
 ## Core Features
-
-### Crosstab Analysis
-
-Convert any topic into structured comparison analysis tables, suitable for:
-
-- Academic research literature comparison
-- Business decision solution evaluation
-- Educational material knowledge organization
-- Product feature competitive analysis
-
-Workflow:
-
-1. Input analysis topic
-2. AI automatically generates table structure
-3. Fill intersection data
-4. Manual editing and optimization
-
-### Object Browser
-
-Visualize complex data structures with support for:
-
-- Tree structure display
-- AI automatic node generation
-- Manual editing and organization
-- Structured data export
 
 ### Chat Branch Management
 

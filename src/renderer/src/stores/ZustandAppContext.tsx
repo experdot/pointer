@@ -7,8 +7,6 @@ import { useTabsStore } from './tabsStore'
 import { useUIStore } from './uiStore'
 import { useSearchStore } from './searchStore'
 import { useMessagesStore } from './messagesStore'
-import { useCrosstabStore } from './crosstabStore'
-import { useObjectStore } from './objectStore'
 import { useAITasksStore } from './aiTasksStore'
 
 // 创建一个轻量级的Context用于数据初始化
@@ -108,32 +106,6 @@ export function ZustandAppProvider({ children }: { children: ReactNode }) {
               }
             }
             checkMessages()
-          }),
-
-          // 等待 crosstab store 加载完成
-          new Promise<void>((resolve) => {
-            const checkCrosstab = () => {
-              if (useCrosstabStore.persist.hasHydrated()) {
-                console.log('Crosstab store 已加载完成')
-                resolve()
-              } else {
-                setTimeout(checkCrosstab, 10)
-              }
-            }
-            checkCrosstab()
-          }),
-
-          // 等待 object store 加载完成
-          new Promise<void>((resolve) => {
-            const checkObject = () => {
-              if (useObjectStore.persist.hasHydrated()) {
-                console.log('Object store 已加载完成')
-                resolve()
-              } else {
-                setTimeout(checkObject, 10)
-              }
-            }
-            checkObject()
           }),
 
           // 等待 aiTasks store 加载完成

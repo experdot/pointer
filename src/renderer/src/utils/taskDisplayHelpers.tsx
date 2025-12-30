@@ -3,10 +3,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   StopOutlined,
-  MessageOutlined,
-  CodeOutlined,
-  TableOutlined,
-  BulbOutlined
+  MessageOutlined
 } from '@ant-design/icons'
 import type { AITaskStatus, AITaskType } from '../types/type'
 
@@ -16,11 +13,6 @@ export const getTaskIcon = (type: AITaskType) => {
     case 'retry':
     case 'edit_resend':
     case 'model_change':
-      return <MessageOutlined />
-    case 'crosstab_cell':
-      return <TableOutlined />
-    case 'object_generation':
-      return <BulbOutlined />
     default:
       return <MessageOutlined />
   }
@@ -71,10 +63,6 @@ export const getTaskTypeName = (type: AITaskType): string => {
       return '编辑重发'
     case 'model_change':
       return '模型切换'
-    case 'crosstab_cell':
-      return '交叉表单元格'
-    case 'object_generation':
-      return '对象生成'
     default:
       return '未知'
   }
