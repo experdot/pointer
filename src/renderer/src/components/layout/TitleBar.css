@@ -1,0 +1,41 @@
+.title-bar {
+  height: 40px;
+  background: var(--ant-color-bg-layout);
+  border-bottom: 1px solid var(--ant-color-border);
+  user-select: none;
+}
+
+.title-bar-drag {
+  -webkit-app-region: drag;
+  padding-left: 12px;
+  height: 100%;
+}
+
+.title-bar-title {
+  color: var(--ant-color-text-secondary);
+}
+
+.title-bar-controls {
+  -webkit-app-region: no-drag;
+}
+
+.title-bar-btn {
+  width: 46px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--ant-color-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-bar-btn:hover {
+  background: var(--ant-color-fill-secondary);
+}
+
+.title-bar-btn-close:hover {
+  background: #e81123;
+  color: #fff;
+}

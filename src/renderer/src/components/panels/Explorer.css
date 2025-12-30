@@ -1,0 +1,30 @@
+.explorer {
+  height: 100%;
+}
+
+.explorer-toolbar {
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border);
+}
+
+.explorer-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.explorer-tree .ant-tree {
+  background: transparent;
+}
+
+.explorer-tree .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.explorer-tree-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

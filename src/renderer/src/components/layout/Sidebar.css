@@ -1,0 +1,43 @@
+.sidebar {
+  background: var(--ant-color-bg-container);
+  border-right: 1px solid var(--ant-color-border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ant-color-border);
+}
+
+.sidebar-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ant-color-text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sidebar-resizer:hover {
+  background: var(--ant-color-primary);
+  opacity: 0.3;
+}
