@@ -7,12 +7,19 @@ import { useTabsStore } from '../stores/tabsStore'
 export function createPage(title?: string, folderId?: string): ChatPage {
   const store = usePagesStore.getState()
 
+  // 计算同级的最大 order（包括文件夹和页面）
+  const pagesInSameLevel = store.pages.filter((p) => p.parentFolderId === folderId)
+  const foldersInSameLevel = store.folders.filter((f) => f.parentFolderId === folderId)
+  const maxPageOrder = pagesInSameLevel.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
+  const maxFolderOrder = foldersInSameLevel.reduce((max, f) => Math.max(max, f.order ?? 0), -1)
+  const maxOrder = Math.max(maxPageOrder, maxFolderOrder)
+
   const page: ChatPage = {
     id: uuidv4(),
     title: title || '新对话',
     parentFolderId: folderId,
     createdAt: Date.now(),
-    order: store.pages.length,
+    order: maxOrder + 1,
     data: {
       messages: []
     }
@@ -64,13 +71,20 @@ export function reorderPages(pageIds: string[]): void {
 export function createFolder(name?: string, parentFolderId?: string): PageFolder {
   const store = usePagesStore.getState()
 
+  // 计算同级的最大 order（包括文件夹和页面）
+  const foldersInSameLevel = store.folders.filter((f) => f.parentFolderId === parentFolderId)
+  const pagesInSameLevel = store.pages.filter((p) => p.parentFolderId === parentFolderId)
+  const maxFolderOrder = foldersInSameLevel.reduce((max, f) => Math.max(max, f.order ?? 0), -1)
+  const maxPageOrder = pagesInSameLevel.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
+  const maxOrder = Math.max(maxFolderOrder, maxPageOrder)
+
   const folder: PageFolder = {
     id: uuidv4(),
     name: name || '新文件夹',
     parentFolderId,
     expanded: true,
     createdAt: Date.now(),
-    order: store.folders.length
+    order: maxOrder + 1
   }
 
   store.addFolder(folder)

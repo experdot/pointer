@@ -1,26 +1,36 @@
 import { useMemo, useCallback } from 'react'
 import { usePagesStore } from '../stores/pagesStore'
+import type { ChatPage, PageFolder } from '../types/type'
 import * as pagesService from '../services/pagesService'
 
 export function usePages() {
   const { pages, folders } = usePagesStore()
 
-  // 获取根级别的页面（不在任何文件夹中）
+  // 获取根级别的页面和文件夹，混合排序
+  const rootItems = useMemo(() => {
+    const rootPages = pages.filter((p) => !p.parentFolderId)
+    const rootFolders = folders.filter((f) => !f.parentFolderId)
+    return [...rootFolders, ...rootPages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  }, [pages, folders])
+
   const rootPages = useMemo(
-    () =>
-      pages
-        .filter((p) => !p.parentFolderId)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-    [pages]
+    () => rootItems.filter((item) => 'data' in item) as ChatPage[],
+    [rootItems]
   )
 
-  // 获取根级别的文件夹
   const rootFolders = useMemo(
-    () =>
-      folders
-        .filter((f) => !f.parentFolderId)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-    [folders]
+    () => rootItems.filter((item) => !('data' in item)) as PageFolder[],
+    [rootItems]
+  )
+
+  // 获取文件夹下的页面和子文件夹，混合排序
+  const getItemsInFolder = useCallback(
+    (folderId: string | undefined) => {
+      const pagesInFolder = pages.filter((p) => p.parentFolderId === folderId)
+      const subFolders = folders.filter((f) => f.parentFolderId === folderId)
+      return [...subFolders, ...pagesInFolder].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    },
+    [pages, folders]
   )
 
   // 获取文件夹下的页面
@@ -46,6 +56,8 @@ export function usePages() {
     folders,
     rootPages,
     rootFolders,
+    rootItems,
+    getItemsInFolder,
     getPagesInFolder,
     getSubFolders,
     createPage: pagesService.createPage,

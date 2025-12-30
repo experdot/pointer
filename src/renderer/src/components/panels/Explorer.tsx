@@ -33,10 +33,8 @@ export function Explorer(): React.JSX.Element {
   const {
     pages,
     folders,
-    rootPages,
-    rootFolders,
-    getPagesInFolder,
-    getSubFolders,
+    rootItems,
+    getItemsInFolder,
     createPage,
     deletePage,
     updatePage,
@@ -60,8 +58,7 @@ export function Explorer(): React.JSX.Element {
   // 构建树数据
   const treeData = useMemo(() => {
     const buildFolderNode = (folder: PageFolder): TreeNodeData => {
-      const subFolders = getSubFolders(folder.id)
-      const pagesInFolder = getPagesInFolder(folder.id)
+      const itemsInFolder = getItemsInFolder(folder.id)
 
       return {
         key: folder.id,
@@ -69,10 +66,9 @@ export function Explorer(): React.JSX.Element {
         isFolder: true,
         data: folder,
         icon: folder.expanded ? <FolderOpenOutlined /> : <FolderOutlined />,
-        children: [
-          ...subFolders.map(buildFolderNode),
-          ...pagesInFolder.map(buildPageNode)
-        ]
+        children: itemsInFolder.map((item) =>
+          'data' in item ? buildPageNode(item as ChatPage) : buildFolderNode(item as PageFolder)
+        )
       }
     }
 
@@ -85,11 +81,10 @@ export function Explorer(): React.JSX.Element {
       isLeaf: true
     })
 
-    return [
-      ...rootFolders.map(buildFolderNode),
-      ...rootPages.map(buildPageNode)
-    ]
-  }, [folders, pages, rootFolders, rootPages, getSubFolders, getPagesInFolder])
+    return rootItems.map((item) =>
+      'data' in item ? buildPageNode(item as ChatPage) : buildFolderNode(item as PageFolder)
+    )
+  }, [folders, pages, rootItems, getItemsInFolder])
 
   // 展开的文件夹
   const expandedKeys = useMemo(
@@ -149,26 +144,174 @@ export function Explorer(): React.JSX.Element {
 
     if (draggedPage) {
       // 页面拖拽
-      if (dropNodeData?.isFolder) {
-        // 拖到文件夹上，移动到该文件夹
-        movePage(dragKey, dropKey)
+      if (dropNodeData?.isFolder && !info.dropToGap) {
+        // 拖到文件夹内部（不是间隙），放到第一个位置
+        const targetFolderId = dropKey
+
+        // 获取目标文件夹内的所有项目
+        const itemsInFolder = [
+          ...pages.filter((p) => p.parentFolderId === targetFolderId && p.id !== dragKey),
+          ...folders.filter((f) => f.parentFolderId === targetFolderId)
+        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+        // 在开头插入被拖拽的页面
+        const newItems = [draggedPage, ...itemsInFolder]
+
+        // 批量更新 order 和 parentFolderId
+        newItems.forEach((item, index) => {
+          if ('data' in item) {
+            updatePage(item.id, {
+              order: index,
+              parentFolderId: targetFolderId
+            })
+          } else {
+            updateFolder(item.id, {
+              order: index,
+              parentFolderId: targetFolderId
+            })
+          }
+        })
       } else if (info.dropToGap) {
-        // 拖到间隙，移动到目标的同级目录
+        // 拖到间隙（同级位置），需要重新计算 order
         const targetPage = pages.find((p) => p.id === dropKey)
         const targetFolder = folders.find((f) => f.id === dropKey)
-        movePage(dragKey, targetPage?.parentFolderId ?? targetFolder?.parentFolderId)
+        const targetParentFolderId = targetPage?.parentFolderId ?? targetFolder?.parentFolderId
+
+        // 获取目标层级的所有项目（文件夹和页面混合）
+        const sameLevelItems = [
+          ...pages.filter((p) => p.parentFolderId === targetParentFolderId),
+          ...folders.filter((f) => f.parentFolderId === targetParentFolderId)
+        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+        // 移除被拖拽的页面
+        const withoutDragged = sameLevelItems.filter((item) => item.id !== dragKey)
+
+        // 找到目标的索引
+        const targetIndex = withoutDragged.findIndex((item) => item.id === dropKey)
+
+        // 判断是放在目标前面还是后面
+        const dropPos = info.dropPosition
+        const targetPos = Number(info.node.pos.split('-').pop())
+        const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
+
+        // 在新位置插入被拖拽的页面
+        withoutDragged.splice(insertIndex, 0, draggedPage)
+
+        // 批量更新 order 和 parentFolderId
+        withoutDragged.forEach((item, index) => {
+          if ('data' in item) {
+            // 是页面
+            updatePage(item.id, {
+              order: index,
+              parentFolderId: targetParentFolderId
+            })
+          } else {
+            // 是文件夹
+            updateFolder(item.id, {
+              order: index,
+              parentFolderId: targetParentFolderId
+            })
+          }
+        })
       }
     } else if (draggedFolder) {
-      // 文件夹拖拽（暂不支持，可后续扩展）
-      // TODO: 实现文件夹拖拽排序
+      // 文件夹拖拽
+      if (dropNodeData?.isFolder && !info.dropToGap) {
+        // 拖到另一个文件夹内部，放到第一个位置
+        const targetFolderId = dropKey
+
+        // 获取目标文件夹内的所有项目
+        const itemsInFolder = [
+          ...pages.filter((p) => p.parentFolderId === targetFolderId),
+          ...folders.filter((f) => f.parentFolderId === targetFolderId && f.id !== dragKey)
+        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+        // 在开头插入被拖拽的文件夹
+        const newItems = [draggedFolder, ...itemsInFolder]
+
+        // 批量更新 order 和 parentFolderId
+        newItems.forEach((item, index) => {
+          if ('data' in item) {
+            updatePage(item.id, {
+              order: index,
+              parentFolderId: targetFolderId
+            })
+          } else {
+            updateFolder(item.id, {
+              order: index,
+              parentFolderId: targetFolderId
+            })
+          }
+        })
+      } else if (info.dropToGap) {
+        // 拖到间隙（同级位置），需要重新计算 order
+        const targetPage = pages.find((p) => p.id === dropKey)
+        const targetFolder = folders.find((f) => f.id === dropKey)
+        const targetParentFolderId = targetPage?.parentFolderId ?? targetFolder?.parentFolderId
+
+        // 获取目标层级的所有项目（文件夹和页面混合）
+        const sameLevelItems = [
+          ...pages.filter((p) => p.parentFolderId === targetParentFolderId),
+          ...folders.filter((f) => f.parentFolderId === targetParentFolderId)
+        ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+        // 移除被拖拽的文件夹
+        const withoutDragged = sameLevelItems.filter((item) => item.id !== dragKey)
+
+        // 找到目标的索引
+        const targetIndex = withoutDragged.findIndex((item) => item.id === dropKey)
+
+        // 判断是放在目标前面还是后面
+        const dropPos = info.dropPosition
+        const targetPos = Number(info.node.pos.split('-').pop())
+        const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
+
+        // 在新位置插入被拖拽的文件夹
+        withoutDragged.splice(insertIndex, 0, draggedFolder)
+
+        // 批量更新 order 和 parentFolderId
+        withoutDragged.forEach((item, index) => {
+          if ('data' in item) {
+            // 是页面
+            updatePage(item.id, {
+              order: index,
+              parentFolderId: targetParentFolderId
+            })
+          } else {
+            // 是文件夹
+            updateFolder(item.id, {
+              order: index,
+              parentFolderId: targetParentFolderId
+            })
+          }
+        })
+      }
     }
+  }
+
+  // 控制拖拽放置规则
+  const handleAllowDrop: TreeProps['allowDrop'] = ({ dropNode, dropPosition }) => {
+    const dropNodeData = getTreeNodeData(dropNode as TreeDataNode)
+
+    // 如果目标是页面（叶子节点），只允许放在上方或下方（gap），不允许放在内部
+    if (dropNodeData && !dropNodeData.isFolder) {
+      return dropPosition !== 0
+    }
+
+    return true
   }
 
   // 单击选中处理
   const handleSelect: TreeProps['onSelect'] = (_selectedKeys, info) => {
     const nodeData = getTreeNodeData(info.node as TreeDataNode)
-    if (nodeData && !nodeData.isFolder) {
-      openPage(info.node.key as string)
+    if (nodeData) {
+      if (nodeData.isFolder) {
+        // 文件夹：切换展开/收起
+        toggleFolderExpanded(info.node.key as string)
+      } else {
+        // 页面：打开
+        openPage(info.node.key as string)
+      }
     }
   }
 
@@ -246,7 +389,7 @@ export function Explorer(): React.JSX.Element {
     )
   }
 
-  const isEmpty = rootFolders.length === 0 && rootPages.length === 0
+  const isEmpty = rootItems.length === 0
 
   return (
     <Flex className="explorer" vertical>
@@ -280,6 +423,7 @@ export function Explorer(): React.JSX.Element {
             onSelect={handleSelect}
             onExpand={handleExpand}
             draggable
+            allowDrop={handleAllowDrop}
             onDrop={handleDrop}
             showIcon
             titleRender={titleRender}
