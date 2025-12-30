@@ -138,7 +138,11 @@ export const useTabsStore = create<TabsStore>()(
     {
       name: 'tabs-store',
       storage: createIndexedDBStorage(),
-      skipHydration: true // 延迟加载，等待数据库名设置
+      skipHydration: true, // 延迟加载，等待数据库名设置
+      partialize: (state) => ({
+        tabs: state.tabs,
+        activeTabId: state.activeTabId
+      })
     }
   )
 )

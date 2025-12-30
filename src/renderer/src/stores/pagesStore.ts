@@ -105,7 +105,11 @@ export const usePagesStore = create<PagesStore>()(
     {
       name: 'pages-store',
       storage: createIndexedDBStorage(),
-      skipHydration: true // 延迟加载，等待数据库名设置
+      skipHydration: true, // 延迟加载,等待数据库名设置
+      partialize: (state) => ({
+        pages: state.pages,
+        folders: state.folders
+      })
     }
   )
 )

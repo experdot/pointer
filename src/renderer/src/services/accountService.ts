@@ -6,7 +6,7 @@ import {
   getDefaultAccountId
 } from '../stores/accountStore'
 import { setDatabaseName, deleteDatabase } from '../utils/indexedDB'
-import { resetAllStores, rehydrateAllStores } from '../utils/storeRegistry'
+import { rehydrateAllStores } from '../utils/storeRegistry'
 
 // 初始化账户系统
 export async function initializeAccountSystem(): Promise<void> {
@@ -44,16 +44,13 @@ export async function switchAccount(accountId: string): Promise<void> {
     throw new Error(`Account not found: ${accountId}`)
   }
 
-  // 重置所有 Store 内存状态
-  await resetAllStores()
-
-  // 切换数据库
+  // 切换数据库（必须在 reset 之前，避免清空原账户数据）
   setDatabaseName(accountId)
 
   // 更新当前账户
   store.setCurrentAccountId(accountId)
 
-  // 等待所有 Store 从新数据库加载数据
+  // 从新数据库加载数据（rehydrate 会覆盖内存状态，不需要先 reset）
   await rehydrateAllStores()
 }
 

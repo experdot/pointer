@@ -49,6 +49,9 @@ function App(): React.JSX.Element {
             Menu: {
               itemHeight: 32,
               itemMarginInline: 4
+            },
+            Tree: {
+              titleHeight: 32
             }
           }
         }}
