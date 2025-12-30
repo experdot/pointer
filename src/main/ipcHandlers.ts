@@ -83,7 +83,7 @@ export function setupIpcHandlers(): void {
   })
 
   // Handle save file
-  ipcMain.handle('save-file', async (event, { content, defaultPath, filters }) => {
+  ipcMain.handle('save-file', async (_event, { content, defaultPath, filters }) => {
     try {
       const result = await dialog.showSaveDialog({
         title: '保存文件',
@@ -112,7 +112,7 @@ export function setupIpcHandlers(): void {
   })
 
   // Handle read file
-  ipcMain.handle('read-file', async (event, filePath: string) => {
+  ipcMain.handle('read-file', async (_event, filePath: string) => {
     try {
       const buffer = await readFile(filePath)
       const base64 = buffer.toString('base64')
@@ -127,7 +127,7 @@ export function setupIpcHandlers(): void {
   ipcMain.handle(
     'select-files',
     async (
-      event,
+      _event,
       options?: {
         multiple?: boolean
         filters?: Array<{ name: string; extensions: string[] }>
