@@ -68,3 +68,24 @@ UI Component → Hook → Service → Store
 ## 技术栈
 
 Electron + React 19 + TypeScript + Zustand + Ant Design + react-router-dom + @dnd-kit
+
+## 多账户支持
+
+支持多账户切换，账号之间数据完全隔离。
+
+### 隔离策略
+
+每个账户使用独立的 IndexedDB 数据库（数据库名包含账户 ID），切换账户时重新初始化所有 Store。
+
+### Store 设计
+
+| Store        | 隔离 | 说明                   |
+| ------------ | ---- | ---------------------- |
+| accountStore | 否   | 全局账户列表和当前账户 |
+| 其他 Store   | 是   | 按账户 ID 隔离存储     |
+
+### 切换流程
+
+```
+切换账户 → 清空内存状态 → 加载目标账户数据库 → 重新初始化 Store
+```

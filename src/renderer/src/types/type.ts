@@ -1,3 +1,13 @@
+// ==================== 账户类型定义 ====================
+
+export interface Account {
+  id: string
+  name: string
+  avatar?: string
+  createdAt: number
+  updatedAt?: number
+}
+
 export interface ModelConfig {
   id: string
   name: string
