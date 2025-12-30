@@ -49,7 +49,7 @@ export interface ChatMessage {
 }
 
 export interface ChatSession {
-  messages: Map<string, ChatMessage>
+  messages: ChatMessage[]
 
   rootMessageId?: string // 根消息ID
   leafMessageId?: string // 当前选择的消息路径（叶子节点）

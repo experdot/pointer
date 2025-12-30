@@ -15,16 +15,7 @@
         "src/renderer/src/*"
       ]
     },
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "isolatedModules": false,
-    "strict": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictPropertyInitialization": false,
-    "noImplicitAny": false,
-    "noImplicitReturns": false,
-    "noImplicitThis": false,
+    "strict": true,
     "skipLibCheck": true
   }
 }
