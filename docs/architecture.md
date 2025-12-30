@@ -52,18 +52,27 @@ UI Component → Hook → Service → Store
 
 ## Store 分类
 
-| 类型           | Store                                                                | 说明         |
-| -------------- | -------------------------------------------------------------------- | ------------ |
-| 需要 Service   | messagesStore, pagesStore, tasksStore, favoritesStore, settingsStore | 复杂业务逻辑 |
-| 不需要 Service | layoutStore, tabsStore, searchStore                                  | 纯 UI 状态   |
+| 类型           | Store                                                                               | 说明         |
+| -------------- | ----------------------------------------------------------------------------------- | ------------ |
+| 需要 Service   | messagesStore, pagesStore, tasksStore, favoritesStore, settingsStore, accountStore  | 复杂业务逻辑 |
+| 不需要 Service | layoutStore, tabsStore, searchStore, messageQueueStore                              | 纯 UI 状态   |
+
+## 核心功能
+
+| 功能       | 说明                                     |
+| ---------- | ---------------------------------------- |
+| 消息分支   | 支持消息树结构，可在任意节点创建分支     |
+| 消息队列   | 批量发送消息，支持暂停/恢复/自动处理     |
+| 文件附件   | 消息支持附加文件，存储在本地 attachments |
+| 预设提示词 | 可配置提示词列表批量发送                 |
 
 ## 设计规范
 
-| 规范 | 要求                                         |
-| ---- | -------------------------------------------- |
-| UI   | 全部使用 Ant Design 标准组件，禁止自定义 CSS |
-| 主题 | 通过 ConfigProvider + Design Token 定制      |
-| 存储 | IndexedDB（Zustand persist 中间件）          |
+| 规范 | 要求                                                  |
+| ---- | ----------------------------------------------------- |
+| UI   | 全部优先使用 Ant Design 标准组件和图标                |
+| 主题 | 通过 ConfigProvider + Design Token 定制，默认主题即可 |
+| 存储 | IndexedDB（Zustand persist 中间件）                   |
 
 ## 技术栈
 
