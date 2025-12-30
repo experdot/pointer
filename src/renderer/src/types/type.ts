@@ -5,6 +5,7 @@ export interface ModelConfig {
   topP: number
   temperature: number
   createdAt: number
+  updatedAt?: number
 }
 
 export interface LLMConfig {
@@ -14,6 +15,7 @@ export interface LLMConfig {
   apiKey: string
   modelName: string
   createdAt: number
+  updatedAt?: number
   modelConfigId?: string
 }
 
@@ -24,7 +26,7 @@ export interface FileAttachment {
   type: string // MIME type
   size: number
   localPath: string // 本地文件路径（相对于attachments目录）
-  createdAt: number // 创建时间
+  createdAt: number
 }
 
 export interface ChatMessage {
@@ -32,46 +34,32 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   reasoning_content?: string
-  timestamp: number
-  starred?: boolean
-  modelId?: string
-  parentId?: string
-  children?: string[]
-  branchIndex?: number
-  isStreaming?: boolean
-  attachments?: FileAttachment[] // 文件附件数组
-  hasError?: boolean // 标记消息生成时是否发生错误
-}
-
-// 页面溯源信息
-export interface PageLineage {
-  source: 'user' | 'other'
-  sourcePageId?: string // 源页面ID
-  sourceContext?: {
-    // 其他生成上下文
-    customContext?: any
-  }
-  generatedPageIds: string[] // 后续催生的页面ID列表
-  generatedAt?: number // 生成时间戳
-  description?: string // 溯源描述
-}
-
-export interface PageBase {
-  id: string
-  title: string
-  type: 'regular' | 'settings'
-
-  folderId?: string
+  attachments?: FileAttachment[]
   createdAt: number
-  updatedAt: number
+  updatedAt?: number
 
-  order?: number // 添加排序字段
-  pinned?: boolean // 是否固定标签页
-  starred?: boolean // 是否标记为星标
+  parentMessageId?: string
+  branchIndex?: number
 
-  lineage?: PageLineage // 页面溯源信息
+  modelId?: string
+  starred?: boolean
 
-  data?: any
+  hasError?: boolean // 标记消息生成时是否发生错误
+  isStreaming?: boolean
+}
+
+export interface ChatSession {
+  messages: Map<string, ChatMessage>
+
+  rootMessageId?: string // 根消息ID
+  leafMessageId?: string // 当前选择的消息路径（叶子节点）
+  selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
+
+  streamingMessage?: {
+    content: string
+    reasoning_content?: string
+    createdAt: number
+  }
 }
 
 export interface PageFolder {
@@ -79,47 +67,28 @@ export interface PageFolder {
   name: string
   expanded?: boolean
   createdAt: number
+  updatedAt?: number
   order?: number // 添加排序字段
-  parentId?: string // 支持嵌套文件夹
+  parentFolderId?: string // 支持嵌套文件夹
 }
 
-// 普通聊天类型
-export interface RegularChat extends PageBase {
-  type: 'regular'
-  messages: ChatMessage[]
+export interface Page<T> {
+  id: string
+  title: string
 
-  // 树状结构支持
-  messageMap?: { [messageId: string]: ChatMessage } // 消息ID到消息的映射
-  currentPath?: string[] // 当前选择的消息路径（从根到叶子）
-  rootMessageId?: string // 根消息ID
-  selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
+  parentFolderId?: string // 支持嵌套文件夹
+  createdAt: number
+  updatedAt?: number
 
-  streamingMessage?: {
-    content: string
-    timestamp: number
-  }
+  order?: number // 添加排序字段
+  pinned?: boolean // 是否固定标签页
+  starred?: boolean // 是否标记为星标
+
+  data?: T
 }
 
-// 设置页面类型
-export interface SettingsPage extends PageBase {
-  type: 'settings'
-}
-
-// 聊天类型 - 包含所有属性
-export interface Page extends PageBase {
-  type: 'regular' | 'settings'
-
-  // RegularChat 的属性
-  messages?: ChatMessage[]
-  messageMap?: { [messageId: string]: ChatMessage }
-  currentPath?: string[]
-  rootMessageId?: string
-  selectedMessageId?: string
-  streamingMessage?: {
-    content: string
-    timestamp: number
-  }
-}
+export type ChatPage = Page<ChatSession>
+export type SettingsPage = Page<Settings>
 
 // 预设提示词列表配置
 export interface PromptListConfig {
@@ -128,14 +97,18 @@ export interface PromptListConfig {
   description?: string
   prompts: string[]
   createdAt: number
+  updatedAt?: number
 }
 
 export interface Settings {
+  fontSize: 'small' | 'medium' | 'large'
+
   llmConfigs: LLMConfig[]
   defaultLLMId?: string
+
   modelConfigs: ModelConfig[]
   defaultModelConfigId?: string
-  fontSize: 'small' | 'medium' | 'large'
+
   promptLists: PromptListConfig[]
 }
 
@@ -144,7 +117,6 @@ export interface SearchResult {
   chatId: string
   chatTitle: string
   messageId: string
-  message: ChatMessage
   snippet: string // 搜索结果的文本片段
   highlightIndices: number[] // 高亮位置
 }
@@ -163,7 +135,7 @@ export type AITaskType = 'chat' | 'retry' | 'edit_resend' | 'model_change'
 
 // AI任务信息
 export interface AITask {
-  id: string // 任务ID，通常是messageId
+  id: string
   requestId: string // AI服务的请求ID，用于中止请求
   type: AITaskType
   status: AITaskStatus
@@ -216,21 +188,21 @@ export interface AITask {
 // ==================== 收藏功能类型定义 ====================
 
 // 收藏项类型
-export type FavoriteItemType = 'page' | 'message' | 'text-fragment'
+export type FavoriteItemType = 'chat' | 'message' | 'text-fragment'
 
 // 收藏项来源信息（用于溯源）
 export interface FavoriteSource {
-  type: 'page' | 'message'
+  type: 'chat' | 'message'
   pageId?: string // 源页面 ID
   messageId?: string // 源消息 ID
   pageTitle?: string // 源页面标题（快照）
-  pageType?: 'regular' | 'settings'
-  timestamp: number // 收藏时的时间戳
+  createdAt: number
+  updatedAt?: number
 }
 
-// 页面收藏项数据
-export interface PageFavoriteData {
-  pageSnapshot: Page // 完整的页面快照
+// 会话收藏项数据
+export interface ChatFavoriteData {
+  chatSnapshot: ChatSession // 完整的会话快照
   thumbnailUrl?: string // 可选的缩略图
 }
 
@@ -239,50 +211,61 @@ export interface MessageFavoriteData {
   message: ChatMessage // 消息快照
   contextMessages?: ChatMessage[] // 可选的上下文消息（前后各2条）
   pageTitle: string // 所属页面标题
-  pageType: 'regular'
 }
 
 // 文本片段收藏项数据
 export interface TextFragmentFavoriteData {
   text: string // 选中的文本内容
   fullMessage: ChatMessage // 完整的消息快照
-  pageTitle: string
-  pageType: 'regular'
+  pageTitle: string // 所属页面标题
 }
 
-// 收藏项基础接口
-export interface FavoriteItem {
-  id: string // 收藏项唯一 ID
-  type: FavoriteItemType // 收藏项类型
+// 收藏项基础属性
+export interface FavoriteItemBase {
+  id: string
   title: string // 收藏项标题
   description?: string // 可选的描述
-  tags?: string[] // 标签
-  folderId?: string // 所属文件夹 ID
-  source?: FavoriteSource // 来源信息
-
-  // 类型特定的数据
-  data: PageFavoriteData | MessageFavoriteData | TextFragmentFavoriteData
-
+  parentFolderId?: string // 所属文件夹 ID
   createdAt: number // 收藏时间
-  updatedAt: number // 最后更新时间
+  updatedAt?: number // 最后更新时间
   order?: number // 排序顺序
-  color?: string // 可选的标记颜色
+  source?: FavoriteSource // 来源信息
   starred?: boolean // 是否标记为星标
-
-  // 笔记
   notes?: string // 用户笔记
 }
+
+// 对话收藏项
+export interface ChatFavoriteItem extends FavoriteItemBase {
+  type: 'chat'
+  data: ChatFavoriteData
+}
+
+// 消息收藏项
+export interface MessageFavoriteItem extends FavoriteItemBase {
+  type: 'message'
+  data: MessageFavoriteData
+}
+
+// 文本片段收藏项
+export interface TextFragmentFavoriteItem extends FavoriteItemBase {
+  type: 'text-fragment'
+  data: TextFragmentFavoriteData
+}
+
+// 收藏项联合类型 - 支持类型守卫
+export type FavoriteItem = ChatFavoriteItem | MessageFavoriteItem | TextFragmentFavoriteItem
 
 // 收藏文件夹
 export interface FavoriteFolder {
   id: string
   name: string
   description?: string
-  parentId?: string // 支持嵌套
+  parentFolderId?: string // 支持文件夹嵌套
   expanded?: boolean // 是否展开
   color?: string // 文件夹颜色
   icon?: string // 自定义图标
   createdAt: number
+  updatedAt?: number
   order?: number
 }
 
@@ -298,9 +281,10 @@ export type MessageQueueItemType = 'normal' | 'ai-generated' | 'prompt-list'
 export interface MessageQueueItem {
   id: string // 队列项唯一ID
   content: string // 消息内容
+  attachments?: FileAttachment[] // 文件附件（可选）
+
   type: MessageQueueItemType // 消息类型：normal（普通消息）、ai-generated（AI生成的追问）、prompt-list（来自提示词列表）
   modelId?: string // 指定的模型ID（可选）
-  attachments?: FileAttachment[] // 文件附件（可选）
   status: MessageQueueItemStatus // 状态
   createdAt: number // 创建时间
   startedAt?: number // 开始处理时间
