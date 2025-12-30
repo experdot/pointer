@@ -97,14 +97,13 @@ export const useTabsStore = create<TabsStore>()(
 
       reorderTabs: (fromIndex, toIndex) => {
         const { tabs } = get()
-        const newTabs = [...tabs]
-        const [removed] = newTabs.splice(fromIndex, 1)
+        const removed = tabs[fromIndex]
+        if (!removed) return
 
-        // 如果移动的是固定标签，只能在固定标签区域内移动
-        // 如果移动的是非固定标签，只能在非固定标签区域内移动
-        const pinnedCount = newTabs.filter(t => t.pinned).length
+        // 使用原始数组计算固定标签数量
+        const pinnedCount = tabs.filter((t) => t.pinned).length
 
-        if (removed.pinned && toIndex > pinnedCount) {
+        if (removed.pinned && toIndex >= pinnedCount) {
           // 固定标签不能移动到非固定区域
           return
         }
@@ -113,6 +112,8 @@ export const useTabsStore = create<TabsStore>()(
           return
         }
 
+        const newTabs = [...tabs]
+        newTabs.splice(fromIndex, 1)
         newTabs.splice(toIndex, 0, removed)
         set({ tabs: newTabs })
       },

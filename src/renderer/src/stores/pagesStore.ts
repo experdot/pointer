@@ -14,12 +14,14 @@ interface PagesActions {
   setPages: (pages: ChatPage[]) => void
   addPage: (page: ChatPage) => void
   updatePage: (id: string, updates: Partial<ChatPage>) => void
+  batchUpdatePages: (updates: Array<{ id: string; updates: Partial<ChatPage> }>) => void
   removePage: (id: string) => void
 
   // 文件夹操作
   setFolders: (folders: PageFolder[]) => void
   addFolder: (folder: PageFolder) => void
   updateFolder: (id: string, updates: Partial<PageFolder>) => void
+  batchUpdateFolders: (updates: Array<{ id: string; updates: Partial<PageFolder> }>) => void
   removeFolder: (id: string) => void
 
   // 重置
@@ -52,6 +54,14 @@ export const usePagesStore = create<PagesStore>()(
           )
         })),
 
+      batchUpdatePages: (updates) =>
+        set((state) => ({
+          pages: state.pages.map((p) => {
+            const update = updates.find((u) => u.id === p.id)
+            return update ? { ...p, ...update.updates, updatedAt: Date.now() } : p
+          })
+        })),
+
       removePage: (id) =>
         set((state) => ({
           pages: state.pages.filter((p) => p.id !== id)
@@ -69,6 +79,14 @@ export const usePagesStore = create<PagesStore>()(
           folders: state.folders.map((f) =>
             f.id === id ? { ...f, ...updates, updatedAt: Date.now() } : f
           )
+        })),
+
+      batchUpdateFolders: (updates) =>
+        set((state) => ({
+          folders: state.folders.map((f) => {
+            const update = updates.find((u) => u.id === f.id)
+            return update ? { ...f, ...update.updates, updatedAt: Date.now() } : f
+          })
         })),
 
       removeFolder: (id) =>

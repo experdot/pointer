@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Empty } from 'antd'
 import { Tabs } from '../Tabs'
 import { WelcomePage } from '../../editors/WelcomePage'
@@ -8,15 +8,17 @@ import './EditorArea.css'
 
 export function EditorArea(): React.JSX.Element {
   const { tabs, activeTabId } = useTabsStore()
-  const { cleanupInvalidTabs } = useTabsStore()
   const pages = usePagesStore((state) => state.pages)
   const activeTab = tabs.find((t) => t.id === activeTabId)
+
+  // 使用 ref 存储 cleanupInvalidTabs 避免依赖变化
+  const cleanupRef = useRef(useTabsStore.getState().cleanupInvalidTabs)
 
   // 同步清理无效的 chat tabs
   useEffect(() => {
     const validPageIds = pages.map((p) => p.id)
-    cleanupInvalidTabs(validPageIds)
-  }, [pages, cleanupInvalidTabs])
+    cleanupRef.current(validPageIds)
+  }, [pages])
 
   const renderContent = () => {
     if (!activeTab) {

@@ -22,25 +22,31 @@ export function createPage(title?: string): ChatPage {
     parentFolderId = selectedPage.parentFolderId
     newOrder = (selectedPage.order ?? 0) + 1
 
-    // 更新同级中 order >= newOrder 的项目
-    store.pages
+    // 批量更新同级中 order >= newOrder 的项目
+    const pageUpdates = store.pages
       .filter((p) => p.parentFolderId === parentFolderId && (p.order ?? 0) >= newOrder)
-      .forEach((p) => store.updatePage(p.id, { order: (p.order ?? 0) + 1 }))
-    store.folders
+      .map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
+    const folderUpdates = store.folders
       .filter((f) => f.parentFolderId === parentFolderId && (f.order ?? 0) >= newOrder)
-      .forEach((f) => store.updateFolder(f.id, { order: (f.order ?? 0) + 1 }))
+      .map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
+
+    if (pageUpdates.length) store.batchUpdatePages(pageUpdates)
+    if (folderUpdates.length) store.batchUpdateFolders(folderUpdates)
   } else {
     // 插入到根目录最前面
     parentFolderId = undefined
     newOrder = 0
 
-    // 更新根目录所有项目的 order + 1
-    store.pages
+    // 批量更新根目录所有项目的 order + 1
+    const pageUpdates = store.pages
       .filter((p) => !p.parentFolderId)
-      .forEach((p) => store.updatePage(p.id, { order: (p.order ?? 0) + 1 }))
-    store.folders
+      .map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
+    const folderUpdates = store.folders
       .filter((f) => !f.parentFolderId)
-      .forEach((f) => store.updateFolder(f.id, { order: (f.order ?? 0) + 1 }))
+      .map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
+
+    if (pageUpdates.length) store.batchUpdatePages(pageUpdates)
+    if (folderUpdates.length) store.batchUpdateFolders(folderUpdates)
   }
 
   const page: ChatPage = {

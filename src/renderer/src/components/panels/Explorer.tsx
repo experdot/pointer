@@ -34,7 +34,7 @@ export function Explorer(): React.JSX.Element {
     pages,
     folders,
     rootItems,
-    getItemsInFolder,
+    batchUpdateItemsOrder,
     createPage,
     deletePage,
     updatePage,
@@ -56,8 +56,15 @@ export function Explorer(): React.JSX.Element {
 
   // 构建树数据
   const treeData = useMemo(() => {
+    // 内联获取文件夹内项目，避免依赖 getItemsInFolder 函数引用
+    const getItems = (folderId: string) => {
+      const pagesInFolder = pages.filter((p) => p.parentFolderId === folderId)
+      const subFolders = folders.filter((f) => f.parentFolderId === folderId)
+      return [...subFolders, ...pagesInFolder].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    }
+
     const buildFolderNode = (folder: PageFolder): TreeNodeData => {
-      const itemsInFolder = getItemsInFolder(folder.id)
+      const itemsInFolder = getItems(folder.id)
 
       return {
         key: folder.id,
@@ -83,7 +90,7 @@ export function Explorer(): React.JSX.Element {
     return rootItems.map((item) =>
       item.type === 'page' ? buildPageNode(item) : buildFolderNode(item)
     )
-  }, [folders, pages, rootItems, getItemsInFolder])
+  }, [folders, pages, rootItems])
 
   // 展开的文件夹
   const expandedKeys = useMemo(
@@ -132,17 +139,6 @@ export function Explorer(): React.JSX.Element {
     newCollapsed.forEach((id) => toggleFolderExpanded(id as string))
   }
 
-  // 批量更新项目的 order 和 parentFolderId
-  const updateItemsOrder = (items: (ChatPage | PageFolder)[], parentFolderId?: string) => {
-    items.forEach((item, index) => {
-      if (item.type === 'page') {
-        updatePage(item.id, { order: index, parentFolderId })
-      } else {
-        updateFolder(item.id, { order: index, parentFolderId })
-      }
-    })
-  }
-
   // 获取指定层级的所有项目
   const getItemsAtLevel = (parentFolderId?: string, excludeId?: string) => {
     return [
@@ -163,7 +159,7 @@ export function Explorer(): React.JSX.Element {
     if (dropNodeData?.isFolder && !info.dropToGap) {
       // 拖到文件夹内部，放到第一个位置
       const itemsInFolder = getItemsAtLevel(dropKey, dragKey)
-      updateItemsOrder([draggedItem, ...itemsInFolder], dropKey)
+      batchUpdateItemsOrder([draggedItem, ...itemsInFolder], dropKey)
     } else if (info.dropToGap) {
       // 拖到间隙（同级位置）
       const targetItem = pages.find((p) => p.id === dropKey) || folders.find((f) => f.id === dropKey)
@@ -178,7 +174,7 @@ export function Explorer(): React.JSX.Element {
       const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
 
       sameLevelItems.splice(insertIndex, 0, draggedItem)
-      updateItemsOrder(sameLevelItems, targetParentFolderId)
+      batchUpdateItemsOrder(sameLevelItems, targetParentFolderId)
     }
   }
 

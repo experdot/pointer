@@ -89,11 +89,16 @@ export async function removeAccount(accountId: string): Promise<void> {
     throw new Error('Cannot delete current account')
   }
 
-  // 删除账户数据库
-  await deleteDatabase(accountId)
-
-  // 从列表中移除
+  // 先从列表中移除，再删除数据库
+  // 这样即使数据库删除失败，账户也已从列表移除，下次可以重试
   store.removeAccount(accountId)
+
+  try {
+    await deleteDatabase(accountId)
+  } catch (error) {
+    // 数据库删除失败不影响账户移除，只记录错误
+    console.error('Failed to delete account database:', error)
+  }
 }
 
 // 获取当前账户

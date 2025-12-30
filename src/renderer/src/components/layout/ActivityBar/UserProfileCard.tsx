@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Flex, Avatar, Typography, Button, Divider, List, Input } from 'antd'
+import { Flex, Avatar, Typography, Button, Divider, List, Input, App } from 'antd'
 import {
   UserOutlined,
   SwapOutlined,
@@ -24,6 +24,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [switching, setSwitching] = useState(false)
+  const { message } = App.useApp()
 
   const handleSwitchAccount = async (accountId: string) => {
     if (accountId === currentAccountId || switching) return
@@ -31,6 +32,8 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     try {
       await switchAccount(accountId)
       onClose()
+    } catch (error) {
+      message.error('切换账户失败')
     } finally {
       setSwitching(false)
     }
@@ -44,6 +47,8 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
       const account = createAccount(name)
       await switchAccount(account.id)
       onClose()
+    } catch (error) {
+      message.error('创建账户失败')
     } finally {
       setSwitching(false)
     }
@@ -55,6 +60,8 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     try {
       await logout()
       onClose()
+    } catch (error) {
+      message.error('退出登录失败')
     } finally {
       setSwitching(false)
     }
