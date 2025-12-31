@@ -5,6 +5,7 @@ import type { Tab } from './types/type'
 import { usePagesStore } from './stores/pagesStore'
 import { WelcomePage } from './components/editors/WelcomePage'
 import { SettingsEditor } from './components/editors/SettingsEditor'
+import { ChatEditor } from './components/editors/ChatEditor'
 import * as pagesService from './services/pagesService'
 import { openSettings } from './services/settingsService'
 
@@ -27,7 +28,7 @@ registerTabType({
 registerTabType({
   type: 'chat',
   icon: <MessageOutlined />,
-  renderEditor: (tab) => <div>聊天编辑器: {tab.title}</div>,
+  renderEditor: (tab) => <ChatEditor pageId={tab.dataId!} />,
   validateData: (dataId) => usePagesStore.getState().pages.some((p) => p.id === dataId),
   restoreTab: (dataId): Tab | null => {
     const page = usePagesStore.getState().pages.find((p) => p.id === dataId)

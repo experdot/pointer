@@ -89,12 +89,6 @@ export interface ChatSession {
   rootMessageId?: string // 根消息ID
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
   selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
-
-  streamingMessage?: {
-    content: string
-    reasoning_content?: string
-    createdAt: number
-  }
 }
 
 export interface PageFolder {
