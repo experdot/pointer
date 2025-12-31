@@ -1,0 +1,114 @@
+.tree-view-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* 滚动条样式 */
+.tree-view-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tree-view-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tree-view-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.tree-view-content:hover::-webkit-scrollbar-thumb {
+  background: var(--ant-color-text-quaternary);
+}
+
+.tree-view-content::-webkit-scrollbar-thumb:hover {
+  background: var(--ant-color-text-tertiary);
+}
+
+.tree-view-content .ant-tree {
+  background: transparent;
+}
+
+.tree-view-content .ant-tree-treenode {
+  width: 100%;
+  padding: 0 8px;
+  border-radius: 0;
+}
+
+.tree-view-content .ant-tree-treenode:hover {
+  background-color: var(--ant-tree-node-hover-bg);
+}
+
+.tree-view-content .ant-tree-treenode-selected {
+  background-color: var(--ant-color-primary-bg);
+}
+
+.tree-view-content .ant-tree-node-selected {
+  background-color: transparent !important;
+}
+
+.tree-view-content
+  .ant-tree
+  .ant-tree-treenode:not(.ant-tree-treenode-disabled)
+  .ant-tree-node-content-wrapper:hover {
+  background-color: transparent;
+}
+
+.tree-view-content .ant-tree-switcher {
+  margin-right: 1px;
+}
+
+.tree-view-content .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  padding: 0 4px;
+}
+
+.tree-view-content .ant-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-view-title {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.tree-view-title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-view-title-text.is-highlighted {
+  font-weight: 600;
+}
+
+.tree-view-title-more {
+  flex-shrink: 0;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tree-view-title:hover .tree-view-title-more,
+.tree-view-title-more:hover {
+  opacity: 0.6;
+}
+
+.tree-view-title-more:hover {
+  opacity: 1;
+}
+
+/* 隐藏拖拽图标 */
+.tree-view-content .ant-tree-draggable-icon {
+  display: none;
+}

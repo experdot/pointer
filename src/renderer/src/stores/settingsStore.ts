@@ -11,6 +11,16 @@ import type {
 } from '../types/type'
 import { createIndexedDBStorage } from '../utils/indexedDB'
 import { registerStoreReset } from '../utils/storeRegistry'
+import {
+  updateTreeItem,
+  updateTreeFolder,
+  removeTreeFolder,
+  removeTreeItem,
+  addTreeItem,
+  addTreeFolder,
+  batchUpdateTreeItems,
+  batchUpdateTreeFolders
+} from '../utils/treeUtils'
 
 // 空树结构
 const emptyTree = <T extends ConfigItemBase>(): ConfigTree<T> => ({
@@ -67,7 +77,9 @@ interface SettingsActions {
   addPromptListFolder: (folder: ConfigFolder) => void
   updatePromptListFolder: (id: string, updates: Partial<ConfigFolder>) => void
   removePromptListFolder: (id: string) => void
-  batchUpdatePromptLists: (updates: Array<{ id: string; updates: Partial<PromptListConfig> }>) => void
+  batchUpdatePromptLists: (
+    updates: Array<{ id: string; updates: Partial<PromptListConfig> }>
+  ) => void
   batchUpdatePromptListFolders: (
     updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
   ) => void
@@ -78,98 +90,13 @@ interface SettingsActions {
 
 type SettingsStore = SettingsState & SettingsActions
 
-// 通用树操作辅助函数
-function updateTreeItem<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  id: string,
-  updates: Partial<T>
-): ConfigTree<T> {
-  return {
-    ...tree,
-    items: tree.items.map((item) =>
-      item.id === id ? { ...item, ...updates, updatedAt: Date.now() } : item
-    )
-  }
-}
-
-function updateTreeFolder(
-  tree: ConfigTree<ConfigItemBase>,
-  id: string,
-  updates: Partial<ConfigFolder>
-): ConfigTree<ConfigItemBase> {
-  return {
-    ...tree,
-    folders: tree.folders.map((f) =>
-      f.id === id ? { ...f, ...updates, updatedAt: Date.now() } : f
-    )
-  }
-}
-
-function removeTreeFolder<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  id: string
-): ConfigTree<T> {
-  // 递归获取所有子文件夹 ID
-  const getAllSubFolderIds = (folderId: string): string[] => {
-    const subFolders = tree.folders.filter((f) => f.parentFolderId === folderId)
-    return subFolders.flatMap((f) => [f.id, ...getAllSubFolderIds(f.id)])
-  }
-  const allFolderIds = [id, ...getAllSubFolderIds(id)]
-
-  // 获取根目录现有项目的最大 order
-  const rootItems = tree.items.filter((item) => !item.parentFolderId)
-  const maxOrder = rootItems.reduce((max, item) => Math.max(max, item.order ?? 0), -1)
-
-  // 移动项目到根目录并更新 order
-  let orderOffset = 0
-  const updatedItems = tree.items.map((item) => {
-    if (item.parentFolderId && allFolderIds.includes(item.parentFolderId)) {
-      orderOffset++
-      return { ...item, parentFolderId: undefined, order: maxOrder + orderOffset }
-    }
-    return item
-  })
-
-  return {
-    items: updatedItems,
-    folders: tree.folders.filter((f) => !allFolderIds.includes(f.id))
-  }
-}
-
-function batchUpdateTreeItems<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  updates: Array<{ id: string; updates: Partial<T> }>
-): ConfigTree<T> {
-  return {
-    ...tree,
-    items: tree.items.map((item) => {
-      const update = updates.find((u) => u.id === item.id)
-      return update ? { ...item, ...update.updates, updatedAt: Date.now() } : item
-    })
-  }
-}
-
-function batchUpdateTreeFolders<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
-): ConfigTree<T> {
-  return {
-    ...tree,
-    folders: tree.folders.map((f) => {
-      const update = updates.find((u) => u.id === f.id)
-      return update ? { ...f, ...update.updates, updatedAt: Date.now() } : f
-    })
-  }
-}
-
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
       settings: initialSettings,
 
       // 基础设置
-      setFontSize: (fontSize) =>
-        set((state) => ({ settings: { ...state.settings, fontSize } })),
+      setFontSize: (fontSize) => set((state) => ({ settings: { ...state.settings, fontSize } })),
 
       setDefaultLLMId: (id) =>
         set((state) => ({ settings: { ...state.settings, defaultLLMId: id } })),
@@ -182,10 +109,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            llmConfigs: {
-              ...state.settings.llmConfigs,
-              items: [...state.settings.llmConfigs.items, config]
-            }
+            llmConfigs: addTreeItem(state.settings.llmConfigs, config)
           }
         })),
 
@@ -201,10 +125,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            llmConfigs: {
-              ...state.settings.llmConfigs,
-              items: state.settings.llmConfigs.items.filter((c) => c.id !== id)
-            }
+            llmConfigs: removeTreeItem(state.settings.llmConfigs, id)
           }
         })),
 
@@ -212,10 +133,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            llmConfigs: {
-              ...state.settings.llmConfigs,
-              folders: [...state.settings.llmConfigs.folders, folder]
-            }
+            llmConfigs: addTreeFolder(state.settings.llmConfigs, folder)
           }
         })),
 
@@ -260,10 +178,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            modelConfigs: {
-              ...state.settings.modelConfigs,
-              items: [...state.settings.modelConfigs.items, config]
-            }
+            modelConfigs: addTreeItem(state.settings.modelConfigs, config)
           }
         })),
 
@@ -279,10 +194,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            modelConfigs: {
-              ...state.settings.modelConfigs,
-              items: state.settings.modelConfigs.items.filter((c) => c.id !== id)
-            }
+            modelConfigs: removeTreeItem(state.settings.modelConfigs, id)
           }
         })),
 
@@ -290,10 +202,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            modelConfigs: {
-              ...state.settings.modelConfigs,
-              folders: [...state.settings.modelConfigs.folders, folder]
-            }
+            modelConfigs: addTreeFolder(state.settings.modelConfigs, folder)
           }
         })),
 
@@ -338,10 +247,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            promptLists: {
-              ...state.settings.promptLists,
-              items: [...state.settings.promptLists.items, config]
-            }
+            promptLists: addTreeItem(state.settings.promptLists, config)
           }
         })),
 
@@ -357,10 +263,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            promptLists: {
-              ...state.settings.promptLists,
-              items: state.settings.promptLists.items.filter((c) => c.id !== id)
-            }
+            promptLists: removeTreeItem(state.settings.promptLists, id)
           }
         })),
 
@@ -368,10 +271,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            promptLists: {
-              ...state.settings.promptLists,
-              folders: [...state.settings.promptLists.folders, folder]
-            }
+            promptLists: addTreeFolder(state.settings.promptLists, folder)
           }
         })),
 

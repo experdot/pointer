@@ -8,7 +8,9 @@ export function AboutPanel(): React.JSX.Element {
   return (
     <Flex vertical gap={16} style={{ maxWidth: 400 }}>
       <div>
-        <Title level={4} style={{ margin: 0 }}>Pointer</Title>
+        <Title level={4} style={{ margin: 0 }}>
+          Pointer
+        </Title>
         <Text type="secondary">智能 AI 聊天助手</Text>
       </div>
       <Divider style={{ margin: 0 }} />

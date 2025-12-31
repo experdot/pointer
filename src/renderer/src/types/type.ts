@@ -347,3 +347,46 @@ export interface Tab {
   pinned?: boolean
   preview?: boolean
 }
+
+// ==================== 类型守卫函数 ====================
+
+// 配置类型守卫
+export function isLLMConfig(item: ConfigItemBase): item is LLMConfig {
+  return 'baseUrl' in item && 'apiKey' in item && 'modelName' in item
+}
+
+export function isModelConfig(item: ConfigItemBase): item is ModelConfig {
+  return 'systemPrompt' in item && 'topP' in item && 'temperature' in item
+}
+
+export function isPromptListConfig(item: ConfigItemBase): item is PromptListConfig {
+  return 'prompts' in item && Array.isArray((item as PromptListConfig).prompts)
+}
+
+// 页面类型守卫
+export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
+  return item.type === 'page'
+}
+
+export function isPageFolder(item: Page<unknown> | PageFolder): item is PageFolder {
+  return item.type === 'folder'
+}
+
+export function isConfigFolder(item: ConfigItemBase | ConfigFolder): item is ConfigFolder {
+  return (
+    !('name' in item && 'createdAt' in item && !('parentFolderId' in item)) && 'expanded' in item
+  )
+}
+
+// 收藏类型守卫
+export function isChatFavoriteItem(item: FavoriteItem): item is ChatFavoriteItem {
+  return item.type === 'chat'
+}
+
+export function isMessageFavoriteItem(item: FavoriteItem): item is MessageFavoriteItem {
+  return item.type === 'message'
+}
+
+export function isTextFragmentFavoriteItem(item: FavoriteItem): item is TextFragmentFavoriteItem {
+  return item.type === 'text-fragment'
+}

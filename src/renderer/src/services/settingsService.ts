@@ -75,8 +75,18 @@ export function deleteLLMConfig(id: string): void {
 }
 
 export function copyLLMConfig(config: LLMConfig): LLMConfig {
-  const { id, createdAt, ...rest } = config
-  return createLLMConfig({ ...rest, name: `${rest.name} 副本` }, id)
+  return createLLMConfig(
+    {
+      name: `${config.name} 副本`,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      modelName: config.modelName,
+      modelConfigId: config.modelConfigId,
+      parentFolderId: config.parentFolderId,
+      order: config.order
+    },
+    config.id
+  )
 }
 
 export function createLLMConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
@@ -147,8 +157,17 @@ export function deleteModelConfig(id: string): void {
 }
 
 export function copyModelConfig(config: ModelConfig): ModelConfig {
-  const { id, createdAt, ...rest } = config
-  return createModelConfig({ ...rest, name: `${rest.name} 副本` }, id)
+  return createModelConfig(
+    {
+      name: `${config.name} 副本`,
+      systemPrompt: config.systemPrompt,
+      topP: config.topP,
+      temperature: config.temperature,
+      parentFolderId: config.parentFolderId,
+      order: config.order
+    },
+    config.id
+  )
 }
 
 export function createModelConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
@@ -214,8 +233,16 @@ export function deletePromptList(id: string): void {
 }
 
 export function copyPromptList(config: PromptListConfig): PromptListConfig {
-  const { id, createdAt, ...rest } = config
-  return createPromptList({ ...rest, name: `${rest.name} 副本` }, id)
+  return createPromptList(
+    {
+      name: `${config.name} 副本`,
+      description: config.description,
+      prompts: [...config.prompts],
+      parentFolderId: config.parentFolderId,
+      order: config.order
+    },
+    config.id
+  )
 }
 
 export function createPromptListFolder(name?: string, afterItemId?: string): ConfigFolder {

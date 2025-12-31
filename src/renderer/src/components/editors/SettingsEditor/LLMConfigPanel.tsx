@@ -16,8 +16,6 @@ export function LLMConfigPanel(): React.JSX.Element {
   const {
     items,
     folders,
-    expandedKeys,
-    getItemsInFolder,
     batchUpdateItemsOrder,
     createConfig,
     updateConfig,
@@ -78,13 +76,11 @@ export function LLMConfigPanel(): React.JSX.Element {
       <ConfigTree<LLMConfig>
         items={items}
         folders={folders}
-        expandedKeys={expandedKeys}
         selectedId={selectedId}
         onSelect={setSelectedId}
         itemIcon={<ApiOutlined />}
         itemNameKey="name"
         isItem={isItem}
-        getItemsInFolder={getItemsInFolder}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={() => createConfig({ name: '新配置', baseUrl: '', apiKey: '', modelName: '' })}
         updateItem={updateConfig}
@@ -150,7 +146,9 @@ export function LLMConfigPanel(): React.JSX.Element {
                 <Button
                   type={defaultLLMId === selectedConfig.id ? 'primary' : 'default'}
                   onClick={() =>
-                    setDefaultLLMId(defaultLLMId === selectedConfig.id ? undefined : selectedConfig.id)
+                    setDefaultLLMId(
+                      defaultLLMId === selectedConfig.id ? undefined : selectedConfig.id
+                    )
                   }
                 >
                   {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}

@@ -11,8 +11,6 @@ export function PromptListPanel(): React.JSX.Element {
   const {
     items,
     folders,
-    expandedKeys,
-    getItemsInFolder,
     batchUpdateItemsOrder,
     createConfig,
     updateConfig,
@@ -35,13 +33,11 @@ export function PromptListPanel(): React.JSX.Element {
       <ConfigTree<PromptListConfig>
         items={items}
         folders={folders}
-        expandedKeys={expandedKeys}
         selectedId={selectedId}
         onSelect={setSelectedId}
         itemIcon={<FileTextOutlined />}
         itemNameKey="name"
         isItem={isItem}
-        getItemsInFolder={getItemsInFolder}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={() => createConfig({ name: '新列表', prompts: [] })}
         updateItem={updateConfig}

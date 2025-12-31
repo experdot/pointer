@@ -6,12 +6,22 @@ import type {
   ConfigItemBase,
   LLMConfig,
   ModelConfig,
-  PromptListConfig
+  PromptListConfig,
+  Settings
 } from '../types/type'
 import * as settingsService from '../services/settingsService'
 
+// 通用树操作返回类型
+interface ConfigTreeResult<T extends ConfigItemBase> {
+  items: T[]
+  folders: ConfigFolder[]
+  rootItems: (T | ConfigFolder)[]
+  getItemsInFolder: (folderId: string | undefined) => (T | ConfigFolder)[]
+  expandedKeys: string[]
+}
+
 // 通用树操作 Hook
-function useConfigTree<T extends ConfigItemBase>(tree: ConfigTree<T>) {
+function useConfigTree<T extends ConfigItemBase>(tree: ConfigTree<T>): ConfigTreeResult<T> {
   const rootItems = useMemo(() => {
     const items = tree.items.filter((item) => !item.parentFolderId)
     const folders = tree.folders.filter((f) => !f.parentFolderId)
@@ -35,7 +45,18 @@ function useConfigTree<T extends ConfigItemBase>(tree: ConfigTree<T>) {
   return { items: tree.items, folders: tree.folders, rootItems, getItemsInFolder, expandedKeys }
 }
 
-export function useSettings() {
+interface UseSettingsResult {
+  settings: Settings
+  fontSize: Settings['fontSize']
+  defaultLLMId: string | undefined
+  defaultModelConfigId: string | undefined
+  setFontSize: typeof settingsService.setFontSize
+  setDefaultLLMId: typeof settingsService.setDefaultLLMId
+  setDefaultModelConfigId: typeof settingsService.setDefaultModelConfigId
+  openSettings: typeof settingsService.openSettings
+}
+
+export function useSettings(): UseSettingsResult {
   const { settings } = useSettingsStore()
 
   return {
@@ -52,7 +73,19 @@ export function useSettings() {
   }
 }
 
-export function useLLMConfigs() {
+interface UseLLMConfigsResult extends ConfigTreeResult<LLMConfig> {
+  batchUpdateItemsOrder: (items: (LLMConfig | ConfigFolder)[], parentFolderId?: string) => void
+  createConfig: typeof settingsService.createLLMConfig
+  updateConfig: typeof settingsService.updateLLMConfig
+  deleteConfig: typeof settingsService.deleteLLMConfig
+  copyConfig: typeof settingsService.copyLLMConfig
+  createFolder: typeof settingsService.createLLMConfigFolder
+  updateFolder: typeof settingsService.updateLLMConfigFolder
+  deleteFolder: typeof settingsService.deleteLLMConfigFolder
+  toggleFolderExpanded: typeof settingsService.toggleLLMConfigFolderExpanded
+}
+
+export function useLLMConfigs(): UseLLMConfigsResult {
   const { settings, batchUpdateLLMConfigs, batchUpdateLLMConfigFolders } = useSettingsStore()
   const tree = useConfigTree(settings.llmConfigs)
 
@@ -89,7 +122,19 @@ export function useLLMConfigs() {
   }
 }
 
-export function useModelConfigs() {
+interface UseModelConfigsResult extends ConfigTreeResult<ModelConfig> {
+  batchUpdateItemsOrder: (items: (ModelConfig | ConfigFolder)[], parentFolderId?: string) => void
+  createConfig: typeof settingsService.createModelConfig
+  updateConfig: typeof settingsService.updateModelConfig
+  deleteConfig: typeof settingsService.deleteModelConfig
+  copyConfig: typeof settingsService.copyModelConfig
+  createFolder: typeof settingsService.createModelConfigFolder
+  updateFolder: typeof settingsService.updateModelConfigFolder
+  deleteFolder: typeof settingsService.deleteModelConfigFolder
+  toggleFolderExpanded: typeof settingsService.toggleModelConfigFolderExpanded
+}
+
+export function useModelConfigs(): UseModelConfigsResult {
   const { settings, batchUpdateModelConfigs, batchUpdateModelConfigFolders } = useSettingsStore()
   const tree = useConfigTree(settings.modelConfigs)
 
@@ -126,7 +171,22 @@ export function useModelConfigs() {
   }
 }
 
-export function usePromptLists() {
+interface UsePromptListsResult extends ConfigTreeResult<PromptListConfig> {
+  batchUpdateItemsOrder: (
+    items: (PromptListConfig | ConfigFolder)[],
+    parentFolderId?: string
+  ) => void
+  createConfig: typeof settingsService.createPromptList
+  updateConfig: typeof settingsService.updatePromptList
+  deleteConfig: typeof settingsService.deletePromptList
+  copyConfig: typeof settingsService.copyPromptList
+  createFolder: typeof settingsService.createPromptListFolder
+  updateFolder: typeof settingsService.updatePromptListFolder
+  deleteFolder: typeof settingsService.deletePromptListFolder
+  toggleFolderExpanded: typeof settingsService.togglePromptListFolderExpanded
+}
+
+export function usePromptLists(): UsePromptListsResult {
   const { settings, batchUpdatePromptLists, batchUpdatePromptListFolders } = useSettingsStore()
   const tree = useConfigTree(settings.promptLists)
 

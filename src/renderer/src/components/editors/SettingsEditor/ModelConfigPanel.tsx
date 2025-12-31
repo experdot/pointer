@@ -11,8 +11,6 @@ export function ModelConfigPanel(): React.JSX.Element {
   const {
     items,
     folders,
-    expandedKeys,
-    getItemsInFolder,
     batchUpdateItemsOrder,
     createConfig,
     updateConfig,
@@ -35,13 +33,11 @@ export function ModelConfigPanel(): React.JSX.Element {
       <ConfigTree<ModelConfig>
         items={items}
         folders={folders}
-        expandedKeys={expandedKeys}
         selectedId={selectedId}
         onSelect={setSelectedId}
         itemIcon={<RobotOutlined />}
         itemNameKey="name"
         isItem={isItem}
-        getItemsInFolder={getItemsInFolder}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={() =>
           createConfig({ name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 })
