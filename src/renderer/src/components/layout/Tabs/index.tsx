@@ -81,7 +81,21 @@ export function Tabs(): React.JSX.Element {
 
   const getContextMenuItems = (tabId: string): MenuProps['items'] => {
     const tab = tabs.find((t) => t.id === tabId)
-    return [
+    const items: MenuProps['items'] = []
+
+    if (tab?.preview) {
+      items.push({
+        key: 'keep',
+        label: '保持打开',
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          keepTab(tabId)
+        }
+      })
+      items.push({ type: 'divider' })
+    }
+
+    items.push(
       {
         key: 'close',
         label: '关闭',
@@ -123,7 +137,9 @@ export function Tabs(): React.JSX.Element {
           togglePinTab(tabId)
         }
       }
-    ]
+    )
+
+    return items
   }
 
   const items: TabsProps['items'] = tabs.map((tab) => ({
