@@ -59,6 +59,11 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   highlightId?: string
   emptyText?: string
   className?: string
+
+  // 多选模式
+  checkable?: boolean
+  checkedKeys?: string[]
+  onCheck?: (keys: string[]) => void
 }
 
 // ==================== 辅助函数 ====================
@@ -104,7 +109,10 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   getFolderMenuItems,
   highlightId,
   emptyText = '暂无数据',
-  className = ''
+  className = '',
+  checkable = false,
+  checkedKeys = [],
+  onCheck
 }: TreeViewProps<TItem, TFolder>): React.JSX.Element {
   const { showDeleteConfirm } = useConfirmDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -353,12 +361,15 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           expandedKeys={expandedKeys}
           onSelect={handleSelect}
           onExpand={handleExpand}
-          draggable
+          draggable={!checkable}
           allowDrop={handleAllowDrop}
           onDrop={handleDrop}
           showIcon
           titleRender={titleRender}
           blockNode
+          checkable={checkable}
+          checkedKeys={checkedKeys}
+          onCheck={(keys) => onCheck?.(keys as string[])}
         />
       )}
     </div>

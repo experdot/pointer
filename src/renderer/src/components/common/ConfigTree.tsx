@@ -144,6 +144,9 @@ export function ConfigTree<T extends ConfigItemBase>({
         highlightId={defaultItemId}
         emptyText={emptyText}
         className="config-tree-content"
+        checkable={multiSelect}
+        checkedKeys={checkedKeys}
+        onCheck={setCheckedKeys}
       />
     </div>
   )

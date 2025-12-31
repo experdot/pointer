@@ -81,9 +81,7 @@ export function copyLLMConfig(config: LLMConfig): LLMConfig {
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
       modelName: config.modelName,
-      modelConfigId: config.modelConfigId,
-      parentFolderId: config.parentFolderId,
-      order: config.order
+      modelConfigId: config.modelConfigId
     },
     config.id
   )
@@ -162,9 +160,7 @@ export function copyModelConfig(config: ModelConfig): ModelConfig {
       name: `${config.name} 副本`,
       systemPrompt: config.systemPrompt,
       topP: config.topP,
-      temperature: config.temperature,
-      parentFolderId: config.parentFolderId,
-      order: config.order
+      temperature: config.temperature
     },
     config.id
   )
@@ -237,9 +233,7 @@ export function copyPromptList(config: PromptListConfig): PromptListConfig {
     {
       name: `${config.name} 副本`,
       description: config.description,
-      prompts: [...config.prompts],
-      parentFolderId: config.parentFolderId,
-      order: config.order
+      prompts: [...config.prompts]
     },
     config.id
   )
