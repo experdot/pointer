@@ -8,24 +8,47 @@ export interface Account {
   updatedAt?: number
 }
 
-export interface ModelConfig {
+// ==================== 通用树形结构类型 ====================
+
+// 通用配置文件夹
+export interface ConfigFolder {
   id: string
   name: string
-  systemPrompt: string
-  topP: number
-  temperature: number
+  parentFolderId?: string
+  expanded?: boolean
+  order?: number
   createdAt: number
   updatedAt?: number
 }
 
-export interface LLMConfig {
+// 通用配置项基础属性
+export interface ConfigItemBase {
   id: string
   name: string
+  parentFolderId?: string
+  order?: number
+  createdAt: number
+  updatedAt?: number
+}
+
+// 泛型树容器
+export interface ConfigTree<T extends ConfigItemBase> {
+  items: T[]
+  folders: ConfigFolder[]
+}
+
+// ==================== 设置配置类型 ====================
+
+export interface ModelConfig extends ConfigItemBase {
+  systemPrompt: string
+  topP: number
+  temperature: number
+}
+
+export interface LLMConfig extends ConfigItemBase {
   apiHost: string
   apiKey: string
   modelName: string
-  createdAt: number
-  updatedAt?: number
   modelConfigId?: string
 }
 
@@ -103,25 +126,21 @@ export type ChatPage = Page<ChatSession>
 export type SettingsPage = Page<Settings>
 
 // 预设提示词列表配置
-export interface PromptListConfig {
-  id: string
-  name: string
+export interface PromptListConfig extends ConfigItemBase {
   description?: string
   prompts: string[]
-  createdAt: number
-  updatedAt?: number
 }
 
 export interface Settings {
   fontSize: 'small' | 'medium' | 'large'
 
-  llmConfigs: LLMConfig[]
+  llmConfigs: ConfigTree<LLMConfig>
   defaultLLMId?: string
 
-  modelConfigs: ModelConfig[]
+  modelConfigs: ConfigTree<ModelConfig>
   defaultModelConfigId?: string
 
-  promptLists: PromptListConfig[]
+  promptLists: ConfigTree<PromptListConfig>
 }
 
 export interface SearchResult {

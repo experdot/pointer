@@ -1,0 +1,60 @@
+.settings-editor {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+}
+
+.settings-tabs {
+  height: 100%;
+}
+
+.settings-tabs .ant-tabs-content {
+  height: 100%;
+}
+
+.settings-tabs .ant-tabs-tabpane {
+  height: 100%;
+}
+
+.settings-general-panel {
+  max-width: 400px;
+}
+
+.settings-config-panel {
+  height: 100%;
+}
+
+.settings-config-list {
+  width: 200px;
+  min-width: 200px;
+  border-right: 1px solid var(--ant-color-border);
+  padding-right: 16px;
+  overflow-y: auto;
+}
+
+.settings-config-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.settings-config-item:hover {
+  background-color: var(--ant-color-bg-text-hover);
+}
+
+.settings-config-item.selected {
+  background-color: var(--ant-color-primary-bg);
+}
+
+.settings-config-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-config-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding-left: 16px;
+}

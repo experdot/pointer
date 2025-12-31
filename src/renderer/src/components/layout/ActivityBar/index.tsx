@@ -5,11 +5,13 @@ import {
   SearchOutlined,
   StarOutlined,
   UnorderedListOutlined,
-  UserOutlined
+  UserOutlined,
+  SettingOutlined
 } from '@ant-design/icons'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { useAccountStore } from '../../../stores/accountStore'
 import { UserProfileCard } from './UserProfileCard'
+import { openSettings } from '../../../services/settingsService'
 import './ActivityBar.css'
 
 interface ActivityItem {
@@ -46,6 +48,11 @@ export function ActivityBar(): React.JSX.Element {
         ))}
       </Flex>
       <Flex vertical className="activity-bar-bottom">
+        <Tooltip title="设置" placement="right">
+          <button className="activity-bar-item" onClick={openSettings}>
+            <SettingOutlined />
+          </button>
+        </Tooltip>
         <Popover
           content={<UserProfileCard onClose={() => setPopoverOpen(false)} />}
           trigger="click"

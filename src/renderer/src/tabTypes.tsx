@@ -3,6 +3,7 @@ import { registerTabType } from './utils/tabRegistry'
 import type { Tab } from './types/type'
 import { usePagesStore } from './stores/pagesStore'
 import { WelcomePage } from './components/editors/WelcomePage'
+import { SettingsEditor } from './components/editors/SettingsEditor'
 
 // 注册 welcome 类型
 registerTabType({
@@ -34,7 +35,7 @@ registerTabType({
 registerTabType({
   type: 'settings',
   icon: <SettingOutlined />,
-  renderEditor: () => <div>设置编辑器</div>
+  renderEditor: () => <SettingsEditor />
 })
 
 // 导出空对象以避免 TS6133 警告
