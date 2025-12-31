@@ -13,12 +13,42 @@
   padding: 4px 0;
 }
 
+/* 滚动条样式 */
+.explorer-tree::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.explorer-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.explorer-tree::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.explorer-tree:hover::-webkit-scrollbar-thumb {
+  background: var(--ant-color-text-quaternary);
+}
+
+.explorer-tree::-webkit-scrollbar-thumb:hover {
+  background: var(--ant-color-text-tertiary);
+}
+
 .explorer-tree .ant-tree {
   background: transparent;
 }
 
 .explorer-tree .ant-tree-treenode {
   width: 100%;
+  padding: 2px 0;
+}
+
+/* 减少展开按钮和内容之间的间距 */
+.explorer-tree .ant-tree-switcher {
+  margin-right: 1px;
 }
 
 .explorer-tree .ant-tree-node-content-wrapper {
@@ -26,6 +56,7 @@
   align-items: center;
   min-width: 0;
   flex: 1;
+  padding: 0 4px;
 }
 
 .explorer-tree .ant-tree-title {
@@ -35,10 +66,27 @@
 }
 
 .explorer-tree-title {
-  display: block;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.explorer-tree-title-text {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.explorer-tree-title-more {
+  flex-shrink: 0;
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+.explorer-tree-title-more:hover {
+  opacity: 1;
 }
 
 /* 隐藏拖拽图标 */

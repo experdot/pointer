@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Flex, Button, Input, Empty, Tree, Dropdown } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -7,7 +7,8 @@ import {
   FolderOpenOutlined,
   MessageOutlined,
   EditOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  MoreOutlined
 } from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
@@ -50,6 +51,16 @@ export function Explorer(): React.JSX.Element {
   // 获取当前激活 tab 对应的 pageId
   const { tabs, activeTabId } = useTabsStore()
   const activePageId = tabs.find((t) => t.id === activeTabId)?.pageId
+
+  // 统一的选中项 ID（可以是页面或文件夹）
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+
+  // 当通过标签页切换页面时，同步选中状态
+  useEffect(() => {
+    if (activePageId) {
+      setSelectedKey(activePageId)
+    }
+  }, [activePageId])
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
@@ -195,12 +206,14 @@ export function Explorer(): React.JSX.Element {
   const handleSelect: TreeProps['onSelect'] = (_selectedKeys, info) => {
     const nodeData = getTreeNodeData(info.node as TreeDataNode)
     if (nodeData) {
+      const key = info.node.key as string
+      setSelectedKey(key)
       if (nodeData.isFolder) {
         // 文件夹：切换展开/收起
-        toggleFolderExpanded(info.node.key as string)
+        toggleFolderExpanded(key)
       } else {
         // 页面：打开
-        openPage(info.node.key as string)
+        openPage(key)
       }
     }
   }
@@ -253,6 +266,7 @@ export function Explorer(): React.JSX.Element {
 
     const id = node.key as string
     const title = node.title as string
+    const isSelected = selectedKey === id
 
     if (editingId === id) {
       return (
@@ -270,7 +284,20 @@ export function Explorer(): React.JSX.Element {
 
     return (
       <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['contextMenu']}>
-        <span className="explorer-tree-title">{title}</span>
+        <span className="explorer-tree-title">
+          <span className="explorer-tree-title-text">{title}</span>
+          {isSelected && (
+            <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['click']}>
+              <Button
+                type="text"
+                size="small"
+                icon={<MoreOutlined />}
+                className="explorer-tree-title-more"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Dropdown>
+          )}
+        </span>
       </Dropdown>
     )
   }
@@ -285,13 +312,21 @@ export function Explorer(): React.JSX.Element {
           size="small"
           icon={<PlusOutlined />}
           onClick={() => {
-            const page = createPage()
+            const page = createPage(undefined, selectedKey ?? undefined)
             openPage(page.id)
           }}
         >
           新建对话
         </Button>
-        <Button type="text" size="small" icon={<FolderOutlined />} onClick={() => createFolder()} />
+        <Button
+          type="text"
+          size="small"
+          icon={<FolderOutlined />}
+          onClick={() => {
+            const folder = createFolder(undefined, selectedKey ?? undefined)
+            setSelectedKey(folder.id)
+          }}
+        />
       </Flex>
       <div className="explorer-tree">
         {isEmpty ? (
@@ -299,7 +334,7 @@ export function Explorer(): React.JSX.Element {
         ) : (
           <Tree
             treeData={treeData}
-            selectedKeys={activePageId ? [activePageId] : []}
+            selectedKeys={selectedKey ? [selectedKey] : []}
             expandedKeys={expandedKeys}
             onSelect={handleSelect}
             onExpand={handleExpand}

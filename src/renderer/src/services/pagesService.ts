@@ -3,49 +3,61 @@ import type { ChatPage, PageFolder } from '../types/type'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
 
-// 创建新页面（插入到当前选中页面下方，或根目录最前面）
-export function createPage(title?: string): ChatPage {
+// 计算新项目的插入位置和 order，并更新同级项目的 order
+// afterItemId: 可选，指定插入到哪个项目后面（优先级高于 activeTab）
+function prepareInsertPosition(afterItemId?: string): {
+  parentFolderId: string | undefined
+  order: number
+} {
   const store = usePagesStore.getState()
   const tabsStore = useTabsStore.getState()
 
-  // 获取当前选中的页面
-  const activeTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId)
-  const selectedPage = activeTab?.pageId ? store.pages.find((p) => p.id === activeTab.pageId) : null
+  // 查找参考项目（优先使用传入的 afterItemId）
+  let referenceItem: ChatPage | PageFolder | null = null
+  if (afterItemId) {
+    referenceItem =
+      store.pages.find((p) => p.id === afterItemId) ||
+      store.folders.find((f) => f.id === afterItemId) ||
+      null
+  }
+  if (!referenceItem) {
+    const activeTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId)
+    referenceItem = activeTab?.pageId
+      ? store.pages.find((p) => p.id === activeTab.pageId) || null
+      : null
+  }
 
   let parentFolderId: string | undefined
   let newOrder: number
 
-  if (selectedPage) {
-    // 插入到选中页面的下方（同一层级）
-    parentFolderId = selectedPage.parentFolderId
-    newOrder = (selectedPage.order ?? 0) + 1
-
-    // 批量更新同级中 order >= newOrder 的项目
-    const pageUpdates = store.pages
-      .filter((p) => p.parentFolderId === parentFolderId && (p.order ?? 0) >= newOrder)
-      .map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
-    const folderUpdates = store.folders
-      .filter((f) => f.parentFolderId === parentFolderId && (f.order ?? 0) >= newOrder)
-      .map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
-
-    if (pageUpdates.length) store.batchUpdatePages(pageUpdates)
-    if (folderUpdates.length) store.batchUpdateFolders(folderUpdates)
+  if (referenceItem) {
+    // 插入到参考项目的下方（同一层级）
+    parentFolderId = referenceItem.parentFolderId
+    newOrder = (referenceItem.order ?? 0) + 1
   } else {
     // 插入到根目录最前面
     parentFolderId = undefined
     newOrder = 0
-
-    // 批量更新根目录所有项目的 order + 1
-    const pageUpdates = store.pages
-      .filter((p) => !p.parentFolderId)
-      .map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
-    const folderUpdates = store.folders
-      .filter((f) => !f.parentFolderId)
-      .map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
-
-    if (pageUpdates.length) store.batchUpdatePages(pageUpdates)
-    if (folderUpdates.length) store.batchUpdateFolders(folderUpdates)
   }
+
+  // 批量更新同级中 order >= newOrder 的项目
+  const pageUpdates = store.pages
+    .filter((p) => p.parentFolderId === parentFolderId && (p.order ?? 0) >= newOrder)
+    .map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
+  const folderUpdates = store.folders
+    .filter((f) => f.parentFolderId === parentFolderId && (f.order ?? 0) >= newOrder)
+    .map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
+
+  if (pageUpdates.length) store.batchUpdatePages(pageUpdates)
+  if (folderUpdates.length) store.batchUpdateFolders(folderUpdates)
+
+  return { parentFolderId, order: newOrder }
+}
+
+// 创建新页面（插入到指定项目下方，或当前选中页面下方，或根目录最前面）
+export function createPage(title?: string, afterItemId?: string): ChatPage {
+  const store = usePagesStore.getState()
+  const { parentFolderId, order } = prepareInsertPosition(afterItemId)
 
   const page: ChatPage = {
     type: 'page',
@@ -53,7 +65,7 @@ export function createPage(title?: string): ChatPage {
     title: title || '新对话',
     parentFolderId,
     createdAt: Date.now(),
-    order: newOrder,
+    order,
     data: {
       messages: []
     }
@@ -94,16 +106,10 @@ export function movePage(pageId: string, folderId: string | undefined): void {
   usePagesStore.getState().updatePage(pageId, { parentFolderId: folderId })
 }
 
-// 创建文件夹
-export function createFolder(name?: string, parentFolderId?: string): PageFolder {
+// 创建文件夹（插入到指定项目下方，或当前选中页面下方，或根目录最前面）
+export function createFolder(name?: string, afterItemId?: string): PageFolder {
   const store = usePagesStore.getState()
-
-  // 计算同级的最大 order（包括文件夹和页面）
-  const foldersInSameLevel = store.folders.filter((f) => f.parentFolderId === parentFolderId)
-  const pagesInSameLevel = store.pages.filter((p) => p.parentFolderId === parentFolderId)
-  const maxFolderOrder = foldersInSameLevel.reduce((max, f) => Math.max(max, f.order ?? 0), -1)
-  const maxPageOrder = pagesInSameLevel.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
-  const maxOrder = Math.max(maxFolderOrder, maxPageOrder)
+  const { parentFolderId, order } = prepareInsertPosition(afterItemId)
 
   const folder: PageFolder = {
     type: 'folder',
@@ -112,7 +118,7 @@ export function createFolder(name?: string, parentFolderId?: string): PageFolder
     parentFolderId,
     expanded: true,
     createdAt: Date.now(),
-    order: maxOrder + 1
+    order
   }
 
   store.addFolder(folder)
