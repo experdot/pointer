@@ -7,7 +7,8 @@ import {
   HomeOutlined,
   PushpinFilled,
   LeftOutlined,
-  RightOutlined
+  RightOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import {
   DndContext,
@@ -67,9 +68,14 @@ export function Tabs(): React.JSX.Element {
     goBack,
     goForward,
     canGoBack,
-    canGoForward
+    canGoForward,
+    keepTab,
+    history,
+    historyIndex,
+    clearHistory,
+    navigateToHistoryIndex
   } = useTabsStore()
-  const { createPage, openPage } = usePages()
+  const { createPage, openPage, pages } = usePages()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -89,15 +95,46 @@ export function Tabs(): React.JSX.Element {
   const getContextMenuItems = (tabId: string): MenuProps['items'] => {
     const tab = tabs.find((t) => t.id === tabId)
     return [
-      { key: 'close', label: '关闭', onClick: () => closeTab(tabId) },
-      { key: 'closeOthers', label: '关闭其他', onClick: () => closeOtherTabs(tabId) },
-      { key: 'closeRight', label: '关闭右侧', onClick: () => closeRightTabs(tabId) },
-      { key: 'closeAll', label: '关闭全部', onClick: () => closeAllTabs() },
+      {
+        key: 'close',
+        label: '关闭',
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          closeTab(tabId)
+        }
+      },
+      {
+        key: 'closeOthers',
+        label: '关闭其他',
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          closeOtherTabs(tabId)
+        }
+      },
+      {
+        key: 'closeRight',
+        label: '关闭右侧',
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          closeRightTabs(tabId)
+        }
+      },
+      {
+        key: 'closeAll',
+        label: '关闭全部',
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          closeAllTabs()
+        }
+      },
       { type: 'divider' },
       {
         key: 'pin',
         label: tab?.pinned ? '取消固定' : '固定',
-        onClick: () => togglePinTab(tabId)
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          togglePinTab(tabId)
+        }
       }
     ]
   }
@@ -106,7 +143,10 @@ export function Tabs(): React.JSX.Element {
     key: tab.id,
     label: (
       <Dropdown menu={{ items: getContextMenuItems(tab.id) }} trigger={['contextMenu']}>
-        <span className="tab-label">
+        <span
+          className={`tab-label ${tab.preview ? 'tab-preview' : ''}`}
+          onDoubleClick={() => tab.preview && keepTab(tab.id)}
+        >
           {tab.pinned && <PushpinFilled className="tab-pin-icon" />}
           <span className="tab-icon">{tabIcons[tab.type]}</span>
           <span className="tab-title">{tab.title}</span>
@@ -139,26 +179,70 @@ export function Tabs(): React.JSX.Element {
     </DndContext>
   )
 
+  // 检查 history ID 是否有效
+  const isValidHistoryId = (tabId: string): boolean => {
+    // 非 chat 类型始终有效
+    if (!tabId.startsWith('chat-')) return true
+    // chat 类型检查对应的 page 是否存在
+    const pageId = tabId.slice(5)
+    return pages.some((p) => p.id === pageId)
+  }
+
+  // 历史记录右键菜单
+  const getHistoryMenuItems = (): MenuProps['items'] => {
+    const historyItems: MenuProps['items'] = history
+      .map((tabId, index) => ({ tabId, index }))
+      .filter(({ tabId }) => isValidHistoryId(tabId))
+      .map(({ tabId, index }) => {
+        const tab = tabs.find((t) => t.id === tabId)
+        const isCurrent = index === historyIndex
+        return {
+          key: `history-${index}`,
+          label: (
+            <span style={{ fontWeight: isCurrent ? 'bold' : 'normal' }}>
+              {isCurrent ? '→ ' : ''}
+              {tab?.title || tabId}
+            </span>
+          ),
+          onClick: () => navigateToHistoryIndex(index)
+        }
+      })
+
+    return [
+      ...historyItems,
+      { type: 'divider' },
+      {
+        key: 'clear',
+        label: '清空历史',
+        icon: <DeleteOutlined />,
+        danger: true,
+        onClick: clearHistory
+      }
+    ]
+  }
+
   if (tabs.length === 0) return <></>
 
   return (
     <div className="tabs-wrapper">
-      <div className="tabs-nav-buttons">
-        <Button
-          type="text"
-          size="small"
-          icon={<LeftOutlined />}
-          disabled={!canGoBack()}
-          onClick={goBack}
-        />
-        <Button
-          type="text"
-          size="small"
-          icon={<RightOutlined />}
-          disabled={!canGoForward()}
-          onClick={goForward}
-        />
-      </div>
+      <Dropdown menu={{ items: getHistoryMenuItems() }} trigger={['contextMenu']}>
+        <div className="tabs-nav-buttons">
+          <Button
+            type="text"
+            size="small"
+            icon={<LeftOutlined />}
+            disabled={!canGoBack()}
+            onClick={goBack}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<RightOutlined />}
+            disabled={!canGoForward()}
+            onClick={goForward}
+          />
+        </div>
+      </Dropdown>
       <AntTabs
         className="tabs-container"
         type="editable-card"

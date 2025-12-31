@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Flex, Button, Input, Empty, Tree, Dropdown } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -202,7 +202,7 @@ export function Explorer(): React.JSX.Element {
     return true
   }
 
-  // 单击选中处理
+  // 单击选中处理（预览模式打开页面）
   const handleSelect: TreeProps['onSelect'] = (_selectedKeys, info) => {
     const nodeData = getTreeNodeData(info.node as TreeDataNode)
     if (nodeData) {
@@ -212,9 +212,16 @@ export function Explorer(): React.JSX.Element {
         // 文件夹：切换展开/收起
         toggleFolderExpanded(key)
       } else {
-        // 页面：打开
-        openPage(key)
+        // 页面：预览模式打开
+        openPage(key, true)
       }
+    }
+  }
+
+  // 双击处理（正式打开页面）
+  const handleDoubleClick = (key: string, isFolder: boolean): void => {
+    if (!isFolder) {
+      openPage(key, false)
     }
   }
 
@@ -227,7 +234,10 @@ export function Explorer(): React.JSX.Element {
           key: 'rename',
           label: '重命名',
           icon: <EditOutlined />,
-          onClick: () => handleStartRename(folder.id, folder.name)
+          onClick: ({ domEvent }) => {
+            domEvent.stopPropagation()
+            handleStartRename(folder.id, folder.name)
+          }
         },
         { type: 'divider' },
         {
@@ -235,7 +245,10 @@ export function Explorer(): React.JSX.Element {
           label: '删除',
           icon: <DeleteOutlined />,
           danger: true,
-          onClick: () => handleDeleteFolder(folder)
+          onClick: ({ domEvent }) => {
+            domEvent.stopPropagation()
+            handleDeleteFolder(folder)
+          }
         }
       ]
     } else {
@@ -245,7 +258,10 @@ export function Explorer(): React.JSX.Element {
           key: 'rename',
           label: '重命名',
           icon: <EditOutlined />,
-          onClick: () => handleStartRename(page.id, page.title)
+          onClick: ({ domEvent }) => {
+            domEvent.stopPropagation()
+            handleStartRename(page.id, page.title)
+          }
         },
         { type: 'divider' },
         {
@@ -253,7 +269,10 @@ export function Explorer(): React.JSX.Element {
           label: '删除',
           icon: <DeleteOutlined />,
           danger: true,
-          onClick: () => handleDeletePage(page)
+          onClick: ({ domEvent }) => {
+            domEvent.stopPropagation()
+            handleDeletePage(page)
+          }
         }
       ]
     }
@@ -284,7 +303,10 @@ export function Explorer(): React.JSX.Element {
 
     return (
       <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['contextMenu']}>
-        <span className="explorer-tree-title">
+        <span
+          className="explorer-tree-title"
+          onDoubleClick={() => handleDoubleClick(id, treeNode.isFolder)}
+        >
           <span className="explorer-tree-title-text">{title}</span>
           {isSelected && (
             <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['click']}>

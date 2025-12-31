@@ -145,18 +145,21 @@ export function toggleFolderExpanded(id: string): void {
 }
 
 // 打开页面（在标签页中）
-export function openPage(pageId: string): void {
+export function openPage(pageId: string, preview = false): void {
   const store = usePagesStore.getState()
   const page = store.pages.find((p) => p.id === pageId)
   if (!page) return
 
   const tabsStore = useTabsStore.getState()
-  tabsStore.openTab({
-    id: `chat-${pageId}`,
-    type: 'chat',
-    title: page.title,
-    pageId: pageId
-  })
+  tabsStore.openTab(
+    {
+      id: `chat-${pageId}`,
+      type: 'chat',
+      title: page.title,
+      pageId: pageId
+    },
+    preview
+  )
 }
 
 // 获取文件夹下的页面

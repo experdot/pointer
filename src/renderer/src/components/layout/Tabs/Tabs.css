@@ -74,3 +74,8 @@
   color: var(--ant-color-primary);
   font-size: 12px;
 }
+
+/* 预览模式标签页 - 斜体显示 */
+.tab-preview .tab-title {
+  font-style: italic;
+}
