@@ -74,9 +74,7 @@ export function Sidebar(): React.JSX.Element {
       <div className="sidebar-header">
         <Text className="sidebar-title">{panelTitles[activePanel]}</Text>
       </div>
-      <div className="sidebar-content">
-        {PanelComponent && <PanelComponent />}
-      </div>
+      <div className="sidebar-content">{PanelComponent && <PanelComponent />}</div>
       <div className="sidebar-resizer" onMouseDown={handleMouseDown} />
     </div>
   )

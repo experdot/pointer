@@ -10,9 +10,7 @@ export function createPage(title?: string): ChatPage {
 
   // 获取当前选中的页面
   const activeTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId)
-  const selectedPage = activeTab?.pageId
-    ? store.pages.find((p) => p.id === activeTab.pageId)
-    : null
+  const selectedPage = activeTab?.pageId ? store.pages.find((p) => p.id === activeTab.pageId) : null
 
   let parentFolderId: string | undefined
   let newOrder: number

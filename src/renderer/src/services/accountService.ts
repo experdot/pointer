@@ -1,10 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { Account } from '../types/type'
-import {
-  useAccountStore,
-  createDefaultAccount,
-  getDefaultAccountId
-} from '../stores/accountStore'
+import { useAccountStore, createDefaultAccount, getDefaultAccountId } from '../stores/accountStore'
 import { setDatabaseName, deleteDatabase } from '../utils/indexedDB'
 import { rehydrateAllStores } from '../utils/storeRegistry'
 
@@ -70,7 +66,10 @@ export function createAccount(name: string, avatar?: string): Account {
 }
 
 // 更新账户信息
-export function updateAccount(id: string, updates: Partial<Omit<Account, 'id' | 'createdAt'>>): void {
+export function updateAccount(
+  id: string,
+  updates: Partial<Omit<Account, 'id' | 'createdAt'>>
+): void {
   const store = useAccountStore.getState()
   store.updateAccount(id, updates)
 }

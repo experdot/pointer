@@ -120,12 +120,10 @@ export const useTabsStore = create<TabsStore>()(
 
       togglePinTab: (tabId) =>
         set((state) => {
-          const tabs = state.tabs.map((t) =>
-            t.id === tabId ? { ...t, pinned: !t.pinned } : t
-          )
+          const tabs = state.tabs.map((t) => (t.id === tabId ? { ...t, pinned: !t.pinned } : t))
           // 重新排序：固定的标签在前
-          const pinnedTabs = tabs.filter(t => t.pinned)
-          const unpinnedTabs = tabs.filter(t => !t.pinned)
+          const pinnedTabs = tabs.filter((t) => t.pinned)
+          const unpinnedTabs = tabs.filter((t) => !t.pinned)
           return { tabs: [...pinnedTabs, ...unpinnedTabs] }
         }),
 
@@ -162,10 +160,9 @@ export const useTabsStore = create<TabsStore>()(
             (t) => t.type !== 'chat' || (t.pageId && validPageIds.includes(t.pageId))
           )
           // 如果当前激活的 tab 被清理了，切换到第一个 tab
-          const newActiveTabId =
-            newTabs.some((t) => t.id === state.activeTabId)
-              ? state.activeTabId
-              : newTabs[0]?.id || null
+          const newActiveTabId = newTabs.some((t) => t.id === state.activeTabId)
+            ? state.activeTabId
+            : newTabs[0]?.id || null
           return { tabs: newTabs, activeTabId: newActiveTabId }
         }),
 

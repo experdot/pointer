@@ -5,6 +5,11 @@
   user-select: none;
 }
 
+/* macOS: 为红绿灯按钮留出空间 */
+.title-bar-mac .title-bar-drag {
+  padding-left: 80px;
+}
+
 .title-bar-drag {
   -webkit-app-region: drag;
   padding-left: 12px;

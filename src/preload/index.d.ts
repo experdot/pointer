@@ -124,6 +124,7 @@ declare global {
       maximize: () => Promise<void>
       close: () => Promise<void>
       isMaximized: () => Promise<boolean>
+      getPlatform: () => Promise<string>
     }
   }
 }

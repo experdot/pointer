@@ -10,11 +10,7 @@ import {
   useSensors,
   type DragEndEvent
 } from '@dnd-kit/core'
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable
-} from '@dnd-kit/sortable'
+import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTabsStore, type TabType } from '../../../stores/tabsStore'
 import { usePages } from '../../../hooks/usePages'
@@ -51,8 +47,17 @@ function DraggableTab({ id, children }: DraggableTabProps) {
 }
 
 export function Tabs(): React.JSX.Element {
-  const { tabs, activeTabId, setActiveTab, closeTab, reorderTabs, togglePinTab, closeOtherTabs, closeRightTabs, closeAllTabs } =
-    useTabsStore()
+  const {
+    tabs,
+    activeTabId,
+    setActiveTab,
+    closeTab,
+    reorderTabs,
+    togglePinTab,
+    closeOtherTabs,
+    closeRightTabs,
+    closeAllTabs
+  } = useTabsStore()
   const { createPage, openPage } = usePages()
 
   const sensors = useSensors(
@@ -71,7 +76,7 @@ export function Tabs(): React.JSX.Element {
   }
 
   const getContextMenuItems = (tabId: string): MenuProps['items'] => {
-    const tab = tabs.find(t => t.id === tabId)
+    const tab = tabs.find((t) => t.id === tabId)
     return [
       { key: 'close', label: '关闭', onClick: () => closeTab(tabId) },
       { key: 'closeOthers', label: '关闭其他', onClick: () => closeOtherTabs(tabId) },

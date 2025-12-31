@@ -52,10 +52,10 @@ UI Component → Hook → Service → Store
 
 ## Store 分类
 
-| 类型           | Store                                                                               | 说明         |
-| -------------- | ----------------------------------------------------------------------------------- | ------------ |
-| 需要 Service   | messagesStore, pagesStore, tasksStore, favoritesStore, settingsStore, accountStore  | 复杂业务逻辑 |
-| 不需要 Service | layoutStore, tabsStore, searchStore, messageQueueStore                              | 纯 UI 状态   |
+| 类型           | Store                                                                              | 说明         |
+| -------------- | ---------------------------------------------------------------------------------- | ------------ |
+| 需要 Service   | messagesStore, pagesStore, tasksStore, favoritesStore, settingsStore, accountStore | 复杂业务逻辑 |
+| 不需要 Service | layoutStore, tabsStore, searchStore, messageQueueStore                             | 纯 UI 状态   |
 
 ## 核心功能
 

@@ -129,12 +129,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
           )}
         />
         <Divider style={{ margin: '4px 0' }} />
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          block
-          onClick={() => setShowCreateForm(true)}
-        >
+        <Button type="dashed" icon={<PlusOutlined />} block onClick={() => setShowCreateForm(true)}>
           新建账户
         </Button>
       </Flex>

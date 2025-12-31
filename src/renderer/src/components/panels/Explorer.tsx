@@ -93,10 +93,7 @@ export function Explorer(): React.JSX.Element {
   }, [folders, pages, rootItems])
 
   // 展开的文件夹
-  const expandedKeys = useMemo(
-    () => folders.filter((f) => f.expanded).map((f) => f.id),
-    [folders]
-  )
+  const expandedKeys = useMemo(() => folders.filter((f) => f.expanded).map((f) => f.id), [folders])
 
   const handleStartRename = (id: string, currentName: string) => {
     setEditingId(id)
@@ -162,7 +159,8 @@ export function Explorer(): React.JSX.Element {
       batchUpdateItemsOrder([draggedItem, ...itemsInFolder], dropKey)
     } else if (info.dropToGap) {
       // 拖到间隙（同级位置）
-      const targetItem = pages.find((p) => p.id === dropKey) || folders.find((f) => f.id === dropKey)
+      const targetItem =
+        pages.find((p) => p.id === dropKey) || folders.find((f) => f.id === dropKey)
       const targetParentFolderId = targetItem?.parentFolderId
 
       const sameLevelItems = getItemsAtLevel(targetParentFolderId, dragKey)
@@ -268,10 +266,7 @@ export function Explorer(): React.JSX.Element {
     }
 
     return (
-      <Dropdown
-        menu={{ items: getContextMenuItems(treeNode) }}
-        trigger={['contextMenu']}
-      >
+      <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['contextMenu']}>
         <span className="explorer-tree-title">{title}</span>
       </Dropdown>
     )
@@ -293,12 +288,7 @@ export function Explorer(): React.JSX.Element {
         >
           新建对话
         </Button>
-        <Button
-          type="text"
-          size="small"
-          icon={<FolderOutlined />}
-          onClick={() => createFolder()}
-        />
+        <Button type="text" size="small" icon={<FolderOutlined />} onClick={() => createFolder()} />
       </Flex>
       <div className="explorer-tree">
         {isEmpty ? (

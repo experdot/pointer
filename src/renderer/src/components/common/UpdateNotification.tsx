@@ -24,10 +24,14 @@ export default function UpdateNotification(): React.JSX.Element | null {
         message: '发现新版本',
         description: `版本 ${info.version || '未知'} 可用`,
         btn: (
-          <Button type="primary" size="small" onClick={() => {
-            setDownloading(true)
-            api.updater.downloadUpdate()
-          }}>
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => {
+              setDownloading(true)
+              api.updater.downloadUpdate()
+            }}
+          >
             下载更新
           </Button>
         ),
