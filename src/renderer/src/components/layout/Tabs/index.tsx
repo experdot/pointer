@@ -1,15 +1,7 @@
 import React from 'react'
 import { Tabs as AntTabs, Dropdown, Button } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import {
-  MessageOutlined,
-  SettingOutlined,
-  HomeOutlined,
-  PushpinFilled,
-  LeftOutlined,
-  RightOutlined,
-  DeleteOutlined
-} from '@ant-design/icons'
+import { PushpinFilled, LeftOutlined, RightOutlined, DeleteOutlined } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -20,15 +12,10 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useTabsStore, type TabType } from '../../../stores/tabsStore'
+import { useTabsStore } from '../../../stores/tabsStore'
 import { usePages } from '../../../hooks/usePages'
+import { getTabIcon, validateTabData } from '../../../utils/tabRegistry'
 import './Tabs.css'
-
-const tabIcons: Record<TabType, React.ReactNode> = {
-  welcome: <HomeOutlined />,
-  chat: <MessageOutlined />,
-  settings: <SettingOutlined />
-}
 
 interface DraggableTabProps {
   id: string
@@ -75,7 +62,7 @@ export function Tabs(): React.JSX.Element {
     clearHistory,
     navigateToHistoryIndex
   } = useTabsStore()
-  const { createPage, openPage, pages } = usePages()
+  const { createPage, openPage } = usePages()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -148,7 +135,7 @@ export function Tabs(): React.JSX.Element {
           onDoubleClick={() => tab.preview && keepTab(tab.id)}
         >
           {tab.pinned && <PushpinFilled className="tab-pin-icon" />}
-          <span className="tab-icon">{tabIcons[tab.type]}</span>
+          <span className="tab-icon">{getTabIcon(tab.type)}</span>
           <span className="tab-title">{tab.title}</span>
         </span>
       </Dropdown>
@@ -179,20 +166,11 @@ export function Tabs(): React.JSX.Element {
     </DndContext>
   )
 
-  // 检查 history ID 是否有效
-  const isValidHistoryId = (tabId: string): boolean => {
-    // 非 chat 类型始终有效
-    if (!tabId.startsWith('chat-')) return true
-    // chat 类型检查对应的 page 是否存在
-    const pageId = tabId.slice(5)
-    return pages.some((p) => p.id === pageId)
-  }
-
   // 历史记录右键菜单
   const getHistoryMenuItems = (): MenuProps['items'] => {
     const historyItems: MenuProps['items'] = history
       .map((tabId, index) => ({ tabId, index }))
-      .filter(({ tabId }) => isValidHistoryId(tabId))
+      .filter(({ tabId }) => validateTabData(tabId))
       .map(({ tabId, index }) => {
         const tab = tabs.find((t) => t.id === tabId)
         const isCurrent = index === historyIndex

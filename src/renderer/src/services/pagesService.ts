@@ -22,8 +22,8 @@ function prepareInsertPosition(afterItemId?: string): {
   }
   if (!referenceItem) {
     const activeTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId)
-    referenceItem = activeTab?.pageId
-      ? store.pages.find((p) => p.id === activeTab.pageId) || null
+    referenceItem = activeTab?.dataId
+      ? store.pages.find((p) => p.id === activeTab.dataId) || null
       : null
   }
 
@@ -82,7 +82,7 @@ export function updatePage(id: string, updates: Partial<ChatPage>): void {
   // 同步更新标签页标题
   if (updates.title) {
     const tabsStore = useTabsStore.getState()
-    const tab = tabsStore.tabs.find((t) => t.pageId === id)
+    const tab = tabsStore.tabs.find((t) => t.dataId === id)
     if (tab) {
       tabsStore.updateTabTitle(tab.id, updates.title)
     }
@@ -95,7 +95,7 @@ export function deletePage(id: string): void {
 
   // 关闭对应的标签页
   const tabsStore = useTabsStore.getState()
-  const tab = tabsStore.tabs.find((t) => t.pageId === id)
+  const tab = tabsStore.tabs.find((t) => t.dataId === id)
   if (tab) {
     tabsStore.closeTab(tab.id)
   }
@@ -156,7 +156,7 @@ export function openPage(pageId: string, preview = false): void {
       id: `chat-${pageId}`,
       type: 'chat',
       title: page.title,
-      pageId: pageId
+      dataId: pageId
     },
     preview
   )

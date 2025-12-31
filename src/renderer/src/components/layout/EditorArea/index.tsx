@@ -1,40 +1,34 @@
 import React, { useEffect, useRef } from 'react'
 import { Empty } from 'antd'
 import { Tabs } from '../Tabs'
-import { WelcomePage } from '../../editors/WelcomePage'
 import { useTabsStore } from '../../../stores/tabsStore'
-import { usePagesStore } from '../../../stores/pagesStore'
+import { renderTabEditor } from '../../../utils/tabRegistry'
 import './EditorArea.css'
 
 export function EditorArea(): React.JSX.Element {
-  const { tabs, activeTabId } = useTabsStore()
-  const pages = usePagesStore((state) => state.pages)
+  const { tabs, activeTabId, cleanupInvalidTabs } = useTabsStore()
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
   // 使用 ref 存储 cleanupInvalidTabs 避免依赖变化
-  const cleanupRef = useRef(useTabsStore.getState().cleanupInvalidTabs)
+  const cleanupRef = useRef(cleanupInvalidTabs)
+  cleanupRef.current = cleanupInvalidTabs
 
-  // 同步清理无效的 chat tabs
+  // 定期清理无效的 tabs（使用注册机制验证）
   useEffect(() => {
-    const validPageIds = pages.map((p) => p.id)
-    cleanupRef.current(validPageIds)
-  }, [pages])
+    cleanupRef.current()
+  }, [tabs.length])
 
   const renderContent = (): React.JSX.Element | null => {
     if (!activeTab) {
       return <Empty description="打开一个聊天开始对话" style={{ marginTop: 100 }} />
     }
 
-    switch (activeTab.type) {
-      case 'welcome':
-        return <WelcomePage />
-      case 'chat':
-        return <div>聊天编辑器: {activeTab.title}</div>
-      case 'settings':
-        return <div>设置编辑器</div>
-      default:
-        return null
+    const editor = renderTabEditor(activeTab)
+    if (editor) {
+      return <>{editor}</>
     }
+
+    return <Empty description={`未知的标签类型: ${activeTab.type}`} style={{ marginTop: 100 }} />
   }
 
   return (

@@ -315,3 +315,16 @@ export interface MessageQueueConfig {
   paused: boolean // 是否暂停队列处理
   maxRetries: number // 最大重试次数
 }
+
+// ==================== Tab 类型定义 ====================
+
+// Tab 基础接口
+export interface Tab {
+  id: string
+  type: string
+  title: string
+  dataId?: string // 通用的关联数据 ID
+  closable?: boolean
+  pinned?: boolean
+  preview?: boolean
+}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Flex, Button, Input, Empty, Tree, Dropdown } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -48,9 +48,9 @@ export function Explorer(): React.JSX.Element {
 
   const { showDeleteConfirm } = useConfirmDialog()
 
-  // 获取当前激活 tab 对应的 pageId
+  // 获取当前激活 tab 对应的 dataId (pageId)
   const { tabs, activeTabId } = useTabsStore()
-  const activePageId = tabs.find((t) => t.id === activeTabId)?.pageId
+  const activePageId = tabs.find((t) => t.id === activeTabId)?.dataId
 
   // 统一的选中项 ID（可以是页面或文件夹）
   const [selectedKey, setSelectedKey] = useState<string | null>(null)

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { ConfigProvider, theme, App as AntdApp, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import './App.css'
+import './tabTypes' // 注册 tab 类型
 import UpdateNotification from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { MainLayout } from './components/layout/MainLayout'

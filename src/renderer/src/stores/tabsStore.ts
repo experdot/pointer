@@ -2,20 +2,11 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createIndexedDBStorage } from '../utils/indexedDB'
 import { registerStoreReset } from '../utils/storeRegistry'
-import { usePagesStore } from './pagesStore'
+import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
+import type { Tab } from '../types/type'
 
-// 标签页类型
-export type TabType = 'welcome' | 'chat' | 'settings'
-
-export interface Tab {
-  id: string
-  type: TabType
-  title: string
-  pageId?: string // 关联的页面ID（chat类型）
-  closable?: boolean // 是否可关闭，默认 true
-  pinned?: boolean // 是否固定
-  preview?: boolean // 是否为预览模式（临时打开）
-}
+// 重新导出 Tab 类型
+export type { Tab } from '../types/type'
 
 const WELCOME_TAB: Tab = {
   id: 'welcome',
@@ -42,8 +33,8 @@ interface TabsActions {
   closeOtherTabs: (tabId: string) => void
   closeRightTabs: (tabId: string) => void
   closeAllTabs: () => void
-  // 清理无效的 chat tabs（pageId 不存在于 pages 中）
-  cleanupInvalidTabs: (validPageIds: string[]) => void
+  // 清理无效的 tabs（使用注册机制验证）
+  cleanupInvalidTabs: () => void
   // 历史导航
   goBack: () => void
   goForward: () => void
@@ -68,14 +59,6 @@ const initialState: TabsState = {
 // 内部标记：是否正在进行历史导航（避免导航时重复添加历史）
 let isNavigating = false
 
-// 从 tabId 解析 pageId（chat-xxx 格式）
-function parsePageIdFromTabId(tabId: string): string | null {
-  if (tabId.startsWith('chat-')) {
-    return tabId.slice(5)
-  }
-  return null
-}
-
 // 统一的历史记录添加逻辑
 function computeNewHistory(
   history: string[],
@@ -95,7 +78,7 @@ function computeNewHistory(
   return { history: newHistory, historyIndex: newHistory.length - 1 }
 }
 
-// 尝试导航到历史记录中的某个位置，返回实际导航到的索引（-1 表示失败）
+// 尝试导航到历史记录中的某个位置
 function tryNavigateToHistory(
   history: string[],
   startIndex: number,
@@ -103,8 +86,6 @@ function tryNavigateToHistory(
   tabs: Tab[],
   openTab: (tab: Tab, preview?: boolean) => void
 ): { targetIndex: number; targetTabId: string } | null {
-  const pagesStore = usePagesStore.getState()
-
   for (let i = startIndex; direction === -1 ? i >= 0 : i < history.length; i += direction) {
     const tabId = history[i]
 
@@ -113,27 +94,15 @@ function tryNavigateToHistory(
       return { targetIndex: i, targetTabId: tabId }
     }
 
-    // tab 不存在，尝试重新打开（仅 chat 类型）
-    const pageId = parsePageIdFromTabId(tabId)
-    if (pageId) {
-      const page = pagesStore.pages.find((p) => p.id === pageId)
-      if (page) {
-        // page 存在，以预览模式重新打开 tab
-        isNavigating = true
-        openTab(
-          {
-            id: tabId,
-            type: 'chat',
-            title: page.title,
-            pageId: pageId
-          },
-          true // 预览模式
-        )
-        isNavigating = false
-        return { targetIndex: i, targetTabId: tabId }
-      }
+    // tab 不存在，尝试通过注册机制恢复
+    const restoredTab = tryRestoreTab(tabId)
+    if (restoredTab) {
+      isNavigating = true
+      openTab({ ...restoredTab, preview: true }, true)
+      isNavigating = false
+      return { targetIndex: i, targetTabId: tabId }
     }
-    // page 不存在或不是 chat 类型，继续查找下一个
+    // 无法恢复，继续查找下一个
   }
 
   return null
@@ -296,11 +265,9 @@ export const useTabsStore = create<TabsStore>()(
           }
         }),
 
-      cleanupInvalidTabs: (validPageIds) =>
+      cleanupInvalidTabs: () =>
         set((state) => {
-          const newTabs = state.tabs.filter(
-            (t) => t.type !== 'chat' || (t.pageId && validPageIds.includes(t.pageId))
-          )
+          const newTabs = filterValidTabs(state.tabs)
           // 如果当前激活的 tab 被清理了，切换到第一个 tab
           const newActiveTabId = newTabs.some((t) => t.id === state.activeTabId)
             ? state.activeTabId
