@@ -27,7 +27,7 @@ interface DraggableTabProps {
   children: React.ReactNode
 }
 
-function DraggableTab({ id, children }: DraggableTabProps) {
+function DraggableTab({ id, children }: DraggableTabProps): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id
   })
@@ -66,7 +66,7 @@ export function Tabs(): React.JSX.Element {
     })
   )
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 

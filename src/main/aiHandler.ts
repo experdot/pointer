@@ -1,5 +1,5 @@
 import { ipcMain, app } from 'electron'
-import { createParser } from 'eventsource-parser'
+import { createParser, EventSourceParser } from 'eventsource-parser'
 import { readFile } from 'fs/promises'
 import * as path from 'path'
 
@@ -200,7 +200,7 @@ class AIHandler {
     eventChannel: string,
     fullResponse: { value: string },
     fullReasoning: { value: string }
-  ) {
+  ): EventSourceParser {
     return createParser({
       onEvent: (eventData) => {
         if (eventData.data === '[DONE]') {
@@ -387,7 +387,7 @@ class AIHandler {
 
       if (response.ok) {
         const data = await response.json()
-        const models = data.data?.map((model: any) => model.id) || []
+        const models = data.data?.map((model: { id: string }) => model.id) || []
         return { success: true, models }
       } else {
         return {
@@ -406,7 +406,7 @@ class AIHandler {
 
 export const aiHandler = new AIHandler()
 
-export function setupAIHandlers() {
+export function setupAIHandlers(): void {
   ipcMain.handle('ai:send-message-streaming', (event, request: AIRequest, eventChannel: string) =>
     aiHandler.sendMessageStreaming(event, request, eventChannel)
   )

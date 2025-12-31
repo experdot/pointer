@@ -20,7 +20,7 @@ export function EditorArea(): React.JSX.Element {
     cleanupRef.current(validPageIds)
   }, [pages])
 
-  const renderContent = () => {
+  const renderContent = (): React.JSX.Element | null => {
     if (!activeTab) {
       return <Empty description="打开一个聊天开始对话" style={{ marginTop: 100 }} />
     }

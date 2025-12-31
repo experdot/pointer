@@ -12,10 +12,17 @@ export interface ConfirmDialogOptions {
 }
 
 // Hook 方式使用确认对话框
-export function useConfirmDialog() {
+export function useConfirmDialog(): {
+  showConfirmDialog: (options: ConfirmDialogOptions) => void
+  showDeleteConfirm: (options: {
+    title?: string
+    content?: React.ReactNode
+    onOk: () => void | Promise<void>
+  }) => void
+} {
   const { modal } = App.useApp()
 
-  const showConfirmDialog = (options: ConfirmDialogOptions) => {
+  const showConfirmDialog = (options: ConfirmDialogOptions): void => {
     const { title, content, okText = '确定', cancelText = '取消', danger, onOk, onCancel } = options
 
     modal.confirm({
@@ -34,7 +41,7 @@ export function useConfirmDialog() {
     title?: string
     content?: React.ReactNode
     onOk: () => void | Promise<void>
-  }) => {
+  }): void => {
     showConfirmDialog({
       title: options.title || '确认删除',
       content: options.content || '此操作不可撤销，确定要删除吗？',

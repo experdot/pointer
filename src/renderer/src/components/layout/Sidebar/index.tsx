@@ -43,13 +43,13 @@ export function Sidebar(): React.JSX.Element {
       const startX = e.clientX
       const startWidth = sidebarWidth
 
-      const handleMouseMove = (e: MouseEvent) => {
+      const handleMouseMove = (e: MouseEvent): void => {
         if (!resizing.current) return
         const delta = e.clientX - startX
         setSidebarWidth(startWidth + delta)
       }
 
-      const handleMouseUp = () => {
+      const handleMouseUp = (): void => {
         resizing.current = false
         document.removeEventListener('mousemove', handleMouseMove)
         document.removeEventListener('mouseup', handleMouseUp)

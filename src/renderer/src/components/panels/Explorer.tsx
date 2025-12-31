@@ -57,7 +57,7 @@ export function Explorer(): React.JSX.Element {
   // 构建树数据
   const treeData = useMemo(() => {
     // 内联获取文件夹内项目，避免依赖 getItemsInFolder 函数引用
-    const getItems = (folderId: string) => {
+    const getItems = (folderId: string): (ChatPage | PageFolder)[] => {
       const pagesInFolder = pages.filter((p) => p.parentFolderId === folderId)
       const subFolders = folders.filter((f) => f.parentFolderId === folderId)
       return [...subFolders, ...pagesInFolder].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -95,12 +95,12 @@ export function Explorer(): React.JSX.Element {
   // 展开的文件夹
   const expandedKeys = useMemo(() => folders.filter((f) => f.expanded).map((f) => f.id), [folders])
 
-  const handleStartRename = (id: string, currentName: string) => {
+  const handleStartRename = (id: string, currentName: string): void => {
     setEditingId(id)
     setEditingValue(currentName)
   }
 
-  const handleFinishRename = (isFolder: boolean) => {
+  const handleFinishRename = (isFolder: boolean): void => {
     if (editingId && editingValue.trim()) {
       if (isFolder) {
         updateFolder(editingId, { name: editingValue.trim() })
@@ -112,14 +112,14 @@ export function Explorer(): React.JSX.Element {
     setEditingValue('')
   }
 
-  const handleDeletePage = (page: ChatPage) => {
+  const handleDeletePage = (page: ChatPage): void => {
     showDeleteConfirm({
       title: `删除 "${page.title}"`,
       onOk: () => deletePage(page.id)
     })
   }
 
-  const handleDeleteFolder = (folder: PageFolder) => {
+  const handleDeleteFolder = (folder: PageFolder): void => {
     showDeleteConfirm({
       title: `删除文件夹 "${folder.name}"`,
       content: '文件夹内的对话将移动到根目录',
@@ -137,7 +137,10 @@ export function Explorer(): React.JSX.Element {
   }
 
   // 获取指定层级的所有项目
-  const getItemsAtLevel = (parentFolderId?: string, excludeId?: string) => {
+  const getItemsAtLevel = (
+    parentFolderId?: string,
+    excludeId?: string
+  ): (ChatPage | PageFolder)[] => {
     return [
       ...pages.filter((p) => p.parentFolderId === parentFolderId && p.id !== excludeId),
       ...folders.filter((f) => f.parentFolderId === parentFolderId && f.id !== excludeId)
@@ -244,7 +247,7 @@ export function Explorer(): React.JSX.Element {
   }
 
   // 自定义标题渲染
-  const titleRender = (node: TreeDataNode) => {
+  const titleRender = (node: TreeDataNode): React.ReactNode => {
     const treeNode = getTreeNodeData(node)
     if (!treeNode) return null
 

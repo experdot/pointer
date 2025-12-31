@@ -6,7 +6,9 @@ import type {
   AIStreamCallbacks,
   LLMConfig,
   TestConnectionResult,
-  GetModelsResult
+  GetModelsResult,
+  UpdateInfo,
+  DownloadProgress
 } from './index.d'
 
 // Custom APIs for renderer
@@ -21,7 +23,7 @@ const api = {
         const eventChannel = `ai-stream-${request.requestId}`
 
         // 监听流数据
-        const handleStreamData = (_: any, data: AIStreamChunk) => {
+        const handleStreamData = (_: Electron.IpcRendererEvent, data: AIStreamChunk): void => {
           switch (data.type) {
             case 'chunk':
               if (data.content) {
@@ -35,12 +37,13 @@ const api = {
                 callbacks.onReasoning?.(data.reasoning_content)
               }
               break
-            case 'complete':
+            case 'complete': {
               ipcRenderer.removeListener(eventChannel, handleStreamData)
               const finalReasoning = data.reasoning_content || fullReasoning || undefined
               callbacks.onComplete?.(fullResponse || data.content || '', finalReasoning)
               resolve(request.requestId)
               break
+            }
             case 'error':
               ipcRenderer.removeListener(eventChannel, handleStreamData)
               callbacks.onError?.(data.error || 'Unknown error')
@@ -86,16 +89,16 @@ const api = {
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
     quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-    onUpdateAvailable: (callback: (info: any) => void) => {
+    onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-available', (_, info) => callback(info))
     },
-    onUpdateNotAvailable: (callback: (info: any) => void) => {
+    onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-not-available', (_, info) => callback(info))
     },
-    onDownloadProgress: (callback: (progress: any) => void) => {
+    onDownloadProgress: (callback: (progress: DownloadProgress) => void) => {
       ipcRenderer.on('download-progress', (_, progress) => callback(progress))
     },
-    onUpdateDownloaded: (callback: (info: any) => void) => {
+    onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-downloaded', (_, info) => callback(info))
     },
     onUpdateError: (callback: (error: string) => void) => {

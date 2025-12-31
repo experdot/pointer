@@ -50,6 +50,26 @@ export interface GetModelsResult {
   error?: string
 }
 
+export interface UpdateInfo {
+  version: string
+  releaseDate?: string
+  releaseName?: string
+  releaseNotes?: string
+}
+
+export interface UpdateCheckResult {
+  updateInfo: UpdateInfo
+  cancellationToken?: unknown
+}
+
+export interface DownloadProgress {
+  total: number
+  delta: number
+  transferred: number
+  percent: number
+  bytesPerSecond: number
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -83,14 +103,14 @@ declare global {
         error?: string
       }>
       updater: {
-        checkForUpdates: () => Promise<any>
-        downloadUpdate: () => Promise<any>
+        checkForUpdates: () => Promise<UpdateCheckResult | null>
+        downloadUpdate: () => Promise<string[]>
         quitAndInstall: () => Promise<void>
         getAppVersion: () => Promise<string>
-        onUpdateAvailable: (callback: (info: any) => void) => void
-        onUpdateNotAvailable: (callback: (info: any) => void) => void
-        onDownloadProgress: (callback: (progress: any) => void) => void
-        onUpdateDownloaded: (callback: (info: any) => void) => void
+        onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void
+        onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => void
+        onDownloadProgress: (callback: (progress: DownloadProgress) => void) => void
+        onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void
         onUpdateError: (callback: (error: string) => void) => void
         removeAllUpdateListeners: () => void
       }

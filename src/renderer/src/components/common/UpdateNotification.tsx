@@ -16,7 +16,7 @@ export default function UpdateNotification(): React.JSX.Element | null {
   const [, setUpdateReady] = useState(false)
 
   useEffect(() => {
-    const api = (window as any).api
+    const api = window.api
     if (!api?.updater) return
 
     api.updater.onUpdateAvailable((info: UpdateInfo) => {

@@ -3,7 +3,24 @@ import { usePagesStore } from '../stores/pagesStore'
 import type { ChatPage, PageFolder } from '../types/type'
 import * as pagesService from '../services/pagesService'
 
-export function usePages() {
+export function usePages(): {
+  pages: ChatPage[]
+  folders: PageFolder[]
+  rootPages: ChatPage[]
+  rootFolders: PageFolder[]
+  rootItems: (ChatPage | PageFolder)[]
+  getItemsInFolder: (folderId: string | undefined) => (ChatPage | PageFolder)[]
+  batchUpdateItemsOrder: (items: (ChatPage | PageFolder)[], parentFolderId?: string) => void
+  createPage: typeof pagesService.createPage
+  updatePage: typeof pagesService.updatePage
+  deletePage: typeof pagesService.deletePage
+  movePage: typeof pagesService.movePage
+  createFolder: typeof pagesService.createFolder
+  updateFolder: typeof pagesService.updateFolder
+  deleteFolder: typeof pagesService.deleteFolder
+  toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
+  openPage: typeof pagesService.openPage
+} {
   const { pages, folders, batchUpdatePages, batchUpdateFolders } = usePagesStore()
 
   // 获取根级别的页面和文件夹，混合排序

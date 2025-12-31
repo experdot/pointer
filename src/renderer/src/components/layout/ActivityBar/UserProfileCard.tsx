@@ -26,20 +26,20 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const [switching, setSwitching] = useState(false)
   const { message } = App.useApp()
 
-  const handleSwitchAccount = async (accountId: string) => {
+  const handleSwitchAccount = async (accountId: string): Promise<void> => {
     if (accountId === currentAccountId || switching) return
     setSwitching(true)
     try {
       await switchAccount(accountId)
       onClose()
-    } catch (error) {
+    } catch {
       message.error('切换账户失败')
     } finally {
       setSwitching(false)
     }
   }
 
-  const handleCreateAccount = async () => {
+  const handleCreateAccount = async (): Promise<void> => {
     const name = newAccountName.trim()
     if (!name || switching) return
     setSwitching(true)
@@ -47,20 +47,20 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
       const account = createAccount(name)
       await switchAccount(account.id)
       onClose()
-    } catch (error) {
+    } catch {
       message.error('创建账户失败')
     } finally {
       setSwitching(false)
     }
   }
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     if (switching) return
     setSwitching(true)
     try {
       await logout()
       onClose()
-    } catch (error) {
+    } catch {
       message.error('退出登录失败')
     } finally {
       setSwitching(false)
