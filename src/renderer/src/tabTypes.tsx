@@ -4,12 +4,22 @@ import type { Tab } from './types/type'
 import { usePagesStore } from './stores/pagesStore'
 import { WelcomePage } from './components/editors/WelcomePage'
 import { SettingsEditor } from './components/editors/SettingsEditor'
+import * as pagesService from './services/pagesService'
+import { openSettings } from './services/settingsService'
 
 // 注册 welcome 类型
 registerTabType({
   type: 'welcome',
   icon: <HomeOutlined />,
-  renderEditor: () => <WelcomePage />
+  renderEditor: () => (
+    <WelcomePage
+      onNewChat={() => {
+        const page = pagesService.createPage()
+        pagesService.openPage(page.id)
+      }}
+      onOpenSettings={openSettings}
+    />
+  )
 })
 
 // 注册 chat 类型

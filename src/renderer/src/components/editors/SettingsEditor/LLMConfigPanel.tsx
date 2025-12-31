@@ -1,9 +1,16 @@
 import React, { useState } from 'react'
-import { Form, Button, Input, Flex, Empty, Space, App } from 'antd'
+import { Form, Button, Input, Flex, Empty, Space, App, Select, AutoComplete } from 'antd'
 import { ApiOutlined } from '@ant-design/icons'
-import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
+import { useSettings, useLLMConfigs, useModelConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
+import { AIService } from '../../../services/aiService'
 import type { LLMConfig, ConfigFolder } from '../../../types/type'
+
+const BASE_URL_PRESETS = [
+  { value: 'https://api.openai.com/v1', label: 'OpenAI' },
+  { value: 'https://openrouter.ai/api/v1', label: 'OpenRouter' },
+  { value: 'http://localhost:11434/v1', label: 'Ollama Local' }
+]
 
 export function LLMConfigPanel(): React.JSX.Element {
   const {
@@ -22,13 +29,16 @@ export function LLMConfigPanel(): React.JSX.Element {
     toggleFolderExpanded
   } = useLLMConfigs()
   const { defaultLLMId, setDefaultLLMId } = useSettings()
+  const { items: modelConfigs } = useModelConfigs()
   const { message } = App.useApp()
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id || null)
   const [testing, setTesting] = useState(false)
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const [modelOptions, setModelOptions] = useState<string[]>([])
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
-  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => 'apiHost' in item
+  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => 'baseUrl' in item
 
   const handleTest = async (config: LLMConfig): Promise<void> => {
     setTesting(true)
@@ -46,6 +56,23 @@ export function LLMConfigPanel(): React.JSX.Element {
     }
   }
 
+  const handleFetchModels = async (config: LLMConfig): Promise<void> => {
+    setFetchingModels(true)
+    try {
+      const result = await AIService.getModels(config)
+      if (result.success && result.models) {
+        setModelOptions(result.models)
+        message.success(`获取到 ${result.models.length} 个模型`)
+      } else {
+        message.error(result.error || '获取模型列表失败')
+      }
+    } catch {
+      message.error('获取模型列表失败')
+    } finally {
+      setFetchingModels(false)
+    }
+  }
+
   return (
     <Flex className="settings-config-panel" gap={16}>
       <ConfigTree<LLMConfig>
@@ -59,7 +86,7 @@ export function LLMConfigPanel(): React.JSX.Element {
         isItem={isItem}
         getItemsInFolder={getItemsInFolder}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        createItem={() => createConfig({ name: '新配置', apiHost: '', apiKey: '', modelName: '' })}
+        createItem={() => createConfig({ name: '新配置', baseUrl: '', apiKey: '', modelName: '' })}
         updateItem={updateConfig}
         deleteItem={deleteConfig}
         copyItem={copyConfig}
@@ -81,11 +108,12 @@ export function LLMConfigPanel(): React.JSX.Element {
                 onChange={(e) => updateConfig(selectedConfig.id, { name: e.target.value })}
               />
             </Form.Item>
-            <Form.Item label="API Host">
-              <Input
-                value={selectedConfig.apiHost}
-                onChange={(e) => updateConfig(selectedConfig.id, { apiHost: e.target.value })}
-                placeholder="https://api.openai.com/v1"
+            <Form.Item label="API Base URL">
+              <AutoComplete
+                value={selectedConfig.baseUrl}
+                onChange={(v) => updateConfig(selectedConfig.id, { baseUrl: v })}
+                options={BASE_URL_PRESETS}
+                placeholder="选择或输入 API Base URL"
               />
             </Form.Item>
             <Form.Item label="API Key">
@@ -95,10 +123,26 @@ export function LLMConfigPanel(): React.JSX.Element {
               />
             </Form.Item>
             <Form.Item label="模型名称">
-              <Input
-                value={selectedConfig.modelName}
-                onChange={(e) => updateConfig(selectedConfig.id, { modelName: e.target.value })}
-                placeholder="gpt-4"
+              <Space.Compact style={{ width: '100%' }}>
+                <AutoComplete
+                  value={selectedConfig.modelName}
+                  onChange={(v) => updateConfig(selectedConfig.id, { modelName: v })}
+                  options={modelOptions.map((m) => ({ value: m, label: m }))}
+                  placeholder="选择或输入模型名称"
+                  style={{ flex: 1 }}
+                />
+                <Button onClick={() => handleFetchModels(selectedConfig)} loading={fetchingModels}>
+                  获取列表
+                </Button>
+              </Space.Compact>
+            </Form.Item>
+            <Form.Item label="模型配置">
+              <Select
+                value={selectedConfig.modelConfigId}
+                onChange={(v) => updateConfig(selectedConfig.id, { modelConfigId: v })}
+                allowClear
+                placeholder="使用默认模型配置"
+                options={modelConfigs.map((c) => ({ label: c.name, value: c.id }))}
               />
             </Form.Item>
             <Form.Item>

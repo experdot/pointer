@@ -4,7 +4,7 @@ import { readFile } from 'fs/promises'
 import * as path from 'path'
 
 export interface LLMConfig {
-  apiHost: string
+  baseUrl: string
   apiKey: string
   modelName: string
 }
@@ -175,7 +175,7 @@ class AIHandler {
     modelConfig: ModelConfig,
     abortController: AbortController
   ): Promise<Response> {
-    return await fetch(`${request.llmConfig.apiHost.replace(/\/$/, '')}/chat/completions`, {
+    return await fetch(`${request.llmConfig.baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ class AIHandler {
 
   public async testConnection(config: LLMConfig): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/chat/completions`, {
+      const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -378,7 +378,7 @@ class AIHandler {
     config: LLMConfig
   ): Promise<{ success: boolean; models?: string[]; error?: string }> {
     try {
-      const response = await fetch(`${config.apiHost.replace(/\/$/, '')}/models`, {
+      const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/models`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${config.apiKey}`

@@ -46,7 +46,7 @@ export interface ModelConfig extends ConfigItemBase {
 }
 
 export interface LLMConfig extends ConfigItemBase {
-  apiHost: string
+  baseUrl: string
   apiKey: string
   modelName: string
   modelConfigId?: string

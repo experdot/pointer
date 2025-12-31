@@ -62,7 +62,7 @@ export function useLLMConfigs() {
       const folderUpdates: Array<{ id: string; updates: Partial<ConfigFolder> }> = []
 
       items.forEach((item, index) => {
-        if ('apiHost' in item) {
+        if ('baseUrl' in item) {
           itemUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
         } else {
           folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })

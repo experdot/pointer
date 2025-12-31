@@ -1,7 +1,7 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
 export interface LLMConfig {
-  apiHost: string
+  baseUrl: string
   apiKey: string
   modelName: string
 }

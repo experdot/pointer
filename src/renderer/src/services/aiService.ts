@@ -88,6 +88,17 @@ export class AIService {
       return false
     }
   }
+
+  static async getModels(
+    config: LLMConfig
+  ): Promise<{ success: boolean; models?: string[]; error?: string }> {
+    try {
+      return await window.api.ai.getModels(config)
+    } catch (error) {
+      console.error('Get models failed:', error)
+      return { success: false, error: String(error) }
+    }
+  }
 }
 
 // 工厂函数
