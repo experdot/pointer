@@ -285,7 +285,6 @@ export function Explorer(): React.JSX.Element {
 
     const id = node.key as string
     const title = node.title as string
-    const isSelected = selectedKey === id
 
     if (editingId === id) {
       return (

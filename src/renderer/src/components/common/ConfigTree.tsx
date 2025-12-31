@@ -8,7 +8,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   MoreOutlined,
-  CopyOutlined
+  CopyOutlined,
+  CheckSquareOutlined
 } from '@ant-design/icons'
 import { useConfirmDialog } from './ConfirmDialog'
 import type { ConfigFolder, ConfigItemBase } from '../../types/type'
@@ -69,6 +70,8 @@ export function ConfigTree<T extends ConfigItemBase>({
   const { showDeleteConfirm } = useConfirmDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
+  const [multiSelect, setMultiSelect] = useState(false)
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([])
 
   const rootItems = useMemo(() => {
     const rootItemsList = items.filter((item) => !item.parentFolderId)
@@ -312,15 +315,53 @@ export function ConfigTree<T extends ConfigItemBase>({
     onSelect(folder.id)
   }
 
+  const handleToggleMultiSelect = (): void => {
+    setMultiSelect(!multiSelect)
+    if (multiSelect) {
+      setCheckedKeys([])
+    }
+  }
+
+  const handleBatchDelete = (): void => {
+    if (checkedKeys.length === 0) return
+    showDeleteConfirm({
+      title: `删除 ${checkedKeys.length} 个项目`,
+      onOk: () => {
+        checkedKeys.forEach((key) => {
+          const item = items.find((i) => i.id === key)
+          const folder = folders.find((f) => f.id === key)
+          if (item) deleteItem(key)
+          else if (folder) deleteFolder(key)
+        })
+        setCheckedKeys([])
+        setMultiSelect(false)
+      }
+    })
+  }
+
   const isEmpty = rootItems.length === 0
 
   return (
     <div className="config-tree">
       <div className="config-tree-toolbar">
-        <Button color="default" variant="filled" icon={<PlusOutlined />} onClick={handleCreate}>
-          {addItemText}
-        </Button>
-        <Button type="text" icon={<FolderOutlined />} onClick={handleCreateFolder} />
+        {multiSelect ? (
+          <>
+            <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
+              删除 ({checkedKeys.length})
+            </Button>
+            <Button type="text" onClick={handleToggleMultiSelect}>
+              取消
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button color="default" variant="filled" icon={<PlusOutlined />} onClick={handleCreate}>
+              {addItemText}
+            </Button>
+            <Button type="text" icon={<FolderOutlined />} onClick={handleCreateFolder} />
+            <Button type="text" icon={<CheckSquareOutlined />} onClick={handleToggleMultiSelect} />
+          </>
+        )}
       </div>
       <div className="config-tree-content">
         {isEmpty ? (
@@ -332,12 +373,15 @@ export function ConfigTree<T extends ConfigItemBase>({
             expandedKeys={expandedKeys}
             onSelect={handleSelect}
             onExpand={handleExpand}
-            draggable
+            draggable={!multiSelect}
             allowDrop={handleAllowDrop}
             onDrop={handleDrop}
             showIcon
             titleRender={titleRender}
             blockNode
+            checkable={multiSelect}
+            checkedKeys={checkedKeys}
+            onCheck={(keys) => setCheckedKeys(keys as string[])}
           />
         )}
       </div>

@@ -10,7 +10,6 @@
 .explorer-tree {
   flex: 1;
   overflow: auto;
-  padding: 4px 8px 4px 0;
 }
 
 /* 滚动条样式 */
@@ -43,6 +42,24 @@
 
 .explorer-tree .ant-tree-treenode {
   width: 100%;
+  padding: 0 8px;
+  border-radius: 0;
+}
+
+.explorer-tree .ant-tree-treenode:hover {
+  background-color: var(--ant-tree-node-hover-bg);
+}
+
+.explorer-tree .ant-tree-treenode-selected {
+  background-color: var(--ant-color-primary-bg);
+}
+
+.explorer-tree .ant-tree-node-selected {
+  background-color: transparent !important;
+}
+
+.explorer-tree .ant-tree .ant-tree-treenode:not(.ant-tree-treenode-disabled) .ant-tree-node-content-wrapper:hover {
+  background-color: transparent;
 }
 
 /* 减少展开按钮和内容之间的间距 */
