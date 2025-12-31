@@ -356,6 +356,11 @@ export const useTabsStore = create<TabsStore>()(
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId
+      }),
+      // 账户切换时使用替换而非合并，确保新账户数据库为空时清空内存状态
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState ? (persistedState as TabsState) : initialState)
       })
     }
   )

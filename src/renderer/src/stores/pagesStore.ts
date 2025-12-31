@@ -127,6 +127,11 @@ export const usePagesStore = create<PagesStore>()(
       partialize: (state) => ({
         pages: state.pages,
         folders: state.folders
+      }),
+      // 账户切换时使用替换而非合并，确保新账户数据库为空时清空内存状态
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState ? (persistedState as PagesState) : initialState)
       })
     }
   )
