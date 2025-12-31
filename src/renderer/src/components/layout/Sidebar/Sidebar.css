@@ -32,12 +32,21 @@
   right: -3px;
   top: 0;
   bottom: 0;
-  width: 6px;
+  width: 5px;
   cursor: col-resize;
   z-index: 10;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease-out 0.3s, background 0.15s ease-out 0.3s;
 }
 
 .sidebar-resizer:hover {
   background: var(--ant-color-primary);
   opacity: 0.3;
+  transition-delay: 0.3s;
+}
+
+.sidebar-resizer:active {
+  opacity: 0.5;
+  transition-delay: 0s;
 }
