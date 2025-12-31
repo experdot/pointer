@@ -26,7 +26,7 @@ export function PromptListPanel(): React.JSX.Element {
   const selectedConfig = items.find((c) => c.id === selectedId)
 
   const isItem = (item: PromptListConfig | ConfigFolder): item is PromptListConfig =>
-    'prompts' in item
+    item.type !== 'folder'
 
   return (
     <Flex className="settings-config-panel" gap={16}>

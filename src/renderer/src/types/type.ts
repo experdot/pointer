@@ -12,6 +12,7 @@ export interface Account {
 
 // 通用配置文件夹
 export interface ConfigFolder {
+  type: 'folder'
   id: string
   name: string
   parentFolderId?: string
@@ -23,6 +24,7 @@ export interface ConfigFolder {
 
 // 通用配置项基础属性
 export interface ConfigItemBase {
+  type?: string // 用于区分 item 和 folder，item 的 type 不是 'folder'
   id: string
   name: string
   parentFolderId?: string
@@ -348,6 +350,13 @@ export interface Tab {
   preview?: boolean
 }
 
+// 历史记录项（用于恢复已关闭的 tab）
+export interface TabHistoryEntry {
+  tabId: string
+  type: string
+  dataId?: string
+}
+
 // ==================== 类型守卫函数 ====================
 
 // 配置类型守卫
@@ -373,9 +382,7 @@ export function isPageFolder(item: Page<unknown> | PageFolder): item is PageFold
 }
 
 export function isConfigFolder(item: ConfigItemBase | ConfigFolder): item is ConfigFolder {
-  return (
-    !('name' in item && 'createdAt' in item && !('parentFolderId' in item)) && 'expanded' in item
-  )
+  return 'type' in item && item.type === 'folder'
 }
 
 // 收藏类型守卫

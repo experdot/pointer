@@ -1,4 +1,5 @@
 import { HomeOutlined, MessageOutlined, SettingOutlined } from '@ant-design/icons'
+import { v4 as uuidv4 } from 'uuid'
 import { registerTabType } from './utils/tabRegistry'
 import type { Tab } from './types/type'
 import { usePagesStore } from './stores/pagesStore'
@@ -27,13 +28,12 @@ registerTabType({
   type: 'chat',
   icon: <MessageOutlined />,
   renderEditor: (tab) => <div>聊天编辑器: {tab.title}</div>,
-  parseDataId: (tabId) => (tabId.startsWith('chat-') ? tabId.slice(5) : null),
   validateData: (dataId) => usePagesStore.getState().pages.some((p) => p.id === dataId),
   restoreTab: (dataId): Tab | null => {
     const page = usePagesStore.getState().pages.find((p) => p.id === dataId)
     if (!page) return null
     return {
-      id: `chat-${dataId}`,
+      id: uuidv4(),
       type: 'chat',
       title: page.title,
       dataId

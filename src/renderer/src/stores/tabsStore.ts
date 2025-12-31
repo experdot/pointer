@@ -3,10 +3,10 @@ import { persist } from 'zustand/middleware'
 import { createIndexedDBStorage } from '../utils/indexedDB'
 import { registerStoreReset } from '../utils/storeRegistry'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
-import type { Tab } from '../types/type'
+import type { Tab, TabHistoryEntry } from '../types/type'
 
 // 重新导出 Tab 类型
-export type { Tab } from '../types/type'
+export type { Tab, TabHistoryEntry } from '../types/type'
 
 const WELCOME_TAB: Tab = {
   id: 'welcome',
@@ -15,11 +15,16 @@ const WELCOME_TAB: Tab = {
   closable: true
 }
 
+const WELCOME_HISTORY_ENTRY: TabHistoryEntry = {
+  tabId: WELCOME_TAB.id,
+  type: WELCOME_TAB.type
+}
+
 interface TabsState {
   tabs: Tab[]
   activeTabId: string | null
   // 访问历史
-  history: string[]
+  history: TabHistoryEntry[]
   historyIndex: number
 }
 
@@ -52,55 +57,60 @@ type TabsStore = TabsState & TabsActions
 const initialState: TabsState = {
   tabs: [WELCOME_TAB],
   activeTabId: WELCOME_TAB.id,
-  history: [WELCOME_TAB.id],
+  history: [WELCOME_HISTORY_ENTRY],
   historyIndex: 0
 }
 
 // 内部标记：是否正在进行历史导航（避免导航时重复添加历史）
 let isNavigating = false
 
+// 从 Tab 创建 TabHistoryEntry
+function toHistoryEntry(tab: Tab): TabHistoryEntry {
+  return { tabId: tab.id, type: tab.type, dataId: tab.dataId }
+}
+
 // 统一的历史记录添加逻辑
 function computeNewHistory(
-  history: string[],
+  history: TabHistoryEntry[],
   historyIndex: number,
-  tabId: string
-): { history: string[]; historyIndex: number } {
+  tab: Tab
+): { history: TabHistoryEntry[]; historyIndex: number } {
   // 导航时不修改历史
   if (isNavigating) {
     return { history, historyIndex }
   }
   // 避免重复：如果当前位置已经是该 tabId，不添加
-  if (history[historyIndex] === tabId) {
+  if (history[historyIndex]?.tabId === tab.id) {
     return { history, historyIndex }
   }
   // 截断并添加新记录
-  const newHistory = [...history.slice(0, historyIndex + 1), tabId]
+  const newHistory = [...history.slice(0, historyIndex + 1), toHistoryEntry(tab)]
   return { history: newHistory, historyIndex: newHistory.length - 1 }
 }
 
 // 尝试导航到历史记录中的某个位置
 function tryNavigateToHistory(
-  history: string[],
+  history: TabHistoryEntry[],
   startIndex: number,
   direction: 1 | -1,
   tabs: Tab[],
   openTab: (tab: Tab, preview?: boolean) => void
 ): { targetIndex: number; targetTabId: string } | null {
   for (let i = startIndex; direction === -1 ? i >= 0 : i < history.length; i += direction) {
-    const tabId = history[i]
+    const entry = history[i]
 
     // 检查 tab 是否存在
-    if (tabs.some((t) => t.id === tabId)) {
-      return { targetIndex: i, targetTabId: tabId }
+    if (tabs.some((t) => t.id === entry.tabId)) {
+      return { targetIndex: i, targetTabId: entry.tabId }
     }
 
     // tab 不存在，尝试通过注册机制恢复
-    const restoredTab = tryRestoreTab(tabId)
+    const restoredTab = tryRestoreTab(entry.type, entry.dataId)
     if (restoredTab) {
       isNavigating = true
       openTab({ ...restoredTab, preview: true }, true)
       isNavigating = false
-      return { targetIndex: i, targetTabId: tabId }
+      return { targetIndex: i, targetTabId: restoredTab.id }
     }
     // 无法恢复，继续查找下一个
   }
@@ -116,7 +126,7 @@ export const useTabsStore = create<TabsStore>()(
       openTab: (tab, preview = false) => {
         const { tabs, history, historyIndex } = get()
         const existingTab = tabs.find((t) => t.id === tab.id)
-        const historyUpdate = computeNewHistory(history, historyIndex, tab.id)
+        const historyUpdate = computeNewHistory(history, historyIndex, tab)
 
         if (preview) {
           // 预览模式：替换现有预览 tab 或添加新预览 tab
@@ -193,8 +203,10 @@ export const useTabsStore = create<TabsStore>()(
       },
 
       setActiveTab: (tabId) => {
-        const { history, historyIndex } = get()
-        const historyUpdate = computeNewHistory(history, historyIndex, tabId)
+        const { tabs, history, historyIndex } = get()
+        const tab = tabs.find((t) => t.id === tabId)
+        if (!tab) return
+        const historyUpdate = computeNewHistory(history, historyIndex, tab)
         set({
           activeTabId: tabId,
           ...historyUpdate
@@ -310,9 +322,10 @@ export const useTabsStore = create<TabsStore>()(
       },
 
       clearHistory: () => {
-        const { activeTabId } = get()
+        const { tabs, activeTabId } = get()
+        const activeTab = tabs.find((t) => t.id === activeTabId)
         set({
-          history: activeTabId ? [activeTabId] : [],
+          history: activeTab ? [toHistoryEntry(activeTab)] : [],
           historyIndex: 0
         })
       },

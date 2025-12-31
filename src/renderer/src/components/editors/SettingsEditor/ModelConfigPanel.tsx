@@ -26,7 +26,7 @@ export function ModelConfigPanel(): React.JSX.Element {
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
-  const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => 'systemPrompt' in item
+  const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => item.type !== 'folder'
 
   return (
     <Flex className="settings-config-panel" gap={16}>

@@ -14,7 +14,7 @@ import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dn
 import { CSS } from '@dnd-kit/utilities'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { usePages } from '../../../hooks/usePages'
-import { getTabIcon, validateTabData } from '../../../utils/tabRegistry'
+import { getTabIcon } from '../../../utils/tabRegistry'
 import './Tabs.css'
 
 interface DraggableTabProps {
@@ -185,17 +185,16 @@ export function Tabs(): React.JSX.Element {
   // 历史记录右键菜单
   const getHistoryMenuItems = (): MenuProps['items'] => {
     const historyItems: MenuProps['items'] = history
-      .map((tabId, index) => ({ tabId, index }))
-      .filter(({ tabId }) => validateTabData(tabId))
-      .map(({ tabId, index }) => {
-        const tab = tabs.find((t) => t.id === tabId)
+      .map((entry, index) => ({ entry, index }))
+      .map(({ entry, index }) => {
+        const tab = tabs.find((t) => t.id === entry.tabId)
         const isCurrent = index === historyIndex
         return {
           key: `history-${index}`,
           label: (
             <span style={{ fontWeight: isCurrent ? 'bold' : 'normal' }}>
               {isCurrent ? '→ ' : ''}
-              {tab?.title || tabId}
+              {tab?.title || entry.tabId}
             </span>
           ),
           onClick: () => navigateToHistoryIndex(index)

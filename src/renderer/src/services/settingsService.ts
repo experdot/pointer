@@ -92,6 +92,7 @@ export function createLLMConfigFolder(name?: string, afterItemId?: string): Conf
   const { parentFolderId, order } = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
 
   const folder: ConfigFolder = {
+    type: 'folder',
     id: uuidv4(),
     name: name || '新文件夹',
     parentFolderId,
@@ -171,6 +172,7 @@ export function createModelConfigFolder(name?: string, afterItemId?: string): Co
   const { parentFolderId, order } = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
 
   const folder: ConfigFolder = {
+    type: 'folder',
     id: uuidv4(),
     name: name || '新文件夹',
     parentFolderId,
@@ -244,6 +246,7 @@ export function createPromptListFolder(name?: string, afterItemId?: string): Con
   const { parentFolderId, order } = prepareInsertPosition(store.settings.promptLists, afterItemId)
 
   const folder: ConfigFolder = {
+    type: 'folder',
     id: uuidv4(),
     name: name || '新文件夹',
     parentFolderId,

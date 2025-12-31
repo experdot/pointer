@@ -151,15 +151,24 @@ export function openPage(pageId: string, preview = false): void {
   if (!page) return
 
   const tabsStore = useTabsStore.getState()
-  tabsStore.openTab(
-    {
-      id: `chat-${pageId}`,
-      type: 'chat',
-      title: page.title,
-      dataId: pageId
-    },
-    preview
-  )
+
+  // 检查是否已有该 page 的 tab
+  const existingTab = tabsStore.tabs.find((t) => t.dataId === pageId)
+  if (existingTab) {
+    // 已存在，直接激活
+    tabsStore.openTab(existingTab, preview)
+  } else {
+    // 不存在，创建新 tab（使用独立 UUID）
+    tabsStore.openTab(
+      {
+        id: uuidv4(),
+        type: 'chat',
+        title: page.title,
+        dataId: pageId
+      },
+      preview
+    )
+  }
 }
 
 // 获取文件夹下的页面

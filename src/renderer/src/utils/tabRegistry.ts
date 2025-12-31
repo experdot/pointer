@@ -10,8 +10,6 @@ export interface TabTypeConfig {
   icon: ReactNode
   // 渲染编辑器内容
   renderEditor: (tab: Tab) => ReactNode
-  // 从 tabId 解析关联数据 ID
-  parseDataId?: (tabId: string) => string | null
   // 验证关联数据是否存在
   validateData?: (dataId: string) => boolean
   // 恢复已关闭的 tab（用于历史导航）
@@ -41,44 +39,13 @@ export function getTabIcon(type: string): ReactNode {
   return tabTypeRegistry.get(type)?.icon ?? null
 }
 
-// 从 tabId 解析数据 ID（遍历所有注册类型）
-export function parseDataIdFromTabId(tabId: string): { type: string; dataId: string } | null {
-  for (const [type, config] of tabTypeRegistry) {
-    if (config.parseDataId) {
-      const dataId = config.parseDataId(tabId)
-      if (dataId) {
-        return { type, dataId }
-      }
-    }
-  }
-  return null
-}
-
-// 验证 tabId 对应的数据是否有效
-export function validateTabData(tabId: string): boolean {
-  const parsed = parseDataIdFromTabId(tabId)
-  if (!parsed) {
-    // 没有关联数据的 tab（如 welcome, settings）始终有效
-    return true
-  }
-  const config = tabTypeRegistry.get(parsed.type)
-  if (!config?.validateData) {
-    return true
-  }
-  return config.validateData(parsed.dataId)
-}
-
 // 尝试恢复已关闭的 tab
-export function tryRestoreTab(tabId: string): Tab | null {
-  const parsed = parseDataIdFromTabId(tabId)
-  if (!parsed) {
+export function tryRestoreTab(type: string, dataId?: string): Tab | null {
+  const config = tabTypeRegistry.get(type)
+  if (!config?.restoreTab || !dataId) {
     return null
   }
-  const config = tabTypeRegistry.get(parsed.type)
-  if (!config?.restoreTab) {
-    return null
-  }
-  return config.restoreTab(parsed.dataId)
+  return config.restoreTab(dataId)
 }
 
 // 清理无效的 tabs（返回有效的 tabs）

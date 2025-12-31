@@ -36,7 +36,7 @@ export function LLMConfigPanel(): React.JSX.Element {
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
-  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => 'baseUrl' in item
+  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => item.type !== 'folder'
 
   const handleTest = async (config: LLMConfig): Promise<void> => {
     setTesting(true)
