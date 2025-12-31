@@ -8,6 +8,10 @@
   height: 100%;
 }
 
+.settings-tabs .ant-tabs-tab .anticon {
+  margin-right: 6px;
+}
+
 .settings-tabs .ant-tabs-content {
   height: 100%;
 }
@@ -24,37 +28,8 @@
   height: 100%;
 }
 
-.settings-config-list {
-  width: 200px;
-  min-width: 200px;
-  border-right: 1px solid var(--ant-color-border);
-  padding-right: 16px;
-  overflow-y: auto;
-}
-
-.settings-config-item {
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.settings-config-item:hover {
-  background-color: var(--ant-color-bg-text-hover);
-}
-
-.settings-config-item.selected {
-  background-color: var(--ant-color-primary-bg);
-}
-
-.settings-config-item-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .settings-config-detail {
   flex: 1;
   overflow-y: auto;
-  padding-left: 16px;
+  max-width: 500px;
 }

@@ -308,17 +308,15 @@ export function Explorer(): React.JSX.Element {
           onDoubleClick={() => handleDoubleClick(id, treeNode.isFolder)}
         >
           <span className="explorer-tree-title-text">{title}</span>
-          {isSelected && (
-            <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['click']}>
-              <Button
-                type="text"
-                size="small"
-                icon={<MoreOutlined />}
-                className="explorer-tree-title-more"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Dropdown>
-          )}
+          <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['click']}>
+            <Button
+              type="text"
+              size="small"
+              icon={<MoreOutlined />}
+              className="explorer-tree-title-more"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Dropdown>
         </span>
       </Dropdown>
     )
@@ -330,8 +328,8 @@ export function Explorer(): React.JSX.Element {
     <Flex className="explorer" vertical>
       <Flex className="explorer-toolbar" gap={4}>
         <Button
-          type="text"
-          size="small"
+          color="default"
+          variant="filled"
           icon={<PlusOutlined />}
           onClick={() => {
             const page = createPage(undefined, selectedKey ?? undefined)
@@ -342,7 +340,6 @@ export function Explorer(): React.JSX.Element {
         </Button>
         <Button
           type="text"
-          size="small"
           icon={<FolderOutlined />}
           onClick={() => {
             const folder = createFolder(undefined, selectedKey ?? undefined)

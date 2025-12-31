@@ -1,0 +1,110 @@
+.config-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 280px;
+  min-width: 240px;
+  border-right: 1px solid var(--ant-color-border);
+}
+
+.config-tree-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border);
+}
+
+.config-tree-content {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 8px 4px 0;
+}
+
+/* 滚动条样式 */
+.config-tree-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.config-tree-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.config-tree-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.config-tree-content:hover::-webkit-scrollbar-thumb {
+  background: var(--ant-color-text-quaternary);
+}
+
+.config-tree-content::-webkit-scrollbar-thumb:hover {
+  background: var(--ant-color-text-tertiary);
+}
+
+.config-tree-content .ant-tree {
+  background: transparent;
+}
+
+.config-tree-content .ant-tree-treenode {
+  width: 100%;
+}
+
+.config-tree-content .ant-tree-switcher {
+  margin-right: 1px;
+}
+
+.config-tree-content .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  padding: 0 4px;
+}
+
+.config-tree-content .ant-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.config-tree-title {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.config-tree-title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-tree-title-text.is-default {
+  font-weight: 600;
+}
+
+.config-tree-title-more {
+  flex-shrink: 0;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.config-tree-title:hover .config-tree-title-more,
+.config-tree-title-more:hover {
+  opacity: 0.6;
+}
+
+.config-tree-title-more:hover {
+  opacity: 1;
+}
+
+/* 隐藏拖拽图标 */
+.config-tree-content .ant-tree-draggable-icon {
+  display: none;
+}

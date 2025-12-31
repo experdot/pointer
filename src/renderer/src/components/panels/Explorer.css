@@ -10,7 +10,7 @@
 .explorer-tree {
   flex: 1;
   overflow: auto;
-  padding: 4px 0;
+  padding: 4px 8px 4px 0;
 }
 
 /* 滚动条样式 */
@@ -81,6 +81,12 @@
 .explorer-tree-title-more {
   flex-shrink: 0;
   margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.explorer-tree-title:hover .explorer-tree-title-more,
+.explorer-tree-title-more:hover {
   opacity: 0.6;
 }
 

@@ -74,6 +74,11 @@ export function deleteLLMConfig(id: string): void {
   }
 }
 
+export function copyLLMConfig(config: LLMConfig): LLMConfig {
+  const { id, createdAt, ...rest } = config
+  return createLLMConfig({ ...rest, name: `${rest.name} 副本` }, id)
+}
+
 export function createLLMConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
   const store = useSettingsStore.getState()
   const { parentFolderId, order } = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
@@ -141,6 +146,11 @@ export function deleteModelConfig(id: string): void {
   }
 }
 
+export function copyModelConfig(config: ModelConfig): ModelConfig {
+  const { id, createdAt, ...rest } = config
+  return createModelConfig({ ...rest, name: `${rest.name} 副本` }, id)
+}
+
 export function createModelConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
   const store = useSettingsStore.getState()
   const { parentFolderId, order } = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
@@ -201,6 +211,11 @@ export function updatePromptList(id: string, updates: Partial<PromptListConfig>)
 
 export function deletePromptList(id: string): void {
   useSettingsStore.getState().removePromptList(id)
+}
+
+export function copyPromptList(config: PromptListConfig): PromptListConfig {
+  const { id, createdAt, ...rest } = config
+  return createPromptList({ ...rest, name: `${rest.name} 副本` }, id)
 }
 
 export function createPromptListFolder(name?: string, afterItemId?: string): ConfigFolder {

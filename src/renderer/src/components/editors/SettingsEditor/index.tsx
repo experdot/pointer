@@ -6,12 +6,14 @@ import {
   RobotOutlined,
   FileTextOutlined,
   SettingOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons'
 import { GeneralPanel } from './GeneralPanel'
 import { LLMConfigPanel } from './LLMConfigPanel'
 import { ModelConfigPanel } from './ModelConfigPanel'
 import { PromptListPanel } from './PromptListPanel'
+import { DataPanel } from './DataPanel'
 import { AboutPanel } from './AboutPanel'
 import './SettingsEditor.css'
 
@@ -52,6 +54,15 @@ export function SettingsEditor(): React.JSX.Element {
         </span>
       ),
       children: <PromptListPanel />
+    },
+    {
+      key: 'data',
+      label: (
+        <span>
+          <DatabaseOutlined /> 数据
+        </span>
+      ),
+      children: <DataPanel />
     },
     {
       key: 'about',
