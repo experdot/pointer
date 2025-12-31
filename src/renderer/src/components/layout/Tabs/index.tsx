@@ -1,7 +1,14 @@
 import React from 'react'
-import { Tabs as AntTabs, Dropdown } from 'antd'
+import { Tabs as AntTabs, Dropdown, Button } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import { MessageOutlined, SettingOutlined, HomeOutlined, PushpinFilled } from '@ant-design/icons'
+import {
+  MessageOutlined,
+  SettingOutlined,
+  HomeOutlined,
+  PushpinFilled,
+  LeftOutlined,
+  RightOutlined
+} from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -56,7 +63,11 @@ export function Tabs(): React.JSX.Element {
     togglePinTab,
     closeOtherTabs,
     closeRightTabs,
-    closeAllTabs
+    closeAllTabs,
+    goBack,
+    goForward,
+    canGoBack,
+    canGoForward
   } = useTabsStore()
   const { createPage, openPage } = usePages()
 
@@ -131,14 +142,32 @@ export function Tabs(): React.JSX.Element {
   if (tabs.length === 0) return <></>
 
   return (
-    <AntTabs
-      className="tabs-container"
-      type="editable-card"
-      items={items}
-      activeKey={activeTabId || undefined}
-      onChange={setActiveTab}
-      onEdit={handleEdit}
-      renderTabBar={renderTabBar}
-    />
+    <div className="tabs-wrapper">
+      <div className="tabs-nav-buttons">
+        <Button
+          type="text"
+          size="small"
+          icon={<LeftOutlined />}
+          disabled={!canGoBack()}
+          onClick={goBack}
+        />
+        <Button
+          type="text"
+          size="small"
+          icon={<RightOutlined />}
+          disabled={!canGoForward()}
+          onClick={goForward}
+        />
+      </div>
+      <AntTabs
+        className="tabs-container"
+        type="editable-card"
+        items={items}
+        activeKey={activeTabId || undefined}
+        onChange={setActiveTab}
+        onEdit={handleEdit}
+        renderTabBar={renderTabBar}
+      />
+    </div>
   )
 }

@@ -1,4 +1,27 @@
+.tabs-wrapper {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.tabs-nav-buttons {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 2px;
+}
+
+.tabs-nav-buttons .ant-btn {
+  color: var(--ant-color-text-secondary);
+}
+
+.tabs-nav-buttons .ant-btn:disabled {
+  color: var(--ant-color-text-quaternary);
+}
+
 .tabs-container {
+  flex: 1;
+  min-width: 0;
   height: 100%;
 }
 

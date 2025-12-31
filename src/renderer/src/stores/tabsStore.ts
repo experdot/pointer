@@ -25,6 +25,9 @@ const WELCOME_TAB: Tab = {
 interface TabsState {
   tabs: Tab[]
   activeTabId: string | null
+  // 访问历史
+  history: string[]
+  historyIndex: number
 }
 
 interface TabsActions {
@@ -39,6 +42,11 @@ interface TabsActions {
   closeAllTabs: () => void
   // 清理无效的 chat tabs（pageId 不存在于 pages 中）
   cleanupInvalidTabs: (validPageIds: string[]) => void
+  // 历史导航
+  goBack: () => void
+  goForward: () => void
+  canGoBack: () => boolean
+  canGoForward: () => boolean
   reset: () => void
 }
 
@@ -46,8 +54,13 @@ type TabsStore = TabsState & TabsActions
 
 const initialState: TabsState = {
   tabs: [WELCOME_TAB],
-  activeTabId: WELCOME_TAB.id
+  activeTabId: WELCOME_TAB.id,
+  history: [WELCOME_TAB.id],
+  historyIndex: 0
 }
+
+// 内部标记：是否正在进行历史导航（避免导航时重复添加历史）
+let isNavigating = false
 
 export const useTabsStore = create<TabsStore>()(
   persist(
@@ -55,25 +68,42 @@ export const useTabsStore = create<TabsStore>()(
       ...initialState,
 
       openTab: (tab) => {
-        const { tabs } = get()
+        const { tabs, history, historyIndex } = get()
         const existingTab = tabs.find((t) => t.id === tab.id)
 
         if (existingTab) {
-          set({ activeTabId: tab.id })
+          // 添加到历史（如果不是导航触发的）
+          if (!isNavigating) {
+            const newHistory = [...history.slice(0, historyIndex + 1), tab.id]
+            set({ activeTabId: tab.id, history: newHistory, historyIndex: newHistory.length - 1 })
+          } else {
+            set({ activeTabId: tab.id })
+          }
         } else {
+          // 添加到历史
+          const newHistory = isNavigating
+            ? history
+            : [...history.slice(0, historyIndex + 1), tab.id]
           set({
             tabs: [...tabs, tab],
-            activeTabId: tab.id
+            activeTabId: tab.id,
+            history: newHistory,
+            historyIndex: isNavigating ? historyIndex : newHistory.length - 1
           })
         }
       },
 
       closeTab: (tabId) => {
-        const { tabs, activeTabId } = get()
+        const { tabs, activeTabId, history, historyIndex } = get()
         const index = tabs.findIndex((t) => t.id === tabId)
         if (index === -1) return
 
         const newTabs = tabs.filter((t) => t.id !== tabId)
+        // 从历史中移除该 tabId
+        const newHistory = history.filter((id) => id !== tabId)
+        let newHistoryIndex = Math.min(historyIndex, newHistory.length - 1)
+        if (newHistoryIndex < 0) newHistoryIndex = 0
+
         let newActiveTabId = activeTabId
 
         if (activeTabId === tabId) {
@@ -85,10 +115,28 @@ export const useTabsStore = create<TabsStore>()(
           }
         }
 
-        set({ tabs: newTabs, activeTabId: newActiveTabId })
+        set({
+          tabs: newTabs,
+          activeTabId: newActiveTabId,
+          history: newHistory.length > 0 ? newHistory : [],
+          historyIndex: newHistoryIndex
+        })
       },
 
-      setActiveTab: (tabId) => set({ activeTabId: tabId }),
+      setActiveTab: (tabId) => {
+        const { history, historyIndex } = get()
+        if (isNavigating) {
+          set({ activeTabId: tabId })
+        } else {
+          // 添加到历史
+          const newHistory = [...history.slice(0, historyIndex + 1), tabId]
+          set({
+            activeTabId: tabId,
+            history: newHistory,
+            historyIndex: newHistory.length - 1
+          })
+        }
+      },
 
       updateTabTitle: (tabId, title) =>
         set((state) => ({
@@ -165,6 +213,44 @@ export const useTabsStore = create<TabsStore>()(
             : newTabs[0]?.id || null
           return { tabs: newTabs, activeTabId: newActiveTabId }
         }),
+
+      goBack: () => {
+        const { history, historyIndex, tabs } = get()
+        if (historyIndex <= 0) return
+
+        const newIndex = historyIndex - 1
+        const targetTabId = history[newIndex]
+        // 确保目标 tab 仍然存在
+        if (tabs.some((t) => t.id === targetTabId)) {
+          isNavigating = true
+          set({ activeTabId: targetTabId, historyIndex: newIndex })
+          isNavigating = false
+        }
+      },
+
+      goForward: () => {
+        const { history, historyIndex, tabs } = get()
+        if (historyIndex >= history.length - 1) return
+
+        const newIndex = historyIndex + 1
+        const targetTabId = history[newIndex]
+        // 确保目标 tab 仍然存在
+        if (tabs.some((t) => t.id === targetTabId)) {
+          isNavigating = true
+          set({ activeTabId: targetTabId, historyIndex: newIndex })
+          isNavigating = false
+        }
+      },
+
+      canGoBack: () => {
+        const { historyIndex } = get()
+        return historyIndex > 0
+      },
+
+      canGoForward: () => {
+        const { history, historyIndex } = get()
+        return historyIndex < history.length - 1
+      },
 
       reset: () => set(initialState)
     }),
