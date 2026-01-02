@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { Flex, Button } from 'antd'
-import { PlusOutlined, FolderOutlined, MessageOutlined } from '@ant-design/icons'
+import { Flex, Button, Dropdown } from 'antd'
+import type { MenuProps } from 'antd'
+import {
+  PlusOutlined,
+  FolderOutlined,
+  MessageOutlined,
+  CheckSquareOutlined,
+  EllipsisOutlined
+} from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
+import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { ChatPage, PageFolder } from '../../types/type'
 import { isPage } from '../../types/type'
@@ -25,8 +33,11 @@ export function Explorer(): React.JSX.Element {
 
   const { tabs, activeTabId } = useTabsStore()
   const activePageId = tabs.find((t) => t.id === activeTabId)?.dataId
+  const { showDeleteConfirm } = useConfirmDialog()
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [multiSelect, setMultiSelect] = useState(false)
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([])
 
   useEffect(() => {
     if (activePageId) {
@@ -50,30 +61,74 @@ export function Explorer(): React.JSX.Element {
     }
   }
 
+  const handleCreatePage = async (): Promise<void> => {
+    const page = await createPage(undefined, selectedKey ?? undefined)
+    openPage(page.id)
+  }
+
+  const handleCreateFolder = async (): Promise<void> => {
+    const folder = await createFolder(undefined, selectedKey ?? undefined)
+    setSelectedKey(folder.id)
+  }
+
+  const handleToggleMultiSelect = (): void => {
+    setMultiSelect(!multiSelect)
+    if (multiSelect) {
+      setCheckedKeys([])
+    }
+  }
+
+  const handleBatchDelete = (): void => {
+    if (checkedKeys.length === 0) return
+    showDeleteConfirm({
+      title: `删除 ${checkedKeys.length} 个项目`,
+      onOk: async () => {
+        for (const key of checkedKeys) {
+          const page = pages.find((p) => p.id === key)
+          const folder = folders.find((f) => f.id === key)
+          if (page) await deletePage(key)
+          else if (folder) await deleteFolder(key)
+        }
+        setCheckedKeys([])
+        setMultiSelect(false)
+      }
+    })
+  }
+
+  const menuItems: MenuProps['items'] = [
+    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
+  ]
+
+  const onMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'folder') handleCreateFolder()
+    else if (key === 'multiSelect') handleToggleMultiSelect()
+  }
+
   const isEmpty = pages.length === 0 && folders.length === 0
 
   return (
     <Flex className="explorer" vertical>
       <Flex className="explorer-toolbar" gap={4}>
-        <Button
-          color="default"
-          variant="filled"
-          icon={<PlusOutlined />}
-          onClick={async () => {
-            const page = await createPage(undefined, selectedKey ?? undefined)
-            openPage(page.id)
-          }}
-        >
-          新建对话
-        </Button>
-        <Button
-          type="text"
-          icon={<FolderOutlined />}
-          onClick={async () => {
-            const folder = await createFolder(undefined, selectedKey ?? undefined)
-            setSelectedKey(folder.id)
-          }}
-        />
+        {multiSelect ? (
+          <>
+            <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
+              删除 ({checkedKeys.length})
+            </Button>
+            <Button type="text" onClick={handleToggleMultiSelect}>
+              取消
+            </Button>
+          </>
+        ) : (
+          <Dropdown.Button
+            type="text"
+            icon={<EllipsisOutlined />}
+            menu={{ items: menuItems, onClick: onMenuClick }}
+            onClick={handleCreatePage}
+          >
+            <PlusOutlined /> 新建对话
+          </Dropdown.Button>
+        )}
       </Flex>
       <TreeView<ChatPage, PageFolder>
         items={pages}
@@ -92,6 +147,9 @@ export function Explorer(): React.JSX.Element {
         onDoubleClick={handleDoubleClick}
         emptyText={isEmpty ? '暂无对话' : undefined}
         className="explorer-tree"
+        checkable={multiSelect}
+        checkedKeys={checkedKeys}
+        onCheck={setCheckedKeys}
       />
     </Flex>
   )

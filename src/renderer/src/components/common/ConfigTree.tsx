@@ -1,7 +1,13 @@
 import React, { useState } from 'react'
-import { Button } from 'antd'
+import { Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
-import { PlusOutlined, FolderOutlined, CopyOutlined, CheckSquareOutlined } from '@ant-design/icons'
+import {
+  PlusOutlined,
+  FolderOutlined,
+  CopyOutlined,
+  CheckSquareOutlined,
+  EllipsisOutlined
+} from '@ant-design/icons'
 import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '../../types/type'
@@ -104,6 +110,16 @@ export function ConfigTree<T extends ConfigItemBase>({
     ]
   }
 
+  const menuItems: MenuProps['items'] = [
+    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
+  ]
+
+  const onMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'folder') handleCreateFolder()
+    else if (key === 'multiSelect') handleToggleMultiSelect()
+  }
+
   return (
     <div className="config-tree">
       <div className="config-tree-toolbar">
@@ -117,13 +133,14 @@ export function ConfigTree<T extends ConfigItemBase>({
             </Button>
           </>
         ) : (
-          <>
-            <Button color="default" variant="filled" icon={<PlusOutlined />} onClick={handleCreate}>
-              {addItemText}
-            </Button>
-            <Button type="text" icon={<FolderOutlined />} onClick={handleCreateFolder} />
-            <Button type="text" icon={<CheckSquareOutlined />} onClick={handleToggleMultiSelect} />
-          </>
+          <Dropdown.Button
+            type="text"
+            icon={<EllipsisOutlined />}
+            menu={{ items: menuItems, onClick: onMenuClick }}
+            onClick={handleCreate}
+          >
+            <PlusOutlined /> {addItemText}
+          </Dropdown.Button>
         )}
       </div>
       <TreeView<T, ConfigFolder>
