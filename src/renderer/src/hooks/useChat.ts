@@ -1,19 +1,22 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useEffect } from 'react'
 import { usePagesStore } from '../stores/pagesStore'
+import { useMessagesStore } from '../stores/messagesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { createAIService } from '../services/aiService'
 import * as messagesService from '../services/messagesService'
 import { streamingManager } from '../services/streamingManager'
-import type { ChatMessage, ChatPage, LLMConfig, ModelConfig } from '../types/type'
+import type { ChatMessage, LLMConfig, ModelConfig } from '../types/type'
+import type { PageRecord } from '../utils/database'
 
 interface UseChatOptions {
   pageId: string
 }
 
 interface UseChatResult {
-  page: ChatPage | undefined
+  page: PageRecord | undefined
   messages: ChatMessage[]
   currentPath: ChatMessage[]
+  isLoading: boolean
   sendMessage: (content: string, options?: { parentId?: string }) => Promise<void>
   stopStreaming: () => Promise<void>
   retryMessage: (messageId: string, llmId?: string) => Promise<void>
@@ -27,15 +30,25 @@ interface UseChatResult {
 
 export function useChat({ pageId }: UseChatOptions): UseChatResult {
   const { pages } = usePagesStore()
+  const { cache, load } = useMessagesStore()
   const { settings } = useSettingsStore()
 
   const page = useMemo(() => pages.find((p) => p.id === pageId), [pages, pageId])
-  const messages = useMemo(() => page?.data?.messages ?? [], [page?.data?.messages])
+  const record = cache[pageId]
+  const messages = record?.messages ?? []
+  const isLoading = !record
+
+  // 加载消息
+  useEffect(() => {
+    if (!record && pageId) {
+      load(pageId)
+    }
+  }, [pageId, record, load])
 
   const currentPath = useMemo(() => {
-    if (!page) return []
-    return messagesService.getCurrentPath(page)
-  }, [page])
+    if (!record) return []
+    return messagesService.getMessagePath(record.messages, record.leafMessageId)
+  }, [record])
 
   const getConfigs = useCallback((): { llmConfig: LLMConfig; modelConfig: ModelConfig } | null => {
     const llmConfig = settings.llmConfigs.items.find((c) => c.id === settings.defaultLLMId)
@@ -54,7 +67,6 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     return { llmConfig, modelConfig }
   }, [settings])
 
-  // 通用的流式请求处理
   const startStreaming = useCallback(
     async (
       parentMessageId: string,
@@ -63,7 +75,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       modelConfig: ModelConfig
     ) => {
       // 1. 创建空的 assistant 消息
-      const assistantMessage = messagesService.addMessage(pageId, {
+      const assistantMessage = await messagesService.addMessage(pageId, {
         role: 'assistant',
         content: '',
         parentMessageId,
@@ -96,26 +108,25 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
               (current?.reasoning ?? '') + reasoning
             )
           },
-          onComplete: () => {
+          onComplete: async () => {
             const result = streamingManager.finish(assistantMessage.id)
             if (result) {
-              messagesService.updateMessage(pageId, assistantMessage.id, {
+              await messagesService.updateMessage(pageId, assistantMessage.id, {
                 content: result.content,
                 reasoning_content: result.reasoning
               })
             }
           },
-          onError: (error) => {
+          onError: async (error) => {
             console.error('AI error:', error)
             streamingManager.abort(assistantMessage.id)
-            // 删除空的 assistant 消息
-            messagesService.deleteMessage(pageId, assistantMessage.id)
+            await messagesService.deleteMessage(pageId, assistantMessage.id)
           }
         })
       } catch (error) {
         console.error('Streaming error:', error)
         streamingManager.abort(assistantMessage.id)
-        messagesService.deleteMessage(pageId, assistantMessage.id)
+        await messagesService.deleteMessage(pageId, assistantMessage.id)
       }
     },
     [pageId]
@@ -123,7 +134,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
 
   const sendMessage = useCallback(
     async (content: string, options?: { parentId?: string }) => {
-      if (!page) return
+      if (!page || !record) return
 
       const configs = getConfigs()
       if (!configs) {
@@ -131,11 +142,11 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
         return
       }
 
-      const parentId = options === undefined ? page.data?.leafMessageId : options.parentId
+      const parentId = options === undefined ? record.leafMessageId : options.parentId
       const isFirstMessage = messages.length === 0
 
       // 添加用户消息
-      const userMessage = messagesService.addMessage(pageId, {
+      const userMessage = await messagesService.addMessage(pageId, {
         role: 'user',
         content,
         parentMessageId: parentId,
@@ -149,30 +160,26 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       }
 
       // 获取最新的消息路径
-      const pathMessages = messagesService.getCurrentPath(messagesService.getPage(pageId)!)
+      const pathMessages = messagesService.getCurrentPath(pageId)
 
       await startStreaming(userMessage.id, pathMessages, configs.llmConfig, configs.modelConfig)
     },
-    [page, pageId, messages, getConfigs, startStreaming]
+    [page, pageId, record, messages, getConfigs, startStreaming]
   )
 
-  // 停止当前对话中正在 streaming 的消息
   const stopStreaming = useCallback(async () => {
-    // 找到当前对话中正在 streaming 的消息
     const streamingMsg = currentPath.find((msg) => streamingManager.isStreaming(msg.id))
     if (!streamingMsg) return
 
     const result = await streamingManager.stop(streamingMsg.id)
 
     if (result?.content) {
-      // 保存已生成的内容
-      messagesService.updateMessage(pageId, streamingMsg.id, {
+      await messagesService.updateMessage(pageId, streamingMsg.id, {
         content: result.content,
         reasoning_content: result.reasoning
       })
     } else {
-      // 没有内容，删除空消息
-      messagesService.deleteMessage(pageId, streamingMsg.id)
+      await messagesService.deleteMessage(pageId, streamingMsg.id)
     }
   }, [pageId, currentPath])
 
@@ -260,6 +267,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     page,
     messages,
     currentPath,
+    isLoading,
     sendMessage,
     stopStreaming,
     retryMessage,

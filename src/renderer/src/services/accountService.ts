@@ -1,33 +1,64 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { Account } from '../types/type'
 import { useAccountStore, createDefaultAccount, getDefaultAccountId } from '../stores/accountStore'
-import { setDatabaseName, deleteDatabase } from '../utils/indexedDB'
-import { rehydrateAllStores } from '../utils/storeRegistry'
+import { setDatabaseName, deleteDatabase } from '../utils/database'
+import { usePagesStore } from '../stores/pagesStore'
+import { useFoldersStore } from '../stores/foldersStore'
+import { useMessagesStore } from '../stores/messagesStore'
+import { useSettingsStore } from '../stores/settingsStore'
+import { useLayoutStore } from '../stores/layoutStore'
+import { useTabsStore } from '../stores/tabsStore'
+
+// 初始化所有用户数据 store
+async function initAllStores(): Promise<void> {
+  await Promise.all([
+    usePagesStore.getState().init(),
+    useFoldersStore.getState().init(),
+    useSettingsStore.getState().init(),
+    useLayoutStore.getState().init(),
+    useTabsStore.getState().init()
+  ])
+}
+
+// 重置所有用户数据 store
+function resetAllStores(): void {
+  usePagesStore.getState().reset()
+  useFoldersStore.getState().reset()
+  useMessagesStore.getState().reset()
+  useSettingsStore.getState().reset()
+  useLayoutStore.getState().reset()
+  useTabsStore.getState().reset()
+}
 
 // 初始化账户系统
 export async function initializeAccountSystem(): Promise<void> {
+  // 先初始化账户 store
+  await useAccountStore.getState().init()
+
+  // 重新获取最新状态
   const store = useAccountStore.getState()
 
   // 如果没有账户，创建默认账户
   if (store.accounts.length === 0) {
     const defaultAccount = createDefaultAccount()
-    store.addAccount(defaultAccount)
-    store.setCurrentAccountId(defaultAccount.id)
+    await store.addAccount(defaultAccount)
+    await store.setCurrentAccountId(defaultAccount.id)
   }
 
   // 如果没有当前账户，设置为第一个账户
-  if (!store.currentAccountId && store.accounts.length > 0) {
-    store.setCurrentAccountId(store.accounts[0].id)
+  const currentState = useAccountStore.getState()
+  if (!currentState.currentAccountId && currentState.accounts.length > 0) {
+    await currentState.setCurrentAccountId(currentState.accounts[0].id)
   }
 
   // 设置数据库名称
-  const accountId = store.currentAccountId || getDefaultAccountId()
+  const accountId = useAccountStore.getState().currentAccountId || getDefaultAccountId()
   setDatabaseName(accountId)
 
-  // 初始化完成后，手动触发所有 store 的 rehydrate
-  await rehydrateAllStores()
+  // 初始化所有用户数据 store
+  await initAllStores()
 
-  store.setInitialized(true)
+  useAccountStore.getState().setInitialized(true)
 }
 
 // 切换账户
@@ -40,18 +71,21 @@ export async function switchAccount(accountId: string): Promise<void> {
     throw new Error(`Account not found: ${accountId}`)
   }
 
-  // 切换数据库（必须在 reset 之前，避免清空原账户数据）
+  // 重置所有 store
+  resetAllStores()
+
+  // 切换数据库
   setDatabaseName(accountId)
 
   // 更新当前账户
-  store.setCurrentAccountId(accountId)
+  await store.setCurrentAccountId(accountId)
 
-  // 从新数据库加载数据（rehydrate 会覆盖内存状态，不需要先 reset）
-  await rehydrateAllStores()
+  // 从新数据库加载数据
+  await initAllStores()
 }
 
 // 创建新账户
-export function createAccount(name: string, avatar?: string): Account {
+export async function createAccount(name: string, avatar?: string): Promise<Account> {
   const store = useAccountStore.getState()
 
   const account: Account = {
@@ -61,17 +95,17 @@ export function createAccount(name: string, avatar?: string): Account {
     createdAt: Date.now()
   }
 
-  store.addAccount(account)
+  await store.addAccount(account)
   return account
 }
 
 // 更新账户信息
-export function updateAccount(
+export async function updateAccount(
   id: string,
   updates: Partial<Omit<Account, 'id' | 'createdAt'>>
-): void {
+): Promise<void> {
   const store = useAccountStore.getState()
-  store.updateAccount(id, updates)
+  await store.updateAccount(id, updates)
 }
 
 // 删除账户
@@ -89,13 +123,11 @@ export async function removeAccount(accountId: string): Promise<void> {
   }
 
   // 先从列表中移除，再删除数据库
-  // 这样即使数据库删除失败，账户也已从列表移除，下次可以重试
-  store.removeAccount(accountId)
+  await store.removeAccount(accountId)
 
   try {
     await deleteDatabase(accountId)
   } catch (error) {
-    // 数据库删除失败不影响账户移除，只记录错误
     console.error('Failed to delete account database:', error)
   }
 }

@@ -42,7 +42,7 @@ interface MessageItemProps {
   onToggleCollapse?: (messageId: string) => void
 }
 
-export function MessageItem({
+export const MessageItem = React.memo(function MessageItem({
   message,
   isLast,
   isLeaf,
@@ -311,4 +311,4 @@ export function MessageItem({
       </div>
     </div>
   )
-}
+})

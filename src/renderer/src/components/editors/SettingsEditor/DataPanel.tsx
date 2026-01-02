@@ -3,6 +3,8 @@ import { Button, Flex, Typography, App } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { usePagesStore } from '../../../stores/pagesStore'
+import { useFoldersStore } from '../../../stores/foldersStore'
+import { useMessagesStore } from '../../../stores/messagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 
@@ -21,6 +23,8 @@ export function DataPanel(): React.JSX.Element {
       cancelText: '取消',
       onOk: () => {
         usePagesStore.getState().reset()
+        useFoldersStore.getState().reset()
+        useMessagesStore.getState().reset()
         useTabsStore.getState().reset()
         useSettingsStore.getState().reset()
         useLayoutStore.getState().reset()

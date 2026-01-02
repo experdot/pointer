@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import * as db from '../utils/database'
 import type {
   Settings,
   ConfigTree,
@@ -9,8 +9,6 @@ import type {
   ModelConfig,
   PromptListConfig
 } from '../types/type'
-import { createIndexedDBStorage } from '../utils/indexedDB'
-import { registerStoreReset } from '../utils/storeRegistry'
 import {
   updateTreeItem,
   updateTreeFolder,
@@ -38,9 +36,13 @@ const initialSettings: Settings = {
 
 interface SettingsState {
   settings: Settings
+  initialized: boolean
 }
 
 interface SettingsActions {
+  // 初始化
+  init: () => Promise<void>
+
   // 基础设置
   setFontSize: (fontSize: Settings['fontSize']) => void
   setDefaultLLMId: (id: string | undefined) => void
@@ -90,247 +92,326 @@ interface SettingsActions {
 
 type SettingsStore = SettingsState & SettingsActions
 
-export const useSettingsStore = create<SettingsStore>()(
-  persist(
-    (set) => ({
-      settings: initialSettings,
+// 持久化辅助函数
+const persist = (settings: Settings): void => {
+  db.putSettings(settings)
+}
 
-      // 基础设置
-      setFontSize: (fontSize) => set((state) => ({ settings: { ...state.settings, fontSize } })),
+export const useSettingsStore = create<SettingsStore>((set) => ({
+  settings: initialSettings,
+  initialized: false,
 
-      setDefaultLLMId: (id) =>
-        set((state) => ({ settings: { ...state.settings, defaultLLMId: id } })),
+  init: async () => {
+    const settings = await db.getSettings()
+    set({
+      settings: settings ? { ...initialSettings, ...settings } : initialSettings,
+      initialized: true
+    })
+  },
 
-      setDefaultModelConfigId: (id) =>
-        set((state) => ({ settings: { ...state.settings, defaultModelConfigId: id } })),
+  // 基础设置
+  setFontSize: (fontSize) => {
+    set((state) => {
+      const settings = { ...state.settings, fontSize }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      // LLM 配置
-      addLLMConfig: (config) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: addTreeItem(state.settings.llmConfigs, config)
-          }
-        })),
+  setDefaultLLMId: (id) => {
+    set((state) => {
+      const settings = { ...state.settings, defaultLLMId: id }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updateLLMConfig: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: updateTreeItem(state.settings.llmConfigs, id, updates)
-          }
-        })),
+  setDefaultModelConfigId: (id) => {
+    set((state) => {
+      const settings = { ...state.settings, defaultModelConfigId: id }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removeLLMConfig: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: removeTreeItem(state.settings.llmConfigs, id)
-          }
-        })),
+  // LLM 配置
+  addLLMConfig: (config) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: addTreeItem(state.settings.llmConfigs, config)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      addLLMConfigFolder: (folder) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: addTreeFolder(state.settings.llmConfigs, folder)
-          }
-        })),
+  updateLLMConfig: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: updateTreeItem(state.settings.llmConfigs, id, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updateLLMConfigFolder: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: updateTreeFolder(
-              state.settings.llmConfigs,
-              id,
-              updates
-            ) as ConfigTree<LLMConfig>
-          }
-        })),
+  removeLLMConfig: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: removeTreeItem(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removeLLMConfigFolder: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: removeTreeFolder(state.settings.llmConfigs, id)
-          }
-        })),
+  addLLMConfigFolder: (folder) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: addTreeFolder(state.settings.llmConfigs, folder)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdateLLMConfigs: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: batchUpdateTreeItems(state.settings.llmConfigs, updates)
-          }
-        })),
+  updateLLMConfigFolder: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: updateTreeFolder(
+          state.settings.llmConfigs,
+          id,
+          updates
+        ) as ConfigTree<LLMConfig>
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdateLLMConfigFolders: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            llmConfigs: batchUpdateTreeFolders(state.settings.llmConfigs, updates)
-          }
-        })),
+  removeLLMConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: removeTreeFolder(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      // Model 配置
-      addModelConfig: (config) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: addTreeItem(state.settings.modelConfigs, config)
-          }
-        })),
+  batchUpdateLLMConfigs: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: batchUpdateTreeItems(state.settings.llmConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updateModelConfig: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: updateTreeItem(state.settings.modelConfigs, id, updates)
-          }
-        })),
+  batchUpdateLLMConfigFolders: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: batchUpdateTreeFolders(state.settings.llmConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removeModelConfig: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: removeTreeItem(state.settings.modelConfigs, id)
-          }
-        })),
+  // Model 配置
+  addModelConfig: (config) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: addTreeItem(state.settings.modelConfigs, config)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      addModelConfigFolder: (folder) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: addTreeFolder(state.settings.modelConfigs, folder)
-          }
-        })),
+  updateModelConfig: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: updateTreeItem(state.settings.modelConfigs, id, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updateModelConfigFolder: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: updateTreeFolder(
-              state.settings.modelConfigs,
-              id,
-              updates
-            ) as ConfigTree<ModelConfig>
-          }
-        })),
+  removeModelConfig: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: removeTreeItem(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removeModelConfigFolder: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: removeTreeFolder(state.settings.modelConfigs, id)
-          }
-        })),
+  addModelConfigFolder: (folder) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: addTreeFolder(state.settings.modelConfigs, folder)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdateModelConfigs: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: batchUpdateTreeItems(state.settings.modelConfigs, updates)
-          }
-        })),
+  updateModelConfigFolder: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: updateTreeFolder(
+          state.settings.modelConfigs,
+          id,
+          updates
+        ) as ConfigTree<ModelConfig>
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdateModelConfigFolders: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            modelConfigs: batchUpdateTreeFolders(state.settings.modelConfigs, updates)
-          }
-        })),
+  removeModelConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: removeTreeFolder(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      // 提示词列表
-      addPromptList: (config) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: addTreeItem(state.settings.promptLists, config)
-          }
-        })),
+  batchUpdateModelConfigs: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: batchUpdateTreeItems(state.settings.modelConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updatePromptList: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: updateTreeItem(state.settings.promptLists, id, updates)
-          }
-        })),
+  batchUpdateModelConfigFolders: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: batchUpdateTreeFolders(state.settings.modelConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removePromptList: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: removeTreeItem(state.settings.promptLists, id)
-          }
-        })),
+  // 提示词列表
+  addPromptList: (config) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: addTreeItem(state.settings.promptLists, config)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      addPromptListFolder: (folder) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: addTreeFolder(state.settings.promptLists, folder)
-          }
-        })),
+  updatePromptList: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: updateTreeItem(state.settings.promptLists, id, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updatePromptListFolder: (id, updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: updateTreeFolder(
-              state.settings.promptLists,
-              id,
-              updates
-            ) as ConfigTree<PromptListConfig>
-          }
-        })),
+  removePromptList: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: removeTreeItem(state.settings.promptLists, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      removePromptListFolder: (id) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: removeTreeFolder(state.settings.promptLists, id)
-          }
-        })),
+  addPromptListFolder: (folder) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: addTreeFolder(state.settings.promptLists, folder)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdatePromptLists: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: batchUpdateTreeItems(state.settings.promptLists, updates)
-          }
-        })),
+  updatePromptListFolder: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: updateTreeFolder(
+          state.settings.promptLists,
+          id,
+          updates
+        ) as ConfigTree<PromptListConfig>
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      batchUpdatePromptListFolders: (updates) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            promptLists: batchUpdateTreeFolders(state.settings.promptLists, updates)
-          }
-        })),
+  removePromptListFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: removeTreeFolder(state.settings.promptLists, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      reset: () => set({ settings: initialSettings })
-    }),
-    {
-      name: 'settings-store',
-      storage: createIndexedDBStorage(),
-      skipHydration: true,
-      partialize: (state) => ({ settings: state.settings }),
-      // 账户切换时使用替换而非合并，确保新账户数据库为空时清空内存状态
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        settings: persistedState
-          ? { ...initialSettings, ...(persistedState as SettingsState).settings }
-          : initialSettings
-      })
-    }
-  )
-)
+  batchUpdatePromptLists: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: batchUpdateTreeItems(state.settings.promptLists, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-// 注册重置回调
-registerStoreReset(
-  () => useSettingsStore.getState().reset(),
-  () => useSettingsStore.persist.rehydrate()
-)
+  batchUpdatePromptListFolders: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        promptLists: batchUpdateTreeFolders(state.settings.promptLists, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  reset: () => set({ settings: initialSettings, initialized: false })
+}))

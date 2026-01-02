@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react'
 import { usePagesStore } from '../stores/pagesStore'
+import { useFoldersStore } from '../stores/foldersStore'
 import type { ChatPage, PageFolder } from '../types/type'
 import * as pagesService from '../services/pagesService'
 
@@ -21,7 +22,8 @@ export function usePages(): {
   toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
   openPage: typeof pagesService.openPage
 } {
-  const { pages, folders, batchUpdatePages, batchUpdateFolders } = usePagesStore()
+  const { pages, batchUpdatePages } = usePagesStore()
+  const { folders, batchUpdateFolders } = useFoldersStore()
 
   // 获取根级别的页面和文件夹，混合排序
   const rootItems = useMemo(() => {

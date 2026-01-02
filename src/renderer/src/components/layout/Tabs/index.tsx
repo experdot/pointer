@@ -159,9 +159,9 @@ export function Tabs(): React.JSX.Element {
     closable: tab.closable !== false
   }))
 
-  const handleEdit: TabsProps['onEdit'] = (targetKey, action) => {
+  const handleEdit: TabsProps['onEdit'] = async (targetKey, action) => {
     if (action === 'add') {
-      const page = createPage()
+      const page = await createPage()
       openPage(page.id)
     } else if (action === 'remove' && typeof targetKey === 'string') {
       closeTab(targetKey)

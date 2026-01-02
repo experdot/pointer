@@ -1,9 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import * as db from '../utils/database'
 import type { Account } from '../types/type'
-
-// accountStore 使用独立的 localStorage，不随账户切换
-// 因为它需要存储所有账户列表和当前账户信息
 
 interface AccountState {
   accounts: Account[]
@@ -12,11 +9,11 @@ interface AccountState {
 }
 
 interface AccountActions {
-  setAccounts: (accounts: Account[]) => void
-  addAccount: (account: Account) => void
-  updateAccount: (id: string, updates: Partial<Account>) => void
-  removeAccount: (id: string) => void
-  setCurrentAccountId: (id: string | null) => void
+  init: () => Promise<void>
+  addAccount: (account: Account) => Promise<void>
+  updateAccount: (id: string, updates: Partial<Account>) => Promise<void>
+  removeAccount: (id: string) => Promise<void>
+  setCurrentAccountId: (id: string | null) => Promise<void>
   setInitialized: (initialized: boolean) => void
 }
 
@@ -24,54 +21,64 @@ type AccountStore = AccountState & AccountActions
 
 const DEFAULT_ACCOUNT_ID = 'default'
 
-export const useAccountStore = create<AccountStore>()(
-  persist(
-    (set) => ({
-      accounts: [],
-      currentAccountId: null,
-      initialized: false,
+const initialState: AccountState = {
+  accounts: [],
+  currentAccountId: null,
+  initialized: false
+}
 
-      setAccounts: (accounts) => set({ accounts }),
+export const useAccountStore = create<AccountStore>((set, get) => ({
+  ...initialState,
 
-      addAccount: (account) =>
-        set((state) => ({
-          accounts: [...state.accounts, account]
-        })),
+  init: async () => {
+    const [accounts, currentAccountId] = await Promise.all([
+      db.getAllAccounts(),
+      db.getCurrentAccountId()
+    ])
+    set({ accounts, currentAccountId, initialized: true })
+  },
 
-      updateAccount: (id, updates) =>
-        set((state) => ({
-          accounts: state.accounts.map((acc) =>
-            acc.id === id ? { ...acc, ...updates, updatedAt: Date.now() } : acc
-          )
-        })),
+  addAccount: async (account) => {
+    await db.putAccount(account)
+    set((state) => {
+      // 避免重复添加
+      if (state.accounts.some((a) => a.id === account.id)) {
+        return { accounts: state.accounts.map((a) => (a.id === account.id ? account : a)) }
+      }
+      return { accounts: [...state.accounts, account] }
+    })
+  },
 
-      removeAccount: (id) =>
-        set((state) => ({
-          accounts: state.accounts.filter((acc) => acc.id !== id),
-          currentAccountId: state.currentAccountId === id ? null : state.currentAccountId
-        })),
+  updateAccount: async (id, updates) => {
+    const account = get().accounts.find((a) => a.id === id)
+    if (!account) return
+    const updated = { ...account, ...updates, updatedAt: Date.now() }
+    await db.putAccount(updated)
+    set((state) => ({
+      accounts: state.accounts.map((a) => (a.id === id ? updated : a))
+    }))
+  },
 
-      setCurrentAccountId: (id) => set({ currentAccountId: id }),
+  removeAccount: async (id) => {
+    await db.deleteAccount(id)
+    set((state) => ({
+      accounts: state.accounts.filter((a) => a.id !== id),
+      currentAccountId: state.currentAccountId === id ? null : state.currentAccountId
+    }))
+  },
 
-      setInitialized: (initialized) => set({ initialized })
-    }),
-    {
-      name: 'pointer-account-store',
-      // 使用 localStorage，全局存储，不随账户切换
-      partialize: (state) => ({
-        accounts: state.accounts,
-        currentAccountId: state.currentAccountId
-      })
-    }
-  )
-)
+  setCurrentAccountId: async (id) => {
+    await db.setCurrentAccountId(id)
+    set({ currentAccountId: id })
+  },
 
-// 获取默认账户 ID
+  setInitialized: (initialized) => set({ initialized })
+}))
+
 export function getDefaultAccountId(): string {
   return DEFAULT_ACCOUNT_ID
 }
 
-// 创建默认账户
 export function createDefaultAccount(): Account {
   return {
     id: DEFAULT_ACCOUNT_ID,

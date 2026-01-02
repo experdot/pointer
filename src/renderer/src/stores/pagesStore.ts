@@ -1,30 +1,18 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { ChatPage, PageFolder } from '../types/type'
-import { createIndexedDBStorage } from '../utils/indexedDB'
-import { registerStoreReset } from '../utils/storeRegistry'
+import * as db from '../utils/database'
+import type { PageRecord } from '../utils/database'
 
 interface PagesState {
-  pages: ChatPage[]
-  folders: PageFolder[]
+  pages: PageRecord[]
+  initialized: boolean
 }
 
 interface PagesActions {
-  // 页面操作
-  setPages: (pages: ChatPage[]) => void
-  addPage: (page: ChatPage) => void
-  updatePage: (id: string, updates: Partial<ChatPage>) => void
-  batchUpdatePages: (updates: Array<{ id: string; updates: Partial<ChatPage> }>) => void
-  removePage: (id: string) => void
-
-  // 文件夹操作
-  setFolders: (folders: PageFolder[]) => void
-  addFolder: (folder: PageFolder) => void
-  updateFolder: (id: string, updates: Partial<PageFolder>) => void
-  batchUpdateFolders: (updates: Array<{ id: string; updates: Partial<PageFolder> }>) => void
-  removeFolder: (id: string) => void
-
-  // 重置
+  init: () => Promise<void>
+  addPage: (page: PageRecord) => Promise<void>
+  updatePage: (id: string, updates: Partial<PageRecord>) => Promise<void>
+  removePage: (id: string) => Promise<void>
+  batchUpdatePages: (updates: Array<{ id: string; updates: Partial<PageRecord> }>) => Promise<void>
   reset: () => void
 }
 
@@ -32,113 +20,52 @@ type PagesStore = PagesState & PagesActions
 
 const initialState: PagesState = {
   pages: [],
-  folders: []
+  initialized: false
 }
 
-export const usePagesStore = create<PagesStore>()(
-  persist(
-    (set) => ({
-      ...initialState,
+export const usePagesStore = create<PagesStore>((set, get) => ({
+  ...initialState,
 
-      setPages: (pages) => set({ pages }),
+  init: async () => {
+    const pages = await db.getAllPages()
+    set({ pages, initialized: true })
+  },
 
-      addPage: (page) =>
-        set((state) => ({
-          pages: [...state.pages, page]
-        })),
+  addPage: async (page) => {
+    await db.putPage(page)
+    set((state) => ({ pages: [...state.pages, page] }))
+  },
 
-      updatePage: (id, updates) =>
-        set((state) => ({
-          pages: state.pages.map((p) =>
-            p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p
-          )
-        })),
+  updatePage: async (id, updates) => {
+    const page = get().pages.find((p) => p.id === id)
+    if (!page) return
 
-      batchUpdatePages: (updates) =>
-        set((state) => ({
-          pages: state.pages.map((p) => {
-            const update = updates.find((u) => u.id === p.id)
-            return update ? { ...p, ...update.updates, updatedAt: Date.now() } : p
-          })
-        })),
+    const updated = { ...page, ...updates, updatedAt: Date.now() }
+    await db.putPage(updated)
+    set((state) => ({
+      pages: state.pages.map((p) => (p.id === id ? updated : p))
+    }))
+  },
 
-      removePage: (id) =>
-        set((state) => ({
-          pages: state.pages.filter((p) => p.id !== id)
-        })),
+  removePage: async (id) => {
+    await db.deletePage(id)
+    set((state) => ({ pages: state.pages.filter((p) => p.id !== id) }))
+  },
 
-      setFolders: (folders) => set({ folders }),
-
-      addFolder: (folder) =>
-        set((state) => ({
-          folders: [...state.folders, folder]
-        })),
-
-      updateFolder: (id, updates) =>
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, ...updates, updatedAt: Date.now() } : f
-          )
-        })),
-
-      batchUpdateFolders: (updates) =>
-        set((state) => ({
-          folders: state.folders.map((f) => {
-            const update = updates.find((u) => u.id === f.id)
-            return update ? { ...f, ...update.updates, updatedAt: Date.now() } : f
-          })
-        })),
-
-      removeFolder: (id) =>
-        set((state) => {
-          // 递归获取所有子文件夹 ID
-          const getAllSubFolderIds = (folderId: string): string[] => {
-            const subFolders = state.folders.filter((f) => f.parentFolderId === folderId)
-            return subFolders.flatMap((f) => [f.id, ...getAllSubFolderIds(f.id)])
-          }
-          const allFolderIds = [id, ...getAllSubFolderIds(id)]
-
-          // 获取根目录现有页面的最大 order
-          const rootPages = state.pages.filter((p) => !p.parentFolderId)
-          const maxOrder = rootPages.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
-
-          // 移动页面到根目录并更新 order
-          let orderOffset = 0
-          const updatedPages = state.pages.map((p) => {
-            if (p.parentFolderId && allFolderIds.includes(p.parentFolderId)) {
-              orderOffset++
-              return { ...p, parentFolderId: undefined, order: maxOrder + orderOffset }
-            }
-            return p
-          })
-
-          return {
-            folders: state.folders.filter((f) => !allFolderIds.includes(f.id)),
-            pages: updatedPages
-          }
-        }),
-
-      reset: () => set(initialState)
-    }),
-    {
-      name: 'pages-store',
-      storage: createIndexedDBStorage(),
-      skipHydration: true, // 延迟加载,等待数据库名设置
-      partialize: (state) => ({
-        pages: state.pages,
-        folders: state.folders
-      }),
-      // 账户切换时使用替换而非合并，确保新账户数据库为空时清空内存状态
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...(persistedState ? (persistedState as PagesState) : initialState)
+  batchUpdatePages: async (updates) => {
+    const pages = get().pages
+    const updatedPages = pages.map((p) => {
+      const update = updates.find((u) => u.id === p.id)
+      return update ? { ...p, ...update.updates, updatedAt: Date.now() } : p
+    })
+    await Promise.all(
+      updates.map((u) => {
+        const page = updatedPages.find((p) => p.id === u.id)
+        return page ? db.putPage(page) : Promise.resolve()
       })
-    }
-  )
-)
+    )
+    set({ pages: updatedPages })
+  },
 
-// 注册重置回调
-registerStoreReset(
-  () => usePagesStore.getState().reset(),
-  () => usePagesStore.persist.rehydrate()
-)
+  reset: () => set(initialState)
+}))

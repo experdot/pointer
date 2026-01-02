@@ -59,8 +59,8 @@ export function Explorer(): React.JSX.Element {
           color="default"
           variant="filled"
           icon={<PlusOutlined />}
-          onClick={() => {
-            const page = createPage(undefined, selectedKey ?? undefined)
+          onClick={async () => {
+            const page = await createPage(undefined, selectedKey ?? undefined)
             openPage(page.id)
           }}
         >
@@ -69,8 +69,8 @@ export function Explorer(): React.JSX.Element {
         <Button
           type="text"
           icon={<FolderOutlined />}
-          onClick={() => {
-            const folder = createFolder(undefined, selectedKey ?? undefined)
+          onClick={async () => {
+            const folder = await createFolder(undefined, selectedKey ?? undefined)
             setSelectedKey(folder.id)
           }}
         />

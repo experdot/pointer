@@ -44,7 +44,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     if (!name || switching) return
     setSwitching(true)
     try {
-      const account = createAccount(name)
+      const account = await createAccount(name)
       await switchAccount(account.id)
       onClose()
     } catch {

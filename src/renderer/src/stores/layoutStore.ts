@@ -1,23 +1,17 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { createIndexedDBStorage } from '../utils/indexedDB'
-import { registerStoreReset } from '../utils/storeRegistry'
+import * as db from '../utils/database'
+import type { ActivityPanel, LayoutRecord } from '../utils/database'
 
-// 活动栏面板类型
-export type ActivityPanel = 'explorer' | 'search' | 'favorites' | 'tasks'
+export type { ActivityPanel } from '../utils/database'
 
-interface LayoutState {
-  // 侧边栏
-  sidebarWidth: number
-  sidebarVisible: boolean
-  activePanel: ActivityPanel
-
-  // 侧边栏宽度限制
+interface LayoutState extends LayoutRecord {
   minSidebarWidth: number
   maxSidebarWidth: number
+  initialized: boolean
 }
 
 interface LayoutActions {
+  init: () => Promise<void>
   setSidebarWidth: (width: number) => void
   setSidebarVisible: (visible: boolean) => void
   toggleSidebar: () => void
@@ -32,56 +26,59 @@ const initialState: LayoutState = {
   sidebarVisible: true,
   activePanel: 'explorer',
   minSidebarWidth: 200,
-  maxSidebarWidth: 500
+  maxSidebarWidth: 500,
+  initialized: false
 }
 
-export const useLayoutStore = create<LayoutStore>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+const persist = (state: LayoutState): void => {
+  db.putLayout({
+    sidebarWidth: state.sidebarWidth,
+    sidebarVisible: state.sidebarVisible,
+    activePanel: state.activePanel
+  })
+}
 
-      setSidebarWidth: (width) => {
-        const { minSidebarWidth, maxSidebarWidth } = get()
-        const clampedWidth = Math.max(minSidebarWidth, Math.min(maxSidebarWidth, width))
-        set({ sidebarWidth: clampedWidth })
-      },
+export const useLayoutStore = create<LayoutStore>((set, get) => ({
+  ...initialState,
 
-      setSidebarVisible: (visible) => set({ sidebarVisible: visible }),
+  init: async () => {
+    const layout = await db.getLayout()
+    set({
+      ...(layout ?? {}),
+      initialized: true
+    })
+  },
 
-      toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
+  setSidebarWidth: (width) => {
+    const state = get()
+    const clampedWidth = Math.max(state.minSidebarWidth, Math.min(state.maxSidebarWidth, width))
+    set({ sidebarWidth: clampedWidth })
+    persist({ ...state, sidebarWidth: clampedWidth })
+  },
 
-      setActivePanel: (panel) => {
-        const { activePanel, sidebarVisible } = get()
-        if (panel === activePanel && sidebarVisible) {
-          // 点击当前激活的面板，切换侧边栏显示
-          set({ sidebarVisible: false })
-        } else {
-          set({ activePanel: panel, sidebarVisible: true })
-        }
-      },
+  setSidebarVisible: (visible) => {
+    const state = get()
+    set({ sidebarVisible: visible })
+    persist({ ...state, sidebarVisible: visible })
+  },
 
-      reset: () => set(initialState)
-    }),
-    {
-      name: 'layout-store',
-      storage: createIndexedDBStorage(),
-      skipHydration: true, // 延迟加载，等待数据库名设置
-      partialize: (state) => ({
-        sidebarWidth: state.sidebarWidth,
-        sidebarVisible: state.sidebarVisible,
-        activePanel: state.activePanel
-      }),
-      // 账户切换时使用替换而非合并，确保新账户数据库为空时清空内存状态
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...(persistedState ? (persistedState as LayoutState) : initialState)
-      })
+  toggleSidebar: () => {
+    const state = get()
+    const visible = !state.sidebarVisible
+    set({ sidebarVisible: visible })
+    persist({ ...state, sidebarVisible: visible })
+  },
+
+  setActivePanel: (panel) => {
+    const state = get()
+    if (panel === state.activePanel && state.sidebarVisible) {
+      set({ sidebarVisible: false })
+      persist({ ...state, sidebarVisible: false })
+    } else {
+      set({ activePanel: panel, sidebarVisible: true })
+      persist({ ...state, activePanel: panel, sidebarVisible: true })
     }
-  )
-)
+  },
 
-// 注册重置回调
-registerStoreReset(
-  () => useLayoutStore.getState().reset(),
-  () => useLayoutStore.persist.rehydrate()
-)
+  reset: () => set(initialState)
+}))

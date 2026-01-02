@@ -15,8 +15,8 @@ registerTabType({
   icon: <HomeOutlined />,
   renderEditor: () => (
     <WelcomePage
-      onNewChat={() => {
-        const page = pagesService.createPage()
+      onNewChat={async () => {
+        const page = await pagesService.createPage()
         pagesService.openPage(page.id)
       }}
       onOpenSettings={openSettings}

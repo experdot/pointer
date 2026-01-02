@@ -53,7 +53,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const shouldAutoScroll = useRef(true)
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
-  const scrollRAF = useRef<number>()
+  const scrollRAF = useRef<number | undefined>(undefined)
   const { getState, setScrollTop } = useChatUIStore()
 
   // 订阅 streamingManager 更新
