@@ -4,10 +4,14 @@ import type { ActivityPanel, LayoutRecord } from '../utils/database'
 
 export type { ActivityPanel } from '../utils/database'
 
+// 紧凑模式阈值
+const COMPACT_MODE_THRESHOLD = 768
+
 interface LayoutState extends LayoutRecord {
   minSidebarWidth: number
   maxSidebarWidth: number
   initialized: boolean
+  isCompactMode: boolean
 }
 
 interface LayoutActions {
@@ -16,6 +20,7 @@ interface LayoutActions {
   setSidebarVisible: (visible: boolean) => void
   toggleSidebar: () => void
   setActivePanel: (panel: ActivityPanel) => void
+  setCompactMode: (isCompact: boolean) => void
   reset: () => void
 }
 
@@ -27,7 +32,8 @@ const initialState: LayoutState = {
   activePanel: 'explorer',
   minSidebarWidth: 200,
   maxSidebarWidth: 500,
-  initialized: false
+  initialized: false,
+  isCompactMode: window.innerWidth < COMPACT_MODE_THRESHOLD
 }
 
 const persist = (state: LayoutState): void => {
@@ -79,6 +85,8 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
       persist({ ...state, activePanel: panel, sidebarVisible: true })
     }
   },
+
+  setCompactMode: (isCompact) => set({ isCompactMode: isCompact }),
 
   reset: () => set(initialState)
 }))
