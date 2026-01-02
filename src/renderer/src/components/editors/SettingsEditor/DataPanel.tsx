@@ -1,17 +1,26 @@
-import React from 'react'
-import { Button, Flex, Typography, App } from 'antd'
-import { ExclamationCircleOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Button, Flex, Typography, App, Space } from 'antd'
+import {
+  ExclamationCircleOutlined,
+  ExportOutlined,
+  ImportOutlined,
+  DeleteOutlined
+} from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
+import { ExportModal } from './ExportModal'
+import { ImportModal } from './ImportModal'
 
 const { Text } = Typography
 
 export function DataPanel(): React.JSX.Element {
   const { modal } = App.useApp()
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
 
   const handleResetAll = (): void => {
     modal.confirm({
@@ -33,15 +42,29 @@ export function DataPanel(): React.JSX.Element {
   }
 
   return (
-    <Flex vertical gap={16} style={{ maxWidth: 400 }}>
+    <Flex vertical gap={24}>
       <div>
-        <Text strong>重置数据</Text>
+        <Text strong style={{ fontSize: 16 }}>
+          数据管理
+        </Text>
         <br />
-        <Text type="secondary">清除所有本地数据，恢复到初始状态</Text>
+        <Text type="secondary">导入、导出或重置应用数据</Text>
       </div>
-      <Button danger onClick={handleResetAll}>
-        重置所有数据
-      </Button>
+
+      <Space size="middle">
+        <Button icon={<ExportOutlined />} onClick={() => setExportModalOpen(true)}>
+          导出数据
+        </Button>
+        <Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)}>
+          导入数据
+        </Button>
+        <Button danger icon={<DeleteOutlined />} onClick={handleResetAll}>
+          重置数据
+        </Button>
+      </Space>
+
+      <ExportModal open={exportModalOpen} onClose={() => setExportModalOpen(false)} />
+      <ImportModal open={importModalOpen} onClose={() => setImportModalOpen(false)} />
     </Flex>
   )
 }
