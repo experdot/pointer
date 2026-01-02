@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Avatar, Button, Tooltip, Input, Popconfirm, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import {
@@ -66,6 +66,7 @@ export function MessageItem({
   const [copied, setCopied] = useState(false)
   const [reasoningExpanded, setReasoningExpanded] = useState(true)
   const wasStreaming = useRef(false)
+  const itemRef = useRef<HTMLDivElement>(null)
 
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
@@ -97,10 +98,14 @@ export function MessageItem({
     })
   }
 
-  const handleStartEdit = (): void => {
+  const handleStartEdit = useCallback((): void => {
     setEditContent(message.content)
     setIsEditing(true)
-  }
+    // 延迟滚动，等待编辑框渲染
+    setTimeout(() => {
+      itemRef.current?.scrollIntoView({ block: 'center' })
+    }, 50)
+  }, [message.content])
 
   const handleCancelEdit = (): void => {
     setIsEditing(false)
@@ -152,6 +157,7 @@ export function MessageItem({
 
   return (
     <div
+      ref={itemRef}
       className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''}`}
       data-message-id={message.id}
     >

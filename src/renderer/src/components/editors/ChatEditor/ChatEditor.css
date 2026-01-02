@@ -193,15 +193,18 @@
   gap: 4px;
   margin-top: 8px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
 
 .message-item:hover .message-item__actions {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .message-item--last .message-item__actions {
   opacity: 1;
+  transform: translateY(0);
 }
 
 /* Branch Navigator */
