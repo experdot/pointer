@@ -22,7 +22,10 @@ interface MessagesActions {
   // 删除消息
   deleteMessages: (pageId: string, messageIds: Set<string>) => Promise<void>
   // 更新 session 信息
-  updateSession: (pageId: string, updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages'>>) => Promise<void>
+  updateSession: (
+    pageId: string,
+    updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages'>>
+  ) => Promise<void>
   // 清除缓存
   clearCache: (pageId: string) => void
   // 删除页面消息（从数据库）
@@ -104,7 +107,8 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
 
   clearCache: (pageId) => {
     set((state) => {
-      const { [pageId]: _, ...rest } = state.cache
+      const { [pageId]: _removed, ...rest } = state.cache
+      void _removed // 显式标记为已使用
       return { cache: rest }
     })
   },

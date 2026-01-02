@@ -36,6 +36,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   // 检查当前对话是否有 streaming 消息
   const isStreaming = useMemo(() => {
     return currentPath.some((msg) => streamingManager.isStreaming(msg.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- streamingVersion 用于触发重新计算
   }, [currentPath, streamingVersion])
 
   const inputAreaRef = useRef<InputAreaRef>(null)

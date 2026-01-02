@@ -35,7 +35,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
 
   const page = useMemo(() => pages.find((p) => p.id === pageId), [pages, pageId])
   const record = cache[pageId]
-  const messages = record?.messages ?? []
+  const messages = useMemo(() => record?.messages ?? [], [record?.messages])
   const isLoading = !record
 
   // 加载消息

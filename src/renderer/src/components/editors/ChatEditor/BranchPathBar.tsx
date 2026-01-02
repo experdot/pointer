@@ -1,6 +1,11 @@
 import React, { useMemo } from 'react'
 import { Dropdown, Tooltip } from 'antd'
-import { RightOutlined, EllipsisOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
+import {
+  RightOutlined,
+  EllipsisOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined
+} from '@ant-design/icons'
 import type { ChatMessage } from '../../../types/type'
 
 interface KeyNode {
@@ -76,10 +81,7 @@ export function BranchPathBar({
         // 层级标签（点击跳转）
         const levelLabel = (
           <Tooltip title={getPreview(message, 50)} placement="bottom">
-            <span
-              className="branch-path-bar__item"
-              onClick={() => onScrollToMessage(message.id)}
-            >
+            <span className="branch-path-bar__item" onClick={() => onScrollToMessage(message.id)}>
               层级{index + 1}
             </span>
           </Tooltip>

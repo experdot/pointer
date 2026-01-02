@@ -209,7 +209,9 @@ export const MessageItem = React.memo(function MessageItem({
 
         {/* 推理内容 */}
         {displayReasoning && (
-          <div className={`message-item__reasoning ${reasoningExpanded ? 'message-item__reasoning--expanded' : ''}`}>
+          <div
+            className={`message-item__reasoning ${reasoningExpanded ? 'message-item__reasoning--expanded' : ''}`}
+          >
             <div
               className="message-item__reasoning-label"
               onClick={() => setReasoningExpanded(!reasoningExpanded)}
@@ -250,10 +252,7 @@ export const MessageItem = React.memo(function MessageItem({
             </div>
           </div>
         ) : message.collapsed ? (
-          <div
-            className="message-item__preview"
-            onClick={() => onToggleCollapse?.(message.id)}
-          >
+          <div className="message-item__preview" onClick={() => onToggleCollapse?.(message.id)}>
             {collapsedPreview}
           </div>
         ) : (

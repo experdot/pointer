@@ -1,4 +1,11 @@
-import type { ChatMessage, PageFolder, Settings, Tab, TabHistoryEntry, Account } from '../types/type'
+import type {
+  ChatMessage,
+  PageFolder,
+  Settings,
+  Tab,
+  TabHistoryEntry,
+  Account
+} from '../types/type'
 
 const DB_VERSION = 1
 const STORES = {

@@ -12,7 +12,9 @@ interface FoldersActions {
   addFolder: (folder: PageFolder) => Promise<void>
   updateFolder: (id: string, updates: Partial<PageFolder>) => Promise<void>
   removeFolder: (id: string) => Promise<void>
-  batchUpdateFolders: (updates: Array<{ id: string; updates: Partial<PageFolder> }>) => Promise<void>
+  batchUpdateFolders: (
+    updates: Array<{ id: string; updates: Partial<PageFolder> }>
+  ) => Promise<void>
   reset: () => void
 }
 

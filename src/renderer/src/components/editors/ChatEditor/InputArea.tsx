@@ -32,12 +32,16 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     textAreaRef.current?.focus()
   }, [pageId])
 
-  useImperativeHandle(ref, () => ({
-    appendText: (text: string) => {
-      setInputContent(pageId, content + text)
-      textAreaRef.current?.focus()
-    }
-  }), [pageId, content, setInputContent])
+  useImperativeHandle(
+    ref,
+    () => ({
+      appendText: (text: string) => {
+        setInputContent(pageId, content + text)
+        textAreaRef.current?.focus()
+      }
+    }),
+    [pageId, content, setInputContent]
+  )
 
   const focusInput = useCallback(() => {
     textAreaRef.current?.focus()
