@@ -1,9 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import type { ChatMessage } from '../../../types/type'
+
+export interface MessageListRef {
+  scrollToMessage: (messageId: string) => void
+  scrollToPrev: () => void
+  scrollToNext: () => void
+}
 
 interface MessageListProps {
   pageId: string
@@ -19,19 +25,22 @@ interface MessageListProps {
   getChildMessages: (parentId: string | undefined) => ChatMessage[]
 }
 
-export function MessageList({
-  pageId,
-  messages,
-  isStreaming,
-  onRetry,
-  onContinue,
-  onDelete,
-  onEdit,
-  onEditAndResend,
-  onSwitchBranch,
-  onQuote,
-  getChildMessages
-}: MessageListProps): React.JSX.Element {
+export const MessageList = forwardRef<MessageListRef, MessageListProps>(function MessageList(
+  {
+    pageId,
+    messages,
+    isStreaming,
+    onRetry,
+    onContinue,
+    onDelete,
+    onEdit,
+    onEditAndResend,
+    onSwitchBranch,
+    onQuote,
+    getChildMessages
+  },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const shouldAutoScroll = useRef(true)
   const lastScrollTop = useRef(0)
@@ -91,6 +100,69 @@ export function MessageList({
     }
   }, [pageId, getState])
 
+  // 获取当前可见的第一条消息索引
+  const getCurrentVisibleIndex = (): number => {
+    const container = containerRef.current
+    if (!container) return 0
+
+    const containerRect = container.getBoundingClientRect()
+    const messageEls = container.querySelectorAll('[data-message-id]')
+
+    for (let i = 0; i < messageEls.length; i++) {
+      const rect = messageEls[i].getBoundingClientRect()
+      // 消息顶部在容器可见区域内
+      if (rect.top >= containerRect.top - 50) {
+        return i
+      }
+    }
+    return messages.length - 1
+  }
+
+  // 暴露方法
+  useImperativeHandle(ref, () => ({
+    scrollToMessage: (messageId: string) => {
+      const container = containerRef.current
+      if (!container) return
+
+      const messageEl = container.querySelector(`[data-message-id="${messageId}"]`)
+      if (messageEl) {
+        messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        shouldAutoScroll.current = false
+      }
+    },
+    scrollToPrev: () => {
+      const currentIndex = getCurrentVisibleIndex()
+      if (currentIndex > 0) {
+        const prevId = messages[currentIndex - 1].id
+        const container = containerRef.current
+        const messageEl = container?.querySelector(`[data-message-id="${prevId}"]`)
+        if (messageEl) {
+          messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          shouldAutoScroll.current = false
+        }
+      }
+    },
+    scrollToNext: () => {
+      const currentIndex = getCurrentVisibleIndex()
+      const container = containerRef.current
+      if (!container) return
+
+      if (currentIndex < messages.length - 1) {
+        // 还有下一条，滚动到下一条的 start
+        const nextId = messages[currentIndex + 1].id
+        const messageEl = container.querySelector(`[data-message-id="${nextId}"]`)
+        if (messageEl) {
+          messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          shouldAutoScroll.current = false
+        }
+      } else {
+        // 已经是最后一条，滚动到底部
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+        shouldAutoScroll.current = true
+      }
+    }
+  }))
+
   if (messages.length === 0 && !isStreaming) {
     return (
       <div className="chat-editor__messages chat-editor__messages--empty">
@@ -136,4 +208,4 @@ export function MessageList({
       })}
     </div>
   )
-}
+})

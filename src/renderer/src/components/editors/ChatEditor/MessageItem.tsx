@@ -140,7 +140,10 @@ export function MessageItem({
   ]
 
   return (
-    <div className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''}`}>
+    <div
+      className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''}`}
+      data-message-id={message.id}
+    >
       <div className="message-item__avatar">
         <Avatar
           size={32}

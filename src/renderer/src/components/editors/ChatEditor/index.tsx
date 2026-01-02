@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useChat } from '../../../hooks/useChat'
 import { streamingManager } from '../../../services/streamingManager'
-import { MessageList } from './MessageList'
+import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
 import { Header } from './Header'
+import { BranchPathBar } from './BranchPathBar'
 import './ChatEditor.css'
 
 interface ChatEditorProps {
@@ -37,9 +38,22 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   }, [currentPath])
 
   const inputAreaRef = useRef<InputAreaRef>(null)
+  const messageListRef = useRef<MessageListRef>(null)
 
   const handleQuote = useCallback((text: string) => {
     inputAreaRef.current?.appendText(`> ${text}\n\n`)
+  }, [])
+
+  const handleScrollToMessage = useCallback((messageId: string) => {
+    messageListRef.current?.scrollToMessage(messageId)
+  }, [])
+
+  const handleScrollToPrev = useCallback(() => {
+    messageListRef.current?.scrollToPrev()
+  }, [])
+
+  const handleScrollToNext = useCallback(() => {
+    messageListRef.current?.scrollToNext()
   }, [])
 
   if (!page) {
@@ -49,7 +63,16 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   return (
     <div className="chat-editor">
       <Header page={page} />
+      <BranchPathBar
+        messages={currentPath}
+        getChildMessages={getChildMessages}
+        onSwitchBranch={switchBranch}
+        onScrollToMessage={handleScrollToMessage}
+        onScrollToPrev={handleScrollToPrev}
+        onScrollToNext={handleScrollToNext}
+      />
       <MessageList
+        ref={messageListRef}
         pageId={pageId}
         messages={currentPath}
         isStreaming={isStreaming}
