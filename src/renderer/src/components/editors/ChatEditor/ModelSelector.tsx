@@ -10,6 +10,7 @@ interface ModelSelectorProps {
   style?: React.CSSProperties
   variant?: 'outlined' | 'filled' | 'borderless'
   disabled?: boolean
+  suffixIcon?: React.ReactNode
 }
 
 export function ModelSelector({

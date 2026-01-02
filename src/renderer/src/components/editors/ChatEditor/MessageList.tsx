@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
@@ -9,6 +9,8 @@ export interface MessageListRef {
   scrollToMessage: (messageId: string) => void
   scrollToPrev: () => void
   scrollToNext: () => void
+  collapseAll: () => void
+  expandAll: () => void
 }
 
 interface MessageListProps {
@@ -23,6 +25,9 @@ interface MessageListProps {
   onSwitchBranch: (messageId: string) => void
   onQuote: (text: string) => void
   getChildMessages: (parentId: string | undefined) => ChatMessage[]
+  onToggleCollapse: (messageId: string) => void
+  onCollapseAll: () => void
+  onExpandAll: () => void
 }
 
 export const MessageList = forwardRef<MessageListRef, MessageListProps>(function MessageList(
@@ -37,7 +42,10 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onEditAndResend,
     onSwitchBranch,
     onQuote,
-    getChildMessages
+    getChildMessages,
+    onToggleCollapse,
+    onCollapseAll,
+    onExpandAll
   },
   ref
 ) {
@@ -160,7 +168,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
         shouldAutoScroll.current = true
       }
-    }
+    },
+    collapseAll: onCollapseAll,
+    expandAll: onExpandAll
   }))
 
   if (messages.length === 0 && !isStreaming) {
@@ -203,6 +213,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onEditAndResend={onEditAndResend}
             onSwitchBranch={onSwitchBranch}
             onQuote={onQuote}
+            onToggleCollapse={onToggleCollapse}
           />
         )
       })}

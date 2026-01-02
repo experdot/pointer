@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Avatar, Button, Tooltip, Input, Popconfirm, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import {
@@ -13,7 +13,8 @@ import {
   CopyOutlined,
   ArrowDownOutlined,
   RightOutlined,
-  DownOutlined
+  DownOutlined,
+  UpOutlined
 } from '@ant-design/icons'
 import { BranchNavigator } from './BranchNavigator'
 import { ModelSelector } from './ModelSelector'
@@ -38,6 +39,7 @@ interface MessageItemProps {
   onEditAndResend: (messageId: string, content: string) => void
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
+  onToggleCollapse?: (messageId: string) => void
 }
 
 export function MessageItem({
@@ -56,7 +58,8 @@ export function MessageItem({
   onEdit,
   onEditAndResend,
   onSwitchBranch,
-  onQuote
+  onQuote,
+  onToggleCollapse
 }: MessageItemProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -70,6 +73,14 @@ export function MessageItem({
   // 显示内容：streaming 时用缓冲内容，否则用消息内容
   const displayContent = isStreaming ? (streamingContent ?? '') : message.content
   const displayReasoning = isStreaming ? streamingReasoning : message.reasoning_content
+
+  // 折叠预览文本
+  const collapsedPreview = useMemo(() => {
+    if (!message.collapsed) return ''
+    if (isStreaming) return '流式输出中...'
+    const text = displayContent.replace(/\s+/g, ' ').trim()
+    return text.length > 80 ? text.slice(0, 80) + '...' : text
+  }, [message.collapsed, displayContent, isStreaming])
 
   // streaming 结束后自动折叠
   useEffect(() => {
@@ -159,6 +170,17 @@ export function MessageItem({
           <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
           <span className="message-item__time">{formatTime(message.createdAt)}</span>
 
+          {/* 折叠按钮 */}
+          <Tooltip title={message.collapsed ? '展开' : '折叠'}>
+            <Button
+              type="text"
+              size="small"
+              className="message-item__collapse-btn"
+              icon={message.collapsed ? <DownOutlined /> : <UpOutlined />}
+              onClick={() => onToggleCollapse?.(message.id)}
+            />
+          </Tooltip>
+
           {/* 模型选择器 - assistant 消息 */}
           {isAssistant && (
             <ModelSelector
@@ -221,6 +243,13 @@ export function MessageItem({
                 </Button>
               )}
             </div>
+          </div>
+        ) : message.collapsed ? (
+          <div
+            className="message-item__preview"
+            onClick={() => onToggleCollapse?.(message.id)}
+          >
+            {collapsedPreview}
           </div>
         ) : (
           <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>

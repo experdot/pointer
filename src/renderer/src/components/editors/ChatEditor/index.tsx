@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useChat } from '../../../hooks/useChat'
 import { streamingManager } from '../../../services/streamingManager'
+import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
 import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
 import { Header } from './Header'
@@ -56,13 +57,32 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     messageListRef.current?.scrollToNext()
   }, [])
 
+  const handleToggleCollapse = useCallback(
+    (messageId: string) => {
+      toggleMessageCollapsed(pageId, messageId)
+    },
+    [pageId]
+  )
+
+  const handleCollapseAll = useCallback(() => {
+    const nonStreamingIds = currentPath
+      .filter((m) => !streamingManager.isStreaming(m.id))
+      .map((m) => m.id)
+    setMessagesCollapsed(pageId, nonStreamingIds, true)
+  }, [pageId, currentPath])
+
+  const handleExpandAll = useCallback(() => {
+    const ids = currentPath.map((m) => m.id)
+    setMessagesCollapsed(pageId, ids, false)
+  }, [pageId, currentPath])
+
   if (!page) {
     return <div className="chat-editor chat-editor--empty">页面不存在</div>
   }
 
   return (
     <div className="chat-editor">
-      <Header page={page} />
+      <Header page={page} onCollapseAll={handleCollapseAll} onExpandAll={handleExpandAll} />
       <BranchPathBar
         messages={currentPath}
         getChildMessages={getChildMessages}
@@ -84,6 +104,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onSwitchBranch={switchBranch}
         onQuote={handleQuote}
         getChildMessages={getChildMessages}
+        onToggleCollapse={handleToggleCollapse}
+        onCollapseAll={handleCollapseAll}
+        onExpandAll={handleExpandAll}
       />
       <InputArea
         ref={inputAreaRef}

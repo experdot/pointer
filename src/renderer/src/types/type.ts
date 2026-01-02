@@ -81,6 +81,7 @@ export interface ChatMessage {
 
   hasError?: boolean // 标记消息生成时是否发生错误
   isStreaming?: boolean
+  collapsed?: boolean // 消息折叠状态
 }
 
 export interface ChatSession {

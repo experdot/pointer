@@ -174,3 +174,29 @@ export function getMessages(pageId: string): ChatMessage[] {
   const page = getPage(pageId)
   return page?.data?.messages ?? []
 }
+
+// ==================== 消息折叠 ====================
+
+export function toggleMessageCollapsed(pageId: string, messageId: string): void {
+  const page = getPage(pageId)
+  const message = page?.data?.messages.find((m) => m.id === messageId)
+  if (message) {
+    updateMessage(pageId, messageId, { collapsed: !message.collapsed })
+  }
+}
+
+export function setMessagesCollapsed(
+  pageId: string,
+  messageIds: string[],
+  collapsed: boolean
+): void {
+  const store = usePagesStore.getState()
+  const page = store.pages.find((p) => p.id === pageId)
+  if (!page?.data) return
+
+  const messages = page.data.messages.map((m) =>
+    messageIds.includes(m.id) ? { ...m, collapsed, updatedAt: Date.now() } : m
+  )
+
+  store.updatePage(pageId, { data: { ...page.data, messages } })
+}

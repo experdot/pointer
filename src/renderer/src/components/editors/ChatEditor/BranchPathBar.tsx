@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { Dropdown, Tooltip } from 'antd'
-import { RightOutlined, EllipsisOutlined, UpOutlined, DownOutlined } from '@ant-design/icons'
+import { RightOutlined, EllipsisOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 import type { ChatMessage } from '../../../types/type'
 
 interface KeyNode {
@@ -137,10 +137,10 @@ export function BranchPathBar({
       })}
       <div className="branch-path-bar__nav">
         <Tooltip title="上一条">
-          <UpOutlined className="branch-path-bar__nav-btn" onClick={onScrollToPrev} />
+          <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onScrollToPrev} />
         </Tooltip>
         <Tooltip title="下一条">
-          <DownOutlined className="branch-path-bar__nav-btn" onClick={onScrollToNext} />
+          <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onScrollToNext} />
         </Tooltip>
       </div>
     </div>
