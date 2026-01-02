@@ -5,7 +5,8 @@
       "Bash(npm run lint)",
       "Bash(npm audit:*)",
       "Bash(pnpm audit:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
