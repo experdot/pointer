@@ -5,12 +5,11 @@ import {
   SearchOutlined,
   StarOutlined,
   UnorderedListOutlined,
-  UserOutlined,
   SettingOutlined
 } from '@ant-design/icons'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { useAccountStore } from '../../../stores/accountStore'
-import { UserProfileCard } from './UserProfileCard'
+import { UserProfileCard, getAvatarConfig } from './UserProfileCard'
 import { openSettings } from '../../../services/settingsService'
 import './ActivityBar.css'
 
@@ -31,6 +30,7 @@ export function ActivityBar(): React.JSX.Element {
   const { activePanel, sidebarVisible, setActivePanel } = useLayoutStore()
   const { accounts, currentAccountId } = useAccountStore()
   const currentAccount = accounts.find((a) => a.id === currentAccountId)
+  const avatarConfig = getAvatarConfig(currentAccount?.avatar)
   const [popoverOpen, setPopoverOpen] = useState(false)
 
   return (
@@ -63,7 +63,11 @@ export function ActivityBar(): React.JSX.Element {
           destroyOnHidden
         >
           <button className="activity-bar-item activity-bar-avatar">
-            <Avatar size={28} icon={<UserOutlined />} src={currentAccount?.avatar} />
+            <Avatar
+              size={28}
+              icon={<avatarConfig.icon />}
+              style={{ backgroundColor: avatarConfig.color }}
+            />
           </button>
         </Popover>
       </Flex>
