@@ -53,6 +53,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const shouldAutoScroll = useRef(true)
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
+  const scrollRAF = useRef<number>()
   const { getState, setScrollTop } = useChatUIStore()
 
   // 订阅 streamingManager 更新
@@ -81,7 +82,13 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
 
   useEffect(() => {
     if (isStreaming && shouldAutoScroll.current && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      if (scrollRAF.current) cancelAnimationFrame(scrollRAF.current)
+      scrollRAF.current = requestAnimationFrame(() => {
+        containerRef.current?.scrollTo({
+          top: containerRef.current.scrollHeight,
+          behavior: 'smooth'
+        })
+      })
     }
   })
 
