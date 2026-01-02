@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Form, Button, Input, InputNumber, Flex, Empty, Space } from 'antd'
+import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import { useSettings, useModelConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
@@ -22,11 +22,21 @@ export function ModelConfigPanel(): React.JSX.Element {
     toggleFolderExpanded
   } = useModelConfigs()
   const { defaultModelConfigId, setDefaultModelConfigId } = useSettings()
+  const { message } = App.useApp()
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id || null)
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
   const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => item.type !== 'folder'
+
+  const handleCopyAsText = (config: ModelConfig): void => {
+    const text = `名称: ${config.name}
+系统提示词: ${config.systemPrompt || '(无)'}
+Temperature: ${config.temperature}
+Top P: ${config.topP}`
+    navigator.clipboard.writeText(text)
+    message.success('已复制到剪贴板')
+  }
 
   return (
     <Flex className="settings-config-panel" gap={16}>
@@ -70,37 +80,64 @@ export function ModelConfigPanel(): React.JSX.Element {
                 rows={4}
               />
             </Form.Item>
-            <Space>
-              <Form.Item label="Temperature">
+            <Form.Item label="Temperature" tooltip="控制输出的随机性。值越高，回复越多样化；值越低，回复越确定和集中。">
+              <Flex gap={16} align="center">
+                <Slider
+                  style={{ flex: 1 }}
+                  value={selectedConfig.temperature}
+                  onChange={(v) => updateConfig(selectedConfig.id, { temperature: v })}
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  marks={{ 0: '0', 0.5: '0.5', 1: '1', 1.5: '1.5', 2: '2' }}
+                />
                 <InputNumber
+                  style={{ width: 80 }}
                   value={selectedConfig.temperature}
                   onChange={(v) => updateConfig(selectedConfig.id, { temperature: v ?? 0.7 })}
                   min={0}
                   max={2}
                   step={0.1}
                 />
-              </Form.Item>
-              <Form.Item label="Top P">
+              </Flex>
+            </Form.Item>
+            <Form.Item label="Top P" tooltip="核采样参数。限制模型只从累积概率达到该值的词中选择，值越小输出越保守。">
+              <Flex gap={16} align="center">
+                <Slider
+                  style={{ flex: 1 }}
+                  value={selectedConfig.topP}
+                  onChange={(v) => updateConfig(selectedConfig.id, { topP: v })}
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  marks={{ 0: '0', 0.5: '0.5', 1: '1' }}
+                />
                 <InputNumber
+                  style={{ width: 80 }}
                   value={selectedConfig.topP}
                   onChange={(v) => updateConfig(selectedConfig.id, { topP: v ?? 1 })}
                   min={0}
                   max={1}
                   step={0.1}
                 />
-              </Form.Item>
-            </Space>
+              </Flex>
+            </Form.Item>
             <Form.Item>
-              <Button
-                type={defaultModelConfigId === selectedConfig.id ? 'primary' : 'default'}
-                onClick={() =>
-                  setDefaultModelConfigId(
-                    defaultModelConfigId === selectedConfig.id ? undefined : selectedConfig.id
-                  )
-                }
-              >
-                {defaultModelConfigId === selectedConfig.id ? '已设为默认' : '设为默认'}
-              </Button>
+              <Space>
+                <Button
+                  type={defaultModelConfigId === selectedConfig.id ? 'primary' : 'default'}
+                  onClick={() =>
+                    setDefaultModelConfigId(
+                      defaultModelConfigId === selectedConfig.id ? undefined : selectedConfig.id
+                    )
+                  }
+                >
+                  {defaultModelConfigId === selectedConfig.id ? '已设为默认' : '设为默认'}
+                </Button>
+                <Button onClick={() => handleCopyAsText(selectedConfig)}>
+                  复制为文本
+                </Button>
+              </Space>
             </Form.Item>
           </Form>
         ) : (

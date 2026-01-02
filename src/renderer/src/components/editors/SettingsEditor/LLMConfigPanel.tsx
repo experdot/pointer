@@ -32,9 +32,10 @@ export function LLMConfigPanel(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id || null)
   const [testing, setTesting] = useState(false)
   const [fetchingModels, setFetchingModels] = useState(false)
-  const [modelOptions, setModelOptions] = useState<string[]>([])
+  const [modelOptionsMap, setModelOptionsMap] = useState<Record<string, string[]>>({})
 
   const selectedConfig = items.find((c) => c.id === selectedId)
+  const modelOptions = selectedId ? modelOptionsMap[selectedId] || [] : []
 
   const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => item.type !== 'folder'
 
@@ -55,20 +56,27 @@ export function LLMConfigPanel(): React.JSX.Element {
   }
 
   const handleFetchModels = async (config: LLMConfig): Promise<void> => {
+    if (fetchingModels) return
     setFetchingModels(true)
     try {
       const result = await AIService.getModels(config)
       if (result.success && result.models) {
-        setModelOptions(result.models)
-        message.success(`获取到 ${result.models.length} 个模型`)
-      } else {
-        message.error(result.error || '获取模型列表失败')
+        setModelOptionsMap((prev) => ({ ...prev, [config.id]: result.models! }))
       }
     } catch {
-      message.error('获取模型列表失败')
+      // 静默失败，保留旧列表
     } finally {
       setFetchingModels(false)
     }
+  }
+
+  const handleCopyAsText = (config: LLMConfig): void => {
+    const text = `名称: ${config.name}
+API Base URL: ${config.baseUrl}
+API Key: ${config.apiKey}
+模型名称: ${config.modelName}`
+    navigator.clipboard.writeText(text)
+    message.success('已复制到剪贴板')
   }
 
   return (
@@ -119,18 +127,16 @@ export function LLMConfigPanel(): React.JSX.Element {
               />
             </Form.Item>
             <Form.Item label="模型名称">
-              <Space.Compact style={{ width: '100%' }}>
-                <AutoComplete
-                  value={selectedConfig.modelName}
-                  onChange={(v) => updateConfig(selectedConfig.id, { modelName: v })}
-                  options={modelOptions.map((m) => ({ value: m, label: m }))}
-                  placeholder="选择或输入模型名称"
-                  style={{ flex: 1 }}
-                />
-                <Button onClick={() => handleFetchModels(selectedConfig)} loading={fetchingModels}>
-                  获取列表
-                </Button>
-              </Space.Compact>
+              <AutoComplete
+                value={selectedConfig.modelName}
+                onChange={(v) => updateConfig(selectedConfig.id, { modelName: v })}
+                options={modelOptions.map((m) => ({ value: m, label: m }))}
+                placeholder="选择或输入模型名称"
+                onFocus={() => handleFetchModels(selectedConfig)}
+                filterOption={(input, option) =>
+                  (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                }
+              />
             </Form.Item>
             <Form.Item label="模型配置">
               <Select
@@ -142,21 +148,26 @@ export function LLMConfigPanel(): React.JSX.Element {
               />
             </Form.Item>
             <Form.Item>
-              <Space>
-                <Button
-                  type={defaultLLMId === selectedConfig.id ? 'primary' : 'default'}
-                  onClick={() =>
-                    setDefaultLLMId(
-                      defaultLLMId === selectedConfig.id ? undefined : selectedConfig.id
-                    )
-                  }
-                >
-                  {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}
-                </Button>
+              <Flex justify="space-between">
+                <Space>
+                  <Button
+                    type={defaultLLMId === selectedConfig.id ? 'primary' : 'default'}
+                    onClick={() =>
+                      setDefaultLLMId(
+                        defaultLLMId === selectedConfig.id ? undefined : selectedConfig.id
+                      )
+                    }
+                  >
+                    {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}
+                  </Button>
+                  <Button onClick={() => handleCopyAsText(selectedConfig)}>
+                    复制为文本
+                  </Button>
+                </Space>
                 <Button onClick={() => handleTest(selectedConfig)} loading={testing}>
                   测试连接
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         ) : (
