@@ -296,7 +296,15 @@ class AIHandler {
       )
 
       if (!response.ok) {
-        this.sendError(event, eventChannel, `HTTP error! status: ${response.status}`)
+        let errorDetail = ''
+        try {
+          const errorBody = await response.text()
+          const parsed = JSON.parse(errorBody)
+          errorDetail = parsed.error?.message || parsed.message || errorBody
+        } catch {
+          errorDetail = response.statusText
+        }
+        this.sendError(event, eventChannel, `HTTP ${response.status}: ${errorDetail}`)
         return
       }
 

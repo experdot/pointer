@@ -338,3 +338,12 @@
   gap: 8px;
   justify-content: flex-start;
 }
+
+/* Error Message */
+.message-item--error {
+  border-left: 3px solid var(--ant-color-error);
+  background: var(--ant-color-error-bg);
+  padding-left: 12px;
+  margin-left: -12px;
+  border-radius: 0 4px 4px 0;
+}

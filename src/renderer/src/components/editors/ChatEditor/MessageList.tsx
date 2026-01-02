@@ -54,6 +54,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
   const scrollRAF = useRef<number | undefined>(undefined)
+  const wasStreaming = useRef(false)
   const { getState, setScrollTop } = useChatUIStore()
 
   // 订阅 streamingManager 更新
@@ -90,6 +91,16 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         })
       })
     }
+    // streaming 结束后，如果是自动滚动模式，再滚动一次确保到底部
+    if (wasStreaming.current && !isStreaming && shouldAutoScroll.current && containerRef.current) {
+      setTimeout(() => {
+        containerRef.current?.scrollTo({
+          top: containerRef.current?.scrollHeight ?? 0,
+          behavior: 'smooth'
+        })
+      }, 100)
+    }
+    wasStreaming.current = isStreaming
   })
 
   useEffect(() => {

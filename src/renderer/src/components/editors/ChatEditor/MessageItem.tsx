@@ -158,7 +158,7 @@ export const MessageItem = React.memo(function MessageItem({
   return (
     <div
       ref={itemRef}
-      className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''}`}
+      className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''} ${message.hasError ? 'message-item--error' : ''}`}
       data-message-id={message.id}
     >
       <div className="message-item__avatar">

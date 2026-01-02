@@ -28,7 +28,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   } = useChat({ pageId })
 
   // 订阅 streamingManager 以获取 isStreaming 状态
-  const [, forceUpdate] = useState(0)
+  const [streamingVersion, forceUpdate] = useState(0)
   useEffect(() => {
     return streamingManager.subscribe(() => forceUpdate((n) => n + 1))
   }, [])
@@ -36,7 +36,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   // 检查当前对话是否有 streaming 消息
   const isStreaming = useMemo(() => {
     return currentPath.some((msg) => streamingManager.isStreaming(msg.id))
-  }, [currentPath])
+  }, [currentPath, streamingVersion])
 
   const inputAreaRef = useRef<InputAreaRef>(null)
   const messageListRef = useRef<MessageListRef>(null)

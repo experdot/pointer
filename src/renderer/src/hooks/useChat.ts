@@ -119,14 +119,29 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
           },
           onError: async (error) => {
             console.error('AI error:', error)
-            streamingManager.abort(assistantMessage.id)
-            await messagesService.deleteMessage(pageId, assistantMessage.id)
+            const result = streamingManager.finish(assistantMessage.id)
+            const errorContent = result?.content
+              ? `${result.content}\n\n---\n\n**错误:** ${error.message}`
+              : `**错误:** ${error.message}`
+            await messagesService.updateMessage(pageId, assistantMessage.id, {
+              content: errorContent,
+              reasoning_content: result?.reasoning,
+              hasError: true
+            })
           }
         })
       } catch (error) {
         console.error('Streaming error:', error)
-        streamingManager.abort(assistantMessage.id)
-        await messagesService.deleteMessage(pageId, assistantMessage.id)
+        const result = streamingManager.finish(assistantMessage.id)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorContent = result?.content
+          ? `${result.content}\n\n---\n\n**错误:** ${errorMessage}`
+          : `**错误:** ${errorMessage}`
+        await messagesService.updateMessage(pageId, assistantMessage.id, {
+          content: errorContent,
+          reasoning_content: result?.reasoning,
+          hasError: true
+        })
       }
     },
     [pageId]
