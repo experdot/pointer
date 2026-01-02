@@ -50,19 +50,11 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     return messagesService.getMessagePath(record.messages, record.leafMessageId)
   }, [record])
 
-  const getConfigs = useCallback((): { llmConfig: LLMConfig; modelConfig: ModelConfig } | null => {
+  const getConfigs = useCallback((): { llmConfig: LLMConfig; modelConfig: ModelConfig | undefined } | null => {
     const llmConfig = settings.llmConfigs.items.find((c) => c.id === settings.defaultLLMId)
     if (!llmConfig) return null
 
-    const modelConfigId = llmConfig.modelConfigId ?? settings.defaultModelConfigId
-    const modelConfig = settings.modelConfigs.items.find((c) => c.id === modelConfigId) ?? {
-      id: 'default',
-      name: 'Default',
-      systemPrompt: '',
-      topP: 1,
-      temperature: 0.7,
-      createdAt: Date.now()
-    }
+    const modelConfig = settings.modelConfigs.items.find((c) => c.id === settings.defaultModelConfigId)
 
     return { llmConfig, modelConfig }
   }, [settings])
@@ -72,7 +64,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       parentMessageId: string,
       pathMessages: ChatMessage[],
       llmConfig: LLMConfig,
-      modelConfig: ModelConfig
+      modelConfig: ModelConfig | undefined
     ) => {
       // 1. 创建空的 assistant 消息
       const assistantMessage = await messagesService.addMessage(pageId, {
@@ -83,7 +75,8 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
           messagesService.getMessages(pageId),
           parentMessageId
         ),
-        modelId: llmConfig.id
+        modelId: llmConfig.id,
+        modelConfigId: modelConfig?.id
       })
 
       // 2. 开始 streaming
@@ -199,26 +192,19 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
   }, [pageId, currentPath])
 
   const retryMessage = useCallback(
-    async (messageId: string, llmId?: string) => {
+    async (messageId: string, llmId?: string, modelConfigId?: string) => {
       const message = messages.find((m) => m.id === messageId)
       if (!message || message.role !== 'assistant') return
 
       const userMessage = messages.find((m) => m.id === message.parentMessageId)
       if (!userMessage) return
 
-      const targetLLMId = llmId ?? settings.defaultLLMId
+      const targetLLMId = llmId ?? message.modelId ?? settings.defaultLLMId
       const llmConfig = settings.llmConfigs.items.find((c) => c.id === targetLLMId)
       if (!llmConfig) return
 
-      const modelConfigId = llmConfig.modelConfigId ?? settings.defaultModelConfigId
-      const modelConfig = settings.modelConfigs.items.find((c) => c.id === modelConfigId) ?? {
-        id: 'default',
-        name: 'Default',
-        systemPrompt: '',
-        topP: 1,
-        temperature: 0.7,
-        createdAt: Date.now()
-      }
+      const targetModelConfigId = modelConfigId ?? message.modelConfigId ?? settings.defaultModelConfigId
+      const modelConfig = settings.modelConfigs.items.find((c) => c.id === targetModelConfigId)
 
       const pathToUser = messagesService.getMessagePath(messages, userMessage.id)
       await startStreaming(userMessage.id, pathToUser, llmConfig, modelConfig)

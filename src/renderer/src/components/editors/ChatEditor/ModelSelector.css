@@ -14,3 +14,17 @@
   font-size: 12px;
   color: var(--ant-color-text-tertiary);
 }
+
+.model-selector__settings-link {
+  padding: 4px 12px 0px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-selector__settings-link:hover {
+  color: var(--ant-color-primary);
+}

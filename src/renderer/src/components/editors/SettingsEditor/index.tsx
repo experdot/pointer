@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Tabs } from 'antd'
 import type { TabsProps } from 'antd'
 import {
@@ -15,9 +15,18 @@ import { ModelConfigPanel } from './ModelConfigPanel'
 import { PromptListPanel } from './PromptListPanel'
 import { DataPanel } from './DataPanel'
 import { AboutPanel } from './AboutPanel'
+import { consumePendingSettingsTab } from '../../../services/settingsService'
 import './SettingsEditor.css'
 
 export function SettingsEditor(): React.JSX.Element {
+  const [activeKey, setActiveKey] = useState('general')
+
+  useEffect(() => {
+    const pendingTab = consumePendingSettingsTab()
+    if (pendingTab) {
+      setActiveKey(pendingTab)
+    }
+  }, [])
   const items: TabsProps['items'] = [
     {
       key: 'general',
@@ -77,7 +86,7 @@ export function SettingsEditor(): React.JSX.Element {
 
   return (
     <div className="settings-editor">
-      <Tabs items={items} className="settings-tabs" />
+      <Tabs items={items} activeKey={activeKey} onChange={setActiveKey} className="settings-tabs" />
     </div>
   )
 }

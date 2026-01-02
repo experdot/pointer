@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Form, Button, Input, Flex, Empty, Space, App, Select, AutoComplete } from 'antd'
+import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete } from 'antd'
 import { ApiOutlined } from '@ant-design/icons'
-import { useSettings, useLLMConfigs, useModelConfigs } from '../../../hooks/useSettings'
+import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
 import { AIService } from '../../../services/aiService'
 import type { LLMConfig, ConfigFolder } from '../../../types/type'
@@ -27,7 +27,6 @@ export function LLMConfigPanel(): React.JSX.Element {
     toggleFolderExpanded
   } = useLLMConfigs()
   const { defaultLLMId, setDefaultLLMId } = useSettings()
-  const { items: modelConfigs } = useModelConfigs()
   const { message } = App.useApp()
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id || null)
   const [testing, setTesting] = useState(false)
@@ -136,15 +135,6 @@ API Key: ${config.apiKey}
                 filterOption={(input, option) =>
                   (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
                 }
-              />
-            </Form.Item>
-            <Form.Item label="模型配置">
-              <Select
-                value={selectedConfig.modelConfigId}
-                onChange={(v) => updateConfig(selectedConfig.id, { modelConfigId: v })}
-                allowClear
-                placeholder="使用默认模型配置"
-                options={modelConfigs.map((c) => ({ label: c.name, value: c.id }))}
               />
             </Form.Item>
             <Form.Item>

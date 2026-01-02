@@ -3,6 +3,7 @@ import { Input, Button } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
 import { SendOutlined, StopOutlined } from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
+import { ModelConfigSelector } from './ModelConfigSelector'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 
 const { TextArea } = Input
@@ -85,7 +86,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
         autoFocus
       />
       <div className="chat-editor__input-toolbar">
-        <ModelSelector onSelect={focusInput} />
+        <div className="chat-editor__input-toolbar-left">
+          <ModelSelector onSelect={focusInput} />
+          <ModelConfigSelector onSelect={focusInput} />
+        </div>
         <div className="chat-editor__input-toolbar-right">
           {isStreaming ? (
             <Button type="default" danger icon={<StopOutlined />} onClick={handleStop}>

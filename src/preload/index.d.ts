@@ -20,7 +20,7 @@ export interface ChatMessage {
 export interface AIRequest {
   requestId: string
   llmConfig: LLMConfig
-  modelConfig: ModelConfig
+  modelConfig?: ModelConfig
   messages: ChatMessage[]
 }
 

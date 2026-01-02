@@ -17,7 +17,7 @@ interface MessageListProps {
   pageId: string
   messages: ChatMessage[]
   isStreaming: boolean
-  onRetry: (messageId: string, llmId?: string) => void
+  onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
   onEdit: (messageId: string, content: string) => void

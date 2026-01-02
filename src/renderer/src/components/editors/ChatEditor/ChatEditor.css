@@ -321,6 +321,11 @@
   border-top: 1px solid var(--ant-color-border-secondary);
 }
 
+.chat-editor__input-toolbar-left {
+  display: flex;
+  gap: 8px;
+}
+
 .chat-editor__input-toolbar-right {
   display: flex;
   gap: 8px;

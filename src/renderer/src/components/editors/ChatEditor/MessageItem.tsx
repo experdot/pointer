@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons'
 import { BranchNavigator } from './BranchNavigator'
 import { ModelSelector } from './ModelSelector'
+import { ModelConfigSelector } from './ModelConfigSelector'
 import type { ChatMessage } from '../../../types/type'
 
 const { TextArea } = Input
@@ -32,7 +33,7 @@ interface MessageItemProps {
   branchIndex: number
   branchCount: number
   siblings: ChatMessage[]
-  onRetry: (messageId: string, llmId?: string) => void
+  onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
   onEdit: (messageId: string, content: string) => void
@@ -192,6 +193,15 @@ export const MessageItem = React.memo(function MessageItem({
             <ModelSelector
               value={message.modelId}
               onChange={(llmId) => onRetry(message.id, llmId)}
+              disabled={isStreaming}
+            />
+          )}
+
+          {/* 模型配置选择器 - assistant 消息 */}
+          {isAssistant && (
+            <ModelConfigSelector
+              value={message.modelConfigId}
+              onChange={(modelConfigId) => onRetry(message.id, undefined, modelConfigId)}
               disabled={isStreaming}
             />
           )}

@@ -80,8 +80,7 @@ export function copyLLMConfig(config: LLMConfig): LLMConfig {
       name: `${config.name} 副本`,
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
-      modelName: config.modelName,
-      modelConfigId: config.modelConfigId
+      modelName: config.modelName
     },
     config.id
   )
@@ -291,7 +290,10 @@ export function setDefaultModelConfigId(id: string | undefined): void {
 
 // ==================== 设置页面 ====================
 
-export function openSettings(): void {
+let pendingSettingsTab: string | undefined
+
+export function openSettings(tab?: string): void {
+  pendingSettingsTab = tab
   const tabsStore = useTabsStore.getState()
   tabsStore.openTab({
     id: 'settings',
@@ -299,4 +301,10 @@ export function openSettings(): void {
     title: '设置',
     closable: true
   })
+}
+
+export function consumePendingSettingsTab(): string | undefined {
+  const tab = pendingSettingsTab
+  pendingSettingsTab = undefined
+  return tab
 }

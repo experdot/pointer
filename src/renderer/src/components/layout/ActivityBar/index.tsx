@@ -49,7 +49,7 @@ export function ActivityBar(): React.JSX.Element {
       </Flex>
       <Flex vertical className="activity-bar-bottom">
         <Tooltip title="设置" placement="right">
-          <button className="activity-bar-item" onClick={openSettings}>
+          <button className="activity-bar-item" onClick={() => openSettings()}>
             <SettingOutlined />
           </button>
         </Tooltip>

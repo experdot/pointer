@@ -10,11 +10,11 @@ export interface StreamingResponse {
 
 export class AIService {
   private llmConfig: LLMConfig
-  private modelConfig: ModelConfig
+  private modelConfig: ModelConfig | undefined
   private requestId: string
   private isAborted: boolean = false
 
-  constructor(llmConfig: LLMConfig, modelConfig: ModelConfig) {
+  constructor(llmConfig: LLMConfig, modelConfig: ModelConfig | undefined) {
     this.llmConfig = llmConfig
     this.modelConfig = modelConfig
     this.requestId = uuidv4()
@@ -102,6 +102,6 @@ export class AIService {
 }
 
 // 工厂函数
-export function createAIService(llmConfig: LLMConfig, modelConfig: ModelConfig): AIService {
+export function createAIService(llmConfig: LLMConfig, modelConfig: ModelConfig | undefined): AIService {
   return new AIService(llmConfig, modelConfig)
 }

@@ -3,12 +3,12 @@ import { TreeSelect, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { openSettings } from '../../../services/settingsService'
-import type { LLMConfig, ConfigFolder } from '../../../types/type'
-import './ModelSelector.css'
+import type { ModelConfig, ConfigFolder } from '../../../types/type'
+import './ModelConfigSelector.css'
 
-interface ModelSelectorProps {
+interface ModelConfigSelectorProps {
   value?: string
-  onChange?: (llmId: string) => void
+  onChange?: (modelConfigId: string | undefined) => void
   onSelect?: () => void
   size?: 'small' | 'middle' | 'large'
   style?: React.CSSProperties
@@ -23,7 +23,7 @@ interface TreeNode {
   children?: TreeNode[]
 }
 
-function buildTree(items: LLMConfig[], folders: ConfigFolder[]): TreeNode[] {
+function buildTree(items: ModelConfig[], folders: ConfigFolder[]): TreeNode[] {
   const folderMap = new Map<string | undefined, TreeNode[]>()
 
   // 初始化根节点
@@ -60,7 +60,7 @@ function buildTree(items: LLMConfig[], folders: ConfigFolder[]): TreeNode[] {
   return folderMap.get(undefined) || []
 }
 
-export function ModelSelector({
+export function ModelConfigSelector({
   value,
   onChange,
   onSelect,
@@ -68,19 +68,19 @@ export function ModelSelector({
   style,
   variant = 'borderless',
   disabled
-}: ModelSelectorProps): React.JSX.Element {
-  const { settings, setDefaultLLMId } = useSettingsStore()
-  const { items, folders } = settings.llmConfigs
+}: ModelConfigSelectorProps): React.JSX.Element {
+  const { settings, setDefaultModelConfigId } = useSettingsStore()
+  const { items, folders } = settings.modelConfigs
 
-  const currentValue = value ?? settings.defaultLLMId
+  const currentValue = value ?? settings.defaultModelConfigId
 
   const treeData = useMemo(() => buildTree(items, folders), [items, folders])
 
-  const handleChange = (llmId: string): void => {
+  const handleChange = (modelConfigId: string | undefined): void => {
     if (onChange) {
-      onChange(llmId)
+      onChange(modelConfigId)
     } else {
-      setDefaultLLMId(llmId)
+      setDefaultModelConfigId(modelConfigId)
     }
     onSelect?.()
   }
@@ -90,32 +90,33 @@ export function ModelSelector({
       {menu}
       <Divider style={{ margin: '4px 0' }} />
       <div
-        className="model-selector__settings-link"
-        onClick={() => openSettings('llm')}
+        className="model-config-selector__settings-link"
+        onClick={() => openSettings('model')}
       >
-        <SettingOutlined /> 管理 LLM 配置
+        <SettingOutlined /> 管理模型配置
       </div>
     </>
   )
 
   return (
     <TreeSelect
-      className="model-selector"
+      className="model-config-selector"
       size={size}
       style={style}
       value={currentValue}
       onChange={handleChange}
-      placeholder="选择模型"
+      placeholder="模型配置"
       variant={variant}
       disabled={disabled}
       treeData={treeData}
       treeDefaultExpandAll
       showSearch
+      allowClear
       treeNodeFilterProp="title"
       treeLine
       treeExpandAction="click"
       popupMatchSelectWidth={false}
-      styles={{ popup: { root: { minWidth: 300 } } }}
+      styles={{ popup: { root: { minWidth: 200 } } }}
       dropdownRender={dropdownRender}
     />
   )

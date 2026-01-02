@@ -51,7 +51,6 @@ export interface LLMConfig extends ConfigItemBase {
   baseUrl: string
   apiKey: string
   modelName: string
-  modelConfigId?: string
 }
 
 // 文件附件类型
@@ -77,6 +76,7 @@ export interface ChatMessage {
   branchIndex?: number
 
   modelId?: string
+  modelConfigId?: string // 模型配置ID
   starred?: boolean
 
   hasError?: boolean // 标记消息生成时是否发生错误
