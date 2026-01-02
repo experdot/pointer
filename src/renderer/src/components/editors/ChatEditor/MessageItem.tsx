@@ -192,7 +192,6 @@ export function MessageItem({
             <ModelSelector
               value={message.modelId}
               onChange={(llmId) => onRetry(message.id, llmId)}
-              variant="borderless"
               disabled={isStreaming}
             />
           )}

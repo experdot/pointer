@@ -220,19 +220,6 @@
   text-align: center;
 }
 
-/* Model Selector in header */
-.message-item__header .ant-select {
-  font-size: 12px;
-}
-
-.message-item__header .ant-select .ant-select-selector {
-  font-size: 12px;
-}
-
-.message-item__header .ant-select .ant-select-selection-item {
-  color: var(--ant-color-text-tertiary);
-}
-
 /* Streaming Message */
 .message-item--streaming .message-item__body {
   position: relative;

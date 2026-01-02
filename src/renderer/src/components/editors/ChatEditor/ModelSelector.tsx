@@ -1,6 +1,8 @@
-import React from 'react'
-import { Select } from 'antd'
+import React, { useMemo } from 'react'
+import { TreeSelect } from 'antd'
 import { useSettingsStore } from '../../../stores/settingsStore'
+import type { LLMConfig, ConfigFolder } from '../../../types/type'
+import './ModelSelector.css'
 
 interface ModelSelectorProps {
   value?: string
@@ -10,7 +12,50 @@ interface ModelSelectorProps {
   style?: React.CSSProperties
   variant?: 'outlined' | 'filled' | 'borderless'
   disabled?: boolean
-  suffixIcon?: React.ReactNode
+}
+
+interface TreeNode {
+  value: string
+  title: string
+  selectable?: boolean
+  children?: TreeNode[]
+}
+
+function buildTree(items: LLMConfig[], folders: ConfigFolder[]): TreeNode[] {
+  const folderMap = new Map<string | undefined, TreeNode[]>()
+
+  // 初始化根节点
+  folderMap.set(undefined, [])
+
+  // 创建文件夹节点
+  folders.forEach((folder) => {
+    const parentId = folder.parentFolderId
+    if (!folderMap.has(parentId)) {
+      folderMap.set(parentId, [])
+    }
+    const node: TreeNode = {
+      value: `folder-${folder.id}`,
+      title: folder.name,
+      selectable: false,
+      children: []
+    }
+    folderMap.get(parentId)!.push(node)
+    folderMap.set(folder.id, node.children!)
+  })
+
+  // 添加配置项到对应文件夹
+  items.forEach((item) => {
+    const parentId = item.parentFolderId
+    if (!folderMap.has(parentId)) {
+      folderMap.set(parentId, [])
+    }
+    folderMap.get(parentId)!.push({
+      value: item.id,
+      title: item.name
+    })
+  })
+
+  return folderMap.get(undefined) || []
 }
 
 export function ModelSelector({
@@ -19,13 +64,15 @@ export function ModelSelector({
   onSelect,
   size = 'small',
   style,
-  variant,
+  variant = 'borderless',
   disabled
 }: ModelSelectorProps): React.JSX.Element {
   const { settings, setDefaultLLMId } = useSettingsStore()
-  const llmConfigs = settings.llmConfigs.items
+  const { items, folders } = settings.llmConfigs
 
   const currentValue = value ?? settings.defaultLLMId
+
+  const treeData = useMemo(() => buildTree(items, folders), [items, folders])
 
   const handleChange = (llmId: string): void => {
     if (onChange) {
@@ -37,18 +84,23 @@ export function ModelSelector({
   }
 
   return (
-    <Select
+    <TreeSelect
+      className="model-selector"
       size={size}
-      style={{ minWidth: 100, fontSize: 12, color: 'var(--ant-color-text-tertiary)', ...style }}
+      style={style}
       value={currentValue}
       onChange={handleChange}
       placeholder="选择模型"
       variant={variant}
       disabled={disabled}
-      options={llmConfigs.map((config) => ({
-        value: config.id,
-        label: config.name
-      }))}
+      treeData={treeData}
+      treeDefaultExpandAll
+      showSearch
+      treeNodeFilterProp="title"
+      treeLine
+      treeExpandAction="click"
+      popupMatchSelectWidth={false}
+      styles={{ popup: { root: { minWidth: 300 } } }}
     />
   )
 }
