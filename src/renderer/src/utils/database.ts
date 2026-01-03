@@ -14,7 +14,8 @@ const STORES = {
   messages: 'messages',
   settings: 'settings',
   layout: 'layout',
-  tabs: 'tabs'
+  tabs: 'tabs',
+  messageQueue: 'messageQueue'
 } as const
 
 // ==================== 账户数据库（独立） ====================
@@ -172,6 +173,9 @@ function getDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORES.tabs)) {
         db.createObjectStore(STORES.tabs, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(STORES.messageQueue)) {
+        db.createObjectStore(STORES.messageQueue, { keyPath: 'id' })
       }
     }
   })
@@ -400,5 +404,66 @@ export async function putTabs(tabs: TabsRecord): Promise<void> {
     const request = store.put({ id: 'tabs', data: tabs })
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
+  })
+}
+
+// ==================== MessageQueue ====================
+
+// 简化的队列项（仅保留必要字段）
+export interface QueueItem {
+  id: string
+  content: string
+  order: number
+  createdAt: number
+}
+
+// 按 pageId 存储的队列记录
+export interface MessageQueueRecord {
+  pageId: string
+  items: QueueItem[]
+  paused: boolean
+}
+
+export async function getMessageQueue(pageId: string): Promise<MessageQueueRecord | undefined> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.messageQueue, 'readonly')
+    const store = tx.objectStore(STORES.messageQueue)
+    const request = store.get(pageId)
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result?.data)
+  })
+}
+
+export async function putMessageQueue(pageId: string, record: MessageQueueRecord): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.messageQueue, 'readwrite')
+    const store = tx.objectStore(STORES.messageQueue)
+    const request = store.put({ id: pageId, data: record })
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve()
+  })
+}
+
+export async function deleteMessageQueue(pageId: string): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.messageQueue, 'readwrite')
+    const store = tx.objectStore(STORES.messageQueue)
+    const request = store.delete(pageId)
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve()
+  })
+}
+
+export async function getAllMessageQueues(): Promise<MessageQueueRecord[]> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.messageQueue, 'readonly')
+    const store = tx.objectStore(STORES.messageQueue)
+    const request = store.getAll()
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve((request.result ?? []).map((r) => r.data))
   })
 }

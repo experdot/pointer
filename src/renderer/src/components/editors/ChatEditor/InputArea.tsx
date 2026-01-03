@@ -1,9 +1,17 @@
-import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef, useState } from 'react'
+import React, {
+  useRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+  useState
+} from 'react'
 import { Input, Button } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
-import { SendOutlined, StopOutlined } from '@ant-design/icons'
+import { SendOutlined, StopOutlined, CaretRightOutlined } from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
+import { QueueButton } from './QueueButton'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 
 const { TextArea } = Input
@@ -26,10 +34,25 @@ interface InputAreaProps {
   onStop: () => Promise<void>
   isStreaming: boolean
   disabled?: boolean
+  // 队列相关
+  queueCount: number
+  isPaused: boolean
+  onQueueButtonClick: () => void
+  onResumeQueue: () => Promise<void>
 }
 
 export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function InputArea(
-  { pageId, onSend, onStop, isStreaming, disabled },
+  {
+    pageId,
+    onSend,
+    onStop,
+    isStreaming,
+    disabled,
+    queueCount,
+    isPaused,
+    onQueueButtonClick,
+    onResumeQueue
+  },
   ref
 ) {
   const { getState, setInputContent } = useChatUIStore()
@@ -68,12 +91,15 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     }
   }, [])
 
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    resizing.current = true
-    startY.current = e.clientY
-    startHeight.current = textareaHeight
-  }, [textareaHeight])
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      resizing.current = true
+      startY.current = e.clientY
+      startHeight.current = textareaHeight
+    },
+    [textareaHeight]
+  )
 
   useImperativeHandle(
     ref,
@@ -92,12 +118,12 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
   const handleSend = useCallback(async () => {
     const trimmed = content.trim()
-    if (!trimmed || isStreaming || disabled) return
+    if (!trimmed || disabled) return
 
     setInputContent(pageId, '')
     await onSend(trimmed)
     focusInput()
-  }, [content, isStreaming, disabled, onSend, focusInput, pageId, setInputContent])
+  }, [content, disabled, onSend, focusInput, pageId, setInputContent])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -113,6 +139,42 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   const handleStop = useCallback(async () => {
     await onStop()
   }, [onStop])
+
+  // 按钮状态判断
+  const showResumeQueue = !isStreaming && queueCount > 0 && isPaused
+
+  // 渲染主按钮
+  const renderMainButton = (): React.JSX.Element => {
+    if (isStreaming) {
+      // 停止按钮
+      return (
+        <Button type="default" danger icon={<StopOutlined />} onClick={handleStop}>
+          停止
+        </Button>
+      )
+    }
+
+    if (showResumeQueue) {
+      // 继续队列按钮
+      return (
+        <Button type="primary" icon={<CaretRightOutlined />} onClick={onResumeQueue}>
+          继续队列
+        </Button>
+      )
+    }
+
+    // 发送按钮
+    return (
+      <Button
+        type="primary"
+        icon={<SendOutlined />}
+        onClick={handleSend}
+        disabled={!content.trim() || disabled}
+      >
+        发送
+      </Button>
+    )
+  }
 
   return (
     <div className="chat-editor__input">
@@ -134,20 +196,8 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
           <ModelConfigSelector onSelect={focusInput} />
         </div>
         <div className="chat-editor__input-toolbar-right">
-          {isStreaming ? (
-            <Button type="default" danger icon={<StopOutlined />} onClick={handleStop}>
-              停止
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              disabled={!content.trim() || disabled}
-            >
-              发送
-            </Button>
-          )}
+          <QueueButton count={queueCount} onClick={onQueueButtonClick} />
+          {renderMainButton()}
         </div>
       </div>
     </div>
