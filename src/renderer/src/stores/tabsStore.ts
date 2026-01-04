@@ -287,10 +287,13 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     const result = tryNavigateToHistory(history, historyIndex - 1, -1, tabs, openTab)
     if (result) {
       isNavigating = true
-      const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
-      set(newState)
-      persist({ ...get(), ...newState })
-      isNavigating = false
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
     }
   },
 
