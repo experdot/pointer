@@ -47,6 +47,7 @@ interface SettingsActions {
   setFontSize: (fontSize: Settings['fontSize']) => void
   setDefaultLLMId: (id: string | undefined) => void
   setDefaultModelConfigId: (id: string | undefined) => void
+  setAutoCheckUpdate: (enabled: boolean) => void
 
   // LLM 配置
   addLLMConfig: (config: LLMConfig) => void
@@ -129,6 +130,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setDefaultModelConfigId: (id) => {
     set((state) => {
       const settings = { ...state.settings, defaultModelConfigId: id }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  setAutoCheckUpdate: (enabled) => {
+    set((state) => {
+      const settings = { ...state.settings, autoCheckUpdate: enabled }
       persist(settings)
       return { settings }
     })

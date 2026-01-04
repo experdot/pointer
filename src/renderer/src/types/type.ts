@@ -138,6 +138,9 @@ export interface Settings {
   defaultModelConfigId?: string
 
   promptLists: ConfigTree<PromptListConfig>
+
+  // 自动检查更新
+  autoCheckUpdate?: boolean
 }
 
 export interface SearchResult {
