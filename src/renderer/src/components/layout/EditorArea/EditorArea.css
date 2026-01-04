@@ -20,5 +20,13 @@
 
 .editor-content {
   flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-pane {
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
   overflow: auto;
 }
