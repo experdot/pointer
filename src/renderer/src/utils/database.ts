@@ -264,6 +264,17 @@ export async function deletePage(id: string): Promise<void> {
   })
 }
 
+export async function clearAllPages(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([STORES.pages, STORES.messages], 'readwrite')
+    tx.objectStore(STORES.pages).clear()
+    tx.objectStore(STORES.messages).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 // ==================== Folders ====================
 
 export async function getAllFolders(): Promise<PageFolder[]> {
@@ -296,6 +307,16 @@ export async function deleteFolder(id: string): Promise<void> {
     const request = store.delete(id)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
+  })
+}
+
+export async function clearAllFolders(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.folders, 'readwrite')
+    tx.objectStore(STORES.folders).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
   })
 }
 
@@ -372,6 +393,16 @@ export async function putSettings(settings: Settings): Promise<void> {
   })
 }
 
+export async function clearSettings(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.settings, 'readwrite')
+    tx.objectStore(STORES.settings).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 // ==================== Layout ====================
 
 export type ActivityPanel = 'explorer' | 'search' | 'favorites' | 'tasks'
@@ -404,6 +435,16 @@ export async function putLayout(layout: LayoutRecord): Promise<void> {
   })
 }
 
+export async function clearLayout(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.layout, 'readwrite')
+    tx.objectStore(STORES.layout).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 // ==================== Tabs ====================
 
 export interface TabsRecord {
@@ -432,6 +473,16 @@ export async function putTabs(tabs: TabsRecord): Promise<void> {
     const request = store.put({ id: 'tabs', data: tabs })
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
+  })
+}
+
+export async function clearTabs(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.tabs, 'readwrite')
+    tx.objectStore(STORES.tabs).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
   })
 }
 

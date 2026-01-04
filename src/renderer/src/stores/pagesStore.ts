@@ -14,7 +14,7 @@ interface PagesActions {
   updatePage: (id: string, updates: Partial<PageRecord>) => Promise<void>
   removePage: (id: string) => Promise<void>
   batchUpdatePages: (updates: Array<{ id: string; updates: Partial<PageRecord> }>) => Promise<void>
-  reset: () => void
+  reset: () => Promise<void>
 }
 
 type PagesStore = PagesState & PagesActions
@@ -74,5 +74,8 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     set({ pages: updatedPages })
   },
 
-  reset: () => set(initialState)
+  reset: async () => {
+    await db.clearAllPages()
+    set(initialState)
+  }
 }))

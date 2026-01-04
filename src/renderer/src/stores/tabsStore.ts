@@ -44,7 +44,7 @@ interface TabsActions {
   clearHistory: () => void
   navigateToHistoryIndex: (index: number) => void
   keepTab: (tabId: string) => void
-  reset: () => void
+  reset: () => Promise<void>
 }
 
 type TabsStore = TabsState & TabsActions
@@ -353,5 +353,8 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     persist({ ...state, tabs: newTabs })
   },
 
-  reset: () => set(initialState)
+  reset: async () => {
+    await db.clearTabs()
+    set(initialState)
+  }
 }))

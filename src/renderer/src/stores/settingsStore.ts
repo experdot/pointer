@@ -87,7 +87,7 @@ interface SettingsActions {
   ) => void
 
   // 重置
-  reset: () => void
+  reset: () => Promise<void>
 }
 
 type SettingsStore = SettingsState & SettingsActions
@@ -413,5 +413,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     })
   },
 
-  reset: () => set({ settings: initialSettings, initialized: false })
+  reset: async () => {
+    await db.clearSettings()
+    set({ settings: initialSettings, initialized: false })
+  }
 }))

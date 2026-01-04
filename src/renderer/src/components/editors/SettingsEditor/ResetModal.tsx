@@ -48,22 +48,22 @@ const RESET_OPTIONS: Array<{ value: ResetType; label: string; description: strin
 export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Element {
   const [selected, setSelected] = useState<ResetType[]>([])
 
-  const handleReset = (): void => {
+  const handleReset = async (): Promise<void> => {
     if (selected.includes('conversations')) {
-      usePagesStore.getState().reset()
+      await usePagesStore.getState().reset()
       useMessagesStore.getState().reset()
     }
     if (selected.includes('folders')) {
-      useFoldersStore.getState().reset()
+      await useFoldersStore.getState().reset()
     }
     if (selected.includes('tabs')) {
-      useTabsStore.getState().reset()
+      await useTabsStore.getState().reset()
     }
     if (selected.includes('settings')) {
-      useSettingsStore.getState().reset()
+      await useSettingsStore.getState().reset()
     }
     if (selected.includes('layout')) {
-      useLayoutStore.getState().reset()
+      await useLayoutStore.getState().reset()
     }
 
     setSelected([])

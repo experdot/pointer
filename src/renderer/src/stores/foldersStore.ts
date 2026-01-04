@@ -15,7 +15,7 @@ interface FoldersActions {
   batchUpdateFolders: (
     updates: Array<{ id: string; updates: Partial<PageFolder> }>
   ) => Promise<void>
-  reset: () => void
+  reset: () => Promise<void>
 }
 
 type FoldersStore = FoldersState & FoldersActions
@@ -69,5 +69,8 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
     set({ folders: updatedFolders })
   },
 
-  reset: () => set(initialState)
+  reset: async () => {
+    await db.clearAllFolders()
+    set(initialState)
+  }
 }))

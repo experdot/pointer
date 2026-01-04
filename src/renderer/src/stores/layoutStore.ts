@@ -21,7 +21,7 @@ interface LayoutActions {
   toggleSidebar: () => void
   setActivePanel: (panel: ActivityPanel) => void
   setCompactMode: (isCompact: boolean) => void
-  reset: () => void
+  reset: () => Promise<void>
 }
 
 type LayoutStore = LayoutState & LayoutActions
@@ -88,5 +88,8 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
 
   setCompactMode: (isCompact) => set({ isCompactMode: isCompact }),
 
-  reset: () => set(initialState)
+  reset: async () => {
+    await db.clearLayout()
+    set(initialState)
+  }
 }))
