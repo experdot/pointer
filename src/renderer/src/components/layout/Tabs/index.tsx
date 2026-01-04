@@ -13,6 +13,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTabsStore } from '../../../stores/tabsStore'
+import { usePagesStore } from '../../../stores/pagesStore'
 import * as pagesService from '../../../services/pagesService'
 import { getTabIcon } from '../../../utils/tabRegistry'
 import './Tabs.css'
@@ -185,17 +186,29 @@ export function Tabs(): React.JSX.Element {
 
   // 历史记录右键菜单
   const getHistoryMenuItems = (): MenuProps['items'] => {
+    const pages = usePagesStore.getState().pages
+
+    // 获取历史条目的标题：优先从打开的 tab 获取，其次从 pages 获取
+    const getEntryTitle = (entry: (typeof history)[number]): string => {
+      const tab = tabs.find((t) => t.id === entry.tabId)
+      if (tab?.title) return tab.title
+      if (entry.dataId) {
+        const page = pages.find((p) => p.id === entry.dataId)
+        if (page?.title) return page.title
+      }
+      return '未知页面'
+    }
+
     const historyItems: MenuProps['items'] = history
       .map((entry, index) => ({ entry, index }))
       .map(({ entry, index }) => {
-        const tab = tabs.find((t) => t.id === entry.tabId)
         const isCurrent = index === historyIndex
         return {
           key: `history-${index}`,
           label: (
             <span style={{ fontWeight: isCurrent ? 'bold' : 'normal' }}>
               {isCurrent ? '→ ' : ''}
-              {tab?.title || entry.tabId}
+              {getEntryTitle(entry)}
             </span>
           ),
           onClick: () => navigateToHistoryIndex(index)
@@ -203,15 +216,15 @@ export function Tabs(): React.JSX.Element {
       })
 
     return [
-      ...historyItems,
-      { type: 'divider' },
       {
         key: 'clear',
-        label: '清空历史',
+        label: '清空导航历史',
         icon: <DeleteOutlined />,
         danger: true,
         onClick: clearHistory
-      }
+      },
+      { type: 'divider' },
+      ...historyItems
     ]
   }
 
@@ -219,7 +232,10 @@ export function Tabs(): React.JSX.Element {
 
   return (
     <div className="tabs-wrapper">
-      <Dropdown menu={{ items: getHistoryMenuItems() }} trigger={['contextMenu']}>
+      <Dropdown
+        menu={{ items: getHistoryMenuItems(), style: { maxHeight: 400, overflow: 'auto' } }}
+        trigger={['contextMenu']}
+      >
         <div className="tabs-nav-buttons">
           <Button
             type="text"

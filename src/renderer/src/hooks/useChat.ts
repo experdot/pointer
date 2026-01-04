@@ -4,6 +4,7 @@ import { useMessagesStore } from '../stores/messagesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { createAIService } from '../services/aiService'
 import * as messagesService from '../services/messagesService'
+import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
 import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../types/type'
 import type { PageRecord } from '../utils/database'
@@ -205,7 +206,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       // 第一条消息且标题是"新对话"时，自动重命名
       if (isFirstMessage && page.title === '新对话') {
         const newTitle = content.slice(0, 10) + (content.length > 10 ? '...' : '')
-        usePagesStore.getState().updatePage(pageId, { title: newTitle })
+        pagesService.updatePage(pageId, { title: newTitle })
       }
 
       // 获取最新的消息路径
