@@ -95,8 +95,11 @@ function tryNavigateToHistory(
     const restoredTab = tryRestoreTab(entry.type, entry.dataId)
     if (restoredTab) {
       isNavigating = true
-      openTab({ ...restoredTab, preview: true }, true)
-      isNavigating = false
+      try {
+        openTab({ ...restoredTab, preview: true }, true)
+      } finally {
+        isNavigating = false
+      }
       return { targetIndex: i, targetTabId: restoredTab.id }
     }
   }
@@ -305,10 +308,13 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     const result = tryNavigateToHistory(history, historyIndex + 1, 1, tabs, openTab)
     if (result) {
       isNavigating = true
-      const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
-      set(newState)
-      persist({ ...get(), ...newState })
-      isNavigating = false
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
     }
   },
 
@@ -342,10 +348,13 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     const result = tryNavigateToHistory(history, index, 1, tabs, openTab)
     if (result) {
       isNavigating = true
-      const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
-      set(newState)
-      persist({ ...get(), ...newState })
-      isNavigating = false
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
     }
   },
 
