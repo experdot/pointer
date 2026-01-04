@@ -194,7 +194,9 @@
   margin-top: 8px;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out;
 }
 
 .message-item:hover .message-item__actions {
@@ -231,8 +233,14 @@
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Reasoning Content */
@@ -267,7 +275,10 @@
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height 0.4s ease-out, opacity 0.35s ease-out, margin-top 0.4s ease-out;
+  transition:
+    max-height 0.4s ease-out,
+    opacity 0.35s ease-out,
+    margin-top 0.4s ease-out;
   user-select: text;
   cursor: text;
 }
@@ -303,7 +314,9 @@
   z-index: 10;
   background: transparent;
   opacity: 0;
-  transition: opacity 0.15s ease-out 0.3s, background 0.15s ease-out 0.3s;
+  transition:
+    opacity 0.15s ease-out 0.3s,
+    background 0.15s ease-out 0.3s;
 }
 
 .chat-editor__input-resizer:hover {
@@ -348,11 +361,13 @@
 
 .chat-editor__input-toolbar-left {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
 .chat-editor__input-toolbar-right {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
@@ -361,12 +376,45 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+}
+
+.message-item__edit--drag-over {
+  outline: 2px dashed var(--ant-color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.message-item__edit .attachment-preview {
+  border-bottom: none;
+  padding: 0;
 }
 
 .message-item__edit-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
+  align-items: center;
+}
+
+.message-item__edit-drag-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.1);
+  border-radius: 4px;
+  color: var(--ant-color-primary);
+  font-size: 14px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.message-item__edit-drag-overlay .anticon {
+  font-size: 24px;
 }
 
 /* Error Message */
@@ -424,4 +472,170 @@
 
 .message-queue-drawer__add .ant-input {
   flex: 1;
+}
+
+/* ==================== Attachment Preview (待发送附件预览) ==================== */
+
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.attachment-preview__item {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.attachment-preview__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-preview__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ant-color-text-tertiary);
+}
+
+.attachment-preview__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ant-color-error);
+  font-weight: bold;
+}
+
+.attachment-preview__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.attachment-preview__item:hover .attachment-preview__remove {
+  opacity: 1;
+}
+
+.attachment-preview__name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==================== Drag Over State (拖拽状态) ==================== */
+
+.chat-editor__input--drag-over {
+  border-color: var(--ant-color-primary);
+  border-style: dashed;
+}
+
+.chat-editor__input-drag-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.1);
+  border-radius: 4px;
+  color: var(--ant-color-primary);
+  font-size: 14px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.chat-editor__input-drag-overlay .anticon {
+  font-size: 32px;
+}
+
+/* ==================== Message Attachments (消息附件显示) ==================== */
+
+.message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.message-attachments__item {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--ant-color-fill-tertiary);
+  transition: opacity 0.2s;
+}
+
+.message-attachments__item:hover {
+  opacity: 0.9;
+}
+
+.message-attachments__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message-attachments__placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--ant-color-fill-secondary);
+  animation: pulse 1.5s infinite;
+}
+
+.message-attachments__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ant-color-error);
+  font-weight: bold;
+  font-size: 24px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }

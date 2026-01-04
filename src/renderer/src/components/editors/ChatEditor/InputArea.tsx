@@ -6,13 +6,16 @@ import React, {
   forwardRef,
   useState
 } from 'react'
-import { Input, Button } from 'antd'
+import { Input, Button, Tooltip } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
-import { SendOutlined, StopOutlined, CaretRightOutlined } from '@ant-design/icons'
+import { SendOutlined, StopOutlined, CaretRightOutlined, PictureOutlined } from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
 import { QueueButton } from './QueueButton'
+import { AttachmentPreview } from './AttachmentPreview'
 import { useChatUIStore } from '../../../stores/chatUIStore'
+import { useAttachment } from '../../../hooks/useAttachment'
+import type { FileAttachment } from '../../../types/type'
 
 const { TextArea } = Input
 
@@ -30,7 +33,7 @@ export interface InputAreaRef {
 
 interface InputAreaProps {
   pageId: string
-  onSend: (content: string) => Promise<void>
+  onSend: (content: string, attachments?: FileAttachment[]) => Promise<void>
   onStop: () => Promise<void>
   isStreaming: boolean
   disabled?: boolean
@@ -55,8 +58,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   },
   ref
 ) {
-  const { getState, setInputContent } = useChatUIStore()
+  const { getState, setInputContent, clearPendingAttachments } = useChatUIStore()
   const content = getState(pageId).inputContent
+  const { pendingAttachments, addAttachments, addAttachmentsFromSelector, removeAttachment } =
+    useAttachment(pageId)
   const textAreaRef = useRef<TextAreaRef>(null)
 
   // 拖拽调整高度相关状态
@@ -64,6 +69,9 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   const resizing = useRef(false)
   const startY = useRef(0)
   const startHeight = useRef(0)
+
+  // 拖拽上传状态
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // pageId 变化时自动聚焦
   useEffect(() => {
@@ -101,6 +109,58 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     [textareaHeight]
   )
 
+  // 拖拽上传处理
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+
+      const files = e.dataTransfer.files
+      if (files.length > 0) {
+        await addAttachments(files)
+      }
+    },
+    [addAttachments]
+  )
+
+  // 粘贴图片处理
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const items = e.clipboardData.items
+      const imageFiles: File[] = []
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            imageFiles.push(file)
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault()
+        await addAttachments(imageFiles)
+      }
+    },
+    [addAttachments]
+  )
+
   useImperativeHandle(
     ref,
     () => ({
@@ -118,12 +178,25 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
   const handleSend = useCallback(async () => {
     const trimmed = content.trim()
-    if (!trimmed || disabled) return
+    // 允许仅发送附件（无文本）
+    if (!trimmed && pendingAttachments.length === 0) return
+    if (disabled) return
 
+    const attachmentsToSend = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined
     setInputContent(pageId, '')
-    await onSend(trimmed)
+    clearPendingAttachments(pageId)
+    await onSend(trimmed, attachmentsToSend)
     focusInput()
-  }, [content, disabled, onSend, focusInput, pageId, setInputContent])
+  }, [
+    content,
+    pendingAttachments,
+    disabled,
+    onSend,
+    focusInput,
+    pageId,
+    setInputContent,
+    clearPendingAttachments
+  ])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -169,7 +242,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
         type="primary"
         icon={<SendOutlined />}
         onClick={handleSend}
-        disabled={!content.trim() || disabled}
+        disabled={(!content.trim() && pendingAttachments.length === 0) || disabled}
       >
         发送
       </Button>
@@ -177,14 +250,26 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   }
 
   return (
-    <div className="chat-editor__input">
+    <div
+      className={`chat-editor__input ${isDragOver ? 'chat-editor__input--drag-over' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="chat-editor__input-resizer" onMouseDown={handleResizeMouseDown} />
+
+      {/* 待发送附件预览 */}
+      {pendingAttachments.length > 0 && (
+        <AttachmentPreview attachments={pendingAttachments} onRemove={removeAttachment} />
+      )}
+
       <TextArea
         ref={textAreaRef}
         className="chat-editor__textarea"
         value={content}
         onChange={(e) => setInputContent(pageId, e.target.value)}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder="输入消息..."
         style={{ height: textareaHeight, minHeight: textareaHeight, maxHeight: textareaHeight }}
         disabled={disabled}
@@ -192,6 +277,14 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       />
       <div className="chat-editor__input-toolbar">
         <div className="chat-editor__input-toolbar-left">
+          <Tooltip title="添加图片">
+            <Button
+              type="text"
+              icon={<PictureOutlined />}
+              onClick={addAttachmentsFromSelector}
+              disabled={disabled || isStreaming}
+            />
+          </Tooltip>
           <ModelSelector onSelect={focusInput} />
           <ModelConfigSelector onSelect={focusInput} />
         </div>
@@ -200,6 +293,14 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
           {renderMainButton()}
         </div>
       </div>
+
+      {/* 拖拽提示覆盖层 */}
+      {isDragOver && (
+        <div className="chat-editor__input-drag-overlay">
+          <PictureOutlined />
+          <span>释放以添加图片</span>
+        </div>
+      )}
     </div>
   )
 })

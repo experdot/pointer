@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
 import type { QueueItem } from '../utils/database'
+import type { FileAttachment } from '../types/type'
 
 interface UseMessageQueueOptions {
   pageId: string
   isStreaming: boolean
-  onSendMessage: (content: string) => Promise<void>
+  onSendMessage: (
+    content: string,
+    options?: { attachments?: FileAttachment[] }
+  ) => Promise<void>
 }
 
 interface UseMessageQueueResult {
@@ -25,7 +29,7 @@ interface UseMessageQueueResult {
   resumeQueue: () => Promise<void>
 
   // 发送逻辑（InputArea 调用）
-  handleSend: (content: string) => Promise<void>
+  handleSend: (content: string, attachments?: FileAttachment[]) => Promise<void>
   // 停止并暂停队列
   handleStop: () => Promise<void>
 }
@@ -126,13 +130,13 @@ export function useMessageQueue({
 
   // 发送逻辑：streaming 时入队，否则直接发送
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, attachments?: FileAttachment[]) => {
       if (isStreaming) {
-        // AI 正在输出，消息入队
+        // AI 正在输出，消息入队（队列目前不支持附件，仅文本）
         await enqueue(content)
       } else {
-        // 直接发送
-        await onSendMessage(content)
+        // 直接发送（支持附件）
+        await onSendMessage(content, attachments ? { attachments } : undefined)
       }
     },
     [isStreaming, enqueue, onSendMessage]

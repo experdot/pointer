@@ -3,7 +3,7 @@ import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
 import { useChatUIStore } from '../../../stores/chatUIStore'
-import type { ChatMessage } from '../../../types/type'
+import type { ChatMessage, FileAttachment } from '../../../types/type'
 
 export interface MessageListRef {
   scrollToMessage: (messageId: string) => void
@@ -20,8 +20,8 @@ interface MessageListProps {
   onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
-  onEdit: (messageId: string, content: string) => void
-  onEditAndResend: (messageId: string, content: string) => void
+  onEdit: (messageId: string, content: string, attachments?: FileAttachment[]) => void
+  onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
   onSwitchBranch: (messageId: string) => void
   onQuote: (text: string) => void
   getChildMessages: (parentId: string | undefined) => ChatMessage[]

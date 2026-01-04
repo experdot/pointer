@@ -14,12 +14,16 @@ import {
   ArrowDownOutlined,
   RightOutlined,
   DownOutlined,
-  UpOutlined
+  UpOutlined,
+  PictureOutlined
 } from '@ant-design/icons'
 import { BranchNavigator } from './BranchNavigator'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
-import type { ChatMessage } from '../../../types/type'
+import { MessageAttachments } from './MessageAttachments'
+import { AttachmentPreview } from './AttachmentPreview'
+import { selectAndSaveAttachments } from '../../../hooks/useAttachment'
+import type { ChatMessage, FileAttachment } from '../../../types/type'
 
 const { TextArea } = Input
 
@@ -36,8 +40,8 @@ interface MessageItemProps {
   onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
-  onEdit: (messageId: string, content: string) => void
-  onEditAndResend: (messageId: string, content: string) => void
+  onEdit: (messageId: string, content: string, attachments?: FileAttachment[]) => void
+  onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
@@ -64,6 +68,7 @@ export const MessageItem = React.memo(function MessageItem({
 }: MessageItemProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
+  const [editAttachments, setEditAttachments] = useState<FileAttachment[]>([])
   const [copied, setCopied] = useState(false)
   const [reasoningExpanded, setReasoningExpanded] = useState(true)
   const wasStreaming = useRef(false)
@@ -101,31 +106,154 @@ export const MessageItem = React.memo(function MessageItem({
 
   const handleStartEdit = useCallback((): void => {
     setEditContent(message.content)
+    setEditAttachments(message.attachments ?? [])
     setIsEditing(true)
     // 延迟滚动，等待编辑框渲染
     setTimeout(() => {
       itemRef.current?.scrollIntoView({ block: 'center' })
     }, 50)
-  }, [message.content])
+  }, [message.content, message.attachments])
 
   const handleCancelEdit = (): void => {
     setIsEditing(false)
     setEditContent(message.content)
+    setEditAttachments(message.attachments ?? [])
   }
 
   const handleSaveEdit = (): void => {
-    if (editContent.trim() && editContent !== message.content) {
-      onEdit(message.id, editContent.trim())
+    const contentChanged = editContent.trim() !== message.content
+    const attachmentsChanged =
+      JSON.stringify(editAttachments) !== JSON.stringify(message.attachments ?? [])
+
+    if (editContent.trim() && (contentChanged || attachmentsChanged)) {
+      onEdit(message.id, editContent.trim(), editAttachments)
     }
     setIsEditing(false)
   }
 
   const handleEditAndResend = (): void => {
-    if (editContent.trim()) {
-      onEditAndResend(message.id, editContent.trim())
+    if (editContent.trim() || editAttachments.length > 0) {
+      onEditAndResend(message.id, editContent.trim(), editAttachments)
     }
     setIsEditing(false)
   }
+
+  const handleRemoveEditAttachment = useCallback((attachmentId: string): void => {
+    setEditAttachments((prev) => prev.filter((a) => a.id !== attachmentId))
+  }, [])
+
+  const handleAddEditAttachments = useCallback(async (): Promise<void> => {
+    const newAttachments = await selectAndSaveAttachments()
+    if (newAttachments.length > 0) {
+      setEditAttachments((prev) => [...prev, ...newAttachments])
+    }
+  }, [])
+
+  // 编辑模式拖拽上传
+  const [isEditDragOver, setIsEditDragOver] = useState(false)
+
+  const handleEditDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsEditDragOver(true)
+    }
+  }, [])
+
+  const handleEditDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsEditDragOver(false)
+  }, [])
+
+  const handleEditDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsEditDragOver(false)
+
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(f.type)
+    )
+    if (files.length === 0) return
+
+    // 读取并保存文件
+    for (const file of files) {
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.readAsDataURL(file)
+      })
+
+      const fileId = Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
+      const result = await window.api.attachment.save({
+        fileId,
+        fileName: file.name,
+        base64Content: base64
+      })
+
+      if (result.success && result.localPath) {
+        const localPath = result.localPath
+        setEditAttachments((prev) => [
+          ...prev,
+          {
+            id: fileId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            localPath,
+            createdAt: Date.now()
+          }
+        ])
+      }
+    }
+  }, [])
+
+  // 编辑模式粘贴上传
+  const handleEditPaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items
+    const imageFiles: File[] = []
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) imageFiles.push(file)
+      }
+    }
+
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+
+    for (const file of imageFiles) {
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.readAsDataURL(file)
+      })
+
+      const fileId = Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
+      const result = await window.api.attachment.save({
+        fileId,
+        fileName: file.name,
+        base64Content: base64
+      })
+
+      if (result.success && result.localPath) {
+        const localPath = result.localPath
+        setEditAttachments((prev) => [
+          ...prev,
+          {
+            id: fileId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            localPath,
+            createdAt: Date.now()
+          }
+        ])
+      }
+    }
+  }, [])
 
   const handleCopy = (): void => {
     navigator.clipboard.writeText(displayContent)
@@ -233,16 +361,44 @@ export const MessageItem = React.memo(function MessageItem({
           </div>
         )}
 
+        {/* 消息附件 */}
+        {message.attachments && message.attachments.length > 0 && !message.collapsed && (
+          <MessageAttachments attachments={message.attachments} />
+        )}
+
         {/* 消息内容 */}
         {isEditing ? (
-          <div className="message-item__edit">
+          <div
+            className={`message-item__edit ${isUser && isEditDragOver ? 'message-item__edit--drag-over' : ''}`}
+            onDragOver={isUser ? handleEditDragOver : undefined}
+            onDragLeave={isUser ? handleEditDragLeave : undefined}
+            onDrop={isUser ? handleEditDrop : undefined}
+          >
+            {/* 用户消息编辑时显示附件预览 */}
+            {isUser && editAttachments.length > 0 && (
+              <AttachmentPreview
+                attachments={editAttachments}
+                onRemove={handleRemoveEditAttachment}
+              />
+            )}
             <TextArea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
+              onPaste={isUser ? handleEditPaste : undefined}
               autoSize={{ minRows: 2, maxRows: 10 }}
               autoFocus
             />
             <div className="message-item__edit-actions">
+              {isUser && (
+                <Tooltip title="添加图片">
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<PictureOutlined />}
+                    onClick={handleAddEditAttachments}
+                  />
+                </Tooltip>
+              )}
               <Button size="small" icon={<CloseOutlined />} onClick={handleCancelEdit}>
                 取消
               </Button>
@@ -260,6 +416,13 @@ export const MessageItem = React.memo(function MessageItem({
                 </Button>
               )}
             </div>
+            {/* 拖拽提示 */}
+            {isUser && isEditDragOver && (
+              <div className="message-item__edit-drag-overlay">
+                <PictureOutlined />
+                <span>释放以添加图片</span>
+              </div>
+            )}
           </div>
         ) : message.collapsed ? (
           <div className="message-item__preview" onClick={() => onToggleCollapse?.(message.id)}>
