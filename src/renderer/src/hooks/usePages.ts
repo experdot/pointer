@@ -22,8 +22,11 @@ export function usePages(): {
   toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
   openPage: typeof pagesService.openPage
 } {
-  const { pages, batchUpdatePages } = usePagesStore()
-  const { folders, batchUpdateFolders } = useFoldersStore()
+  // 使用选择器只订阅需要的状态，避免不必要的重渲染
+  const pages = usePagesStore((state) => state.pages)
+  const batchUpdatePages = usePagesStore((state) => state.batchUpdatePages)
+  const folders = useFoldersStore((state) => state.folders)
+  const batchUpdateFolders = useFoldersStore((state) => state.batchUpdateFolders)
 
   // 获取根级别的页面和文件夹，混合排序
   const rootItems = useMemo(() => {

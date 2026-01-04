@@ -7,10 +7,10 @@ import { useMessagesStore } from '../stores/messagesStore'
 import { useTabsStore } from '../stores/tabsStore'
 
 // 计算新项目的插入位置和 order，并更新同级项目的 order
-function prepareInsertPosition(afterItemId?: string): {
+async function prepareInsertPosition(afterItemId?: string): Promise<{
   parentFolderId: string | undefined
   order: number
-} {
+}> {
   const pagesStore = usePagesStore.getState()
   const foldersStore = useFoldersStore.getState()
   const tabsStore = useTabsStore.getState()
@@ -49,19 +49,24 @@ function prepareInsertPosition(afterItemId?: string): {
     (f) => f.parentFolderId === parentFolderId && (f.order ?? 0) >= newOrder
   )
 
-  pagesToUpdate.forEach((p) => {
-    pagesStore.updatePage(p.id, { order: (p.order ?? 0) + 1 })
-  })
-  foldersToUpdate.forEach((f) => {
-    foldersStore.updateFolder(f.id, { order: (f.order ?? 0) + 1 })
-  })
+  // 使用批量更新，避免 N 次 DB 写入和渲染
+  if (pagesToUpdate.length > 0) {
+    await pagesStore.batchUpdatePages(
+      pagesToUpdate.map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
+    )
+  }
+  if (foldersToUpdate.length > 0) {
+    await foldersStore.batchUpdateFolders(
+      foldersToUpdate.map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
+    )
+  }
 
   return { parentFolderId, order: newOrder }
 }
 
 // 创建新页面
 export async function createPage(title?: string, afterItemId?: string): Promise<PageRecord> {
-  const { parentFolderId, order } = prepareInsertPosition(afterItemId)
+  const { parentFolderId, order } = await prepareInsertPosition(afterItemId)
 
   const page: PageRecord = {
     type: 'page',
@@ -110,7 +115,7 @@ export async function movePage(pageId: string, folderId: string | undefined): Pr
 
 // 创建文件夹
 export async function createFolder(name?: string, afterItemId?: string): Promise<PageFolder> {
-  const { parentFolderId, order } = prepareInsertPosition(afterItemId)
+  const { parentFolderId, order } = await prepareInsertPosition(afterItemId)
 
   const folder: PageFolder = {
     type: 'folder',

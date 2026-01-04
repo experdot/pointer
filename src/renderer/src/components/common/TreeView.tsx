@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback, memo } from 'react'
 import { Input, Empty, Tree, Dropdown, Button } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -86,6 +86,72 @@ function getRootItems<TItem extends ItemLike, TFolder extends FolderLike>(
   const rootFolders = folders.filter((f) => !f.parentFolderId)
   return [...rootFolders, ...rootItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
+
+// ==================== 节点标题组件（使用 memo 优化） ====================
+
+interface TreeNodeTitleProps<TItem extends ItemLike, TFolder extends FolderLike> {
+  id: string
+  title: string
+  isHighlighted: boolean
+  treeNode: TreeNodeData<TItem, TFolder>
+  onDoubleClick?: (id: string, isFolder: boolean) => void
+  getContextMenuItems: (node: TreeNodeData<TItem, TFolder>) => MenuProps['items']
+}
+
+// 使用泛型的 memo 组件
+const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>({
+  id,
+  title,
+  isHighlighted,
+  treeNode,
+  onDoubleClick,
+  getContextMenuItems
+}: TreeNodeTitleProps<TItem, TFolder>): React.JSX.Element => {
+  // 延迟计算菜单项 - 只在 Dropdown 展开时才计算
+  const [menuItems, setMenuItems] = useState<MenuProps['items']>(undefined)
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && !menuItems) {
+        setMenuItems(getContextMenuItems(treeNode))
+      }
+    },
+    [getContextMenuItems, treeNode, menuItems]
+  )
+
+  return (
+    <Dropdown
+      menu={{ items: menuItems }}
+      trigger={['contextMenu']}
+      onOpenChange={handleOpenChange}
+    >
+      <span
+        className="tree-view-title"
+        onDoubleClick={() => onDoubleClick?.(id, treeNode.isFolder)}
+      >
+        <span className={`tree-view-title-text ${isHighlighted ? 'is-highlighted' : ''}`}>
+          {title}
+        </span>
+        <Dropdown
+          menu={{ items: menuItems }}
+          trigger={['click']}
+          onOpenChange={handleOpenChange}
+        >
+          <Button
+            type="text"
+            size="small"
+            icon={<MoreOutlined />}
+            className="tree-view-title-more"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Dropdown>
+      </span>
+    </Dropdown>
+  )
+}
+
+// memo 包装，只有 props 变化时才重新渲染
+const TreeNodeTitle = memo(TreeNodeTitleInner) as typeof TreeNodeTitleInner
 
 // ==================== 组件实现 ====================
 
@@ -305,6 +371,14 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 标题渲染 ====================
 
+  // 使用 useCallback 缓存 getContextMenuItems，避免每次渲染时创建新函数
+  const memoizedGetContextMenuItems = useCallback(
+    (node: TreeNodeData<TItem, TFolder>) => getContextMenuItems(node),
+    // 只依赖外部传入的 props，不依赖内部函数
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getItemMenuItems, getFolderMenuItems, getItemName, getFolderName]
+  )
+
   const titleRender = (node: TreeDataNode): React.ReactNode => {
     const treeNode = node as TreeNodeData<TItem, TFolder>
     const id = node.key as string
@@ -326,25 +400,14 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     }
 
     return (
-      <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['contextMenu']}>
-        <span
-          className="tree-view-title"
-          onDoubleClick={() => onDoubleClick?.(id, treeNode.isFolder)}
-        >
-          <span className={`tree-view-title-text ${isHighlighted ? 'is-highlighted' : ''}`}>
-            {title}
-          </span>
-          <Dropdown menu={{ items: getContextMenuItems(treeNode) }} trigger={['click']}>
-            <Button
-              type="text"
-              size="small"
-              icon={<MoreOutlined />}
-              className="tree-view-title-more"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </Dropdown>
-        </span>
-      </Dropdown>
+      <TreeNodeTitle
+        id={id}
+        title={title}
+        isHighlighted={isHighlighted}
+        treeNode={treeNode}
+        onDoubleClick={onDoubleClick}
+        getContextMenuItems={memoizedGetContextMenuItems}
+      />
     )
   }
 

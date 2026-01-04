@@ -13,7 +13,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTabsStore } from '../../../stores/tabsStore'
-import { usePages } from '../../../hooks/usePages'
+import * as pagesService from '../../../services/pagesService'
 import { getTabIcon } from '../../../utils/tabRegistry'
 import './Tabs.css'
 
@@ -62,7 +62,8 @@ export function Tabs(): React.JSX.Element {
     clearHistory,
     navigateToHistoryIndex
   } = useTabsStore()
-  const { createPage, openPage } = usePages()
+  // 直接使用 pagesService，避免订阅 pagesStore 导致不必要的重渲染
+  const { createPage, openPage } = pagesService
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
