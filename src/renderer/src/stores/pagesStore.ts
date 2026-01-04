@@ -10,6 +10,7 @@ interface PagesState {
 interface PagesActions {
   init: () => Promise<void>
   addPage: (page: PageRecord) => Promise<void>
+  addPages: (pages: PageRecord[]) => Promise<void>
   updatePage: (id: string, updates: Partial<PageRecord>) => Promise<void>
   removePage: (id: string) => Promise<void>
   batchUpdatePages: (updates: Array<{ id: string; updates: Partial<PageRecord> }>) => Promise<void>
@@ -34,6 +35,12 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   addPage: async (page) => {
     await db.putPage(page)
     set((state) => ({ pages: [...state.pages, page] }))
+  },
+
+  addPages: async (pages) => {
+    if (pages.length === 0) return
+    await db.putPagesBatch(pages)
+    set((state) => ({ pages: [...state.pages, ...pages] }))
   },
 
   updatePage: async (id, updates) => {

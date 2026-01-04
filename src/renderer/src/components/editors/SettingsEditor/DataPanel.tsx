@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Button, Flex, Typography, App, Space } from 'antd'
+import { Button, Flex, Typography, App, Space, Divider } from 'antd'
 import {
   ExclamationCircleOutlined,
   ExportOutlined,
   ImportOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  CloudDownloadOutlined
 } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { usePagesStore } from '../../../stores/pagesStore'
@@ -14,6 +15,7 @@ import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 import { ExportModal } from './ExportModal'
 import { ImportModal } from './ImportModal'
+import { ThirdPartyImportModal } from './ThirdPartyImportModal'
 
 const { Text } = Typography
 
@@ -21,6 +23,7 @@ export function DataPanel(): React.JSX.Element {
   const { modal } = App.useApp()
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [thirdPartyImportOpen, setThirdPartyImportOpen] = useState(false)
 
   const handleResetAll = (): void => {
     modal.confirm({
@@ -63,8 +66,28 @@ export function DataPanel(): React.JSX.Element {
         </Button>
       </Space>
 
+      <Divider style={{ margin: '8px 0' }} />
+
+      <div>
+        <Text strong style={{ fontSize: 16 }}>
+          第三方数据导入
+        </Text>
+        <br />
+        <Text type="secondary">从其他平台导入聊天记录（支持 OpenAI、DeepSeek 等）</Text>
+      </div>
+
+      <Space>
+        <Button icon={<CloudDownloadOutlined />} onClick={() => setThirdPartyImportOpen(true)}>
+          导入第三方数据
+        </Button>
+      </Space>
+
       <ExportModal open={exportModalOpen} onClose={() => setExportModalOpen(false)} />
       <ImportModal open={importModalOpen} onClose={() => setImportModalOpen(false)} />
+      <ThirdPartyImportModal
+        open={thirdPartyImportOpen}
+        onClose={() => setThirdPartyImportOpen(false)}
+      />
     </Flex>
   )
 }

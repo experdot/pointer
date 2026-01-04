@@ -239,6 +239,20 @@ export async function putPage(page: PageRecord): Promise<void> {
   })
 }
 
+export async function putPagesBatch(pages: PageRecord[]): Promise<void> {
+  if (pages.length === 0) return
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.pages, 'readwrite')
+    const store = tx.objectStore(STORES.pages)
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => resolve()
+    for (const page of pages) {
+      store.put(page)
+    }
+  })
+}
+
 export async function deletePage(id: string): Promise<void> {
   const db = await getDB()
   return new Promise((resolve, reject) => {
@@ -306,6 +320,20 @@ export async function putMessages(record: MessagesRecord): Promise<void> {
     const request = store.put(record)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
+  })
+}
+
+export async function putMessagesBatch(records: MessagesRecord[]): Promise<void> {
+  if (records.length === 0) return
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.messages, 'readwrite')
+    const store = tx.objectStore(STORES.messages)
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => resolve()
+    for (const record of records) {
+      store.put(record)
+    }
   })
 }
 
