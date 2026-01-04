@@ -21,15 +21,22 @@ const PLATFORM_NAMES: Record<ImportPlatform, string> = {
 const BATCH_SIZE = 50
 
 /**
- * 获取或创建来源文件夹
+ * 格式化日期时间
  */
-async function getOrCreatePlatformFolder(platform: ImportPlatform): Promise<string> {
-  const folderName = PLATFORM_NAMES[platform]
-  const foldersStore = useFoldersStore.getState()
+function formatDateTime(date: Date): string {
+  const pad = (n: number): string => n.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
-  // 查找现有文件夹
-  const existing = foldersStore.folders.find((f) => f.name === folderName)
-  if (existing) return existing.id
+/**
+ * 创建带时间戳的导入文件夹
+ */
+async function createPlatformFolder(platform: ImportPlatform): Promise<string> {
+  const baseName = PLATFORM_NAMES[platform]
+  const timestamp = formatDateTime(new Date())
+  const folderName = `${baseName} ${timestamp}`
+
+  const foldersStore = useFoldersStore.getState()
 
   // 创建新文件夹
   const folder: PageFolder = {
@@ -127,7 +134,7 @@ export async function importConversations(
   const platforms = [...new Set(selected.map((c) => c.platform))]
 
   for (const platform of platforms) {
-    const folderId = await getOrCreatePlatformFolder(platform)
+    const folderId = await createPlatformFolder(platform)
     platformFolders.set(platform, folderId)
   }
 
