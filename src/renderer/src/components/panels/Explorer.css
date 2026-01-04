@@ -9,30 +9,30 @@
 
 .explorer-tree {
   flex: 1;
-  overflow: auto;
+  min-height: 0; /* 允许 flex 子元素收缩 */
 }
 
-/* 滚动条样式 */
-.explorer-tree::-webkit-scrollbar {
+/* 虚拟滚动模式下的滚动条样式 */
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.explorer-tree::-webkit-scrollbar-track {
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.explorer-tree::-webkit-scrollbar-thumb {
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
   transition: background 0.2s;
 }
 
-.explorer-tree:hover::-webkit-scrollbar-thumb {
+.explorer-tree:hover .rc-virtual-list-holder::-webkit-scrollbar-thumb {
   background: var(--ant-color-text-quaternary);
 }
 
-.explorer-tree::-webkit-scrollbar-thumb:hover {
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover {
   background: var(--ant-color-text-tertiary);
 }
 

@@ -1,29 +1,30 @@
 .tree-view-content {
   flex: 1;
-  overflow: auto;
+  min-height: 0; /* 允许 flex 子元素收缩 */
+  overflow: hidden; /* 虚拟模式下由 Tree 内部管理滚动 */
 }
 
-/* 滚动条样式 */
-.tree-view-content::-webkit-scrollbar {
+/* 虚拟滚动模式下的滚动条样式 */
+.tree-view-content .rc-virtual-list-holder::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.tree-view-content::-webkit-scrollbar-track {
+.tree-view-content .rc-virtual-list-holder::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.tree-view-content::-webkit-scrollbar-thumb {
+.tree-view-content .rc-virtual-list-holder::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
   transition: background 0.2s;
 }
 
-.tree-view-content:hover::-webkit-scrollbar-thumb {
+.tree-view-content:hover .rc-virtual-list-holder::-webkit-scrollbar-thumb {
   background: var(--ant-color-text-quaternary);
 }
 
-.tree-view-content::-webkit-scrollbar-thumb:hover {
+.tree-view-content .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover {
   background: var(--ant-color-text-tertiary);
 }
 

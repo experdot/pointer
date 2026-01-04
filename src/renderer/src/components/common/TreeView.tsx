@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, memo } from 'react'
+import React, { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react'
 import { Input, Empty, Tree, Dropdown, Button } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -183,6 +183,31 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const { showDeleteConfirm } = useConfirmDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
+
+  // 虚拟滚动：监听容器高度变化
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [treeHeight, setTreeHeight] = useState<number | undefined>(undefined)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const updateHeight = (): void => {
+      const height = container.clientHeight
+      setTreeHeight(height > 0 ? height : undefined)
+    }
+
+    // 初始化高度
+    updateHeight()
+
+    // 监听容器大小变化
+    const resizeObserver = new ResizeObserver(updateHeight)
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   const expandedKeys = useMemo(() => folders.filter((f) => f.expanded).map((f) => f.id), [folders])
 
@@ -414,7 +439,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const isEmpty = rootItems.length === 0
 
   return (
-    <div className={`tree-view-content ${className}`}>
+    <div ref={containerRef} className={`tree-view-content ${className}`}>
       {isEmpty ? (
         <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
@@ -433,6 +458,8 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           checkable={checkable}
           checkedKeys={checkedKeys}
           onCheck={(keys) => onCheck?.(keys as string[])}
+          height={treeHeight}
+          virtual={treeHeight !== undefined}
         />
       )}
     </div>
