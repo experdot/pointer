@@ -23,9 +23,11 @@ export function Explorer(): React.JSX.Element {
     batchUpdateItemsOrder,
     createPage,
     deletePage,
+    deletePages,
     updatePage,
     createFolder,
     deleteFolder,
+    deleteFolders,
     updateFolder,
     toggleFolderExpanded,
     openPage
@@ -83,16 +85,25 @@ export function Explorer(): React.JSX.Element {
     showDeleteConfirm({
       title: `删除 ${checkedKeys.length} 个项目`,
       onOk: async () => {
-        for (const key of checkedKeys) {
-          const page = pages.find((p) => p.id === key)
-          const folder = folders.find((f) => f.id === key)
-          if (page) await deletePage(key)
-          else if (folder) await deleteFolder(key)
-        }
+        const pageIds = checkedKeys.filter((key) => pages.some((p) => p.id === key))
+        const folderIds = checkedKeys.filter((key) => folders.some((f) => f.id === key))
+        await deletePages(pageIds)
+        await deleteFolders(folderIds)
         setCheckedKeys([])
         setMultiSelect(false)
       }
     })
+  }
+
+  const getAllKeys = (): string[] => {
+    return [...pages.map((p) => p.id), ...folders.map((f) => f.id)]
+  }
+
+  const allKeys = getAllKeys()
+  const isAllSelected = allKeys.length > 0 && checkedKeys.length === allKeys.length
+
+  const handleSelectAll = (): void => {
+    setCheckedKeys(isAllSelected ? [] : getAllKeys())
   }
 
   const menuItems: MenuProps['items'] = [
@@ -112,6 +123,14 @@ export function Explorer(): React.JSX.Element {
       <Flex className="explorer-toolbar" gap={4}>
         {multiSelect ? (
           <>
+            <Button
+              type="text"
+              icon={<CheckSquareOutlined />}
+              onClick={handleSelectAll}
+              disabled={allKeys.length === 0}
+            >
+              {isAllSelected ? '取消全选' : '全选'}
+            </Button>
             <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
               删除 ({checkedKeys.length})
             </Button>

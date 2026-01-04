@@ -82,16 +82,25 @@ export function ConfigTree<T extends ConfigItemBase>({
     showDeleteConfirm({
       title: `删除 ${checkedKeys.length} 个项目`,
       onOk: () => {
-        checkedKeys.forEach((key) => {
-          const item = items.find((i) => i.id === key)
-          const folder = folders.find((f) => f.id === key)
-          if (item) deleteItem(key)
-          else if (folder) deleteFolder(key)
-        })
+        const itemIds = checkedKeys.filter((key) => items.some((i) => i.id === key))
+        const folderIds = checkedKeys.filter((key) => folders.some((f) => f.id === key))
+        itemIds.forEach(deleteItem)
+        folderIds.forEach(deleteFolder)
         setCheckedKeys([])
         setMultiSelect(false)
       }
     })
+  }
+
+  const getAllKeys = (): string[] => {
+    return [...items.map((i) => i.id), ...folders.map((f) => f.id)]
+  }
+
+  const allKeys = getAllKeys()
+  const isAllSelected = allKeys.length > 0 && checkedKeys.length === allKeys.length
+
+  const handleSelectAll = (): void => {
+    setCheckedKeys(isAllSelected ? [] : getAllKeys())
   }
 
   const getItemMenuItems = (item: T): MenuProps['items'] => {
@@ -125,6 +134,14 @@ export function ConfigTree<T extends ConfigItemBase>({
       <div className="config-tree-toolbar">
         {multiSelect ? (
           <>
+            <Button
+              type="text"
+              icon={<CheckSquareOutlined />}
+              onClick={handleSelectAll}
+              disabled={allKeys.length === 0}
+            >
+              {isAllSelected ? '取消全选' : '全选'}
+            </Button>
             <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
               删除 ({checkedKeys.length})
             </Button>

@@ -12,6 +12,7 @@ interface FoldersActions {
   addFolder: (folder: PageFolder) => Promise<void>
   updateFolder: (id: string, updates: Partial<PageFolder>) => Promise<void>
   removeFolder: (id: string) => Promise<void>
+  removeFolders: (ids: string[]) => Promise<void>
   batchUpdateFolders: (
     updates: Array<{ id: string; updates: Partial<PageFolder> }>
   ) => Promise<void>
@@ -52,6 +53,13 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
   removeFolder: async (id) => {
     await db.deleteFolder(id)
     set((state) => ({ folders: state.folders.filter((f) => f.id !== id) }))
+  },
+
+  removeFolders: async (ids) => {
+    if (ids.length === 0) return
+    await db.deleteFoldersBatch(ids)
+    const idSet = new Set(ids)
+    set((state) => ({ folders: state.folders.filter((f) => !idSet.has(f.id)) }))
   },
 
   batchUpdateFolders: async (updates) => {

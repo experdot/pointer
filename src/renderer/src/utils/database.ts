@@ -264,6 +264,22 @@ export async function deletePage(id: string): Promise<void> {
   })
 }
 
+export async function deletePagesBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([STORES.pages, STORES.messages], 'readwrite')
+    const pagesStore = tx.objectStore(STORES.pages)
+    const messagesStore = tx.objectStore(STORES.messages)
+    for (const id of ids) {
+      pagesStore.delete(id)
+      messagesStore.delete(id)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function clearAllPages(): Promise<void> {
   const db = await getDB()
   return new Promise((resolve, reject) => {
@@ -307,6 +323,20 @@ export async function deleteFolder(id: string): Promise<void> {
     const request = store.delete(id)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
+  })
+}
+
+export async function deleteFoldersBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.folders, 'readwrite')
+    const store = tx.objectStore(STORES.folders)
+    for (const id of ids) {
+      store.delete(id)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
   })
 }
 

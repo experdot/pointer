@@ -15,10 +15,12 @@ export function usePages(): {
   createPage: typeof pagesService.createPage
   updatePage: typeof pagesService.updatePage
   deletePage: typeof pagesService.deletePage
+  deletePages: typeof pagesService.deletePages
   movePage: typeof pagesService.movePage
   createFolder: typeof pagesService.createFolder
   updateFolder: typeof pagesService.updateFolder
   deleteFolder: typeof pagesService.deleteFolder
+  deleteFolders: typeof pagesService.deleteFolders
   toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
   openPage: typeof pagesService.openPage
 } {
@@ -87,10 +89,12 @@ export function usePages(): {
     createPage: pagesService.createPage,
     updatePage: pagesService.updatePage,
     deletePage: pagesService.deletePage,
+    deletePages: pagesService.deletePages,
     movePage: pagesService.movePage,
     createFolder: pagesService.createFolder,
     updateFolder: pagesService.updateFolder,
     deleteFolder: pagesService.deleteFolder,
+    deleteFolders: pagesService.deleteFolders,
     toggleFolderExpanded: pagesService.toggleFolderExpanded,
     openPage: pagesService.openPage
   }
