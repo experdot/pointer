@@ -1,48 +1,18 @@
 import React, { useState } from 'react'
-import { Button, Flex, Typography, App, Space, Divider } from 'antd'
-import {
-  ExclamationCircleOutlined,
-  ExportOutlined,
-  ImportOutlined,
-  DeleteOutlined,
-  CloudDownloadOutlined
-} from '@ant-design/icons'
-import { useSettingsStore } from '../../../stores/settingsStore'
-import { usePagesStore } from '../../../stores/pagesStore'
-import { useFoldersStore } from '../../../stores/foldersStore'
-import { useMessagesStore } from '../../../stores/messagesStore'
-import { useTabsStore } from '../../../stores/tabsStore'
-import { useLayoutStore } from '../../../stores/layoutStore'
+import { Button, Flex, Typography, Space, Divider } from 'antd'
+import { ExportOutlined, ImportOutlined, DeleteOutlined, CloudDownloadOutlined } from '@ant-design/icons'
 import { ExportModal } from './ExportModal'
 import { ImportModal } from './ImportModal'
 import { ThirdPartyImportModal } from './ThirdPartyImportModal'
+import { ResetModal } from './ResetModal'
 
 const { Text } = Typography
 
 export function DataPanel(): React.JSX.Element {
-  const { modal } = App.useApp()
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [thirdPartyImportOpen, setThirdPartyImportOpen] = useState(false)
-
-  const handleResetAll = (): void => {
-    modal.confirm({
-      title: '重置所有数据',
-      icon: <ExclamationCircleOutlined />,
-      content: '此操作将清除所有对话、设置和配置数据，且无法恢复。确定要继续吗？',
-      okText: '确定重置',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => {
-        usePagesStore.getState().reset()
-        useFoldersStore.getState().reset()
-        useMessagesStore.getState().reset()
-        useTabsStore.getState().reset()
-        useSettingsStore.getState().reset()
-        useLayoutStore.getState().reset()
-      }
-    })
-  }
+  const [resetModalOpen, setResetModalOpen] = useState(false)
 
   return (
     <Flex vertical gap={24}>
@@ -61,7 +31,7 @@ export function DataPanel(): React.JSX.Element {
         <Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)}>
           导入数据
         </Button>
-        <Button danger icon={<DeleteOutlined />} onClick={handleResetAll}>
+        <Button danger icon={<DeleteOutlined />} onClick={() => setResetModalOpen(true)}>
           重置数据
         </Button>
       </Space>
@@ -88,6 +58,7 @@ export function DataPanel(): React.JSX.Element {
         open={thirdPartyImportOpen}
         onClose={() => setThirdPartyImportOpen(false)}
       />
+      <ResetModal open={resetModalOpen} onClose={() => setResetModalOpen(false)} />
     </Flex>
   )
 }
