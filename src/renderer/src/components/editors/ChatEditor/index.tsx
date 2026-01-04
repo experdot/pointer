@@ -17,6 +17,7 @@ interface ChatEditorProps {
 export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   const {
     page,
+    messages,
     currentPath,
     sendMessage,
     stopStreaming,
@@ -134,6 +135,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         ref={messageListRef}
         pageId={pageId}
         messages={currentPath}
+        allMessages={messages}
         isStreaming={isStreaming}
         onRetry={retryMessage}
         onContinue={continueMessage}

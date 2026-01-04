@@ -16,6 +16,7 @@ export interface MessageListRef {
 interface MessageListProps {
   pageId: string
   messages: ChatMessage[]
+  allMessages: ChatMessage[]
   isStreaming: boolean
   onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
@@ -33,6 +34,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   {
     pageId,
     messages,
+    allMessages,
     isStreaming,
     onRetry,
     onContinue,
@@ -62,9 +64,10 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   }, [])
 
   // 预计算 childrenMap: O(N) 一次性构建，后续查找 O(1)
+  // 使用 allMessages 而非 messages，因为需要知道所有分支的信息
   const childrenMap = useMemo(() => {
     const map = new Map<string | undefined, ChatMessage[]>()
-    for (const msg of messages) {
+    for (const msg of allMessages) {
       const parentId = msg.parentMessageId
       const existing = map.get(parentId)
       if (existing) {
@@ -78,7 +81,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
       children.sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0))
     }
     return map
-  }, [messages])
+  }, [allMessages])
 
   // 预计算每条消息的分支信息: O(N)
   const branchInfoMap = useMemo(() => {
