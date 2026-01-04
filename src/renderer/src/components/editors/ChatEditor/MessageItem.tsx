@@ -17,6 +17,7 @@ import {
   UpOutlined,
   PictureOutlined
 } from '@ant-design/icons'
+import { Streamdown } from 'streamdown'
 import { BranchNavigator } from './BranchNavigator'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
@@ -430,7 +431,11 @@ export const MessageItem = React.memo(function MessageItem({
           </div>
         ) : (
           <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-            <div className="message-item__body">{displayContent}</div>
+            <div className="message-item__body">
+              <Streamdown isAnimating={isStreaming && isAssistant}>
+                {displayContent}
+              </Streamdown>
+            </div>
           </Dropdown>
         )}
 
