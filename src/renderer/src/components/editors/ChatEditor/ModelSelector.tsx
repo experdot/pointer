@@ -85,7 +85,7 @@ export function ModelSelector({
     onSelect?.()
   }
 
-  const dropdownRender = (menu: React.ReactElement): React.ReactElement => (
+  const popupRender = (menu: React.ReactElement): React.ReactElement => (
     <>
       {menu}
       <Divider style={{ margin: '4px 0' }} />
@@ -116,7 +116,7 @@ export function ModelSelector({
       treeExpandAction="click"
       popupMatchSelectWidth={false}
       styles={{ popup: { root: { minWidth: 300 } } }}
-      dropdownRender={dropdownRender}
+      popupRender={popupRender}
     />
   )
 }
