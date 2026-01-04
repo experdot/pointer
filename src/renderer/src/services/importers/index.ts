@@ -4,10 +4,12 @@
 
 import { OpenAIImporter } from './openai'
 import { DeepSeekImporter } from './deepseek'
+import { PointerImporter } from './pointer'
 import type { ConversationImporter, ParsedConversation } from './types'
 
 // 注册所有导入器
 export const importers: ConversationImporter[] = [
+  new PointerImporter(), // 优先检测 Pointer 格式（特征明确）
   new OpenAIImporter(),
   new DeepSeekImporter()
 ]
@@ -73,4 +75,5 @@ export type {
 // 导出具体实现（方便测试和单独使用）
 export { OpenAIImporter } from './openai'
 export { DeepSeekImporter } from './deepseek'
+export { PointerImporter } from './pointer'
 export { BaseImporter } from './base'
