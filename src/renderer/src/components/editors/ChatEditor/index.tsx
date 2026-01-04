@@ -142,7 +142,6 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onEditAndResend={editAndResend}
         onSwitchBranch={switchBranch}
         onQuote={handleQuote}
-        getChildMessages={getChildMessages}
         onToggleCollapse={handleToggleCollapse}
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}

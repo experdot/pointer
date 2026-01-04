@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
@@ -24,7 +24,6 @@ interface MessageListProps {
   onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
   onSwitchBranch: (messageId: string) => void
   onQuote: (text: string) => void
-  getChildMessages: (parentId: string | undefined) => ChatMessage[]
   onToggleCollapse: (messageId: string) => void
   onCollapseAll: () => void
   onExpandAll: () => void
@@ -42,7 +41,6 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onEditAndResend,
     onSwitchBranch,
     onQuote,
-    getChildMessages,
     onToggleCollapse,
     onCollapseAll,
     onExpandAll
@@ -62,6 +60,41 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   useEffect(() => {
     return streamingManager.subscribe(() => forceUpdate((n) => n + 1))
   }, [])
+
+  // 预计算 childrenMap: O(N) 一次性构建，后续查找 O(1)
+  const childrenMap = useMemo(() => {
+    const map = new Map<string | undefined, ChatMessage[]>()
+    for (const msg of messages) {
+      const parentId = msg.parentMessageId
+      const existing = map.get(parentId)
+      if (existing) {
+        existing.push(msg)
+      } else {
+        map.set(parentId, [msg])
+      }
+    }
+    // 按 branchIndex 排序
+    for (const children of map.values()) {
+      children.sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0))
+    }
+    return map
+  }, [messages])
+
+  // 预计算每条消息的分支信息: O(N)
+  const branchInfoMap = useMemo(() => {
+    const map = new Map<string, { branchIndex: number; branchCount: number; isLeaf: boolean }>()
+    for (const msg of messages) {
+      const siblings = childrenMap.get(msg.parentMessageId) ?? []
+      const branchIndex = siblings.findIndex((s) => s.id === msg.id)
+      const children = childrenMap.get(msg.id)
+      map.set(msg.id, {
+        branchIndex,
+        branchCount: siblings.length,
+        isLeaf: !children || children.length === 0
+      })
+    }
+    return map
+  }, [messages, childrenMap])
 
   const handleScroll = (): void => {
     const container = containerRef.current
@@ -202,12 +235,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   return (
     <div className="chat-editor__messages" ref={containerRef} onScroll={handleScroll}>
       {messages.map((message, index) => {
-        const parentId = message.parentMessageId
-        const siblings = getChildMessages(parentId)
-        const branchIndex = siblings.findIndex((s) => s.id === message.id)
-        const branchCount = siblings.length
-        const childMessages = getChildMessages(message.id)
-        const isLeaf = childMessages.length === 0
+        // 使用预计算的映射表: O(1) 查找
+        const branchInfo = branchInfoMap.get(message.id)
+        const siblings = childrenMap.get(message.parentMessageId) ?? []
 
         // 检查是否是正在 streaming 的消息
         const streaming = streamingManager.get(message.id)
@@ -217,12 +247,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             key={message.id}
             message={message}
             isLast={index === messages.length - 1}
-            isLeaf={isLeaf}
+            isLeaf={branchInfo?.isLeaf ?? true}
             isStreaming={!!streaming}
             streamingContent={streaming?.content}
             streamingReasoning={streaming?.reasoning}
-            branchIndex={branchIndex}
-            branchCount={branchCount}
+            branchIndex={branchInfo?.branchIndex ?? 0}
+            branchCount={branchInfo?.branchCount ?? 1}
             siblings={siblings}
             onRetry={onRetry}
             onContinue={onContinue}
