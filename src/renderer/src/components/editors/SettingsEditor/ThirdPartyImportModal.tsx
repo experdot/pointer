@@ -318,7 +318,7 @@ export function ThirdPartyImportModal({
 
   // 渲染导入进度
   const renderImporting = (): React.ReactNode => (
-    <Flex vertical gap={16} align="center" style={{ padding: 40 }}>
+    <Flex vertical gap={16} align="center" style={{ padding: 12 }}>
       <Title level={4}>正在导入...</Title>
       <Progress
         type="circle"

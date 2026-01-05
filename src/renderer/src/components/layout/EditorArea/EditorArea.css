@@ -7,7 +7,7 @@
 }
 
 .editor-tabs {
-  height: 40px;
+  height: 42px;
   background: var(--ant-color-bg-layout);
   border-bottom: 1px solid var(--ant-color-border);
   display: flex;

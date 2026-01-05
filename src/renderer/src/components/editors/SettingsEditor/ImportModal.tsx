@@ -640,7 +640,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           accept=".json"
           showUploadList={false}
           beforeUpload={handleFileUpload}
-          style={{ padding: 20 }}
+          style={{ padding: 12 }}
         >
           <p className="ant-upload-drag-icon">
             <InboxOutlined />

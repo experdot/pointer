@@ -5,6 +5,7 @@
 .explorer-toolbar {
   padding: 8px;
   border-bottom: 1px solid var(--ant-color-border);
+  height: 48px;
 }
 
 .explorer-tree {

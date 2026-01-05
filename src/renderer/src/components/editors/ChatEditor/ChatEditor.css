@@ -20,6 +20,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  height: 48px;
 }
 
 .chat-editor__title {
@@ -124,7 +125,7 @@
 .branch-path-bar__nav {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 12px;
   padding-left: 12px;
 }
 
@@ -162,7 +163,7 @@
 /* Message Item - 三列布局 */
 .message-item {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 32px 1fr 32px;
   gap: 12px;
 }
 
@@ -201,7 +202,7 @@
 .message-item--user .message-item__body {
   background: var(--ant-color-primary-bg);
   padding: 12px 16px;
-  border-radius: 16px 16px 4px 16px;
+  border-radius: 4px;
 }
 
 .message-item--user .message-item__actions {
@@ -269,6 +270,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .message-item--user .message-item__preview {
