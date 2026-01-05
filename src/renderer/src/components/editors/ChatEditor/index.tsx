@@ -3,11 +3,13 @@ import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { streamingManager } from '../../../services/streamingManager'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
+import { useChatUIStore } from '../../../stores/chatUIStore'
 import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
 import { Header } from './Header'
 import { BranchPathBar } from './BranchPathBar'
 import { MessageQueueDrawer } from './MessageQueueDrawer'
+import { SearchBar } from './SearchBar'
 import './ChatEditor.css'
 
 interface ChatEditorProps {
@@ -65,6 +67,28 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   const inputAreaRef = useRef<InputAreaRef>(null)
   const messageListRef = useRef<MessageListRef>(null)
+  const messageContainerRef = useRef<HTMLDivElement | null>(null)
+
+  // 搜索状态
+  const searchState = useChatUIStore((state) => state.getState(pageId).search)
+  const setSearchOpen = useChatUIStore((state) => state.setSearchOpen)
+
+  // 同步 messageContainerRef
+  useEffect(() => {
+    messageContainerRef.current = messageListRef.current?.getContainer() ?? null
+  })
+
+  // 键盘事件监听（Ctrl+F 打开搜索）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault()
+        setSearchOpen(pageId, true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [pageId, setSearchOpen])
 
   const handleQuote = useCallback((text: string) => {
     inputAreaRef.current?.appendText(`> ${text}\n\n`)
@@ -133,6 +157,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
       />
+      {searchState.isOpen && (
+        <SearchBar pageId={pageId} messages={currentPath} containerRef={messageContainerRef} />
+      )}
       <MessageList
         ref={messageListRef}
         pageId={pageId}

@@ -6,7 +6,8 @@
       "Bash(npm audit:*)",
       "Bash(pnpm audit:*)",
       "Bash(cat:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

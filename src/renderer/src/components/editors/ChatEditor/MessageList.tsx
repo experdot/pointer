@@ -18,6 +18,7 @@ export interface MessageListRef {
   scrollToNext: () => void
   collapseAll: () => void
   expandAll: () => void
+  getContainer: () => HTMLDivElement | null
 }
 
 interface MessageListProps {
@@ -221,7 +222,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
       }
     },
     collapseAll: onCollapseAll,
-    expandAll: onExpandAll
+    expandAll: onExpandAll,
+    getContainer: () => containerRef.current
   }))
 
   if (messages.length === 0 && !isStreaming) {
