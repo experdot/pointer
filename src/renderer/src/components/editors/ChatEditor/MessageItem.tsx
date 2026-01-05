@@ -71,8 +71,9 @@ export const MessageItem = React.memo(function MessageItem({
   const [editContent, setEditContent] = useState(message.content)
   const [editAttachments, setEditAttachments] = useState<FileAttachment[]>([])
   const [copied, setCopied] = useState(false)
-  const [reasoningExpanded, setReasoningExpanded] = useState(true)
-  const wasStreaming = useRef(false)
+  const [reasoningExpanded, setReasoningExpanded] = useState(isStreaming && !!streamingReasoning)
+  const wasStreaming = useRef(isStreaming)
+  const userToggledReasoning = useRef(false) // 用户是否手动操作过
   const itemRef = useRef<HTMLDivElement>(null)
 
   const isUser = message.role === 'user'
@@ -90,13 +91,29 @@ export const MessageItem = React.memo(function MessageItem({
     return text.length > 80 ? text.slice(0, 80) + '...' : text
   }, [message.collapsed, displayContent, isStreaming])
 
+  // streaming 时有 reasoning 就展开，结束后自动折叠
+  useEffect(() => {
+    if (isStreaming && streamingReasoning && !userToggledReasoning.current) {
+      // streaming 中有 reasoning，自动展开（除非用户手动折叠过）
+      if (!reasoningExpanded) {
+        setReasoningExpanded(true)
+      }
+    }
+  }, [isStreaming, streamingReasoning, reasoningExpanded])
+
   // streaming 结束后自动折叠
   useEffect(() => {
-    if (wasStreaming.current && !isStreaming && displayReasoning) {
+    if (wasStreaming.current && !isStreaming) {
       setReasoningExpanded(false)
+      userToggledReasoning.current = false
     }
-    wasStreaming.current = !!isStreaming
-  }, [isStreaming, displayReasoning])
+    wasStreaming.current = isStreaming
+  }, [isStreaming])
+
+  const handleToggleReasoning = (): void => {
+    userToggledReasoning.current = true
+    setReasoningExpanded(!reasoningExpanded)
+  }
 
   const formatTime = (timestamp: number): string => {
     return new Date(timestamp).toLocaleTimeString('zh-CN', {
@@ -288,7 +305,7 @@ export const MessageItem = React.memo(function MessageItem({
   return (
     <div
       ref={itemRef}
-      className={`message-item ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''} ${message.hasError ? 'message-item--error' : ''}`}
+      className={`message-item ${isUser ? 'message-item--user' : 'message-item--assistant'} ${isStreaming ? 'message-item--streaming' : ''} ${isLast ? 'message-item--last' : ''} ${message.hasError ? 'message-item--error' : ''}`}
       data-message-id={message.id}
     >
       <div className="message-item__avatar">
@@ -353,7 +370,7 @@ export const MessageItem = React.memo(function MessageItem({
           >
             <div
               className="message-item__reasoning-label"
-              onClick={() => setReasoningExpanded(!reasoningExpanded)}
+              onClick={handleToggleReasoning}
             >
               {reasoningExpanded ? <DownOutlined /> : <RightOutlined />}
               <span>思考过程</span>
@@ -393,22 +410,20 @@ export const MessageItem = React.memo(function MessageItem({
               {isUser && (
                 <Tooltip title="添加图片">
                   <Button
-                    size="small"
                     type="text"
                     icon={<PictureOutlined />}
                     onClick={handleAddEditAttachments}
                   />
                 </Tooltip>
               )}
-              <Button size="small" icon={<CloseOutlined />} onClick={handleCancelEdit}>
+              <Button icon={<CloseOutlined />} onClick={handleCancelEdit}>
                 取消
               </Button>
-              <Button size="small" icon={<CheckOutlined />} onClick={handleSaveEdit}>
+              <Button icon={<CheckOutlined />} onClick={handleSaveEdit}>
                 保存
               </Button>
               {isUser && (
                 <Button
-                  size="small"
                   type="primary"
                   icon={<SendOutlined />}
                   onClick={handleEditAndResend}
