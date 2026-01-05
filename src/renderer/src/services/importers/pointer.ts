@@ -75,9 +75,7 @@ export class PointerImporter extends BaseImporter {
 
     // 构建父子关系映射（从 children 转换为 parentMessageId）
     const parentMap = new Map<string, string>()
-    const messageSource = page.messageMap
-      ? Object.values(page.messageMap)
-      : page.messages
+    const messageSource = page.messageMap ? Object.values(page.messageMap) : page.messages
 
     // 第一遍：构建 children -> parent 映射
     for (const msg of messageSource) {
@@ -131,10 +129,7 @@ export class PointerImporter extends BaseImporter {
   /**
    * 解析单条消息
    */
-  private parseMessage(
-    msg: PointerMessage,
-    parentMap: Map<string, string>
-  ): ParsedMessage | null {
+  private parseMessage(msg: PointerMessage, parentMap: Map<string, string>): ParsedMessage | null {
     if (!msg.id || !msg.role) {
       return null
     }

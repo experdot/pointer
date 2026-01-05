@@ -120,11 +120,7 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
   )
 
   return (
-    <Dropdown
-      menu={{ items: menuItems }}
-      trigger={['contextMenu']}
-      onOpenChange={handleOpenChange}
-    >
+    <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']} onOpenChange={handleOpenChange}>
       <span
         className="tree-view-title"
         onDoubleClick={() => onDoubleClick?.(id, treeNode.isFolder)}
@@ -132,11 +128,7 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
         <span className={`tree-view-title-text ${isHighlighted ? 'is-highlighted' : ''}`}>
           {title}
         </span>
-        <Dropdown
-          menu={{ items: menuItems }}
-          trigger={['click']}
-          onOpenChange={handleOpenChange}
-        >
+        <Dropdown menu={{ items: menuItems }} trigger={['click']} onOpenChange={handleOpenChange}>
           <Button
             type="text"
             size="small"

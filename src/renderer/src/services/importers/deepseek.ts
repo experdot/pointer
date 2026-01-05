@@ -3,7 +3,12 @@
  */
 
 import { BaseImporter } from './base'
-import type { DeepSeekExport, DeepSeekMappingNode, ParsedConversation, ParsedMessage } from './types'
+import type {
+  DeepSeekExport,
+  DeepSeekMappingNode,
+  ParsedConversation,
+  ParsedMessage
+} from './types'
 
 export class DeepSeekImporter extends BaseImporter {
   platform = 'deepseek' as const

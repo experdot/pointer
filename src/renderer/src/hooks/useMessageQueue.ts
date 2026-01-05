@@ -6,10 +6,7 @@ import type { FileAttachment } from '../types/type'
 interface UseMessageQueueOptions {
   pageId: string
   isStreaming: boolean
-  onSendMessage: (
-    content: string,
-    options?: { attachments?: FileAttachment[] }
-  ) => Promise<void>
+  onSendMessage: (content: string, options?: { attachments?: FileAttachment[] }) => Promise<void>
 }
 
 interface UseMessageQueueResult {

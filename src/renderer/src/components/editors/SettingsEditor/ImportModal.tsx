@@ -1,6 +1,25 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex, Upload, Radio, Alert } from 'antd'
-import { InboxOutlined, FolderOutlined, FileTextOutlined, SettingOutlined, WarningOutlined } from '@ant-design/icons'
+import {
+  Modal,
+  Tabs,
+  Tree,
+  Checkbox,
+  Button,
+  Space,
+  Typography,
+  App,
+  Flex,
+  Upload,
+  Radio,
+  Alert
+} from 'antd'
+import {
+  InboxOutlined,
+  FolderOutlined,
+  FileTextOutlined,
+  SettingOutlined,
+  WarningOutlined
+} from '@ant-design/icons'
 import type { TreeDataNode, UploadFile } from 'antd'
 import type { ExportData } from './ExportModal'
 import { usePagesStore } from '../../../stores/pagesStore'
@@ -194,7 +213,10 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
   // 现有数据的 ID 集合
   const existingPageIds = useMemo(() => new Set(existingPages.map((p) => p.id)), [existingPages])
-  const existingFolderIds = useMemo(() => new Set(existingFolders.map((f) => f.id)), [existingFolders])
+  const existingFolderIds = useMemo(
+    () => new Set(existingFolders.map((f) => f.id)),
+    [existingFolders]
+  )
   const existingLLMIds = useMemo(
     () => new Set(existingSettings.llmConfigs.items.map((i) => i.id)),
     [existingSettings]
@@ -418,7 +440,9 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
       // 导入文件夹
       if (stats.folderIds.length > 0 && importData.data.folders) {
-        const foldersToImport = importData.data.folders.filter((f) => stats.folderIds.includes(f.id))
+        const foldersToImport = importData.data.folders.filter((f) =>
+          stats.folderIds.includes(f.id)
+        )
 
         for (const folder of foldersToImport) {
           if (conflictStrategy === 'skip' && existingFolderIds.has(folder.id)) {
@@ -703,7 +727,12 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       footer={
         <Space>
           <Button onClick={handleClose}>取消</Button>
-          <Button type="primary" onClick={handleImport} loading={importing} disabled={!hasSelection}>
+          <Button
+            type="primary"
+            onClick={handleImport}
+            loading={importing}
+            disabled={!hasSelection}
+          >
             导入选中项
           </Button>
         </Space>
@@ -720,7 +749,10 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
         <Flex vertical gap={4}>
           <Text strong>ID 冲突处理:</Text>
-          <Radio.Group value={conflictStrategy} onChange={(e) => setConflictStrategy(e.target.value)}>
+          <Radio.Group
+            value={conflictStrategy}
+            onChange={(e) => setConflictStrategy(e.target.value)}
+          >
             <Space direction="vertical">
               <Radio value="generate-new">生成新 ID（保留两份）</Radio>
               <Radio value="skip">跳过冲突项</Radio>

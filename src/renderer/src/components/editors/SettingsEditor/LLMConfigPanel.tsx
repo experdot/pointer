@@ -150,9 +150,7 @@ API Key: ${config.apiKey}
                   >
                     {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}
                   </Button>
-                  <Button onClick={() => handleCopyAsText(selectedConfig)}>
-                    复制为文本
-                  </Button>
+                  <Button onClick={() => handleCopyAsText(selectedConfig)}>复制为文本</Button>
                 </Space>
                 <Button onClick={() => handleTest(selectedConfig)} loading={testing}>
                   测试连接

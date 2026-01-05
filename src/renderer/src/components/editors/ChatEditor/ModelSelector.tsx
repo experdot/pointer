@@ -89,10 +89,7 @@ export function ModelSelector({
     <>
       {menu}
       <Divider style={{ margin: '4px 0' }} />
-      <div
-        className="model-selector__settings-link"
-        onClick={() => openSettings('llm')}
-      >
+      <div className="model-selector__settings-link" onClick={() => openSettings('llm')}>
         <SettingOutlined /> 管理 LLM 配置
       </div>
     </>

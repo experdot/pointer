@@ -88,9 +88,7 @@ ${config.prompts.map((p, i) => `${i + 1}. ${p}`).join('\n')}`
               />
             </Form.Item>
             <Form.Item>
-              <Button onClick={() => handleCopyAsText(selectedConfig)}>
-                复制为文本
-              </Button>
+              <Button onClick={() => handleCopyAsText(selectedConfig)}>复制为文本</Button>
             </Form.Item>
           </Form>
         ) : (

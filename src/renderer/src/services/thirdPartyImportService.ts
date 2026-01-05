@@ -7,7 +7,12 @@ import { useFoldersStore } from '../stores/foldersStore'
 import * as db from '../utils/database'
 import type { PageRecord, MessagesRecord } from '../utils/database'
 import type { PageFolder } from '../types/type'
-import type { ParsedConversation, ImportOptions, ImportResult, ImportPlatform } from './importers/types'
+import type {
+  ParsedConversation,
+  ImportOptions,
+  ImportResult,
+  ImportPlatform
+} from './importers/types'
 
 // 平台显示名称
 const PLATFORM_NAMES: Record<ImportPlatform, string> = {
@@ -163,7 +168,7 @@ export async function importConversations(
       await Promise.all([pagesStore.addPages(pages), db.putMessagesBatch(messagesRecords)])
 
       result.success += batch.length
-    } catch (err) {
+    } catch {
       // 批量失败时，逐个重试
       for (const item of batch) {
         try {

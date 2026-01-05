@@ -400,9 +400,7 @@ export function ThirdPartyImportModal({
   const renderFooter = (): React.ReactNode => {
     switch (step) {
       case 'upload':
-        return (
-          <Button onClick={handleClose}>取消</Button>
-        )
+        return <Button onClick={handleClose}>取消</Button>
       case 'select':
         return (
           <Space>

@@ -105,7 +105,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   useEffect(() => {
     if (!visible) return
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       switch (e.key) {
         case 'Escape':
           onClose()
@@ -131,7 +131,15 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [visible, onClose, handleZoomIn, handleZoomOut, handleRotateLeft, handleRotateRight, handleReset])
+  }, [
+    visible,
+    onClose,
+    handleZoomIn,
+    handleZoomOut,
+    handleRotateLeft,
+    handleRotateRight,
+    handleReset
+  ])
 
   return (
     <Modal

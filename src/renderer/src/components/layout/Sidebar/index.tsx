@@ -108,7 +108,9 @@ export function Sidebar(): React.JSX.Element {
         placement="left"
         width={sidebarWidth}
         styles={{
-          wrapper: isMac ? { paddingTop: 40, background: 'var(--ant-color-bg-container)' } : undefined,
+          wrapper: isMac
+            ? { paddingTop: 40, background: 'var(--ant-color-bg-container)' }
+            : undefined,
           content: isMac ? { borderTop: '1px solid var(--ant-color-border)' } : undefined,
           body: { padding: 0, display: 'flex', flexDirection: 'column' }
         }}

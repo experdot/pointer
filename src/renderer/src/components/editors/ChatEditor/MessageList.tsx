@@ -1,4 +1,12 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useMemo, useLayoutEffect } from 'react'
+import {
+  useRef,
+  useEffect,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useMemo,
+  useLayoutEffect
+} from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'

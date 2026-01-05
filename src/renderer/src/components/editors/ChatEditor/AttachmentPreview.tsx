@@ -35,7 +35,7 @@ const AttachmentPreviewItem: React.FC<{
   useEffect(() => {
     let cancelled = false
 
-    const loadThumbnail = async () => {
+    const loadThumbnail = async (): Promise<void> => {
       try {
         const dataUrl = await getAttachmentDataUrl(attachment)
         if (!cancelled) {

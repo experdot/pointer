@@ -368,10 +368,7 @@ export const MessageItem = React.memo(function MessageItem({
           <div
             className={`message-item__reasoning ${reasoningExpanded ? 'message-item__reasoning--expanded' : ''}`}
           >
-            <div
-              className="message-item__reasoning-label"
-              onClick={handleToggleReasoning}
-            >
+            <div className="message-item__reasoning-label" onClick={handleToggleReasoning}>
               {reasoningExpanded ? <DownOutlined /> : <RightOutlined />}
               <span>思考过程</span>
             </div>
@@ -423,11 +420,7 @@ export const MessageItem = React.memo(function MessageItem({
                 保存
               </Button>
               {isUser && (
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={handleEditAndResend}
-                >
+                <Button type="primary" icon={<SendOutlined />} onClick={handleEditAndResend}>
                   保存并重发
                 </Button>
               )}
@@ -447,7 +440,10 @@ export const MessageItem = React.memo(function MessageItem({
         ) : (
           <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
             <div className="message-item__body">
-              <Streamdown isAnimating={isStreaming && isAssistant} mode={isStreaming ? 'streaming' : 'static'}>
+              <Streamdown
+                isAnimating={isStreaming && isAssistant}
+                mode={isStreaming ? 'streaming' : 'static'}
+              >
                 {displayContent}
               </Streamdown>
             </div>

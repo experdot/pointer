@@ -21,7 +21,12 @@ import {
   ExperimentOutlined
 } from '@ant-design/icons'
 import { useAccountStore, getDefaultAccountId } from '../../../stores/accountStore'
-import { switchAccount, createAccount, logout, updateAccount } from '../../../services/accountService'
+import {
+  switchAccount,
+  createAccount,
+  logout,
+  updateAccount
+} from '../../../services/accountService'
 
 // 默认头像图标列表
 const DEFAULT_AVATARS = [
@@ -39,8 +44,12 @@ const DEFAULT_AVATARS = [
   { icon: ExperimentOutlined, key: 'experiment', color: '#2f54eb' }
 ]
 
+// 头像配置类型
+type AvatarConfig = (typeof DEFAULT_AVATARS)[number]
+
 // 根据 avatar key 获取头像配置
-export function getAvatarConfig(avatarKey?: string) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function getAvatarConfig(avatarKey?: string): AvatarConfig {
   return DEFAULT_AVATARS.find((a) => a.key === avatarKey) || DEFAULT_AVATARS[0]
 }
 

@@ -1,16 +1,5 @@
 import React, { useEffect } from 'react'
-import {
-  Typography,
-  Flex,
-  Card,
-  Button,
-  Space,
-  Progress,
-  Alert,
-  Switch,
-  Badge,
-  App
-} from 'antd'
+import { Typography, Flex, Card, Button, Space, Progress, Alert, Switch, Badge, App } from 'antd'
 import {
   CloudDownloadOutlined,
   ReloadOutlined,
@@ -44,7 +33,7 @@ export function AboutPanel(): React.JSX.Element {
 
   // 初始化时获取当前版本
   useEffect(() => {
-    const getCurrentVersion = async () => {
+    const getCurrentVersion = async (): Promise<void> => {
       try {
         const version = await window.api.updater.getAppVersion()
         updateStore.setCurrentVersion(version)
@@ -91,7 +80,7 @@ export function AboutPanel(): React.JSX.Element {
     }
   }, [message, updateStore])
 
-  const handleCheckForUpdates = async () => {
+  const handleCheckForUpdates = async (): Promise<void> => {
     try {
       updateStore.setCheckingForUpdates(true)
       updateStore.setError(null)
@@ -112,7 +101,7 @@ export function AboutPanel(): React.JSX.Element {
     }
   }
 
-  const handleDownloadUpdate = async () => {
+  const handleDownloadUpdate = async (): Promise<void> => {
     try {
       updateStore.setDownloading(true)
       updateStore.setError(null)
@@ -125,7 +114,7 @@ export function AboutPanel(): React.JSX.Element {
     }
   }
 
-  const handleInstallUpdate = () => {
+  const handleInstallUpdate = (): void => {
     modal.confirm({
       title: '安装更新',
       content: '应用将会关闭并安装更新，然后自动重启。是否继续？',
@@ -143,7 +132,7 @@ export function AboutPanel(): React.JSX.Element {
     })
   }
 
-  const formatBytes = (bytes: number) => {
+  const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
@@ -151,11 +140,11 @@ export function AboutPanel(): React.JSX.Element {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  const formatSpeed = (bytesPerSecond: number) => {
+  const formatSpeed = (bytesPerSecond: number): string => {
     return formatBytes(bytesPerSecond) + '/s'
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     const date = new Date(dateString)
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
@@ -181,11 +170,7 @@ export function AboutPanel(): React.JSX.Element {
 
           <Flex justify="space-between" align="center">
             <Text>自动检查更新</Text>
-            <Switch
-              checked={autoCheckUpdate}
-              onChange={setAutoCheckUpdate}
-              size="small"
-            />
+            <Switch checked={autoCheckUpdate} onChange={setAutoCheckUpdate} size="small" />
           </Flex>
         </Space>
       </Card>

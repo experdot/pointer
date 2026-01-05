@@ -80,7 +80,10 @@ Top P: ${config.topP}`
                 rows={4}
               />
             </Form.Item>
-            <Form.Item label="Temperature" tooltip="控制输出的随机性。值越高，回复越多样化；值越低，回复越确定和集中。">
+            <Form.Item
+              label="Temperature"
+              tooltip="控制输出的随机性。值越高，回复越多样化；值越低，回复越确定和集中。"
+            >
               <Flex gap={16} align="center">
                 <Slider
                   style={{ flex: 1 }}
@@ -101,7 +104,10 @@ Top P: ${config.topP}`
                 />
               </Flex>
             </Form.Item>
-            <Form.Item label="Top P" tooltip="核采样参数。限制模型只从累积概率达到该值的词中选择，值越小输出越保守。">
+            <Form.Item
+              label="Top P"
+              tooltip="核采样参数。限制模型只从累积概率达到该值的词中选择，值越小输出越保守。"
+            >
               <Flex gap={16} align="center">
                 <Slider
                   style={{ flex: 1 }}
@@ -134,9 +140,7 @@ Top P: ${config.topP}`
                 >
                   {defaultModelConfigId === selectedConfig.id ? '已设为默认' : '设为默认'}
                 </Button>
-                <Button onClick={() => handleCopyAsText(selectedConfig)}>
-                  复制为文本
-                </Button>
+                <Button onClick={() => handleCopyAsText(selectedConfig)}>复制为文本</Button>
               </Space>
             </Form.Item>
           </Form>

@@ -59,11 +59,16 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     return messagesService.getMessagePath(record.messages, record.leafMessageId)
   }, [record])
 
-  const getConfigs = useCallback((): { llmConfig: LLMConfig; modelConfig: ModelConfig | undefined } | null => {
+  const getConfigs = useCallback((): {
+    llmConfig: LLMConfig
+    modelConfig: ModelConfig | undefined
+  } | null => {
     const llmConfig = settings.llmConfigs.items.find((c) => c.id === settings.defaultLLMId)
     if (!llmConfig) return null
 
-    const modelConfig = settings.modelConfigs.items.find((c) => c.id === settings.defaultModelConfigId)
+    const modelConfig = settings.modelConfigs.items.find(
+      (c) => c.id === settings.defaultModelConfigId
+    )
 
     return { llmConfig, modelConfig }
   }, [settings])
@@ -245,7 +250,8 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       const llmConfig = settings.llmConfigs.items.find((c) => c.id === targetLLMId)
       if (!llmConfig) return
 
-      const targetModelConfigId = modelConfigId ?? message.modelConfigId ?? settings.defaultModelConfigId
+      const targetModelConfigId =
+        modelConfigId ?? message.modelConfigId ?? settings.defaultModelConfigId
       const modelConfig = settings.modelConfigs.items.find((c) => c.id === targetModelConfigId)
 
       const pathToUser = messagesService.getMessagePath(messages, userMessage.id)

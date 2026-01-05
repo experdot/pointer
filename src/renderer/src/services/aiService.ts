@@ -102,6 +102,9 @@ export class AIService {
 }
 
 // 工厂函数
-export function createAIService(llmConfig: LLMConfig, modelConfig: ModelConfig | undefined): AIService {
+export function createAIService(
+  llmConfig: LLMConfig,
+  modelConfig: ModelConfig | undefined
+): AIService {
   return new AIService(llmConfig, modelConfig)
 }

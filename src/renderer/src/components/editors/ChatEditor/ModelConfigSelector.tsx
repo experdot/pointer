@@ -89,10 +89,7 @@ export function ModelConfigSelector({
     <>
       {menu}
       <Divider style={{ margin: '4px 0' }} />
-      <div
-        className="model-config-selector__settings-link"
-        onClick={() => openSettings('model')}
-      >
+      <div className="model-config-selector__settings-link" onClick={() => openSettings('model')}>
         <SettingOutlined /> 管理模型配置
       </div>
     </>
