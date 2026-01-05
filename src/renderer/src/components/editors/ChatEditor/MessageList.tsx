@@ -1,8 +1,7 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from 'react'
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useMemo, useLayoutEffect } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
-import { useChatUIStore } from '../../../stores/chatUIStore'
 import type { ChatMessage, FileAttachment } from '../../../types/type'
 
 export interface MessageListRef {
@@ -53,9 +52,6 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const shouldAutoScroll = useRef(true)
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
-  const scrollRAF = useRef<number | undefined>(undefined)
-  const wasStreaming = useRef(false)
-  const { getState, setScrollTop } = useChatUIStore()
 
   // 订阅 streamingManager 更新
   const [, forceUpdate] = useState(0)
@@ -99,6 +95,15 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     return map
   }, [messages, childrenMap])
 
+  // 滚动到底部
+  const scrollToBottom = (behavior: ScrollBehavior = 'instant'): void => {
+    containerRef.current?.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior
+    })
+  }
+
+  // 用户滚动时判断是否需要自动滚动
   const handleScroll = (): void => {
     const container = containerRef.current
     if (!container) return
@@ -106,61 +111,45 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     const { scrollTop, scrollHeight, clientHeight } = container
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 50
 
+    // 向上滚动时禁用自动滚动，滚到底部时恢复
     if (scrollTop < lastScrollTop.current) {
       shouldAutoScroll.current = false
-    } else if (scrollTop > lastScrollTop.current && isNearBottom) {
+    } else if (isNearBottom) {
       shouldAutoScroll.current = true
     }
 
     lastScrollTop.current = scrollTop
-    // 保存滚动位置（-1 表示在底部）
-    setScrollTop(pageId, isNearBottom ? -1 : scrollTop)
   }
 
+  // 切换会话时滚动到底部
+  useLayoutEffect(() => {
+    if (pageId !== prevPageId.current) {
+      prevPageId.current = pageId
+      shouldAutoScroll.current = true
+      scrollToBottom()
+    }
+  }, [pageId])
+
+  // 消息变化时，如果是自动滚动模式则滚动到底部
+  useLayoutEffect(() => {
+    if (shouldAutoScroll.current) {
+      scrollToBottom()
+    }
+  }, [messages])
+
+  // streaming 时持续滚动到底部
   useEffect(() => {
-    if (isStreaming && shouldAutoScroll.current && containerRef.current) {
-      if (scrollRAF.current) cancelAnimationFrame(scrollRAF.current)
-      scrollRAF.current = requestAnimationFrame(() => {
-        containerRef.current?.scrollTo({
-          top: containerRef.current.scrollHeight,
-          behavior: 'smooth'
-        })
-      })
+    if (isStreaming && shouldAutoScroll.current) {
+      scrollToBottom('smooth')
     }
-    // streaming 结束后，如果是自动滚动模式，再滚动一次确保到底部
-    if (wasStreaming.current && !isStreaming && shouldAutoScroll.current && containerRef.current) {
-      setTimeout(() => {
-        containerRef.current?.scrollTo({
-          top: containerRef.current?.scrollHeight ?? 0,
-          behavior: 'smooth'
-        })
-      }, 100)
-    }
-    wasStreaming.current = isStreaming
   })
 
+  // 开始 streaming 时启用自动滚动
   useEffect(() => {
     if (isStreaming) {
       shouldAutoScroll.current = true
     }
   }, [isStreaming])
-
-  // 切换 page 时恢复滚动位置
-  useEffect(() => {
-    if (pageId !== prevPageId.current) {
-      prevPageId.current = pageId
-      const container = containerRef.current
-      if (!container) return
-
-      const savedScrollTop = getState(pageId).scrollTop
-      if (savedScrollTop === -1) {
-        container.scrollTop = container.scrollHeight
-      } else {
-        container.scrollTop = savedScrollTop
-      }
-      shouldAutoScroll.current = savedScrollTop === -1
-    }
-  }, [pageId, getState])
 
   // 获取当前可见的第一条消息索引
   const getCurrentVisibleIndex = (): number => {

@@ -447,7 +447,7 @@ export const MessageItem = React.memo(function MessageItem({
         ) : (
           <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
             <div className="message-item__body">
-              <Streamdown isAnimating={isStreaming && isAssistant}>
+              <Streamdown isAnimating={isStreaming && isAssistant} mode={isStreaming ? 'streaming' : 'static'}>
                 {displayContent}
               </Streamdown>
             </div>
