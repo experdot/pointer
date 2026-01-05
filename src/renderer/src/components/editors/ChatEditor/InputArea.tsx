@@ -1,11 +1,4 @@
-import React, {
-  useRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  forwardRef,
-  useState
-} from 'react'
+import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef, useState } from 'react'
 import { Input, Button, Tooltip } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
 import { SendOutlined, StopOutlined, CaretRightOutlined, PictureOutlined } from '@ant-design/icons'
@@ -18,14 +11,6 @@ import { useAttachment } from '../../../hooks/useAttachment'
 import type { FileAttachment } from '../../../types/type'
 
 const { TextArea } = Input
-
-// 高度常量（基于 Ant Design TextArea 默认样式：line-height 1.5715 * 14px ≈ 22px + padding 8px）
-const LINE_HEIGHT = 22
-const PADDING = 8
-const MIN_ROWS = 1
-const MAX_ROWS = 10
-const MIN_HEIGHT = LINE_HEIGHT * MIN_ROWS + PADDING
-const MAX_HEIGHT = LINE_HEIGHT * MAX_ROWS + PADDING
 
 export interface InputAreaRef {
   appendText: (text: string) => void
@@ -64,12 +49,6 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     useAttachment(pageId)
   const textAreaRef = useRef<TextAreaRef>(null)
 
-  // 拖拽调整高度相关状态
-  const [textareaHeight, setTextareaHeight] = useState(LINE_HEIGHT * 2 + PADDING) // 默认 2 行
-  const resizing = useRef(false)
-  const startY = useRef(0)
-  const startHeight = useRef(0)
-
   // 拖拽上传状态
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -77,37 +56,6 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   useEffect(() => {
     textAreaRef.current?.focus()
   }, [pageId])
-
-  // 拖拽事件处理
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent): void => {
-      if (!resizing.current) return
-      const delta = startY.current - e.clientY
-      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight.current + delta))
-      setTextareaHeight(newHeight)
-    }
-
-    const handleMouseUp = (): void => {
-      resizing.current = false
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [])
-
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      resizing.current = true
-      startY.current = e.clientY
-      startHeight.current = textareaHeight
-    },
-    [textareaHeight]
-  )
 
   // 拖拽上传处理
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -256,8 +204,6 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="chat-editor__input-resizer" onMouseDown={handleResizeMouseDown} />
-
       {/* 待发送附件预览 */}
       {pendingAttachments.length > 0 && (
         <AttachmentPreview attachments={pendingAttachments} onRemove={removeAttachment} />
@@ -271,7 +217,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         placeholder="输入消息..."
-        style={{ height: textareaHeight, minHeight: textareaHeight, maxHeight: textareaHeight }}
+        autoSize={{ minRows: 2, maxRows: 10 }}
         disabled={disabled}
         autoFocus
       />

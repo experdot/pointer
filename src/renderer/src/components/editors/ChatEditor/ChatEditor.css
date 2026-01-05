@@ -388,32 +388,6 @@
   position: relative;
 }
 
-.chat-editor__input-resizer {
-  position: absolute;
-  top: -3px;
-  left: 0;
-  right: 0;
-  height: 5px;
-  cursor: row-resize;
-  z-index: 10;
-  background: transparent;
-  opacity: 0;
-  transition:
-    opacity 0.15s ease-out 0.3s,
-    background 0.15s ease-out 0.3s;
-}
-
-.chat-editor__input-resizer:hover {
-  background: var(--ant-color-primary);
-  opacity: 0.3;
-  transition-delay: 0.3s;
-}
-
-.chat-editor__input-resizer:active {
-  opacity: 0.5;
-  transition-delay: 0s;
-}
-
 .chat-editor__textarea {
   width: 100%;
 }
