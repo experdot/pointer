@@ -122,7 +122,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   return (
     <div className="chat-editor">
-      <Header page={page} onCollapseAll={handleCollapseAll} onExpandAll={handleExpandAll} />
+      <Header page={page} />
       <BranchPathBar
         messages={currentPath}
         getChildMessages={getChildMessages}
@@ -130,6 +130,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onScrollToMessage={handleScrollToMessage}
         onScrollToPrev={handleScrollToPrev}
         onScrollToNext={handleScrollToNext}
+        onCollapseAll={handleCollapseAll}
+        onExpandAll={handleExpandAll}
       />
       <MessageList
         ref={messageListRef}

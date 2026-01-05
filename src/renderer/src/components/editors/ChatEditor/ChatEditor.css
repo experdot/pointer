@@ -26,7 +26,6 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--ant-color-text);
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -35,6 +34,35 @@
 .chat-editor__header-actions {
   display: flex;
   gap: 4px;
+}
+
+.chat-editor__title-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chat-editor__title-edit {
+  color: var(--ant-color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.chat-editor__title:hover + .chat-editor__title-edit,
+.chat-editor__title-edit:hover {
+  opacity: 1;
+}
+
+.chat-editor__title-edit:hover {
+  color: var(--ant-color-primary);
+}
+
+.chat-editor__title-input {
+  flex: 1;
+  max-width: 400px;
 }
 
 /* Branch Path Bar */
@@ -107,6 +135,13 @@
 
 .branch-path-bar__nav-btn:hover {
   color: var(--ant-color-primary);
+}
+
+.branch-path-bar__nav-divider {
+  width: 1px;
+  height: 14px;
+  background-color: var(--ant-color-border);
+  margin: 0 4px;
 }
 
 /* Message List */

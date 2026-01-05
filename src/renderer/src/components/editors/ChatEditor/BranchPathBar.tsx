@@ -4,9 +4,17 @@ import {
   RightOutlined,
   EllipsisOutlined,
   ArrowUpOutlined,
-  ArrowDownOutlined
+  ArrowDownOutlined,
+  CompressOutlined,
+  ExpandOutlined,
+  UserOutlined,
+  RobotOutlined
 } from '@ant-design/icons'
 import type { ChatMessage } from '../../../types/type'
+
+const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
+  return role === 'user' ? <UserOutlined /> : <RobotOutlined />
+}
 
 interface KeyNode {
   message: ChatMessage
@@ -22,6 +30,8 @@ interface BranchPathBarProps {
   onScrollToMessage: (messageId: string) => void
   onScrollToPrev: () => void
   onScrollToNext: () => void
+  onCollapseAll?: () => void
+  onExpandAll?: () => void
 }
 
 export function BranchPathBar({
@@ -30,7 +40,9 @@ export function BranchPathBar({
   onSwitchBranch,
   onScrollToMessage,
   onScrollToPrev,
-  onScrollToNext
+  onScrollToNext,
+  onCollapseAll,
+  onExpandAll
 }: BranchPathBarProps): React.JSX.Element | null {
   // 筛选关键节点：根节点、叶子节点、有分支的节点
   const keyNodes = useMemo(() => {
@@ -82,7 +94,7 @@ export function BranchPathBar({
         const levelLabel = (
           <Tooltip title={getPreview(message, 50)} placement="bottom">
             <span className="branch-path-bar__item" onClick={() => onScrollToMessage(message.id)}>
-              层级{index + 1}
+              {getRoleIcon(message.role)} {index + 1}
             </span>
           </Tooltip>
         )
@@ -93,7 +105,8 @@ export function BranchPathBar({
             menu={{
               items: siblings.map((s, idx) => ({
                 key: s.id,
-                label: `${idx + 1}. ${getPreview(s)}`,
+                icon: getRoleIcon(s.role),
+                label: `${index + 1}.${idx + 1} ${getPreview(s)}`,
                 onClick: () => onSwitchBranch(s.id)
               })),
               selectedKeys: [message.id]
@@ -114,7 +127,8 @@ export function BranchPathBar({
               menu={{
                 items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
                   key: m.id,
-                  label: `层级${prevIndex + 2 + idx}. ${getPreview(m)}`,
+                  icon: getRoleIcon(m.role),
+                  label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
                   onClick: () => onScrollToMessage(m.id)
                 }))
               }}
@@ -143,6 +157,13 @@ export function BranchPathBar({
         </Tooltip>
         <Tooltip title="下一条">
           <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onScrollToNext} />
+        </Tooltip>
+        <span className="branch-path-bar__nav-divider" />
+        <Tooltip title="全部折叠">
+          <CompressOutlined className="branch-path-bar__nav-btn" onClick={onCollapseAll} />
+        </Tooltip>
+        <Tooltip title="全部展开">
+          <ExpandOutlined className="branch-path-bar__nav-btn" onClick={onExpandAll} />
         </Tooltip>
       </div>
     </div>
