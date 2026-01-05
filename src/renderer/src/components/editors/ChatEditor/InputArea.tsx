@@ -226,6 +226,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
           <Tooltip title="添加图片">
             <Button
               type="text"
+              className="chat-editor__attachment-btn"
               icon={<PictureOutlined />}
               onClick={addAttachmentsFromSelector}
               disabled={disabled || isStreaming}

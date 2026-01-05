@@ -423,6 +423,10 @@
   gap: 8px;
 }
 
+.chat-editor__attachment-btn {
+  color: var(--ant-color-text-secondary);
+}
+
 .chat-editor__input-toolbar-right {
   display: flex;
   align-items: center;
