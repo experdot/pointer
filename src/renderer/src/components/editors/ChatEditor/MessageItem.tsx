@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Avatar, Button, Tooltip, Input, Popconfirm, Dropdown } from 'antd'
-import type { MenuProps } from 'antd'
+import type { MenuProps, InputRef } from 'antd'
 import {
   UserOutlined,
   RobotOutlined,
@@ -15,7 +15,10 @@ import {
   RightOutlined,
   DownOutlined,
   UpOutlined,
-  PictureOutlined
+  PictureOutlined,
+  TagOutlined,
+  ThunderboltOutlined,
+  FolderOutlined
 } from '@ant-design/icons'
 import { Streamdown } from 'streamdown'
 import { BranchNavigator } from './BranchNavigator'
@@ -46,6 +49,15 @@ interface MessageItemProps {
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
+  // Title/Topic 相关
+  onUpdateTitle?: (messageId: string, title: string) => void
+  onGenerateTitle?: (messageId: string) => void
+  onSetAsTopic?: (messageId: string, topic: string) => void
+  onRemoveTopic?: (messageId: string) => void
+  onToggleTopicCollapse?: (messageId: string) => void
+  onGenerateTopic?: (messageId: string) => void
+  /** Topic 内消息数量（仅 Topic 起始消息有） */
+  topicMessageCount?: number
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -65,7 +77,14 @@ export const MessageItem = React.memo(function MessageItem({
   onEditAndResend,
   onSwitchBranch,
   onQuote,
-  onToggleCollapse
+  onToggleCollapse,
+  onUpdateTitle,
+  onGenerateTitle,
+  onSetAsTopic,
+  onRemoveTopic,
+  onToggleTopicCollapse,
+  onGenerateTopic,
+  topicMessageCount
 }: MessageItemProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -75,6 +94,16 @@ export const MessageItem = React.memo(function MessageItem({
   const wasStreaming = useRef(isStreaming)
   const userToggledReasoning = useRef(false) // 用户是否手动操作过
   const itemRef = useRef<HTMLDivElement>(null)
+
+  // Title 编辑状态
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editTitleValue, setEditTitleValue] = useState(message.title || '')
+  const titleInputRef = useRef<InputRef>(null)
+
+  // Topic 编辑状态
+  const [isEditingTopic, setIsEditingTopic] = useState(false)
+  const [editTopicValue, setEditTopicValue] = useState(message.topic || '')
+  const topicInputRef = useRef<InputRef>(null)
 
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
@@ -283,6 +312,13 @@ export const MessageItem = React.memo(function MessageItem({
     return window.getSelection()?.toString() || ''
   }
 
+  // Topic 编辑入口（需要在 contextMenuItems 之前定义）
+  const handleStartTopicEdit = useCallback(() => {
+    setEditTopicValue(message.topic || '')
+    setIsEditingTopic(true)
+    setTimeout(() => topicInputRef.current?.focus(), 50)
+  }, [message.topic])
+
   const contextMenuItems: MenuProps['items'] = [
     {
       key: 'copy',
@@ -299,8 +335,87 @@ export const MessageItem = React.memo(function MessageItem({
         const selected = getSelectedText()
         onQuote?.(selected || displayContent)
       }
-    }
+    },
+    { type: 'divider' },
+    {
+      key: 'set-title',
+      label: message.title ? '编辑标题' : '添加标题',
+      icon: <TagOutlined />,
+      onClick: () => {
+        setEditTitleValue(message.title || '')
+        setIsEditingTitle(true)
+        setTimeout(() => titleInputRef.current?.focus(), 50)
+      }
+    },
+    { type: 'divider' },
+    message.topic
+      ? {
+          key: 'edit-topic',
+          label: '编辑 Topic',
+          icon: <FolderOutlined />,
+          onClick: handleStartTopicEdit
+        }
+      : {
+          key: 'set-topic',
+          label: '设为 Topic',
+          icon: <FolderOutlined />,
+          onClick: () => {
+            // 简单实现：使用标题或内容前15个字符作为 Topic 名称
+            const topicName = message.title || displayContent.slice(0, 15).replace(/\s+/g, ' ')
+            onSetAsTopic?.(message.id, topicName)
+          }
+        }
   ]
+
+  // 标题编辑处理
+  const handleSaveTitle = useCallback(() => {
+    const trimmedTitle = editTitleValue.trim()
+    onUpdateTitle?.(message.id, trimmedTitle)
+    setIsEditingTitle(false)
+  }, [message.id, editTitleValue, onUpdateTitle])
+
+  const handleCancelTitleEdit = useCallback(() => {
+    setIsEditingTitle(false)
+    setEditTitleValue(message.title || '')
+  }, [message.title])
+
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSaveTitle()
+      } else if (e.key === 'Escape') {
+        handleCancelTitleEdit()
+      }
+    },
+    [handleSaveTitle, handleCancelTitleEdit]
+  )
+
+  // Topic 编辑处理
+  const handleSaveTopic = useCallback(() => {
+    const trimmedTopic = editTopicValue.trim()
+    if (trimmedTopic) {
+      onSetAsTopic?.(message.id, trimmedTopic)
+    }
+    setIsEditingTopic(false)
+  }, [message.id, editTopicValue, onSetAsTopic])
+
+  const handleCancelTopicEdit = useCallback(() => {
+    setIsEditingTopic(false)
+    setEditTopicValue(message.topic || '')
+  }, [message.topic])
+
+  const handleTopicKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSaveTopic()
+      } else if (e.key === 'Escape') {
+        handleCancelTopicEdit()
+      }
+    },
+    [handleSaveTopic, handleCancelTopicEdit]
+  )
 
   return (
     <div
@@ -319,6 +434,73 @@ export const MessageItem = React.memo(function MessageItem({
       </div>
 
       <div className="message-item__content">
+        {/* Topic 头部 - 当此消息是 Topic 起始消息时显示 */}
+        {message.topic && (
+          <div
+            className={`message-item__topic-header ${message.topicCollapsed ? 'message-item__topic-header--collapsed' : ''}`}
+          >
+            <Button
+              type="text"
+              size="small"
+              className="message-item__topic-toggle"
+              icon={message.topicCollapsed ? <RightOutlined /> : <DownOutlined />}
+              onClick={() => onToggleTopicCollapse?.(message.id)}
+            />
+            <FolderOutlined className="message-item__topic-icon" />
+            {isEditingTopic ? (
+              <div className="message-item__topic-edit">
+                <Input
+                  ref={topicInputRef}
+                  size="small"
+                  value={editTopicValue}
+                  onChange={(e) => setEditTopicValue(e.target.value)}
+                  onKeyDown={handleTopicKeyDown}
+                  onBlur={(e) => {
+                    // 如果点击的是生成按钮，不触发 blur 保存
+                    if (e.relatedTarget?.closest('.message-item__topic-generate')) return
+                    handleSaveTopic()
+                  }}
+                  placeholder="输入 Topic 名称..."
+                  className="message-item__topic-input"
+                />
+                <Tooltip title="AI 生成 Topic">
+                  <Button
+                    type="text"
+                    size="small"
+                    className="message-item__topic-generate"
+                    icon={<ThunderboltOutlined />}
+                    onClick={() => {
+                      onGenerateTopic?.(message.id)
+                      setIsEditingTopic(false)
+                    }}
+                  />
+                </Tooltip>
+              </div>
+            ) : (
+              <Tooltip title="点击编辑 Topic">
+                <span className="message-item__topic-name" onClick={handleStartTopicEdit}>
+                  {message.topic}
+                </span>
+              </Tooltip>
+            )}
+            {topicMessageCount !== undefined && topicMessageCount > 1 && !isEditingTopic && (
+              <span className="message-item__topic-count">({topicMessageCount})</span>
+            )}
+            <Tooltip title="移除 Topic">
+              <Button
+                type="text"
+                size="small"
+                className="message-item__topic-remove"
+                icon={<CloseOutlined />}
+                onClick={() => onRemoveTopic?.(message.id)}
+              />
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Topic 折叠时隐藏以下所有内容 */}
+        {!(message.topic && message.topicCollapsed) && (
+          <>
         <div className="message-item__header">
           <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
           <span className="message-item__time">{formatTime(message.createdAt)}</span>
@@ -362,6 +544,56 @@ export const MessageItem = React.memo(function MessageItem({
             />
           )}
         </div>
+
+        {/* 标题行 - 单独一行显示 */}
+        {(isEditingTitle || message.title) && (
+          <div className="message-item__title-row">
+            {isEditingTitle ? (
+              <div className="message-item__title-edit">
+                <Input
+                  ref={titleInputRef}
+                  size="small"
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  onBlur={(e) => {
+                    // 如果点击的是生成按钮，不触发 blur 保存
+                    if (e.relatedTarget?.closest('.message-item__title-generate')) return
+                    handleSaveTitle()
+                  }}
+                  placeholder="输入标题..."
+                  style={{ width: 150 }}
+                />
+                <Tooltip title="AI 生成标题">
+                  <Button
+                    type="text"
+                    size="small"
+                    className="message-item__title-generate"
+                    icon={<ThunderboltOutlined />}
+                    onClick={() => {
+                      onGenerateTitle?.(message.id)
+                      setIsEditingTitle(false)
+                    }}
+                  />
+                </Tooltip>
+              </div>
+            ) : (
+              <Tooltip title="点击编辑标题">
+                <span
+                  className="message-item__title"
+                  onClick={() => {
+                    setEditTitleValue(message.title || '')
+                    setIsEditingTitle(true)
+                    setTimeout(() => titleInputRef.current?.focus(), 50)
+                  }}
+                >
+                  <TagOutlined />
+                  {message.title}
+                </span>
+              </Tooltip>
+            )}
+          </div>
+        )}
 
         {/* 推理内容 */}
         {displayReasoning && (
@@ -495,6 +727,8 @@ export const MessageItem = React.memo(function MessageItem({
               </Tooltip>
             </Popconfirm>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

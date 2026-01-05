@@ -31,7 +31,19 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     editMessage,
     editAndResend,
     switchBranch,
-    getChildMessages
+    getChildMessages,
+    // Title/Topic 相关
+    outline,
+    updateTitle,
+    generateTitle,
+    setAsTopic,
+    removeTopic,
+    toggleTopicCollapse,
+    generateTopic,
+    batchGenerateTitles,
+    batchProgress,
+    smartSegmentation,
+    isSegmenting
   } = useChat({ pageId })
 
   // 订阅 streamingManager 以获取 isStreaming 状态
@@ -177,6 +189,13 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onScrollToNext={handleScrollToNext}
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
+        outline={outline}
+        currentMessageId={selectedMessageId}
+        onToggleTopicCollapse={toggleTopicCollapse}
+        onBatchGenerateTitles={batchGenerateTitles}
+        batchProgress={batchProgress}
+        onSmartSegmentation={smartSegmentation}
+        isSegmenting={isSegmenting}
       />
       {searchState.isOpen && (
         <SearchBar pageId={pageId} messages={currentPath} containerRef={messageContainerRef} />
@@ -197,6 +216,12 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onToggleCollapse={handleToggleCollapse}
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
+        onUpdateTitle={updateTitle}
+        onGenerateTitle={generateTitle}
+        onSetAsTopic={setAsTopic}
+        onRemoveTopic={removeTopic}
+        onToggleTopicCollapse={toggleTopicCollapse}
+        onGenerateTopic={generateTopic}
       />
       <InputArea
         ref={inputAreaRef}

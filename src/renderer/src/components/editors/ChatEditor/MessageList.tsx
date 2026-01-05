@@ -10,6 +10,7 @@ import {
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
+import { computeTopicGroups, filterMessagesByTopicCollapse } from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment } from '../../../types/type'
 
 export interface MessageListRef {
@@ -36,6 +37,13 @@ interface MessageListProps {
   onToggleCollapse: (messageId: string) => void
   onCollapseAll: () => void
   onExpandAll: () => void
+  // Title/Topic 相关
+  onUpdateTitle?: (messageId: string, title: string) => void
+  onGenerateTitle?: (messageId: string) => void
+  onSetAsTopic?: (messageId: string, topic: string) => void
+  onRemoveTopic?: (messageId: string) => void
+  onToggleTopicCollapse?: (messageId: string) => void
+  onGenerateTopic?: (messageId: string) => void
 }
 
 export const MessageList = forwardRef<MessageListRef, MessageListProps>(function MessageList(
@@ -53,7 +61,13 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onQuote,
     onToggleCollapse,
     onCollapseAll,
-    onExpandAll
+    onExpandAll,
+    onUpdateTitle,
+    onGenerateTitle,
+    onSetAsTopic,
+    onRemoveTopic,
+    onToggleTopicCollapse,
+    onGenerateTopic
   },
   ref
 ) {
@@ -103,6 +117,24 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     }
     return map
   }, [messages, childrenMap])
+
+  // 计算 Topic 分组信息
+  const topicGroups = useMemo(() => computeTopicGroups(messages), [messages])
+
+  // 创建 Topic 消息数量映射
+  const topicMessageCountMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const group of topicGroups) {
+      map.set(group.startMessageId, group.messageIds.length)
+    }
+    return map
+  }, [topicGroups])
+
+  // 根据 Topic 折叠状态过滤要显示的消息
+  const visibleMessages = useMemo(
+    () => filterMessagesByTopicCollapse(messages, topicGroups),
+    [messages, topicGroups]
+  )
 
   // 滚动到底部
   const scrollToBottom = (behavior: ScrollBehavior = 'instant'): void => {
@@ -236,7 +268,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
 
   return (
     <div className="chat-editor__messages" ref={containerRef} onScroll={handleScroll}>
-      {messages.map((message, index) => {
+      {visibleMessages.map((message, index) => {
         // 使用预计算的映射表: O(1) 查找
         const branchInfo = branchInfoMap.get(message.id)
         const siblings = childrenMap.get(message.parentMessageId) ?? []
@@ -244,11 +276,14 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         // 检查是否是正在 streaming 的消息
         const streaming = streamingManager.get(message.id)
 
+        // Topic 消息数量（仅 Topic 起始消息有）
+        const topicMessageCount = topicMessageCountMap.get(message.id)
+
         return (
           <MessageItem
             key={message.id}
             message={message}
-            isLast={index === messages.length - 1}
+            isLast={index === visibleMessages.length - 1}
             isLeaf={branchInfo?.isLeaf ?? true}
             isStreaming={!!streaming}
             streamingContent={streaming?.content}
@@ -264,6 +299,13 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onSwitchBranch={onSwitchBranch}
             onQuote={onQuote}
             onToggleCollapse={onToggleCollapse}
+            onUpdateTitle={onUpdateTitle}
+            onGenerateTitle={onGenerateTitle}
+            onSetAsTopic={onSetAsTopic}
+            onRemoveTopic={onRemoveTopic}
+            onToggleTopicCollapse={onToggleTopicCollapse}
+            onGenerateTopic={onGenerateTopic}
+            topicMessageCount={topicMessageCount}
           />
         )
       })}

@@ -10,7 +10,8 @@ import {
   UserOutlined,
   RobotOutlined
 } from '@ant-design/icons'
-import type { ChatMessage } from '../../../types/type'
+import { OutlineDropdown } from './OutlineDropdown'
+import type { ChatMessage, OutlineNode } from '../../../types/type'
 
 const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
   return role === 'user' ? <UserOutlined /> : <RobotOutlined />
@@ -32,6 +33,14 @@ interface BranchPathBarProps {
   onScrollToNext: () => void
   onCollapseAll?: () => void
   onExpandAll?: () => void
+  // 大纲相关
+  outline?: OutlineNode[]
+  currentMessageId?: string
+  onToggleTopicCollapse?: (messageId: string) => void
+  onBatchGenerateTitles?: () => Promise<void>
+  batchProgress?: { current: number; total: number } | null
+  onSmartSegmentation?: () => Promise<void>
+  isSegmenting?: boolean
 }
 
 export function BranchPathBar({
@@ -42,8 +51,15 @@ export function BranchPathBar({
   onScrollToPrev,
   onScrollToNext,
   onCollapseAll,
-  onExpandAll
-}: BranchPathBarProps): React.JSX.Element | null {
+  onExpandAll,
+  outline,
+  currentMessageId,
+  onToggleTopicCollapse,
+  onBatchGenerateTitles,
+  batchProgress,
+  onSmartSegmentation,
+  isSegmenting
+}: BranchPathBarProps): React.JSX.Element {
   // 筛选关键节点：根节点、叶子节点、有分支的节点
   const keyNodes = useMemo(() => {
     if (messages.length === 0) return []
@@ -65,12 +81,16 @@ export function BranchPathBar({
     return nodes
   }, [messages, getChildMessages])
 
-  // 没有分支时不显示
-  const hasBranches = keyNodes.some((n) => n.siblings.length > 1)
-  if (!hasBranches || messages.length <= 1) return null
+  // 只要有消息就显示路径
+  const showBranchPath = messages.length > 0
 
-  // 获取消息预览文本
+  // 获取消息预览文本（优先使用 title）
   const getPreview = (msg: ChatMessage, maxLen = 20): string => {
+    // 优先使用 title
+    if (msg.title) {
+      return msg.title.length > maxLen ? msg.title.slice(0, maxLen) + '...' : msg.title
+    }
+    // 没有 title 时使用 content
     const text = msg.content.replace(/\n/g, ' ').trim()
     return text.length > maxLen ? text.slice(0, maxLen) + '...' : text
   }
@@ -82,75 +102,89 @@ export function BranchPathBar({
 
   return (
     <div className="branch-path-bar">
-      {keyNodes.map((node, i) => {
-        const { message, index, siblings, siblingIndex } = node
-        const prevIndex = i > 0 ? keyNodes[i - 1].index : -1
-        const skippedCount = index - prevIndex - 1
-        const showEllipsis = skippedCount > 0
+      {/* 大纲按钮 */}
+      <OutlineDropdown
+        outline={outline ?? []}
+        currentMessageId={currentMessageId}
+        onScrollToMessage={onScrollToMessage}
+        onToggleTopicCollapse={onToggleTopicCollapse}
+        onBatchGenerateTitles={onBatchGenerateTitles}
+        batchProgress={batchProgress}
+        onSmartSegmentation={onSmartSegmentation}
+        isSegmenting={isSegmenting}
+      />
 
-        const hasBranch = siblings.length > 1
+      {/* 分支路径 */}
+      {showBranchPath &&
+        keyNodes.map((node, i) => {
+          const { message, index, siblings, siblingIndex } = node
+          const prevIndex = i > 0 ? keyNodes[i - 1].index : -1
+          const skippedCount = index - prevIndex - 1
+          const showEllipsis = skippedCount > 0
 
-        // 层级标签（点击跳转）
-        const levelLabel = (
-          <Tooltip title={getPreview(message, 50)} placement="bottom">
-            <span className="branch-path-bar__item" onClick={() => onScrollToMessage(message.id)}>
-              {getRoleIcon(message.role)} {index + 1}
-            </span>
-          </Tooltip>
-        )
+          const hasBranch = siblings.length > 1
 
-        // 分支指示器（点击展开下拉）
-        const branchIndicator = hasBranch && (
-          <Dropdown
-            menu={{
-              items: siblings.map((s, idx) => ({
-                key: s.id,
-                icon: getRoleIcon(s.role),
-                label: `${index + 1}.${idx + 1} ${getPreview(s)}`,
-                onClick: () => onSwitchBranch(s.id)
-              })),
-              selectedKeys: [message.id]
-            }}
-            trigger={['click']}
-          >
-            <span className="branch-path-bar__branch-indicator">
-              ({siblingIndex + 1}/{siblings.length})
-            </span>
-          </Dropdown>
-        )
+          // 层级标签（点击跳转）
+          const levelLabel = (
+            <Tooltip title={getPreview(message, 50)} placement="bottom">
+              <span className="branch-path-bar__item" onClick={() => onScrollToMessage(message.id)}>
+                {getRoleIcon(message.role)} {index + 1}
+              </span>
+            </Tooltip>
+          )
 
-        // 省略号下拉菜单
-        const ellipsisDropdown = showEllipsis && (
-          <>
-            <RightOutlined className="branch-path-bar__separator" />
+          // 分支指示器（点击展开下拉）
+          const branchIndicator = hasBranch && (
             <Dropdown
               menu={{
-                items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
-                  key: m.id,
-                  icon: getRoleIcon(m.role),
-                  label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
-                  onClick: () => onScrollToMessage(m.id)
-                }))
+                items: siblings.map((s, idx) => ({
+                  key: s.id,
+                  icon: getRoleIcon(s.role),
+                  label: `${index + 1}.${idx + 1} ${getPreview(s)}`,
+                  onClick: () => onSwitchBranch(s.id)
+                })),
+                selectedKeys: [message.id]
               }}
               trigger={['click']}
             >
-              <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
-                <EllipsisOutlined />
-                <span className="branch-path-bar__ellipsis-count">{skippedCount}</span>
+              <span className="branch-path-bar__branch-indicator">
+                ({siblingIndex + 1}/{siblings.length})
               </span>
             </Dropdown>
-          </>
-        )
+          )
 
-        return (
-          <React.Fragment key={message.id}>
-            {ellipsisDropdown}
-            {i > 0 && <RightOutlined className="branch-path-bar__separator" />}
-            {levelLabel}
-            {branchIndicator}
-          </React.Fragment>
-        )
-      })}
+          // 省略号下拉菜单
+          const ellipsisDropdown = showEllipsis && (
+            <>
+              <RightOutlined className="branch-path-bar__separator" />
+              <Dropdown
+                menu={{
+                  items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
+                    key: m.id,
+                    icon: getRoleIcon(m.role),
+                    label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
+                    onClick: () => onScrollToMessage(m.id)
+                  }))
+                }}
+                trigger={['click']}
+              >
+                <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
+                  <EllipsisOutlined />
+                  <span className="branch-path-bar__ellipsis-count">{skippedCount}</span>
+                </span>
+              </Dropdown>
+            </>
+          )
+
+          return (
+            <React.Fragment key={message.id}>
+              {ellipsisDropdown}
+              {i > 0 && <RightOutlined className="branch-path-bar__separator" />}
+              {levelLabel}
+              {branchIndicator}
+            </React.Fragment>
+          )
+        })}
       <div className="branch-path-bar__nav">
         <Tooltip title="上一条">
           <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onScrollToPrev} />

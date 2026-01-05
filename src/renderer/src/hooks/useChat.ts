@@ -1,12 +1,26 @@
-import { useCallback, useMemo, useEffect } from 'react'
+import { useCallback, useMemo, useEffect, useState } from 'react'
 import { usePagesStore } from '../stores/pagesStore'
 import { useMessagesStore } from '../stores/messagesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { createAIService } from '../services/aiService'
 import * as messagesService from '../services/messagesService'
+import {
+  updateMessageTitle,
+  setMessageAsTopic,
+  removeTopicFromMessage,
+  toggleTopicCollapse as toggleTopicCollapseService
+} from '../services/messagesService'
 import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
-import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../types/type'
+import { generateMessageTitle, generateTopicTitle, analyzeTopicSegments } from '../services/titleService'
+import type {
+  ChatMessage,
+  LLMConfig,
+  ModelConfig,
+  FileAttachment,
+  TopicGroup,
+  OutlineNode
+} from '../types/type'
 import type { PageRecord } from '../utils/database'
 
 interface UseChatOptions {
@@ -35,6 +49,21 @@ interface UseChatResult {
   editAndResend: (messageId: string, content: string) => Promise<void>
   switchBranch: (messageId: string) => void
   getChildMessages: (parentId: string | undefined) => ChatMessage[]
+  // Title/Topic 相关
+  topicGroups: TopicGroup[]
+  outline: OutlineNode[]
+  updateTitle: (messageId: string, title: string) => void
+  generateTitle: (messageId: string) => Promise<void>
+  setAsTopic: (messageId: string, topic: string) => void
+  removeTopic: (messageId: string) => void
+  toggleTopicCollapse: (messageId: string) => void
+  generateTopic: (messageId: string) => Promise<void>
+  // 批量生成标题
+  batchGenerateTitles: () => Promise<void>
+  batchProgress: { current: number; total: number } | null
+  // 智能分段
+  smartSegmentation: () => Promise<void>
+  isSegmenting: boolean
 }
 
 export function useChat({ pageId }: UseChatOptions): UseChatResult {
@@ -58,6 +87,15 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     if (!record) return []
     return messagesService.getMessagePath(record.messages, record.leafMessageId)
   }, [record])
+
+  // Topic 分组和大纲计算
+  const topicGroups = useMemo(() => {
+    return messagesService.computeTopicGroups(currentPath)
+  }, [currentPath])
+
+  const outline = useMemo(() => {
+    return messagesService.computeOutline(currentPath)
+  }, [currentPath])
 
   const getConfigs = useCallback((): {
     llmConfig: LLMConfig
@@ -348,6 +386,139 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     [messages]
   )
 
+  // ============ Title/Topic 操作方法 ============
+
+  const updateTitle = useCallback(
+    (messageId: string, title: string) => {
+      updateMessageTitle(pageId, messageId, title)
+    },
+    [pageId]
+  )
+
+  const generateTitle = useCallback(
+    async (messageId: string) => {
+      const message = messages.find((m) => m.id === messageId)
+      if (!message) return
+
+      try {
+        const result = await generateMessageTitle(message.content)
+        if (result.success && result.title) {
+          updateMessageTitle(pageId, messageId, result.title)
+        } else if (result.error) {
+          console.error('Failed to generate title:', result.error)
+        }
+      } catch (error) {
+        console.error('Failed to generate title:', error)
+      }
+    },
+    [pageId, messages]
+  )
+
+  const setAsTopic = useCallback(
+    (messageId: string, topic: string) => {
+      setMessageAsTopic(pageId, messageId, topic)
+    },
+    [pageId]
+  )
+
+  const removeTopic = useCallback(
+    (messageId: string) => {
+      removeTopicFromMessage(pageId, messageId)
+    },
+    [pageId]
+  )
+
+  const handleToggleTopicCollapse = useCallback(
+    (messageId: string) => {
+      toggleTopicCollapseService(pageId, messageId)
+    },
+    [pageId]
+  )
+
+  const generateTopic = useCallback(
+    async (messageId: string) => {
+      const message = messages.find((m) => m.id === messageId)
+      if (!message) return
+
+      try {
+        const result = await generateTopicTitle(message.content)
+        if (result.success && result.title) {
+          setMessageAsTopic(pageId, messageId, result.title)
+        } else if (result.error) {
+          console.error('Failed to generate topic:', result.error)
+        }
+      } catch (error) {
+        console.error('Failed to generate topic:', error)
+      }
+    },
+    [pageId, messages]
+  )
+
+  // ============ 批量生成标题 ============
+  const [batchProgress, setBatchProgress] = useState<{
+    current: number
+    total: number
+  } | null>(null)
+
+  const batchGenerateTitles = useCallback(async () => {
+    // 筛选出没有标题的消息
+    const messagesWithoutTitle = currentPath.filter((m) => !m.title)
+    if (messagesWithoutTitle.length === 0) return
+
+    const total = messagesWithoutTitle.length
+    setBatchProgress({ current: 0, total })
+
+    try {
+      for (let i = 0; i < messagesWithoutTitle.length; i++) {
+        const message = messagesWithoutTitle[i]
+        setBatchProgress({ current: i, total })
+
+        try {
+          const result = await generateMessageTitle(message.content)
+          if (result.success && result.title) {
+            updateMessageTitle(pageId, message.id, result.title)
+          }
+        } catch (error) {
+          console.error(`Failed to generate title for message ${message.id}:`, error)
+        }
+
+        // 添加小延迟避免请求过于频繁
+        if (i < messagesWithoutTitle.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 300))
+        }
+      }
+    } finally {
+      setBatchProgress(null)
+    }
+  }, [currentPath, pageId])
+
+  // ============ 智能分段 ============
+  const [isSegmenting, setIsSegmenting] = useState(false)
+
+  const smartSegmentation = useCallback(async () => {
+    if (currentPath.length === 0 || isSegmenting) return
+
+    setIsSegmenting(true)
+    try {
+      const result = await analyzeTopicSegments(currentPath)
+      if (result.success && result.segments.length > 0) {
+        // 为每个分段点设置 Topic
+        for (const segment of result.segments) {
+          const message = currentPath[segment.index]
+          if (message && !message.topic) {
+            setMessageAsTopic(pageId, message.id, segment.topic)
+          }
+        }
+      } else if (result.error) {
+        console.error('Smart segmentation failed:', result.error)
+      }
+    } catch (error) {
+      console.error('Smart segmentation error:', error)
+    } finally {
+      setIsSegmenting(false)
+    }
+  }, [currentPath, pageId, isSegmenting])
+
   return {
     page,
     messages,
@@ -361,6 +532,21 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     editMessage,
     editAndResend,
     switchBranch,
-    getChildMessages
+    getChildMessages,
+    // Title/Topic 相关
+    topicGroups,
+    outline,
+    updateTitle,
+    generateTitle,
+    setAsTopic,
+    removeTopic,
+    toggleTopicCollapse: handleToggleTopicCollapse,
+    generateTopic,
+    // 批量生成标题
+    batchGenerateTitles,
+    batchProgress,
+    // 智能分段
+    smartSegmentation,
+    isSegmenting
   }
 }

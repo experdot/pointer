@@ -82,6 +82,16 @@ export interface ChatMessage {
   hasError?: boolean // 标记消息生成时是否发生错误
   isStreaming?: boolean
   collapsed?: boolean // 消息折叠状态
+
+  // ============ Title/Topic 功能字段 ============
+  /** 消息标题 - AI 自动生成或用户手动设置 */
+  title?: string
+  /** Topic 名称 - 标记此消息为一个 Topic 的开始 */
+  topic?: string
+  /** Topic 是否折叠（控制 Topic 下所有消息的显示） */
+  topicCollapsed?: boolean
+  /** Topic 缩进层级 - 0 为顶级，1 为次级，依此类推 */
+  topicIndent?: number
 }
 
 export interface ChatSession {
@@ -90,6 +100,42 @@ export interface ChatSession {
   rootMessageId?: string // 根消息ID
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
   selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
+}
+
+// ==================== Topic 分组类型定义 ====================
+
+/** Topic 分组信息 */
+export interface TopicGroup {
+  /** Topic 起始消息 ID */
+  startMessageId: string
+  /** Topic 名称 */
+  name: string
+  /** 缩进层级 */
+  indent: number
+  /** 组内消息 ID 列表（包含起始消息） */
+  messageIds: string[]
+  /** 是否折叠 */
+  collapsed: boolean
+}
+
+/** 大纲节点 */
+export interface OutlineNode {
+  /** 节点唯一 ID */
+  id: string
+  /** 显示标题 */
+  title: string
+  /** 节点类型：topic 或 title（带标题的普通消息） */
+  type: 'topic' | 'title'
+  /** 缩进层级 */
+  indent: number
+  /** 关联的消息 ID */
+  messageId: string
+  /** 消息角色 */
+  role?: 'user' | 'assistant' | 'system'
+  /** 子节点（仅 topic 类型有） */
+  children?: OutlineNode[]
+  /** Topic 是否折叠（仅 topic 类型有） */
+  collapsed?: boolean
 }
 
 export interface PageFolder {
