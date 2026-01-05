@@ -13,7 +13,7 @@ import { streamingManager } from '../../../services/streamingManager'
 import type { ChatMessage, FileAttachment } from '../../../types/type'
 
 export interface MessageListRef {
-  scrollToMessage: (messageId: string) => void
+  scrollToMessage: (messageId: string, instant?: boolean) => void
   scrollToPrev: () => void
   scrollToNext: () => void
   collapseAll: () => void
@@ -180,13 +180,13 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
 
   // 暴露方法
   useImperativeHandle(ref, () => ({
-    scrollToMessage: (messageId: string) => {
+    scrollToMessage: (messageId: string, instant?: boolean) => {
       const container = containerRef.current
       if (!container) return
 
       const messageEl = container.querySelector(`[data-message-id="${messageId}"]`)
       if (messageEl) {
-        messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        messageEl.scrollIntoView({ behavior: instant ? 'instant' : 'smooth', block: 'start' })
         shouldAutoScroll.current = false
       }
     },

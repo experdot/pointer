@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import type { ChatMessage } from '../types/type'
 import type { SearchState } from '../stores/chatUIStore'
 import { findAllMatches, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
+
+/** 防抖延迟时间 */
+const DEBOUNCE_DELAY = 500
 
 interface UseSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
@@ -37,13 +40,25 @@ export function useSearchHighlight({
     [searchState.matchCase, searchState.useRegex, searchState.matchWholeWord]
   )
 
-  // 计算匹配结果
+  // 防抖后的查询
+  const [debouncedQuery, setDebouncedQuery] = useState(searchState.query)
+
+  // 防抖处理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchState.query)
+    }, DEBOUNCE_DELAY)
+
+    return () => clearTimeout(timer)
+  }, [searchState.query])
+
+  // 计算匹配结果（使用防抖后的查询）
   const matches = useMemo(() => {
-    if (!searchState.isOpen || !searchState.query.trim()) {
+    if (!searchState.isOpen || !debouncedQuery.trim()) {
       return []
     }
-    return findAllMatches(messages, searchState.query, searchOptions)
-  }, [messages, searchState.isOpen, searchState.query, searchOptions])
+    return findAllMatches(messages, debouncedQuery, searchOptions)
+  }, [messages, searchState.isOpen, debouncedQuery, searchOptions])
 
   // 通知匹配结果变化
   useEffect(() => {

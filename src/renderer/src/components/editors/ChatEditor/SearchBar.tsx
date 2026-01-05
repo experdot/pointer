@@ -108,9 +108,8 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
   const isRegexValid =
     !searchState.useRegex || !searchState.query || isValidRegex(searchState.query)
 
-  // 计算显示的计数
-  const countDisplay =
-    total > 0 ? `${searchState.currentIndex + 1}/${total}` : searchState.query ? '0/0' : ''
+  // 计算显示的计数（永远显示）
+  const countDisplay = total > 0 ? `${searchState.currentIndex + 1}/${total}` : '0/0'
 
   return (
     <div className="search-bar">
@@ -123,44 +122,41 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         placeholder="搜索..."
-        size="small"
         status={!isRegexValid ? 'error' : undefined}
+        suffix={
+          <div className="search-bar__options">
+            <Tooltip title="区分大小写 (Alt+C)">
+              <Button
+                type={searchState.matchCase ? 'primary' : 'text'}
+                size="small"
+                onClick={toggleMatchCase}
+              >
+                Aa
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="使用正则表达式 (Alt+R)">
+              <Button
+                type={searchState.useRegex ? 'primary' : 'text'}
+                size="small"
+                onClick={toggleUseRegex}
+              >
+                .*
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="全词匹配 (Alt+W)">
+              <Button
+                type={searchState.matchWholeWord ? 'primary' : 'text'}
+                size="small"
+                onClick={toggleMatchWholeWord}
+              >
+                W
+              </Button>
+            </Tooltip>
+          </div>
+        }
       />
-
-      <div className="search-bar__options">
-        <Tooltip title="区分大小写 (Alt+C)">
-          <Button
-            type="text"
-            size="small"
-            className={`search-bar__option-btn ${searchState.matchCase ? 'search-bar__option-btn--active' : ''}`}
-            onClick={toggleMatchCase}
-          >
-            Aa
-          </Button>
-        </Tooltip>
-
-        <Tooltip title="使用正则表达式 (Alt+R)">
-          <Button
-            type="text"
-            size="small"
-            className={`search-bar__option-btn ${searchState.useRegex ? 'search-bar__option-btn--active' : ''}`}
-            onClick={toggleUseRegex}
-          >
-            .*
-          </Button>
-        </Tooltip>
-
-        <Tooltip title="全词匹配 (Alt+W)">
-          <Button
-            type="text"
-            size="small"
-            className={`search-bar__option-btn ${searchState.matchWholeWord ? 'search-bar__option-btn--active' : ''}`}
-            onClick={toggleMatchWholeWord}
-          >
-            W
-          </Button>
-        </Tooltip>
-      </div>
 
       <span className="search-bar__count">{countDisplay}</span>
 

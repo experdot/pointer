@@ -158,6 +158,47 @@ export interface SearchOptions {
   useRegex: boolean // 使用正则表达式
 }
 
+// ==================== 全局搜索类型定义 ====================
+
+/** 全局搜索单条匹配结果 */
+export interface GlobalSearchMatch {
+  messageId: string
+  pageId: string
+  role: 'user' | 'assistant' | 'system'
+  /** 匹配文本片段（含上下文） */
+  snippet: string
+  /** 匹配在 snippet 中的起止位置 */
+  matchStart: number
+  matchEnd: number
+  /** 匹配在原始消息内容中的起止位置（用于高亮定位） */
+  contentStart: number
+  contentEnd: number
+  /** 消息创建时间 */
+  createdAt: number
+}
+
+/** 按页面分组的全局搜索结果 */
+export interface GlobalSearchResultGroup {
+  pageId: string
+  pageTitle: string
+  /** 文件夹路径（如果有） */
+  folderPath?: string
+  matches: GlobalSearchMatch[]
+  /** 是否展开 */
+  expanded: boolean
+}
+
+/** 全局搜索选项 */
+export interface GlobalSearchOptions {
+  matchCase: boolean
+  useRegex: boolean
+  matchWholeWord: boolean
+  /** 角色筛选 */
+  roleFilter: 'all' | 'user' | 'assistant'
+  /** 时间范围筛选 */
+  timeRange: 'all' | 'today' | 'week' | 'month'
+}
+
 // AI任务状态
 export type AITaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 

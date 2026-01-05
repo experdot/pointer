@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Flex, Tooltip, Popover, Avatar } from 'antd'
 import {
-  FileOutlined,
+  MessageOutlined,
   SearchOutlined,
   StarOutlined,
   UnorderedListOutlined,
@@ -20,7 +20,7 @@ interface ActivityItem {
 }
 
 const activities: ActivityItem[] = [
-  { key: 'explorer', icon: <FileOutlined />, title: '资源管理器' },
+  { key: 'explorer', icon: <MessageOutlined />, title: '资源管理器' },
   { key: 'search', icon: <SearchOutlined />, title: '搜索' },
   { key: 'favorites', icon: <StarOutlined />, title: '收藏' },
   { key: 'tasks', icon: <UnorderedListOutlined />, title: '任务' }

@@ -4,6 +4,8 @@ import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { streamingManager } from '../../../services/streamingManager'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
 import { useChatUIStore } from '../../../stores/chatUIStore'
+import { useMessagesStore } from '../../../stores/messagesStore'
+import { useGlobalSearchHighlight } from '../../../hooks/useGlobalSearchHighlight'
 import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
 import { Header } from './Header'
@@ -89,6 +91,25 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [pageId, setSearchOpen])
+
+  // 监听 selectedMessageId 变化，滚动到目标消息（用于全局搜索跳转）
+  const { cache } = useMessagesStore()
+  const selectedMessageId = cache[pageId]?.selectedMessageId
+  useEffect(() => {
+    if (selectedMessageId) {
+      // 延迟执行，确保消息列表已渲染
+      setTimeout(() => {
+        messageListRef.current?.scrollToMessage(selectedMessageId, true)
+      }, 100)
+    }
+  }, [selectedMessageId])
+
+  // 全局搜索高亮
+  useGlobalSearchHighlight({
+    containerRef: messageContainerRef,
+    messages: currentPath,
+    pageId
+  })
 
   const handleQuote = useCallback((text: string) => {
     inputAreaRef.current?.appendText(`> ${text}\n\n`)

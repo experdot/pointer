@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { Typography, Drawer } from 'antd'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { Explorer } from '../../panels/Explorer'
+import { Search } from '../../panels/Search'
 import './Sidebar.css'
 
 const { Text } = Typography
@@ -18,7 +19,7 @@ const panelTitles: Record<string, string> = {
 
 const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
   explorer: Explorer,
-  search: null,
+  search: Search,
   favorites: null,
   tasks: null
 }
