@@ -58,7 +58,6 @@
   flex-shrink: 0;
   font-size: 12px;
   color: var(--ant-color-text-tertiary);
-  margin-right: 4px;
   font-family: var(--ant-font-family-code);
 }
 

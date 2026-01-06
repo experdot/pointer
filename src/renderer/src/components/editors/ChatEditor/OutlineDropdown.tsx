@@ -186,7 +186,7 @@ export function OutlineDropdown({
 
   return (
     <Dropdown
-      dropdownRender={() => dropdownContent}
+      popupRender={() => dropdownContent}
       trigger={['click']}
       placement="bottomLeft"
     >

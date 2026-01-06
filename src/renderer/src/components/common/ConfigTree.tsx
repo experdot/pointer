@@ -108,7 +108,7 @@ export function ConfigTree<T extends ConfigItemBase>({
     return [
       {
         key: 'copy',
-        label: '复制',
+        label: '复制为副本',
         icon: <CopyOutlined />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()

@@ -11,6 +11,7 @@ import {
   CloseOutlined,
   SendOutlined,
   CopyOutlined,
+  EnterOutlined,
   ArrowDownOutlined,
   RightOutlined,
   DownOutlined,
@@ -330,6 +331,7 @@ export const MessageItem = React.memo(function MessageItem({
     {
       key: 'copy',
       label: '复制',
+      icon: <CopyOutlined />,
       onClick: () => {
         const selected = getSelectedText()
         navigator.clipboard.writeText(selected || displayContent)
@@ -337,7 +339,8 @@ export const MessageItem = React.memo(function MessageItem({
     },
     {
       key: 'quote',
-      label: '引用到输入框',
+      label: '引用',
+      icon: <EnterOutlined />,
       onClick: () => {
         const selected = getSelectedText()
         onQuote?.(selected || displayContent)
@@ -358,13 +361,13 @@ export const MessageItem = React.memo(function MessageItem({
     topic
       ? {
           key: 'edit-topic',
-          label: '编辑 Topic',
+          label: '编辑分组',
           icon: <FolderOutlined />,
           onClick: handleStartTopicEdit
         }
       : {
           key: 'set-topic',
-          label: '设为 Topic',
+          label: '设为分组',
           icon: <FolderOutlined />,
           onClick: () => {
             // 简单实现：使用标题或内容前15个字符作为 Topic 名称
@@ -691,9 +694,11 @@ export const MessageItem = React.memo(function MessageItem({
             )}
           </div>
         ) : message.collapsed ? (
-          <div className="message-item__preview" onClick={() => onToggleCollapse?.(message.id)}>
-            {collapsedPreview}
-          </div>
+          <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
+            <div className="message-item__preview" onClick={() => onToggleCollapse?.(message.id)}>
+              {collapsedPreview}
+            </div>
+          </Dropdown>
         ) : (
           <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
             <div className="message-item__body">
