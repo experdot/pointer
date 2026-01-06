@@ -37,8 +37,6 @@ interface BranchPathBarProps {
   onExpandAll?: () => void
   // 大纲相关
   outline?: OutlineNode[]
-  currentMessageId?: string
-  onToggleTopicCollapse?: (topicId: string) => void
   onOpenGenerateModal?: (mode: GenerateMode) => void
   batchProgress?: { current: number; total: number } | null
   isSegmenting?: boolean
@@ -54,8 +52,6 @@ export function BranchPathBar({
   onCollapseAll,
   onExpandAll,
   outline,
-  currentMessageId,
-  onToggleTopicCollapse,
   onOpenGenerateModal,
   batchProgress,
   isSegmenting
@@ -105,9 +101,7 @@ export function BranchPathBar({
       {/* 大纲按钮 */}
       <OutlineDropdown
         outline={outline ?? []}
-        currentMessageId={currentMessageId}
         onScrollToMessage={onScrollToMessage}
-        onToggleTopicCollapse={onToggleTopicCollapse}
         onOpenGenerateModal={onOpenGenerateModal}
         batchProgress={batchProgress}
         isSegmenting={isSegmenting}

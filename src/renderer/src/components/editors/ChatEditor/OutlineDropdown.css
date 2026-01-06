@@ -30,10 +30,6 @@
   background: var(--ant-color-fill-secondary);
 }
 
-.outline-dropdown__item--active {
-  background: var(--ant-color-primary-bg);
-}
-
 /* .outline-dropdown__item--topic {
   font-weight: 500;
 } */

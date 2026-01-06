@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { Dropdown, Button, Tooltip, Progress } from 'antd'
 import {
   UnorderedListOutlined,
@@ -17,9 +17,7 @@ import './OutlineDropdown.css'
 
 interface OutlineDropdownProps {
   outline: OutlineNode[]
-  currentMessageId?: string
   onScrollToMessage: (messageId: string) => void
-  onToggleTopicCollapse?: (topicId: string) => void
   onOpenGenerateModal?: (mode: GenerateMode) => void
   /** 批量生成进度 { current, total } */
   batchProgress?: { current: number; total: number } | null
@@ -28,27 +26,42 @@ interface OutlineDropdownProps {
 
 export function OutlineDropdown({
   outline,
-  currentMessageId,
   onScrollToMessage,
-  onToggleTopicCollapse,
   onOpenGenerateModal,
   batchProgress,
   isSegmenting
 }: OutlineDropdownProps): React.JSX.Element {
   const isGenerating = !!batchProgress
+
+  // Outline 独立的折叠状态（不与消息列表同步）
+  const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set())
+
+  const toggleCollapse = useCallback((topicId: string) => {
+    setCollapsedTopics((prev) => {
+      const next = new Set(prev)
+      if (next.has(topicId)) {
+        next.delete(topicId)
+      } else {
+        next.add(topicId)
+      }
+      return next
+    })
+  }, [])
+
   // 扁平化渲染大纲节点
   const renderOutlineItems = useMemo(() => {
     const items: React.ReactNode[] = []
 
     const renderNode = (node: OutlineNode, depth: number = 0, prefix: string = ''): void => {
-      const isActive = node.messageId === currentMessageId
       const isTopic = node.type === 'topic'
       const hasChildren = node.children && node.children.length > 0
+      // 使用本地折叠状态
+      const isCollapsed = node.topicId ? collapsedTopics.has(node.topicId) : false
 
       items.push(
         <div
           key={node.id}
-          className={`outline-dropdown__item ${isActive ? 'outline-dropdown__item--active' : ''} ${isTopic ? 'outline-dropdown__item--topic' : 'outline-dropdown__item--title'}`}
+          className={`outline-dropdown__item ${isTopic ? 'outline-dropdown__item--topic' : 'outline-dropdown__item--title'}`}
         >
           {/* 缩进 */}
           <span
@@ -62,10 +75,10 @@ export function OutlineDropdown({
               className="outline-dropdown__toggle"
               onClick={(e) => {
                 e.stopPropagation()
-                onToggleTopicCollapse?.(node.topicId!)
+                toggleCollapse(node.topicId!)
               }}
             >
-              {node.collapsed ? <RightOutlined /> : <DownOutlined />}
+              {isCollapsed ? <RightOutlined /> : <DownOutlined />}
             </span>
           ) : (
             <span className="outline-dropdown__toggle-placeholder" />
@@ -96,8 +109,8 @@ export function OutlineDropdown({
         </div>
       )
 
-      // 递归渲染子节点（Topic 未折叠时才显示）
-      if (hasChildren && !node.collapsed) {
+      // 递归渲染子节点（使用本地折叠状态）
+      if (hasChildren && !isCollapsed) {
         let childIndex = 1
         for (const child of node.children!) {
           const childPrefix = prefix ? `${prefix}${childIndex}.` : `${childIndex}.`
@@ -114,7 +127,7 @@ export function OutlineDropdown({
     }
 
     return items
-  }, [outline, currentMessageId, onScrollToMessage, onToggleTopicCollapse])
+  }, [outline, onScrollToMessage, collapsedTopics, toggleCollapse])
 
   const dropdownContent = (
     <div className="outline-dropdown">

@@ -258,8 +258,6 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
         outline={outline}
-        currentMessageId={selectedMessageId}
-        onToggleTopicCollapse={toggleTopicCollapse}
         onOpenGenerateModal={openGenerateModal}
         batchProgress={batchProgress}
         isSegmenting={isSegmenting}
