@@ -33,13 +33,18 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     switchBranch,
     getChildMessages,
     // Title/Topic 相关
+    topics,
+    topicGroups,
     outline,
     updateTitle,
     generateTitle,
-    setAsTopic,
-    removeTopic,
+    // Topic 操作（独立 Topic 实体）
+    createTopic,
+    updateTopic,
+    deleteTopic,
     toggleTopicCollapse,
     generateTopic,
+    // 批量操作
     batchGenerateTitles,
     batchProgress,
     smartSegmentation,
@@ -218,8 +223,12 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onExpandAll={handleExpandAll}
         onUpdateTitle={updateTitle}
         onGenerateTitle={generateTitle}
-        onSetAsTopic={setAsTopic}
-        onRemoveTopic={removeTopic}
+        // Topic 相关
+        topics={topics}
+        topicGroups={topicGroups}
+        onCreateTopic={createTopic}
+        onUpdateTopic={updateTopic}
+        onDeleteTopic={deleteTopic}
         onToggleTopicCollapse={toggleTopicCollapse}
         onGenerateTopic={generateTopic}
       />

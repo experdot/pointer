@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import { useMessagesStore } from '../stores/messagesStore'
-import type { ChatMessage, TopicGroup, OutlineNode } from '../types/type'
+import type { ChatMessage, Topic, TopicGroup, OutlineNode } from '../types/type'
 
 // ==================== 预构建索引 ====================
 
@@ -233,44 +233,54 @@ export async function updateMessageTitle(
 // ==================== Topic 操作 ====================
 
 /**
- * 设置消息为 Topic
+ * 创建新的 Topic
  */
-export async function setMessageAsTopic(
+export async function createTopic(
   pageId: string,
-  messageId: string,
-  topic: string,
-  indent: number = 0
-): Promise<void> {
-  await updateMessage(pageId, messageId, {
-    topic: topic || undefined,
-    topicIndent: indent,
-    topicCollapsed: false,
-    updatedAt: Date.now()
-  })
+  name: string,
+  startMessageId: string,
+  indent: number = 0,
+  endMessageId?: string
+): Promise<Topic> {
+  const topic: Topic = {
+    id: uuidv4(),
+    name,
+    startMessageId,
+    endMessageId,
+    indent,
+    collapsed: false
+  }
+  await useMessagesStore.getState().addTopic(pageId, topic)
+  return topic
 }
 
 /**
- * 移除消息的 Topic 标记
+ * 更新 Topic
  */
-export async function removeTopicFromMessage(pageId: string, messageId: string): Promise<void> {
-  await updateMessage(pageId, messageId, {
-    topic: undefined,
-    topicIndent: undefined,
-    topicCollapsed: undefined,
-    updatedAt: Date.now()
-  })
+export async function updateTopic(
+  pageId: string,
+  topicId: string,
+  updates: Partial<Omit<Topic, 'id'>>
+): Promise<void> {
+  await useMessagesStore.getState().updateTopic(pageId, topicId, updates)
+}
+
+/**
+ * 删除 Topic
+ */
+export async function deleteTopic(pageId: string, topicId: string): Promise<void> {
+  await useMessagesStore.getState().deleteTopic(pageId, topicId)
 }
 
 /**
  * 切换 Topic 折叠状态
  */
-export async function toggleTopicCollapse(pageId: string, messageId: string): Promise<void> {
-  const record = useMessagesStore.getState().get(pageId)
-  const message = record?.messages.find((m) => m.id === messageId)
-  if (message?.topic) {
-    await updateMessage(pageId, messageId, {
-      topicCollapsed: !message.topicCollapsed,
-      updatedAt: Date.now()
+export async function toggleTopicCollapse(pageId: string, topicId: string): Promise<void> {
+  const topics = useMessagesStore.getState().getTopics(pageId)
+  const topic = topics.find((t) => t.id === topicId)
+  if (topic) {
+    await useMessagesStore.getState().updateTopic(pageId, topicId, {
+      collapsed: !topic.collapsed
     })
   }
 }
@@ -280,48 +290,89 @@ export async function toggleTopicCollapse(pageId: string, messageId: string): Pr
  */
 export async function setTopicCollapsed(
   pageId: string,
-  messageId: string,
+  topicId: string,
   collapsed: boolean
 ): Promise<void> {
-  await updateMessage(pageId, messageId, {
-    topicCollapsed: collapsed,
-    updatedAt: Date.now()
-  })
+  await useMessagesStore.getState().updateTopic(pageId, topicId, { collapsed })
+}
+
+/**
+ * 获取页面的所有 Topics
+ */
+export function getTopics(pageId: string): Topic[] {
+  return useMessagesStore.getState().getTopics(pageId)
 }
 
 // ==================== Topic 分组计算 ====================
 
 /**
  * 计算 Topic 分组
- * 遍历消息路径，将消息按 Topic 分组
+ * 基于独立的 Topic 实体和当前消息路径，计算每个 Topic 的实际消息范围
+ *
+ * @param topics - 页面的所有 Topics
+ * @param currentPath - 当前路径的消息列表（从根到叶子）
+ * @returns 在当前路径上有效的 TopicGroup 列表
  */
-export function computeTopicGroups(messages: ChatMessage[]): TopicGroup[] {
-  const groups: TopicGroup[] = []
-  let currentGroup: TopicGroup | null = null
+export function computeTopicGroups(topics: Topic[], currentPath: ChatMessage[]): TopicGroup[] {
+  if (currentPath.length === 0 || topics.length === 0) return []
 
-  for (const msg of messages) {
-    if (msg.topic) {
-      // 遇到新的 Topic，结束当前 group 并开始新 group
-      if (currentGroup) {
-        groups.push(currentGroup)
-      }
-      currentGroup = {
-        startMessageId: msg.id,
-        name: msg.topic,
-        indent: msg.topicIndent ?? 0,
-        messageIds: [msg.id],
-        collapsed: msg.topicCollapsed ?? false
-      }
-    } else if (currentGroup) {
-      // 当前消息属于当前 Topic group
-      currentGroup.messageIds.push(msg.id)
-    }
-    // 如果没有 currentGroup 且消息没有 topic，该消息不属于任何 topic（在第一个 topic 之前）
+  // 构建消息 ID 到索引的映射
+  const messageIndexMap = new Map<string, number>()
+  for (let i = 0; i < currentPath.length; i++) {
+    messageIndexMap.set(currentPath[i].id, i)
   }
 
-  // 处理最后一个 group
-  if (currentGroup) {
-    groups.push(currentGroup)
+  // 筛选出 startMessageId 在当前路径上的 Topics，并按路径顺序排序
+  const validTopics = topics
+    .filter((t) => messageIndexMap.has(t.startMessageId))
+    .map((t) => ({
+      topic: t,
+      startIndex: messageIndexMap.get(t.startMessageId)!
+    }))
+    .sort((a, b) => a.startIndex - b.startIndex)
+
+  if (validTopics.length === 0) return []
+
+  const groups: TopicGroup[] = []
+
+  for (let i = 0; i < validTopics.length; i++) {
+    const { topic, startIndex } = validTopics[i]
+    let endIndex: number
+
+    if (topic.endMessageId && messageIndexMap.has(topic.endMessageId)) {
+      // 有明确的 endMessageId 且在路径上
+      endIndex = messageIndexMap.get(topic.endMessageId)!
+    } else {
+      // 找下一个同级或更高级的 Topic 作为结束边界
+      endIndex = currentPath.length - 1 // 默认到末尾
+
+      for (let j = i + 1; j < validTopics.length; j++) {
+        if (validTopics[j].topic.indent <= topic.indent) {
+          // 找到同级或更高级的 Topic，结束于其前一条消息
+          endIndex = validTopics[j].startIndex - 1
+          break
+        }
+      }
+    }
+
+    // 确保 endIndex >= startIndex
+    endIndex = Math.max(startIndex, endIndex)
+
+    // 收集消息 ID
+    const messageIds: string[] = []
+    for (let k = startIndex; k <= endIndex; k++) {
+      messageIds.push(currentPath[k].id)
+    }
+
+    groups.push({
+      topicId: topic.id,
+      startMessageId: topic.startMessageId,
+      endMessageId: currentPath[endIndex].id,
+      name: topic.name,
+      indent: topic.indent,
+      messageIds,
+      collapsed: topic.collapsed
+    })
   }
 
   return groups
@@ -351,24 +402,44 @@ export function filterMessagesByTopicCollapse(
 
 /**
  * 计算大纲
- * 返回所有 Topic 和带标题的消息，形成树状结构
+ * 基于 TopicGroup 和消息的 title，形成树状结构
+ *
+ * @param topicGroups - 计算好的 TopicGroup 列表
+ * @param currentPath - 当前路径的消息列表
+ * @returns 树状的 OutlineNode 结构
  */
-export function computeOutline(messages: ChatMessage[]): OutlineNode[] {
+export function computeOutline(topicGroups: TopicGroup[], currentPath: ChatMessage[]): OutlineNode[] {
   const outline: OutlineNode[] = []
   const topicStack: { node: OutlineNode; indent: number }[] = []
 
-  for (const msg of messages) {
+  // 构建消息 ID 到消息的映射
+  const messageMap = new Map<string, ChatMessage>()
+  for (const msg of currentPath) {
+    messageMap.set(msg.id, msg)
+  }
+
+  // 构建 Topic startMessageId 到 TopicGroup 的映射
+  const topicGroupMap = new Map<string, TopicGroup>()
+  for (const group of topicGroups) {
+    topicGroupMap.set(group.startMessageId, group)
+  }
+
+  // 遍历当前路径
+  for (const msg of currentPath) {
+    const topicGroup = topicGroupMap.get(msg.id)
+
     // 处理 Topic 节点
-    if (msg.topic) {
+    if (topicGroup) {
       const topicNode: OutlineNode = {
-        id: `topic-${msg.id}`,
-        title: msg.topic,
+        id: `topic-${topicGroup.topicId}`,
+        title: topicGroup.name,
         type: 'topic',
-        indent: msg.topicIndent ?? 0,
+        indent: topicGroup.indent,
         messageId: msg.id,
+        topicId: topicGroup.topicId,
         role: msg.role,
         children: [],
-        collapsed: msg.topicCollapsed ?? false
+        collapsed: topicGroup.collapsed
       }
 
       // 根据缩进层级确定父节点
@@ -386,7 +457,7 @@ export function computeOutline(messages: ChatMessage[]): OutlineNode[] {
 
       topicStack.push({ node: topicNode, indent: topicNode.indent })
 
-      // 如果 Topic 消息同时有 title，将 title 作为第一个子节点
+      // 如果 Topic 起始消息同时有 title，将 title 作为第一个子节点
       if (msg.title) {
         const titleNode: OutlineNode = {
           id: `title-${msg.id}`,
@@ -398,10 +469,8 @@ export function computeOutline(messages: ChatMessage[]): OutlineNode[] {
         }
         topicNode.children!.push(titleNode)
       }
-    }
-
-    // 处理带标题的消息节点（没有 Topic 的）
-    if (msg.title && !msg.topic) {
+    } else if (msg.title) {
+      // 处理带标题的消息节点（不是 Topic 起始消息）
       const titleNode: OutlineNode = {
         id: `title-${msg.id}`,
         title: msg.title,
@@ -428,19 +497,29 @@ export function computeOutline(messages: ChatMessage[]): OutlineNode[] {
  * 获取消息所属的 Topic 信息
  */
 export function getMessageTopicInfo(
-  messages: ChatMessage[],
+  topicGroups: TopicGroup[],
   messageId: string
-): { topic: string; topicMessageId: string } | null {
-  const topicGroups = computeTopicGroups(messages)
-
+): { topicId: string; topicName: string; topicMessageId: string } | null {
   for (const group of topicGroups) {
     if (group.messageIds.includes(messageId)) {
       return {
-        topic: group.name,
+        topicId: group.topicId,
+        topicName: group.name,
         topicMessageId: group.startMessageId
       }
     }
   }
 
   return null
+}
+
+/**
+ * 根据消息 ID 查找关联的 Topic
+ * 用于判断消息是否是某个 Topic 的起始消息
+ */
+export function findTopicByStartMessageId(
+  topics: Topic[],
+  messageId: string
+): Topic | undefined {
+  return topics.find((t) => t.startMessageId === messageId)
 }

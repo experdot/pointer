@@ -10,8 +10,8 @@ import {
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
-import { computeTopicGroups, filterMessagesByTopicCollapse } from '../../../services/messagesService'
-import type { ChatMessage, FileAttachment } from '../../../types/type'
+import { filterMessagesByTopicCollapse, findTopicByStartMessageId } from '../../../services/messagesService'
+import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
 
 export interface MessageListRef {
   scrollToMessage: (messageId: string, instant?: boolean) => void
@@ -37,12 +37,16 @@ interface MessageListProps {
   onToggleCollapse: (messageId: string) => void
   onCollapseAll: () => void
   onExpandAll: () => void
-  // Title/Topic 相关
+  // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
   onGenerateTitle?: (messageId: string) => void
-  onSetAsTopic?: (messageId: string, topic: string) => void
-  onRemoveTopic?: (messageId: string) => void
-  onToggleTopicCollapse?: (messageId: string) => void
+  // Topic 相关（独立 Topic 实体）
+  topics: Topic[]
+  topicGroups: TopicGroup[]
+  onCreateTopic?: (messageId: string, name: string) => void
+  onUpdateTopic?: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => void
+  onDeleteTopic?: (topicId: string) => void
+  onToggleTopicCollapse?: (topicId: string) => void
   onGenerateTopic?: (messageId: string) => void
 }
 
@@ -64,8 +68,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onExpandAll,
     onUpdateTitle,
     onGenerateTitle,
-    onSetAsTopic,
-    onRemoveTopic,
+    // Topic 相关
+    topics,
+    topicGroups,
+    onCreateTopic,
+    onUpdateTopic,
+    onDeleteTopic,
     onToggleTopicCollapse,
     onGenerateTopic
   },
@@ -118,10 +126,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     return map
   }, [messages, childrenMap])
 
-  // 计算 Topic 分组信息
-  const topicGroups = useMemo(() => computeTopicGroups(messages), [messages])
-
-  // 创建 Topic 消息数量映射
+  // 创建 Topic 消息数量映射（基于传入的 topicGroups）
   const topicMessageCountMap = useMemo(() => {
     const map = new Map<string, number>()
     for (const group of topicGroups) {
@@ -279,6 +284,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         // Topic 消息数量（仅 Topic 起始消息有）
         const topicMessageCount = topicMessageCountMap.get(message.id)
 
+        // 查找此消息关联的 Topic（当此消息是 Topic 起始消息时）
+        const messageTopic = findTopicByStartMessageId(topics, message.id)
+
         return (
           <MessageItem
             key={message.id}
@@ -301,11 +309,14 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onToggleCollapse={onToggleCollapse}
             onUpdateTitle={onUpdateTitle}
             onGenerateTitle={onGenerateTitle}
-            onSetAsTopic={onSetAsTopic}
-            onRemoveTopic={onRemoveTopic}
+            // Topic 相关
+            topic={messageTopic}
+            topicMessageCount={topicMessageCount}
+            onCreateTopic={onCreateTopic}
+            onUpdateTopic={onUpdateTopic}
+            onDeleteTopic={onDeleteTopic}
             onToggleTopicCollapse={onToggleTopicCollapse}
             onGenerateTopic={onGenerateTopic}
-            topicMessageCount={topicMessageCount}
           />
         )
       })}

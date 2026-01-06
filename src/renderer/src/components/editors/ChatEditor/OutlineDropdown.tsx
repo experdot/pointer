@@ -17,7 +17,7 @@ interface OutlineDropdownProps {
   outline: OutlineNode[]
   currentMessageId?: string
   onScrollToMessage: (messageId: string) => void
-  onToggleTopicCollapse?: (messageId: string) => void
+  onToggleTopicCollapse?: (topicId: string) => void
   onBatchGenerateTitles?: () => Promise<void>
   /** 批量生成进度 { current, total } */
   batchProgress?: { current: number; total: number } | null
@@ -72,12 +72,12 @@ export function OutlineDropdown({
           />
 
           {/* Topic 折叠/展开按钮 */}
-          {isTopic ? (
+          {isTopic && node.topicId ? (
             <span
               className="outline-dropdown__toggle"
               onClick={(e) => {
                 e.stopPropagation()
-                onToggleTopicCollapse?.(node.messageId)
+                onToggleTopicCollapse?.(node.topicId!)
               }}
             >
               {node.collapsed ? <RightOutlined /> : <DownOutlined />}

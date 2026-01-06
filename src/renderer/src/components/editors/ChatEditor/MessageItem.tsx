@@ -27,7 +27,7 @@ import { ModelConfigSelector } from './ModelConfigSelector'
 import { MessageAttachments } from './MessageAttachments'
 import { AttachmentPreview } from './AttachmentPreview'
 import { selectAndSaveAttachments } from '../../../hooks/useAttachment'
-import type { ChatMessage, FileAttachment } from '../../../types/type'
+import type { ChatMessage, FileAttachment, Topic } from '../../../types/type'
 
 const { TextArea } = Input
 
@@ -49,15 +49,19 @@ interface MessageItemProps {
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
-  // Title/Topic 相关
+  // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
   onGenerateTitle?: (messageId: string) => void
-  onSetAsTopic?: (messageId: string, topic: string) => void
-  onRemoveTopic?: (messageId: string) => void
-  onToggleTopicCollapse?: (messageId: string) => void
-  onGenerateTopic?: (messageId: string) => void
+  // Topic 相关（独立 Topic 实体）
+  /** 此消息关联的 Topic（当此消息是 Topic 起始消息时） */
+  topic?: Topic
   /** Topic 内消息数量（仅 Topic 起始消息有） */
   topicMessageCount?: number
+  onCreateTopic?: (messageId: string, name: string) => void
+  onUpdateTopic?: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => void
+  onDeleteTopic?: (topicId: string) => void
+  onToggleTopicCollapse?: (topicId: string) => void
+  onGenerateTopic?: (messageId: string) => void
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -80,11 +84,14 @@ export const MessageItem = React.memo(function MessageItem({
   onToggleCollapse,
   onUpdateTitle,
   onGenerateTitle,
-  onSetAsTopic,
-  onRemoveTopic,
+  // Topic 相关
+  topic,
+  topicMessageCount,
+  onCreateTopic,
+  onUpdateTopic,
+  onDeleteTopic,
   onToggleTopicCollapse,
-  onGenerateTopic,
-  topicMessageCount
+  onGenerateTopic
 }: MessageItemProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -102,7 +109,7 @@ export const MessageItem = React.memo(function MessageItem({
 
   // Topic 编辑状态
   const [isEditingTopic, setIsEditingTopic] = useState(false)
-  const [editTopicValue, setEditTopicValue] = useState(message.topic || '')
+  const [editTopicValue, setEditTopicValue] = useState(topic?.name || '')
   const topicInputRef = useRef<InputRef>(null)
 
   const isUser = message.role === 'user'
@@ -314,10 +321,10 @@ export const MessageItem = React.memo(function MessageItem({
 
   // Topic 编辑入口（需要在 contextMenuItems 之前定义）
   const handleStartTopicEdit = useCallback(() => {
-    setEditTopicValue(message.topic || '')
+    setEditTopicValue(topic?.name || '')
     setIsEditingTopic(true)
     setTimeout(() => topicInputRef.current?.focus(), 50)
-  }, [message.topic])
+  }, [topic?.name])
 
   const contextMenuItems: MenuProps['items'] = [
     {
@@ -348,7 +355,7 @@ export const MessageItem = React.memo(function MessageItem({
       }
     },
     { type: 'divider' },
-    message.topic
+    topic
       ? {
           key: 'edit-topic',
           label: '编辑 Topic',
@@ -362,7 +369,7 @@ export const MessageItem = React.memo(function MessageItem({
           onClick: () => {
             // 简单实现：使用标题或内容前15个字符作为 Topic 名称
             const topicName = message.title || displayContent.slice(0, 15).replace(/\s+/g, ' ')
-            onSetAsTopic?.(message.id, topicName)
+            onCreateTopic?.(message.id, topicName)
           }
         }
   ]
@@ -395,15 +402,21 @@ export const MessageItem = React.memo(function MessageItem({
   const handleSaveTopic = useCallback(() => {
     const trimmedTopic = editTopicValue.trim()
     if (trimmedTopic) {
-      onSetAsTopic?.(message.id, trimmedTopic)
+      if (topic) {
+        // 更新现有 Topic
+        onUpdateTopic?.(topic.id, { name: trimmedTopic })
+      } else {
+        // 创建新 Topic
+        onCreateTopic?.(message.id, trimmedTopic)
+      }
     }
     setIsEditingTopic(false)
-  }, [message.id, editTopicValue, onSetAsTopic])
+  }, [message.id, topic, editTopicValue, onUpdateTopic, onCreateTopic])
 
   const handleCancelTopicEdit = useCallback(() => {
     setIsEditingTopic(false)
-    setEditTopicValue(message.topic || '')
-  }, [message.topic])
+    setEditTopicValue(topic?.name || '')
+  }, [topic?.name])
 
   const handleTopicKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -435,16 +448,16 @@ export const MessageItem = React.memo(function MessageItem({
 
       <div className="message-item__content">
         {/* Topic 头部 - 当此消息是 Topic 起始消息时显示 */}
-        {message.topic && (
+        {topic && (
           <div
-            className={`message-item__topic-header ${message.topicCollapsed ? 'message-item__topic-header--collapsed' : ''}`}
+            className={`message-item__topic-header ${topic.collapsed ? 'message-item__topic-header--collapsed' : ''}`}
           >
             <Button
               type="text"
               size="small"
               className="message-item__topic-toggle"
-              icon={message.topicCollapsed ? <RightOutlined /> : <DownOutlined />}
-              onClick={() => onToggleTopicCollapse?.(message.id)}
+              icon={topic.collapsed ? <RightOutlined /> : <DownOutlined />}
+              onClick={() => onToggleTopicCollapse?.(topic.id)}
             />
             <FolderOutlined className="message-item__topic-icon" />
             {isEditingTopic ? (
@@ -479,7 +492,7 @@ export const MessageItem = React.memo(function MessageItem({
             ) : (
               <Tooltip title="点击编辑 Topic">
                 <span className="message-item__topic-name" onClick={handleStartTopicEdit}>
-                  {message.topic}
+                  {topic.name}
                 </span>
               </Tooltip>
             )}
@@ -492,14 +505,14 @@ export const MessageItem = React.memo(function MessageItem({
                 size="small"
                 className="message-item__topic-remove"
                 icon={<CloseOutlined />}
-                onClick={() => onRemoveTopic?.(message.id)}
+                onClick={() => onDeleteTopic?.(topic.id)}
               />
             </Tooltip>
           </div>
         )}
 
         {/* Topic 折叠时隐藏以下所有内容 */}
-        {!(message.topic && message.topicCollapsed) && (
+        {!(topic && topic.collapsed) && (
           <>
         <div className="message-item__header">
           <span className="message-item__role">{isUser ? '你' : 'AI'}</span>

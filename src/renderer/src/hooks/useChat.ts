@@ -4,17 +4,13 @@ import { useMessagesStore } from '../stores/messagesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { createAIService } from '../services/aiService'
 import * as messagesService from '../services/messagesService'
-import {
-  updateMessageTitle,
-  setMessageAsTopic,
-  removeTopicFromMessage,
-  toggleTopicCollapse as toggleTopicCollapseService
-} from '../services/messagesService'
+import { updateMessageTitle } from '../services/messagesService'
 import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
 import { generateMessageTitle, generateTopicTitle, analyzeTopicSegments } from '../services/titleService'
 import type {
   ChatMessage,
+  Topic,
   LLMConfig,
   ModelConfig,
   FileAttachment,
@@ -50,14 +46,18 @@ interface UseChatResult {
   switchBranch: (messageId: string) => void
   getChildMessages: (parentId: string | undefined) => ChatMessage[]
   // Title/Topic 相关
+  topics: Topic[]
   topicGroups: TopicGroup[]
   outline: OutlineNode[]
   updateTitle: (messageId: string, title: string) => void
   generateTitle: (messageId: string) => Promise<void>
-  setAsTopic: (messageId: string, topic: string) => void
-  removeTopic: (messageId: string) => void
-  toggleTopicCollapse: (messageId: string) => void
+  // Topic 操作（独立 Topic 实体）
+  createTopic: (messageId: string, name: string, indent?: number) => Promise<Topic | undefined>
+  updateTopic: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => Promise<void>
+  deleteTopic: (topicId: string) => Promise<void>
+  toggleTopicCollapse: (topicId: string) => Promise<void>
   generateTopic: (messageId: string) => Promise<void>
+  findTopicByMessageId: (messageId: string) => Topic | undefined
   // 批量生成标题
   batchGenerateTitles: () => Promise<void>
   batchProgress: { current: number; total: number } | null
@@ -88,14 +88,17 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     return messagesService.getMessagePath(record.messages, record.leafMessageId)
   }, [record])
 
+  // 获取 Topics
+  const topics = useMemo(() => record?.topics ?? [], [record?.topics])
+
   // Topic 分组和大纲计算
   const topicGroups = useMemo(() => {
-    return messagesService.computeTopicGroups(currentPath)
-  }, [currentPath])
+    return messagesService.computeTopicGroups(topics, currentPath)
+  }, [topics, currentPath])
 
   const outline = useMemo(() => {
-    return messagesService.computeOutline(currentPath)
-  }, [currentPath])
+    return messagesService.computeOutline(topicGroups, currentPath)
+  }, [topicGroups, currentPath])
 
   const getConfigs = useCallback((): {
     llmConfig: LLMConfig
@@ -414,25 +417,58 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     [pageId, messages]
   )
 
-  const setAsTopic = useCallback(
-    (messageId: string, topic: string) => {
-      setMessageAsTopic(pageId, messageId, topic)
+  // ============ Topic 操作方法（独立 Topic 实体）============
+
+  const createTopic = useCallback(
+    async (messageId: string, name: string, indent: number = 0): Promise<Topic | undefined> => {
+      try {
+        return await messagesService.createTopic(pageId, name, messageId, indent)
+      } catch (error) {
+        console.error('Failed to create topic:', error)
+        return undefined
+      }
     },
     [pageId]
   )
 
-  const removeTopic = useCallback(
-    (messageId: string) => {
-      removeTopicFromMessage(pageId, messageId)
+  const handleUpdateTopic = useCallback(
+    async (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => {
+      try {
+        await messagesService.updateTopic(pageId, topicId, updates)
+      } catch (error) {
+        console.error('Failed to update topic:', error)
+      }
+    },
+    [pageId]
+  )
+
+  const handleDeleteTopic = useCallback(
+    async (topicId: string) => {
+      try {
+        await messagesService.deleteTopic(pageId, topicId)
+      } catch (error) {
+        console.error('Failed to delete topic:', error)
+      }
     },
     [pageId]
   )
 
   const handleToggleTopicCollapse = useCallback(
-    (messageId: string) => {
-      toggleTopicCollapseService(pageId, messageId)
+    async (topicId: string) => {
+      try {
+        await messagesService.toggleTopicCollapse(pageId, topicId)
+      } catch (error) {
+        console.error('Failed to toggle topic collapse:', error)
+      }
     },
     [pageId]
+  )
+
+  const findTopicByMessageId = useCallback(
+    (messageId: string): Topic | undefined => {
+      return messagesService.findTopicByStartMessageId(topics, messageId)
+    },
+    [topics]
   )
 
   const generateTopic = useCallback(
@@ -443,7 +479,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       try {
         const result = await generateTopicTitle(message.content)
         if (result.success && result.title) {
-          setMessageAsTopic(pageId, messageId, result.title)
+          await messagesService.createTopic(pageId, result.title, messageId)
         } else if (result.error) {
           console.error('Failed to generate topic:', result.error)
         }
@@ -502,11 +538,13 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     try {
       const result = await analyzeTopicSegments(currentPath)
       if (result.success && result.segments.length > 0) {
-        // 为每个分段点设置 Topic
+        // 为每个分段点创建 Topic
         for (const segment of result.segments) {
           const message = currentPath[segment.index]
-          if (message && !message.topic) {
-            setMessageAsTopic(pageId, message.id, segment.topic)
+          // 检查该消息是否已经有 Topic
+          const existingTopic = messagesService.findTopicByStartMessageId(topics, message.id)
+          if (message && !existingTopic) {
+            await messagesService.createTopic(pageId, segment.topic, message.id)
           }
         }
       } else if (result.error) {
@@ -517,7 +555,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     } finally {
       setIsSegmenting(false)
     }
-  }, [currentPath, pageId, isSegmenting])
+  }, [currentPath, topics, pageId, isSegmenting])
 
   return {
     page,
@@ -534,14 +572,18 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     switchBranch,
     getChildMessages,
     // Title/Topic 相关
+    topics,
     topicGroups,
     outline,
     updateTitle,
     generateTitle,
-    setAsTopic,
-    removeTopic,
+    // Topic 操作（独立 Topic 实体）
+    createTopic,
+    updateTopic: handleUpdateTopic,
+    deleteTopic: handleDeleteTopic,
     toggleTopicCollapse: handleToggleTopicCollapse,
     generateTopic,
+    findTopicByMessageId,
     // 批量生成标题
     batchGenerateTitles,
     batchProgress,

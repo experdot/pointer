@@ -83,36 +83,53 @@ export interface ChatMessage {
   isStreaming?: boolean
   collapsed?: boolean // 消息折叠状态
 
-  // ============ Title/Topic 功能字段 ============
   /** 消息标题 - AI 自动生成或用户手动设置 */
   title?: string
-  /** Topic 名称 - 标记此消息为一个 Topic 的开始 */
-  topic?: string
-  /** Topic 是否折叠（控制 Topic 下所有消息的显示） */
-  topicCollapsed?: boolean
-  /** Topic 缩进层级 - 0 为顶级，1 为次级，依此类推 */
-  topicIndent?: number
+}
+
+// ==================== Topic 类型定义 ====================
+
+/** 独立的 Topic 实体 */
+export interface Topic {
+  /** Topic 唯一 ID */
+  id: string
+  /** Topic 名称 */
+  name: string
+  /** 起始消息 ID */
+  startMessageId: string
+  /** 终止消息 ID（包含），空表示到下一个同级 Topic 为止 */
+  endMessageId?: string
+  /** 缩进层级 - 0 为顶级，1 为次级，依此类推 */
+  indent: number
+  /** 是否折叠 */
+  collapsed: boolean
 }
 
 export interface ChatSession {
   messages: ChatMessage[]
+  /** 独立存储的 Topic 列表 */
+  topics: Topic[]
 
   rootMessageId?: string // 根消息ID
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
   selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
 }
 
-// ==================== Topic 分组类型定义 ====================
+// ==================== Topic 分组类型定义（运行时计算） ====================
 
-/** Topic 分组信息 */
+/** Topic 分组信息（运行时计算，基于当前路径） */
 export interface TopicGroup {
+  /** 关联的 Topic ID */
+  topicId: string
   /** Topic 起始消息 ID */
   startMessageId: string
+  /** Topic 终止消息 ID（包含） */
+  endMessageId: string
   /** Topic 名称 */
   name: string
   /** 缩进层级 */
   indent: number
-  /** 组内消息 ID 列表（包含起始消息） */
+  /** 组内消息 ID 列表（包含起始和终止消息） */
   messageIds: string[]
   /** 是否折叠 */
   collapsed: boolean
@@ -130,6 +147,8 @@ export interface OutlineNode {
   indent: number
   /** 关联的消息 ID */
   messageId: string
+  /** 关联的 Topic ID（仅 topic 类型有） */
+  topicId?: string
   /** 消息角色 */
   role?: 'user' | 'assistant' | 'system'
   /** 子节点（仅 topic 类型有） */

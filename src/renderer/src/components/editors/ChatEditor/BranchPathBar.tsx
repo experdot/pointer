@@ -36,7 +36,7 @@ interface BranchPathBarProps {
   // 大纲相关
   outline?: OutlineNode[]
   currentMessageId?: string
-  onToggleTopicCollapse?: (messageId: string) => void
+  onToggleTopicCollapse?: (topicId: string) => void
   onBatchGenerateTitles?: () => Promise<void>
   batchProgress?: { current: number; total: number } | null
   onSmartSegmentation?: () => Promise<void>

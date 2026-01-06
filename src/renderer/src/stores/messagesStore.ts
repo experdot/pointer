@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import * as db from '../utils/database'
 import type { MessagesRecord } from '../utils/database'
-import type { ChatMessage } from '../types/type'
+import type { ChatMessage, Topic } from '../types/type'
 
 interface MessagesState {
   // 按 pageId 缓存消息
@@ -24,7 +24,7 @@ interface MessagesActions {
   // 更新 session 信息
   updateSession: (
     pageId: string,
-    updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages'>>
+    updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages' | 'topics'>>
   ) => Promise<void>
   // 清除缓存
   clearCache: (pageId: string) => void
@@ -32,6 +32,15 @@ interface MessagesActions {
   remove: (pageId: string) => Promise<void>
   // 重置
   reset: () => void
+  // ============ Topic 操作 ============
+  // 添加 Topic
+  addTopic: (pageId: string, topic: Topic) => Promise<void>
+  // 更新 Topic
+  updateTopic: (pageId: string, topicId: string, updates: Partial<Topic>) => Promise<void>
+  // 删除 Topic
+  deleteTopic: (pageId: string, topicId: string) => Promise<void>
+  // 获取 Topics
+  getTopics: (pageId: string) => Topic[]
 }
 
 type MessagesStore = MessagesState & MessagesActions
@@ -43,6 +52,7 @@ const initialState: MessagesState = {
 const emptyRecord = (pageId: string): MessagesRecord => ({
   pageId,
   messages: [],
+  topics: [],
   rootMessageId: undefined,
   leafMessageId: undefined,
   selectedMessageId: undefined
@@ -118,5 +128,29 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     get().clearCache(pageId)
   },
 
-  reset: () => set(initialState)
+  reset: () => set(initialState),
+
+  // ============ Topic 操作 ============
+  addTopic: async (pageId, topic) => {
+    await get().update(pageId, (record) => ({
+      ...record,
+      topics: [...(record.topics ?? []), topic]
+    }))
+  },
+
+  updateTopic: async (pageId, topicId, updates) => {
+    await get().update(pageId, (record) => ({
+      ...record,
+      topics: (record.topics ?? []).map((t) => (t.id === topicId ? { ...t, ...updates } : t))
+    }))
+  },
+
+  deleteTopic: async (pageId, topicId) => {
+    await get().update(pageId, (record) => ({
+      ...record,
+      topics: (record.topics ?? []).filter((t) => t.id !== topicId)
+    }))
+  },
+
+  getTopics: (pageId) => get().cache[pageId]?.topics ?? []
 }))
