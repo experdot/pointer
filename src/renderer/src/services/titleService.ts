@@ -111,8 +111,7 @@ function getConfigsWithOptions(
   const targetModelConfigId = modelConfigId || settings.defaultModelConfigId
 
   const llmConfig = settings.llmConfigs.items.find((c) => c.id === targetLlmId) || null
-  const modelConfig =
-    settings.modelConfigs.items.find((c) => c.id === targetModelConfigId) || null
+  const modelConfig = settings.modelConfigs.items.find((c) => c.id === targetModelConfigId) || null
 
   return { llmConfig, modelConfig }
 }
@@ -128,10 +127,7 @@ function buildPromptWithRequirements(
   let prompt = basePrompt.replace('{content}', truncateContent(content))
   if (extraRequirements?.trim()) {
     // 在标题/话题名称之前插入额外要求
-    prompt = prompt.replace(
-      /(标题|话题名称)：$/,
-      `\n额外要求：${extraRequirements.trim()}\n\n$1：`
-    )
+    prompt = prompt.replace(/(标题|话题名称)：$/, `\n额外要求：${extraRequirements.trim()}\n\n$1：`)
   }
   return prompt
 }

@@ -120,7 +120,10 @@ export function BranchPathBar({
           // 层级标签（点击跳转）
           const levelLabel = (
             <Tooltip title={getPreview(message, 50)} placement="bottom">
-              <span className="branch-path-bar__item" onClick={() => onNavigateToMessage(message.id)}>
+              <span
+                className="branch-path-bar__item"
+                onClick={() => onNavigateToMessage(message.id)}
+              >
                 {getRoleIcon(message.role)} {index + 1}
               </span>
             </Tooltip>

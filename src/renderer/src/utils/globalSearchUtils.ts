@@ -19,7 +19,10 @@ const CONTENT_PREVIEW_LENGTH = 50
 /**
  * 获取页面的文件夹路径
  */
-function getFolderPath(parentFolderId: string | undefined, folders: PageFolder[]): string | undefined {
+function getFolderPath(
+  parentFolderId: string | undefined,
+  folders: PageFolder[]
+): string | undefined {
   if (!parentFolderId) return undefined
 
   const pathParts: string[] = []
@@ -129,10 +132,7 @@ function searchInMessages(
     const matches: GlobalSearchMatch[] = []
     let match: RegExpExecArray | null
 
-    while (
-      (match = pattern.exec(content)) !== null &&
-      totalMatchCount < MAX_MATCHES_PER_PAGE
-    ) {
+    while ((match = pattern.exec(content)) !== null && totalMatchCount < MAX_MATCHES_PER_PAGE) {
       const { snippet, matchStart, matchEnd } = extractSnippet(
         content,
         match.index,
@@ -162,10 +162,7 @@ function searchInMessages(
     // 如果该消息有匹配项，创建消息分组
     if (matches.length > 0) {
       // 提取内容预览（去除换行，截取前 N 个字符）
-      const contentPreview = content
-        .replace(/\n/g, ' ')
-        .slice(0, CONTENT_PREVIEW_LENGTH)
-        .trim()
+      const contentPreview = content.replace(/\n/g, ' ').slice(0, CONTENT_PREVIEW_LENGTH).trim()
 
       messageGroups.push({
         messageId: message.id,

@@ -64,10 +64,7 @@ export function OutlineDropdown({
           className={`outline-dropdown__item ${isTopic ? 'outline-dropdown__item--topic' : 'outline-dropdown__item--title'}`}
         >
           {/* 缩进 */}
-          <span
-            className="outline-dropdown__indent"
-            style={{ width: depth * 16 }}
-          />
+          <span className="outline-dropdown__indent" style={{ width: depth * 16 }} />
 
           {/* Topic 折叠/展开按钮 */}
           {isTopic && node.topicId ? (
@@ -185,11 +182,7 @@ export function OutlineDropdown({
   )
 
   return (
-    <Dropdown
-      popupRender={() => dropdownContent}
-      trigger={['click']}
-      placement="bottomLeft"
-    >
+    <Dropdown popupRender={() => dropdownContent} trigger={['click']} placement="bottomLeft">
       <Tooltip title="大纲">
         <Button
           type="text"

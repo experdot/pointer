@@ -6,7 +6,8 @@ import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 
 export function SearchInput(): React.JSX.Element {
-  const { query, setQuery, options, setOptions, clearSearch, triggerSearch } = useGlobalSearchStore()
+  const { query, setQuery, options, setOptions, clearSearch, triggerSearch } =
+    useGlobalSearchStore()
   const activePanel = useLayoutStore((state) => state.activePanel)
   const inputRef = useRef<InputRef>(null)
 

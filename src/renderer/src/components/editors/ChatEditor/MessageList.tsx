@@ -10,7 +10,10 @@ import {
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
 import { streamingManager } from '../../../services/streamingManager'
-import { filterMessagesByTopicCollapse, findTopicByStartMessageId } from '../../../services/messagesService'
+import {
+  filterMessagesByTopicCollapse,
+  findTopicByStartMessageId
+} from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
 import './MessageList.css'
 

@@ -283,7 +283,11 @@ interface SearchResultItemProps {
   onClick: () => void
 }
 
-function SearchResultItem({ match, isSelected, onClick }: SearchResultItemProps): React.JSX.Element {
+function SearchResultItem({
+  match,
+  isSelected,
+  onClick
+}: SearchResultItemProps): React.JSX.Element {
   // 渲染带高亮的片段
   const renderSnippet = (): React.JSX.Element => {
     const { snippet, matchStart, matchEnd } = match

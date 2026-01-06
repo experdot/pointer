@@ -81,10 +81,7 @@ export function Header({ page, onOpenGenerateModal }: HeaderProps): React.JSX.El
           size="small"
           suffix={
             <Tooltip title="AI 生成">
-              <ThunderboltOutlined
-                className="rename-input__ai-btn"
-                onClick={handleAIGenerate}
-              />
+              <ThunderboltOutlined className="rename-input__ai-btn" onClick={handleAIGenerate} />
             </Tooltip>
           }
         />

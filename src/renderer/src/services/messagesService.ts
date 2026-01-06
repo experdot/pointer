@@ -408,7 +408,10 @@ export function filterMessagesByTopicCollapse(
  * @param currentPath - 当前路径的消息列表
  * @returns 树状的 OutlineNode 结构
  */
-export function computeOutline(topicGroups: TopicGroup[], currentPath: ChatMessage[]): OutlineNode[] {
+export function computeOutline(
+  topicGroups: TopicGroup[],
+  currentPath: ChatMessage[]
+): OutlineNode[] {
   const outline: OutlineNode[] = []
   const topicStack: { node: OutlineNode; indent: number }[] = []
 
@@ -443,7 +446,10 @@ export function computeOutline(topicGroups: TopicGroup[], currentPath: ChatMessa
       }
 
       // 根据缩进层级确定父节点
-      while (topicStack.length > 0 && topicStack[topicStack.length - 1].indent >= topicNode.indent) {
+      while (
+        topicStack.length > 0 &&
+        topicStack[topicStack.length - 1].indent >= topicNode.indent
+      ) {
         topicStack.pop()
       }
 
@@ -517,9 +523,6 @@ export function getMessageTopicInfo(
  * 根据消息 ID 查找关联的 Topic
  * 用于判断消息是否是某个 Topic 的起始消息
  */
-export function findTopicByStartMessageId(
-  topics: Topic[],
-  messageId: string
-): Topic | undefined {
+export function findTopicByStartMessageId(topics: Topic[], messageId: string): Topic | undefined {
   return topics.find((t) => t.startMessageId === messageId)
 }

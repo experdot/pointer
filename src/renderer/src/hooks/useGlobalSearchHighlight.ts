@@ -46,9 +46,7 @@ export function useGlobalSearchHighlight({
 
     // 延迟执行，确保 DOM 已渲染
     const applyHighlight = (): void => {
-      const messageEl = container.querySelector(
-        `[data-message-id="${highlightMatch.messageId}"]`
-      )
+      const messageEl = container.querySelector(`[data-message-id="${highlightMatch.messageId}"]`)
       if (!messageEl) return
 
       const contentEl = messageEl.querySelector('.message-item__body')
@@ -56,10 +54,7 @@ export function useGlobalSearchHighlight({
 
       // 获取消息内容
       const messageContent = messages.find((m) => m.id === highlightMatch.messageId)?.content ?? ''
-      const matchText = messageContent.slice(
-        highlightMatch.contentStart,
-        highlightMatch.contentEnd
-      )
+      const matchText = messageContent.slice(highlightMatch.contentStart, highlightMatch.contentEnd)
       if (!matchText) return
 
       // 收集文本节点

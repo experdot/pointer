@@ -532,232 +532,240 @@ export const MessageItem = React.memo(function MessageItem({
         {/* Topic 折叠时隐藏以下所有内容 */}
         {!(topic && topic.collapsed) && (
           <>
-        <div className="message-item__header">
-          <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
-          <span className="message-item__time">{formatTime(message.createdAt)}</span>
+            <div className="message-item__header">
+              <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
+              <span className="message-item__time">{formatTime(message.createdAt)}</span>
 
-          {/* 折叠按钮 */}
-          <Tooltip title={message.collapsed ? '展开' : '折叠'}>
-            <Button
-              type="text"
-              size="small"
-              className="message-item__collapse-btn"
-              icon={message.collapsed ? <DownOutlined /> : <UpOutlined />}
-              onClick={() => onToggleCollapse?.(message.id)}
-            />
-          </Tooltip>
-
-          {/* 模型选择器 - assistant 消息 */}
-          {isAssistant && (
-            <ModelSelector
-              value={message.modelId}
-              onChange={(llmId) => onRetry(message.id, llmId)}
-              disabled={isStreaming}
-            />
-          )}
-
-          {/* 模型配置选择器 - assistant 消息 */}
-          {isAssistant && (
-            <ModelConfigSelector
-              value={message.modelConfigId}
-              onChange={(modelConfigId) => onRetry(message.id, undefined, modelConfigId)}
-              disabled={isStreaming}
-            />
-          )}
-
-          {/* 分支导航 - 仅在有多个分支时显示 */}
-          {branchCount > 1 && (
-            <BranchNavigator
-              currentIndex={branchIndex}
-              totalCount={branchCount}
-              siblings={siblings}
-              onSwitchBranch={onSwitchBranch}
-            />
-          )}
-        </div>
-
-        {/* 标题行 - 单独一行显示 */}
-        {(isEditingTitle || message.title) && (
-          <div className="message-item__title-row">
-            {isEditingTitle ? (
-              <Input
-                ref={titleInputRef}
-                size="small"
-                value={editTitleValue}
-                onChange={(e) => setEditTitleValue(e.target.value)}
-                onKeyDown={handleTitleKeyDown}
-                onBlur={(e) => {
-                  // 如果点击的是生成按钮，不触发 blur 保存
-                  if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
-                  handleSaveTitle()
-                }}
-                placeholder="输入标题..."
-                style={{ width: 180 }}
-                suffix={
-                  <Tooltip title="AI 生成">
-                    <ThunderboltOutlined
-                      className="rename-input__ai-btn"
-                      onClick={() => {
-                        onOpenGenerateModal?.('title', message.id)
-                        setIsEditingTitle(false)
-                      }}
-                    />
-                  </Tooltip>
-                }
-              />
-            ) : (
-              <Tooltip title="点击编辑标题">
-                <span
-                  className="message-item__title"
-                  onClick={() => {
-                    setEditTitleValue(message.title || '')
-                    setIsEditingTitle(true)
-                    setTimeout(() => titleInputRef.current?.focus(), 50)
-                  }}
-                >
-                  <TagOutlined />
-                  {message.title}
-                </span>
+              {/* 折叠按钮 */}
+              <Tooltip title={message.collapsed ? '展开' : '折叠'}>
+                <Button
+                  type="text"
+                  size="small"
+                  className="message-item__collapse-btn"
+                  icon={message.collapsed ? <DownOutlined /> : <UpOutlined />}
+                  onClick={() => onToggleCollapse?.(message.id)}
+                />
               </Tooltip>
-            )}
-          </div>
-        )}
 
-        {/* 推理内容 */}
-        {displayReasoning && (
-          <div
-            className={`message-item__reasoning ${reasoningExpanded ? 'message-item__reasoning--expanded' : ''}`}
-          >
-            <div className="message-item__reasoning-label" onClick={handleToggleReasoning}>
-              {reasoningExpanded ? <DownOutlined /> : <RightOutlined />}
-              <span>思考过程</span>
+              {/* 模型选择器 - assistant 消息 */}
+              {isAssistant && (
+                <ModelSelector
+                  value={message.modelId}
+                  onChange={(llmId) => onRetry(message.id, llmId)}
+                  disabled={isStreaming}
+                />
+              )}
+
+              {/* 模型配置选择器 - assistant 消息 */}
+              {isAssistant && (
+                <ModelConfigSelector
+                  value={message.modelConfigId}
+                  onChange={(modelConfigId) => onRetry(message.id, undefined, modelConfigId)}
+                  disabled={isStreaming}
+                />
+              )}
+
+              {/* 分支导航 - 仅在有多个分支时显示 */}
+              {branchCount > 1 && (
+                <BranchNavigator
+                  currentIndex={branchIndex}
+                  totalCount={branchCount}
+                  siblings={siblings}
+                  onSwitchBranch={onSwitchBranch}
+                />
+              )}
             </div>
-            <div className="message-item__reasoning-content">{displayReasoning}</div>
-          </div>
-        )}
 
-        {/* 消息附件 */}
-        {message.attachments && message.attachments.length > 0 && !message.collapsed && (
-          <MessageAttachments attachments={message.attachments} />
-        )}
-
-        {/* 消息内容 */}
-        {isEditing ? (
-          <div
-            className={`message-item__edit ${isUser && isEditDragOver ? 'message-item__edit--drag-over' : ''}`}
-            onDragOver={isUser ? handleEditDragOver : undefined}
-            onDragLeave={isUser ? handleEditDragLeave : undefined}
-            onDrop={isUser ? handleEditDrop : undefined}
-          >
-            {/* 用户消息编辑时显示附件预览 */}
-            {isUser && editAttachments.length > 0 && (
-              <AttachmentPreview
-                attachments={editAttachments}
-                onRemove={handleRemoveEditAttachment}
-              />
-            )}
-            <TextArea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              onPaste={isUser ? handleEditPaste : undefined}
-              autoSize={{ minRows: 2, maxRows: 10 }}
-              autoFocus
-            />
-            <div className="message-item__edit-actions">
-              {isUser && (
-                <Tooltip title="添加图片">
-                  <Button
-                    type="text"
-                    icon={<PictureOutlined />}
-                    onClick={handleAddEditAttachments}
+            {/* 标题行 - 单独一行显示 */}
+            {(isEditingTitle || message.title) && (
+              <div className="message-item__title-row">
+                {isEditingTitle ? (
+                  <Input
+                    ref={titleInputRef}
+                    size="small"
+                    value={editTitleValue}
+                    onChange={(e) => setEditTitleValue(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    onBlur={(e) => {
+                      // 如果点击的是生成按钮，不触发 blur 保存
+                      if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
+                      handleSaveTitle()
+                    }}
+                    placeholder="输入标题..."
+                    style={{ width: 180 }}
+                    suffix={
+                      <Tooltip title="AI 生成">
+                        <ThunderboltOutlined
+                          className="rename-input__ai-btn"
+                          onClick={() => {
+                            onOpenGenerateModal?.('title', message.id)
+                            setIsEditingTitle(false)
+                          }}
+                        />
+                      </Tooltip>
+                    }
                   />
-                </Tooltip>
-              )}
-              <Button icon={<CloseOutlined />} onClick={handleCancelEdit}>
-                取消
-              </Button>
-              <Button icon={<CheckOutlined />} onClick={handleSaveEdit}>
-                保存
-              </Button>
-              {isUser && (
-                <Button type="primary" icon={<SendOutlined />} onClick={handleEditAndResend}>
-                  保存并重发
-                </Button>
-              )}
-            </div>
-            {/* 拖拽提示 */}
-            {isUser && isEditDragOver && (
-              <div className="message-item__edit-drag-overlay">
-                <PictureOutlined />
-                <span>释放以添加图片</span>
+                ) : (
+                  <Tooltip title="点击编辑标题">
+                    <span
+                      className="message-item__title"
+                      onClick={() => {
+                        setEditTitleValue(message.title || '')
+                        setIsEditingTitle(true)
+                        setTimeout(() => titleInputRef.current?.focus(), 50)
+                      }}
+                    >
+                      <TagOutlined />
+                      {message.title}
+                    </span>
+                  </Tooltip>
+                )}
               </div>
             )}
-          </div>
-        ) : message.collapsed ? (
-          <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-            <div className="message-item__preview" onClick={() => onToggleCollapse?.(message.id)}>
-              {collapsedPreview}
-            </div>
-          </Dropdown>
-        ) : (
-          <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-            <div className="message-item__body">
-              <Streamdown
-                isAnimating={isStreaming && isAssistant}
-                mode={isStreaming ? 'streaming' : 'static'}
-              >
-                {displayContent}
-              </Streamdown>
-            </div>
-          </Dropdown>
-        )}
 
-        {/* 操作按钮 */}
-        {!isStreaming && !isEditing && (
-          <div className="message-item__actions">
-            <Tooltip title={copied ? '已复制' : '复制'}>
-              <Button
-                type="text"
-                size="small"
-                icon={copied ? <CheckOutlined /> : <CopyOutlined />}
-                onClick={handleCopy}
-              />
-            </Tooltip>
-            <Tooltip title="编辑">
-              <Button type="text" size="small" icon={<EditOutlined />} onClick={handleStartEdit} />
-            </Tooltip>
-            {isAssistant && (
-              <Tooltip title="重试">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  onClick={() => onRetry(message.id)}
-                />
-              </Tooltip>
+            {/* 推理内容 */}
+            {displayReasoning && (
+              <div
+                className={`message-item__reasoning ${reasoningExpanded ? 'message-item__reasoning--expanded' : ''}`}
+              >
+                <div className="message-item__reasoning-label" onClick={handleToggleReasoning}>
+                  {reasoningExpanded ? <DownOutlined /> : <RightOutlined />}
+                  <span>思考过程</span>
+                </div>
+                <div className="message-item__reasoning-content">{displayReasoning}</div>
+              </div>
             )}
-            {isUser && isLeaf && (
-              <Tooltip title="继续生成">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ArrowDownOutlined />}
-                  onClick={() => onContinue(message.id)}
-                />
-              </Tooltip>
+
+            {/* 消息附件 */}
+            {message.attachments && message.attachments.length > 0 && !message.collapsed && (
+              <MessageAttachments attachments={message.attachments} />
             )}
-            <Popconfirm
-              title="确定删除此消息？"
-              onConfirm={() => onDelete(message.id)}
-              okText="删除"
-              cancelText="取消"
-            >
-              <Tooltip title="删除">
-                <Button type="text" size="small" icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
-          </div>
-        )}
+
+            {/* 消息内容 */}
+            {isEditing ? (
+              <div
+                className={`message-item__edit ${isUser && isEditDragOver ? 'message-item__edit--drag-over' : ''}`}
+                onDragOver={isUser ? handleEditDragOver : undefined}
+                onDragLeave={isUser ? handleEditDragLeave : undefined}
+                onDrop={isUser ? handleEditDrop : undefined}
+              >
+                {/* 用户消息编辑时显示附件预览 */}
+                {isUser && editAttachments.length > 0 && (
+                  <AttachmentPreview
+                    attachments={editAttachments}
+                    onRemove={handleRemoveEditAttachment}
+                  />
+                )}
+                <TextArea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onPaste={isUser ? handleEditPaste : undefined}
+                  autoSize={{ minRows: 2, maxRows: 10 }}
+                  autoFocus
+                />
+                <div className="message-item__edit-actions">
+                  {isUser && (
+                    <Tooltip title="添加图片">
+                      <Button
+                        type="text"
+                        icon={<PictureOutlined />}
+                        onClick={handleAddEditAttachments}
+                      />
+                    </Tooltip>
+                  )}
+                  <Button icon={<CloseOutlined />} onClick={handleCancelEdit}>
+                    取消
+                  </Button>
+                  <Button icon={<CheckOutlined />} onClick={handleSaveEdit}>
+                    保存
+                  </Button>
+                  {isUser && (
+                    <Button type="primary" icon={<SendOutlined />} onClick={handleEditAndResend}>
+                      保存并重发
+                    </Button>
+                  )}
+                </div>
+                {/* 拖拽提示 */}
+                {isUser && isEditDragOver && (
+                  <div className="message-item__edit-drag-overlay">
+                    <PictureOutlined />
+                    <span>释放以添加图片</span>
+                  </div>
+                )}
+              </div>
+            ) : message.collapsed ? (
+              <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
+                <div
+                  className="message-item__preview"
+                  onClick={() => onToggleCollapse?.(message.id)}
+                >
+                  {collapsedPreview}
+                </div>
+              </Dropdown>
+            ) : (
+              <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
+                <div className="message-item__body">
+                  <Streamdown
+                    isAnimating={isStreaming && isAssistant}
+                    mode={isStreaming ? 'streaming' : 'static'}
+                  >
+                    {displayContent}
+                  </Streamdown>
+                </div>
+              </Dropdown>
+            )}
+
+            {/* 操作按钮 */}
+            {!isStreaming && !isEditing && (
+              <div className="message-item__actions">
+                <Tooltip title={copied ? '已复制' : '复制'}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={copied ? <CheckOutlined /> : <CopyOutlined />}
+                    onClick={handleCopy}
+                  />
+                </Tooltip>
+                <Tooltip title="编辑">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={handleStartEdit}
+                  />
+                </Tooltip>
+                {isAssistant && (
+                  <Tooltip title="重试">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      onClick={() => onRetry(message.id)}
+                    />
+                  </Tooltip>
+                )}
+                {isUser && isLeaf && (
+                  <Tooltip title="继续生成">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ArrowDownOutlined />}
+                      onClick={() => onContinue(message.id)}
+                    />
+                  </Tooltip>
+                )}
+                <Popconfirm
+                  title="确定删除此消息？"
+                  onConfirm={() => onDelete(message.id)}
+                  okText="删除"
+                  cancelText="取消"
+                >
+                  <Tooltip title="删除">
+                    <Button type="text" size="small" icon={<DeleteOutlined />} />
+                  </Tooltip>
+                </Popconfirm>
+              </div>
+            )}
           </>
         )}
       </div>

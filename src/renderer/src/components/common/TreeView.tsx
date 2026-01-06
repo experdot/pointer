@@ -430,10 +430,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           suffix={
             !treeNode.isFolder && onGenerateItemName ? (
               <Tooltip title="AI 生成">
-                <ThunderboltOutlined
-                  className="rename-input__ai-btn"
-                  onClick={handleAIGenerate}
-                />
+                <ThunderboltOutlined className="rename-input__ai-btn" onClick={handleAIGenerate} />
               </Tooltip>
             ) : undefined
           }
