@@ -28,6 +28,7 @@ import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
 import { MessageAttachments } from './MessageAttachments'
 import { AttachmentPreview } from './AttachmentPreview'
+import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
 import { selectAndSaveAttachments } from '../../../hooks/useAttachment'
 import type { ChatMessage, FileAttachment, Topic } from '../../../types/type'
 import './MessageItem.css'
@@ -54,7 +55,8 @@ interface MessageItemProps {
   onToggleCollapse?: (messageId: string) => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
-  onOpenGenerateModal?: (mode: 'title' | 'topic', messageId: string) => void
+  onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
+  onGenerateTopic?: (messageId: string, options: GenerateOptions) => Promise<void>
   // Topic 相关（独立 Topic 实体）
   /** 此消息关联的 Topic（当此消息是 Topic 起始消息时） */
   topic?: Topic
@@ -85,7 +87,8 @@ export const MessageItem = React.memo(function MessageItem({
   onQuote,
   onToggleCollapse,
   onUpdateTitle,
-  onOpenGenerateModal,
+  onGenerateTitle,
+  onGenerateTopic,
   // Topic 相关
   topic,
   topicMessageCount,
@@ -106,11 +109,13 @@ export const MessageItem = React.memo(function MessageItem({
   // Title 编辑状态
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitleValue, setEditTitleValue] = useState(message.title || '')
+  const [titlePopoverOpen, setTitlePopoverOpen] = useState(false)
   const titleInputRef = useRef<InputRef>(null)
 
   // Topic 编辑状态
   const [isEditingTopic, setIsEditingTopic] = useState(false)
   const [editTopicValue, setEditTopicValue] = useState(topic?.name || '')
+  const [topicPopoverOpen, setTopicPopoverOpen] = useState(false)
   const topicInputRef = useRef<InputRef>(null)
 
   const isUser = message.role === 'user'
@@ -367,7 +372,7 @@ export const MessageItem = React.memo(function MessageItem({
         }
       : {
           key: 'set-topic',
-          label: '设为分组',
+          label: '添加分组',
           icon: <FolderOutlined />,
           onClick: () => {
             // 简单实现：使用标题或内容前15个字符作为 Topic 名称
@@ -471,22 +476,44 @@ export const MessageItem = React.memo(function MessageItem({
                 onChange={(e) => setEditTopicValue(e.target.value)}
                 onKeyDown={handleTopicKeyDown}
                 onBlur={(e) => {
-                  // 如果点击的是生成按钮，不触发 blur 保存
-                  if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
-                  handleSaveTopic()
+                  // 如果点击的是生成按钮或 Popover 内容，不触发 blur 保存
+                  if (
+                    e.relatedTarget?.closest('.rename-input__ai-btn') ||
+                    e.relatedTarget?.closest('.ai-generate-popover__content')
+                  )
+                    return
+                  if (!topicPopoverOpen) {
+                    handleSaveTopic()
+                  }
                 }}
                 placeholder="输入 Topic 名称..."
                 className="message-item__topic-input"
                 suffix={
-                  <Tooltip title="AI 生成">
-                    <ThunderboltOutlined
-                      className="rename-input__ai-btn"
-                      onClick={() => {
-                        onOpenGenerateModal?.('topic', message.id)
+                  onGenerateTopic ? (
+                    <AIGeneratePopover
+                      open={topicPopoverOpen}
+                      onOpenChange={(open) => {
+                        setTopicPopoverOpen(open)
+                        if (!open) setIsEditingTopic(false)
+                      }}
+                      mode="topic"
+                      onGenerate={async (options) => {
+                        await onGenerateTopic(message.id, options)
                         setIsEditingTopic(false)
                       }}
-                    />
-                  </Tooltip>
+                      placement="bottomRight"
+                    >
+                      <Tooltip title="AI 生成">
+                        <ThunderboltOutlined
+                          className="rename-input__ai-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setTopicPopoverOpen(true)
+                          }}
+                        />
+                      </Tooltip>
+                    </AIGeneratePopover>
+                  ) : undefined
                 }
               />
             ) : (
@@ -587,22 +614,44 @@ export const MessageItem = React.memo(function MessageItem({
                     onChange={(e) => setEditTitleValue(e.target.value)}
                     onKeyDown={handleTitleKeyDown}
                     onBlur={(e) => {
-                      // 如果点击的是生成按钮，不触发 blur 保存
-                      if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
-                      handleSaveTitle()
+                      // 如果点击的是生成按钮或 Popover 内容，不触发 blur 保存
+                      if (
+                        e.relatedTarget?.closest('.rename-input__ai-btn') ||
+                        e.relatedTarget?.closest('.ai-generate-popover__content')
+                      )
+                        return
+                      if (!titlePopoverOpen) {
+                        handleSaveTitle()
+                      }
                     }}
                     placeholder="输入标题..."
                     style={{ width: 180 }}
                     suffix={
-                      <Tooltip title="AI 生成">
-                        <ThunderboltOutlined
-                          className="rename-input__ai-btn"
-                          onClick={() => {
-                            onOpenGenerateModal?.('title', message.id)
+                      onGenerateTitle ? (
+                        <AIGeneratePopover
+                          open={titlePopoverOpen}
+                          onOpenChange={(open) => {
+                            setTitlePopoverOpen(open)
+                            if (!open) setIsEditingTitle(false)
+                          }}
+                          mode="title"
+                          onGenerate={async (options) => {
+                            await onGenerateTitle(message.id, options)
                             setIsEditingTitle(false)
                           }}
-                        />
-                      </Tooltip>
+                          placement="bottomRight"
+                        >
+                          <Tooltip title="AI 生成">
+                            <ThunderboltOutlined
+                              className="rename-input__ai-btn"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setTitlePopoverOpen(true)
+                              }}
+                            />
+                          </Tooltip>
+                        </AIGeneratePopover>
+                      ) : undefined
                     }
                   />
                 ) : (

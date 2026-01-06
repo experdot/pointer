@@ -15,6 +15,7 @@ import {
   findTopicByStartMessageId
 } from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
+import type { GenerateOptions } from '../../common/AIGeneratePopover'
 import './MessageList.css'
 
 export interface MessageListRef {
@@ -43,7 +44,8 @@ interface MessageListProps {
   onExpandAll: () => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
-  onOpenGenerateModal?: (mode: 'title' | 'topic', messageId: string) => void
+  onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
+  onGenerateTopic?: (messageId: string, options: GenerateOptions) => Promise<void>
   // Topic 相关（独立 Topic 实体）
   topics: Topic[]
   topicGroups: TopicGroup[]
@@ -70,7 +72,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onCollapseAll,
     onExpandAll,
     onUpdateTitle,
-    onOpenGenerateModal,
+    onGenerateTitle,
+    onGenerateTopic,
     // Topic 相关
     topics,
     topicGroups,
@@ -322,7 +325,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onQuote={onQuote}
             onToggleCollapse={onToggleCollapse}
             onUpdateTitle={onUpdateTitle}
-            onOpenGenerateModal={onOpenGenerateModal}
+            onGenerateTitle={onGenerateTitle}
+            onGenerateTopic={onGenerateTopic}
             // Topic 相关
             topic={messageTopic}
             topicMessageCount={topicMessageCount}

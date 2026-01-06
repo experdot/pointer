@@ -2,17 +2,19 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Input, Tooltip, type InputRef } from 'antd'
 import { EditOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { updatePage } from '../../../services/pagesService'
+import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
 import type { ChatPage } from '../../../types/type'
 import './Header.css'
 
 interface HeaderProps {
   page: ChatPage
-  onOpenGenerateModal?: () => void
+  onGenerate?: (options: GenerateOptions) => Promise<void>
 }
 
-export function Header({ page, onOpenGenerateModal }: HeaderProps): React.JSX.Element {
+export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(page.title)
+  const [popoverOpen, setPopoverOpen] = useState(false)
   const inputRef = useRef<InputRef>(null)
 
   // 同步外部 title 变化
@@ -59,10 +61,23 @@ export function Header({ page, onOpenGenerateModal }: HeaderProps): React.JSX.El
     [handleSave, handleCancel]
   )
 
-  const handleAIGenerate = useCallback(() => {
-    onOpenGenerateModal?.()
-    setIsEditing(false)
-  }, [onOpenGenerateModal])
+  const handleAIGenerate = useCallback(
+    async (options: GenerateOptions) => {
+      if (onGenerate) {
+        await onGenerate(options)
+      }
+      setIsEditing(false)
+    },
+    [onGenerate]
+  )
+
+  const handlePopoverOpenChange = useCallback((open: boolean) => {
+    setPopoverOpen(open)
+    if (!open) {
+      // Popover 关闭时退出编辑模式
+      setIsEditing(false)
+    }
+  }, [])
 
   return (
     <div className="chat-editor__header">
@@ -73,16 +88,38 @@ export function Header({ page, onOpenGenerateModal }: HeaderProps): React.JSX.El
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={(e) => {
-            // 如果点击的是生成按钮，不触发 blur 保存
-            if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
-            handleSave()
+            // 如果点击的是生成按钮或 Popover 内容，不触发 blur 保存
+            if (
+              e.relatedTarget?.closest('.rename-input__ai-btn') ||
+              e.relatedTarget?.closest('.ai-generate-popover__content')
+            )
+              return
+            if (!popoverOpen) {
+              handleSave()
+            }
           }}
           onKeyDown={handleKeyDown}
           size="small"
           suffix={
-            <Tooltip title="AI 生成">
-              <ThunderboltOutlined className="rename-input__ai-btn" onClick={handleAIGenerate} />
-            </Tooltip>
+            onGenerate ? (
+              <AIGeneratePopover
+                open={popoverOpen}
+                onOpenChange={handlePopoverOpenChange}
+                mode="session-title"
+                onGenerate={handleAIGenerate}
+                placement="bottomRight"
+              >
+                <Tooltip title="AI 生成">
+                  <ThunderboltOutlined
+                    className="rename-input__ai-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPopoverOpen(true)
+                    }}
+                  />
+                </Tooltip>
+              </AIGeneratePopover>
+            ) : undefined
           }
         />
       ) : (

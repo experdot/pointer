@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons'
 import { OutlineDropdown } from './OutlineDropdown'
 import type { ChatMessage, OutlineNode } from '../../../types/type'
-import type { GenerateMode } from './GenerateTitleModal'
+import type { GenerateOptions } from '../../common/AIGeneratePopover'
 import './BranchPathBar.css'
 
 const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
@@ -37,7 +37,8 @@ interface BranchPathBarProps {
   onExpandAll?: () => void
   // 大纲相关
   outline?: OutlineNode[]
-  onOpenGenerateModal?: (mode: GenerateMode) => void
+  onBatchGenerateTitles?: (options: GenerateOptions) => Promise<void>
+  onSmartSegment?: (options: GenerateOptions) => Promise<void>
   batchProgress?: { current: number; total: number } | null
   isSegmenting?: boolean
 }
@@ -52,7 +53,8 @@ export function BranchPathBar({
   onCollapseAll,
   onExpandAll,
   outline,
-  onOpenGenerateModal,
+  onBatchGenerateTitles,
+  onSmartSegment,
   batchProgress,
   isSegmenting
 }: BranchPathBarProps): React.JSX.Element {
@@ -76,6 +78,11 @@ export function BranchPathBar({
 
     return nodes
   }, [messages, getChildMessages])
+
+  // 计算无标题消息数量
+  const untitledCount = useMemo(() => {
+    return messages.filter((m) => !m.title).length
+  }, [messages])
 
   // 只要有消息就显示路径
   const showBranchPath = messages.length > 0
@@ -102,9 +109,11 @@ export function BranchPathBar({
       <OutlineDropdown
         outline={outline ?? []}
         onNavigateToMessage={onNavigateToMessage}
-        onOpenGenerateModal={onOpenGenerateModal}
+        onBatchGenerateTitles={onBatchGenerateTitles}
+        onSmartSegment={onSmartSegment}
         batchProgress={batchProgress}
         isSegmenting={isSegmenting}
+        untitledCount={untitledCount}
       />
 
       {/* 分支路径 */}

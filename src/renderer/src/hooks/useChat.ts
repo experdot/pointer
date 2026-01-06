@@ -30,7 +30,7 @@ interface UseChatOptions {
   pageId: string
 }
 
-// 生成选项（与 GenerateTitleModal 中的 GenerateOptions 对应）
+// 生成选项（与 AIGeneratePopover 中的 GenerateOptions 对应）
 export interface GenerateOptions {
   extraRequirements?: string
   llmId?: string
@@ -78,7 +78,7 @@ interface UseChatResult {
   // 智能分段
   smartSegmentation: () => Promise<void>
   isSegmenting: boolean
-  // 带选项的生成方法（用于 GenerateTitleModal）
+  // 带选项的生成方法（用于 AIGeneratePopover）
   generateTitleWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
   generateTopicWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
   batchGenerateTitlesWithOptions: (options: GenerateOptions) => Promise<void>
@@ -576,7 +576,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     }
   }, [currentPath, topics, pageId, isSegmenting])
 
-  // ============ 带选项的生成方法（用于 GenerateTitleModal）============
+  // ============ 带选项的生成方法（用于 AIGeneratePopover）============
 
   const generateTitleWithOptions = useCallback(
     async (messageId: string, options: GenerateOptions) => {
@@ -742,7 +742,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     // 智能分段
     smartSegmentation,
     isSegmenting,
-    // 带选项的生成方法（用于 GenerateTitleModal）
+    // 带选项的生成方法（用于 AIGeneratePopover）
     generateTitleWithOptions,
     generateTopicWithOptions,
     batchGenerateTitlesWithOptions: handleBatchGenerateTitlesWithOptions,

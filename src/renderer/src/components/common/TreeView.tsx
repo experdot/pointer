@@ -9,6 +9,7 @@ import {
   MoreOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
+import { AIGeneratePopover, type GenerateOptions } from './AIGeneratePopover'
 import { useConfirmDialog } from './ConfirmDialog'
 import './TreeView.css'
 
@@ -57,7 +58,7 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   onDoubleClick?: (id: string, isFolder: boolean) => void
   getItemMenuItems?: (item: TItem) => MenuProps['items']
   getFolderMenuItems?: (folder: TFolder) => MenuProps['items']
-  onGenerateItemName?: (id: string) => void
+  onGenerateItemName?: (id: string, options: GenerateOptions) => Promise<void>
   highlightId?: string
   emptyText?: string
   className?: string
@@ -146,6 +147,83 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
 
 // memo 包装，只有 props 变化时才重新渲染
 const TreeNodeTitle = memo(TreeNodeTitleInner) as typeof TreeNodeTitleInner
+
+// ==================== 编辑输入框组件 ====================
+
+interface TreeViewEditInputProps {
+  id: string
+  editingValue: string
+  setEditingValue: (value: string) => void
+  isFolder: boolean
+  onFinishRename: () => void
+  onGenerateItemName?: (id: string, options: GenerateOptions) => Promise<void>
+  onClearEditing: () => void
+}
+
+function TreeViewEditInput({
+  id,
+  editingValue,
+  setEditingValue,
+  isFolder,
+  onFinishRename,
+  onGenerateItemName,
+  onClearEditing
+}: TreeViewEditInputProps): React.JSX.Element {
+  const [popoverOpen, setPopoverOpen] = useState(false)
+
+  const handleGenerate = async (options: GenerateOptions): Promise<void> => {
+    if (onGenerateItemName) {
+      await onGenerateItemName(id, options)
+      onClearEditing()
+    }
+  }
+
+  return (
+    <Input
+      size="small"
+      value={editingValue}
+      onChange={(e) => setEditingValue(e.target.value)}
+      onBlur={(e) => {
+        // 如果点击的是 AI 按钮或 Popover 内容，不触发 blur 保存
+        if (
+          e.relatedTarget?.closest('.rename-input__ai-btn') ||
+          e.relatedTarget?.closest('.ai-generate-popover__content')
+        )
+          return
+        if (!popoverOpen) {
+          onFinishRename()
+        }
+      }}
+      onPressEnter={onFinishRename}
+      onClick={(e) => e.stopPropagation()}
+      autoFocus
+      suffix={
+        !isFolder && onGenerateItemName ? (
+          <AIGeneratePopover
+            open={popoverOpen}
+            onOpenChange={(open) => {
+              setPopoverOpen(open)
+              if (!open) onClearEditing()
+            }}
+            mode="session-title"
+            onGenerate={handleGenerate}
+            placement="bottomRight"
+          >
+            <Tooltip title="AI 生成">
+              <ThunderboltOutlined
+                className="rename-input__ai-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPopoverOpen(true)
+                }}
+              />
+            </Tooltip>
+          </AIGeneratePopover>
+        ) : undefined
+      }
+    />
+  )
+}
 
 // ==================== 组件实现 ====================
 
@@ -406,34 +484,18 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     const isHighlighted = id === highlightId
 
     if (editingId === id) {
-      const handleAIGenerate = (): void => {
-        if (!treeNode.isFolder && onGenerateItemName) {
-          onGenerateItemName(id)
-          setEditingId(null)
-          setEditingValue('')
-        }
-      }
-
       return (
-        <Input
-          size="small"
-          value={editingValue}
-          onChange={(e) => setEditingValue(e.target.value)}
-          onBlur={(e) => {
-            // 如果点击的是 AI 按钮，不触发 blur 保存
-            if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
-            handleFinishRename(treeNode.isFolder)
+        <TreeViewEditInput
+          id={id}
+          editingValue={editingValue}
+          setEditingValue={setEditingValue}
+          isFolder={treeNode.isFolder}
+          onFinishRename={() => handleFinishRename(treeNode.isFolder)}
+          onGenerateItemName={onGenerateItemName}
+          onClearEditing={() => {
+            setEditingId(null)
+            setEditingValue('')
           }}
-          onPressEnter={() => handleFinishRename(treeNode.isFolder)}
-          onClick={(e) => e.stopPropagation()}
-          autoFocus
-          suffix={
-            !treeNode.isFolder && onGenerateItemName ? (
-              <Tooltip title="AI 生成">
-                <ThunderboltOutlined className="rename-input__ai-btn" onClick={handleAIGenerate} />
-              </Tooltip>
-            ) : undefined
-          }
         />
       )
     }

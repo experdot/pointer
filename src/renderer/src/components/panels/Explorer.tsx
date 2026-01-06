@@ -13,7 +13,7 @@ import { useTabsStore } from '../../stores/tabsStore'
 import { useMessagesStore } from '../../stores/messagesStore'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
-import { GenerateTitleModal, GenerateOptions } from '../editors/ChatEditor/GenerateTitleModal'
+import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
 import type { ChatPage, PageFolder } from '../../types/type'
 import { isPage } from '../../types/type'
@@ -44,9 +44,6 @@ export function Explorer(): React.JSX.Element {
   const [multiSelect, setMultiSelect] = useState(false)
   const [checkedKeys, setCheckedKeys] = useState<string[]>([])
 
-  // AI 生成标题 Modal 状态
-  const [generateModalOpen, setGenerateModalOpen] = useState(false)
-  const [generatePageId, setGeneratePageId] = useState<string | null>(null)
   const messagesCache = useMessagesStore((state) => state.cache)
 
   useEffect(() => {
@@ -114,29 +111,18 @@ export function Explorer(): React.JSX.Element {
     setCheckedKeys(isAllSelected ? [] : getAllKeys())
   }
 
-  // AI 生成标题
-  const handleGenerateItemName = useCallback((pageId: string) => {
-    setGeneratePageId(pageId)
-    setGenerateModalOpen(true)
-  }, [])
-
-  const handleCloseGenerateModal = useCallback(() => {
-    setGenerateModalOpen(false)
-    setGeneratePageId(null)
-  }, [])
-
-  const handleGenerate = useCallback(
-    async (options: GenerateOptions) => {
-      if (!generatePageId) return
-      const pageMessages = messagesCache[generatePageId]?.messages || []
+  // AI 生成标题 - 直接在回调中执行生成
+  const handleGenerateItemName = useCallback(
+    async (pageId: string, options: GenerateOptions): Promise<void> => {
+      const pageMessages = messagesCache[pageId]?.messages || []
       if (pageMessages.length === 0) return
 
       const result = await generateSessionTitleWithOptions(pageMessages, options)
       if (result.success && result.title) {
-        await updatePage(generatePageId, { title: result.title })
+        await updatePage(pageId, { title: result.title })
       }
     },
-    [generatePageId, messagesCache, updatePage]
+    [messagesCache, updatePage]
   )
 
   const menuItems: MenuProps['items'] = [
@@ -203,12 +189,6 @@ export function Explorer(): React.JSX.Element {
         checkable={multiSelect}
         checkedKeys={checkedKeys}
         onCheck={setCheckedKeys}
-      />
-      <GenerateTitleModal
-        open={generateModalOpen}
-        onClose={handleCloseGenerateModal}
-        mode="session-title"
-        onGenerate={handleGenerate}
       />
     </Flex>
   )

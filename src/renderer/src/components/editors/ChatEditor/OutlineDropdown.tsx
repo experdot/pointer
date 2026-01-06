@@ -11,27 +11,36 @@ import {
   RightOutlined,
   DownOutlined
 } from '@ant-design/icons'
+import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
 import type { OutlineNode } from '../../../types/type'
-import type { GenerateMode } from './GenerateTitleModal'
 import './OutlineDropdown.css'
 
 interface OutlineDropdownProps {
   outline: OutlineNode[]
   onNavigateToMessage: (messageId: string) => void
-  onOpenGenerateModal?: (mode: GenerateMode) => void
+  onBatchGenerateTitles?: (options: GenerateOptions) => Promise<void>
+  onSmartSegment?: (options: GenerateOptions) => Promise<void>
   /** 批量生成进度 { current, total } */
   batchProgress?: { current: number; total: number } | null
   isSegmenting?: boolean
+  /** 无标题消息数量 */
+  untitledCount?: number
 }
 
 export function OutlineDropdown({
   outline,
   onNavigateToMessage,
-  onOpenGenerateModal,
+  onBatchGenerateTitles,
+  onSmartSegment,
   batchProgress,
-  isSegmenting
+  isSegmenting,
+  untitledCount = 0
 }: OutlineDropdownProps): React.JSX.Element {
   const isGenerating = !!batchProgress
+
+  // Popover 状态
+  const [batchTitlePopoverOpen, setBatchTitlePopoverOpen] = useState(false)
+  const [segmentPopoverOpen, setSegmentPopoverOpen] = useState(false)
 
   // Outline 独立的折叠状态（不与消息列表同步）
   const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set())
@@ -134,7 +143,7 @@ export function OutlineDropdown({
           <div className="outline-dropdown__empty">
             暂无大纲
             <br />
-            <small>右键消息可添加标题或设为 Topic</small>
+            <small>右键消息可添加标题或分组</small>
           </div>
         ) : (
           renderOutlineItems
@@ -142,7 +151,7 @@ export function OutlineDropdown({
       </div>
 
       {/* 底部操作栏 */}
-      {onOpenGenerateModal && (
+      {(onBatchGenerateTitles || onSmartSegment) && (
         <div className="outline-dropdown__footer">
           {batchProgress ? (
             <div className="outline-dropdown__progress">
@@ -154,26 +163,45 @@ export function OutlineDropdown({
             </div>
           ) : (
             <div className="outline-dropdown__actions">
-              <Button
-                type="text"
-                size="small"
-                icon={<ThunderboltOutlined />}
-                onClick={() => onOpenGenerateModal('batch-title')}
-                loading={isGenerating}
-                className="outline-dropdown__action-btn"
-              >
-                生成标题
-              </Button>
-              <Button
-                type="text"
-                size="small"
-                icon={<ApartmentOutlined />}
-                onClick={() => onOpenGenerateModal('smart-segment')}
-                loading={isSegmenting}
-                className="outline-dropdown__action-btn"
-              >
-                智能分段
-              </Button>
+              {onBatchGenerateTitles && (
+                <AIGeneratePopover
+                  open={batchTitlePopoverOpen}
+                  onOpenChange={setBatchTitlePopoverOpen}
+                  mode="batch-title"
+                  onGenerate={onBatchGenerateTitles}
+                  placement="bottom"
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ThunderboltOutlined />}
+                    loading={isGenerating}
+                    disabled={untitledCount === 0}
+                    className="outline-dropdown__action-btn"
+                  >
+                    生成标题{untitledCount > 0 ? ` (${untitledCount})` : ''}
+                  </Button>
+                </AIGeneratePopover>
+              )}
+              {onSmartSegment && (
+                <AIGeneratePopover
+                  open={segmentPopoverOpen}
+                  onOpenChange={setSegmentPopoverOpen}
+                  mode="smart-segment"
+                  onGenerate={onSmartSegment}
+                  placement="bottom"
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ApartmentOutlined />}
+                    loading={isSegmenting}
+                    className="outline-dropdown__action-btn"
+                  >
+                    智能分组
+                  </Button>
+                </AIGeneratePopover>
+              )}
             </div>
           )}
         </div>
