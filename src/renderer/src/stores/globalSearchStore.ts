@@ -40,7 +40,8 @@ const defaultOptions: GlobalSearchOptions = {
   useRegex: false,
   matchWholeWord: false,
   roleFilter: 'all',
-  timeRange: 'all'
+  timeRange: 'all',
+  folderIds: undefined
 }
 
 const initialState: GlobalSearchState = {

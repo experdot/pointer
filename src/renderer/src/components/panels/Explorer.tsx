@@ -6,15 +6,20 @@ import {
   FolderOutlined,
   MessageOutlined,
   CheckSquareOutlined,
-  EllipsisOutlined
+  EllipsisOutlined,
+  DragOutlined,
+  SearchOutlined
 } from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useMessagesStore } from '../../stores/messagesStore'
+import { useLayoutStore } from '../../stores/layoutStore'
+import { useGlobalSearchStore } from '../../stores/globalSearchStore'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
+import { MoveToFolderModal } from './MoveToFolderModal'
 import type { ChatPage, PageFolder } from '../../types/type'
 import { isPage } from '../../types/type'
 import './Explorer.css'
@@ -39,10 +44,17 @@ export function Explorer(): React.JSX.Element {
   const { tabs, activeTabId } = useTabsStore()
   const activePageId = tabs.find((t) => t.id === activeTabId)?.dataId
   const { showDeleteConfirm } = useConfirmDialog()
+  const { setActivePanel } = useLayoutStore()
+  const { setOptions: setSearchOptions } = useGlobalSearchStore()
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [multiSelect, setMultiSelect] = useState(false)
   const [checkedKeys, setCheckedKeys] = useState<string[]>([])
+  const [moveTarget, setMoveTarget] = useState<{
+    type: 'page' | 'folder'
+    id: string
+    parentFolderId?: string
+  } | null>(null)
 
   const messagesCache = useMessagesStore((state) => state.cache)
 
@@ -125,6 +137,62 @@ export function Explorer(): React.JSX.Element {
     [messagesCache, updatePage]
   )
 
+  // 右键菜单 - 移动至...
+  const getItemMenuItems = useCallback(
+    (page: ChatPage): MenuProps['items'] => [
+      {
+        key: 'move',
+        label: '移动至...',
+        icon: <DragOutlined />,
+        disabled: folders.length === 0,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          setMoveTarget({ type: 'page', id: page.id, parentFolderId: page.parentFolderId })
+        }
+      }
+    ],
+    [folders.length]
+  )
+
+  const getFolderMenuItems = useCallback(
+    (folder: PageFolder): MenuProps['items'] => [
+      {
+        key: 'search',
+        label: '查找...',
+        icon: <SearchOutlined />,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          setSearchOptions({ folderIds: [folder.id] })
+          setActivePanel('search')
+        }
+      },
+      {
+        key: 'move',
+        label: '移动至...',
+        icon: <DragOutlined />,
+        disabled: folders.length === 0,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          setMoveTarget({ type: 'folder', id: folder.id, parentFolderId: folder.parentFolderId })
+        }
+      }
+    ],
+    [folders.length, setSearchOptions, setActivePanel]
+  )
+
+  const handleMoveConfirm = useCallback(
+    async (targetFolderId: string | undefined): Promise<void> => {
+      if (!moveTarget) return
+      if (moveTarget.type === 'page') {
+        await updatePage(moveTarget.id, { parentFolderId: targetFolderId })
+      } else {
+        await updateFolder(moveTarget.id, { parentFolderId: targetFolderId })
+      }
+      setMoveTarget(null)
+    },
+    [moveTarget, updatePage, updateFolder]
+  )
+
   const menuItems: MenuProps['items'] = [
     { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
     { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
@@ -184,11 +252,21 @@ export function Explorer(): React.JSX.Element {
         toggleFolderExpanded={toggleFolderExpanded}
         onDoubleClick={handleDoubleClick}
         onGenerateItemName={handleGenerateItemName}
+        getItemMenuItems={getItemMenuItems}
+        getFolderMenuItems={getFolderMenuItems}
         emptyText={isEmpty ? '暂无对话' : undefined}
         className="explorer-tree"
         checkable={multiSelect}
         checkedKeys={checkedKeys}
         onCheck={setCheckedKeys}
+      />
+      <MoveToFolderModal
+        open={moveTarget !== null}
+        onClose={() => setMoveTarget(null)}
+        onConfirm={handleMoveConfirm}
+        folders={folders}
+        excludeFolderIds={moveTarget?.type === 'folder' ? [moveTarget.id] : []}
+        currentFolderId={moveTarget?.parentFolderId}
       />
     </Flex>
   )

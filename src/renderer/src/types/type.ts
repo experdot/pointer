@@ -282,6 +282,8 @@ export interface GlobalSearchOptions {
   roleFilter: 'all' | 'user' | 'assistant'
   /** 时间范围筛选 */
   timeRange: 'all' | 'today' | 'week' | 'month'
+  /** 文件夹筛选 */
+  folderIds?: string[]
 }
 
 // AI任务状态

@@ -38,6 +38,31 @@ function getFolderPath(
   return pathParts.length > 0 ? pathParts.join(' / ') : undefined
 }
 
+/**
+ * 检查页面是否在指定的文件夹中（包括子文件夹）
+ */
+function isInFolders(
+  pageParentFolderId: string | undefined,
+  folderIds: string[] | undefined,
+  folders: PageFolder[]
+): boolean {
+  // 没有文件夹筛选，所有页面都符合
+  if (!folderIds || folderIds.length === 0) return true
+
+  // 页面没有父文件夹，不在任何文件夹中
+  if (!pageParentFolderId) return false
+
+  // 检查页面是否在指定文件夹或其子文件夹中
+  let currentFolderId: string | undefined = pageParentFolderId
+  while (currentFolderId) {
+    if (folderIds.includes(currentFolderId)) return true
+    const folder = folders.find((f) => f.id === currentFolderId)
+    currentFolderId = folder?.parentFolderId
+  }
+
+  return false
+}
+
 /** 每个页面最多显示的匹配数 */
 const MAX_MATCHES_PER_PAGE = 50
 
@@ -216,8 +241,13 @@ export async function performGlobalSearch(
   // 获取所有文件夹用于计算路径
   const folders = useFoldersStore.getState().folders
 
+  // 根据文件夹筛选过滤页面
+  const filteredPages = pages.filter((page) =>
+    isInFolders(page.parentFolderId, options.folderIds, folders)
+  )
+
   // 并行加载所有页面的消息
-  const messagePromises = pages.map(async (page) => {
+  const messagePromises = filteredPages.map(async (page) => {
     try {
       const record = await loadMessages(page.id)
       return { page, record }
