@@ -17,7 +17,7 @@ import './OutlineDropdown.css'
 
 interface OutlineDropdownProps {
   outline: OutlineNode[]
-  onScrollToMessage: (messageId: string) => void
+  onNavigateToMessage: (messageId: string) => void
   onOpenGenerateModal?: (mode: GenerateMode) => void
   /** 批量生成进度 { current, total } */
   batchProgress?: { current: number; total: number } | null
@@ -26,7 +26,7 @@ interface OutlineDropdownProps {
 
 export function OutlineDropdown({
   outline,
-  onScrollToMessage,
+  onNavigateToMessage,
   onOpenGenerateModal,
   batchProgress,
   isSegmenting
@@ -95,7 +95,7 @@ export function OutlineDropdown({
           {/* 标题文本 */}
           <span
             className="outline-dropdown__text"
-            onClick={() => onScrollToMessage(node.messageId)}
+            onClick={() => onNavigateToMessage(node.messageId)}
           >
             {node.title}
           </span>
@@ -127,7 +127,7 @@ export function OutlineDropdown({
     }
 
     return items
-  }, [outline, onScrollToMessage, collapsedTopics, toggleCollapse])
+  }, [outline, onNavigateToMessage, collapsedTopics, toggleCollapse])
 
   const dropdownContent = (
     <div className="outline-dropdown">

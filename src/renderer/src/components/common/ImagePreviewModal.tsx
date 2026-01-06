@@ -148,7 +148,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       footer={null}
       width="90vw"
       centered
-      destroyOnClose
+      destroyOnHidden
       className="image-preview-modal"
       closeIcon={<CloseOutlined />}
       title={name}

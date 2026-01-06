@@ -91,7 +91,7 @@ export function GenerateTitleModal({
       onCancel={onClose}
       footer={null}
       width={480}
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="generate-modal__content">
         <TextArea
@@ -106,14 +106,13 @@ export function GenerateTitleModal({
         <div className="generate-modal__toolbar">
           <div className="generate-modal__toolbar-left">
             <ModelSelector value={llmId} onChange={setLlmId} disabled={loading} />
-            <ModelConfigSelector value={modelConfigId} onChange={setModelConfigId} disabled={loading} />
+            <ModelConfigSelector
+              value={modelConfigId}
+              onChange={setModelConfigId}
+              disabled={loading}
+            />
           </div>
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleGenerate}
-            loading={loading}
-          >
+          <Button type="primary" icon={<SendOutlined />} onClick={handleGenerate} loading={loading}>
             生成
           </Button>
         </div>

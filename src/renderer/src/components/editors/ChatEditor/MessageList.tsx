@@ -196,22 +196,33 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     }
   }, [isStreaming])
 
-  // 获取当前可见的第一条消息索引
+  // 获取当前可见的第一条消息索引（基于 visibleMessages）
   const getCurrentVisibleIndex = (): number => {
     const container = containerRef.current
-    if (!container) return 0
+    if (!container || visibleMessages.length === 0) return 0
 
     const containerRect = container.getBoundingClientRect()
     const messageEls = container.querySelectorAll('[data-message-id]')
 
-    for (let i = 0; i < messageEls.length; i++) {
-      const rect = messageEls[i].getBoundingClientRect()
-      // 消息顶部在容器可见区域内
-      if (rect.top >= containerRect.top - 50) {
-        return i
+    // 遍历 DOM 元素，找到第一个在可见区域内的消息
+    for (const el of messageEls) {
+      const rect = el.getBoundingClientRect()
+
+      // 对于高度小的消息（如折叠 Topic），顶部必须在视口内才算"当前"
+      // 对于高度大的消息，允许顶部在视口上方 50px 以内
+      const threshold = rect.height < 80 ? 0 : -50
+
+      if (rect.top >= containerRect.top + threshold) {
+        // 通过消息 ID 在 visibleMessages 中查找实际索引
+        const messageId = el.getAttribute('data-message-id')
+        if (messageId) {
+          const index = visibleMessages.findIndex((m) => m.id === messageId)
+          if (index >= 0) return index
+        }
+        break
       }
     }
-    return messages.length - 1
+    return visibleMessages.length - 1
   }
 
   // 暴露方法
@@ -229,7 +240,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     scrollToPrev: () => {
       const currentIndex = getCurrentVisibleIndex()
       if (currentIndex > 0) {
-        const prevId = messages[currentIndex - 1].id
+        // 使用 visibleMessages 确保导航到可见消息
+        const prevId = visibleMessages[currentIndex - 1].id
         const container = containerRef.current
         const messageEl = container?.querySelector(`[data-message-id="${prevId}"]`)
         if (messageEl) {
@@ -243,9 +255,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
       const container = containerRef.current
       if (!container) return
 
-      if (currentIndex < messages.length - 1) {
-        // 还有下一条，滚动到下一条的 start
-        const nextId = messages[currentIndex + 1].id
+      if (currentIndex < visibleMessages.length - 1) {
+        // 使用 visibleMessages 确保导航到可见消息
+        const nextId = visibleMessages[currentIndex + 1].id
         const messageEl = container.querySelector(`[data-message-id="${nextId}"]`)
         if (messageEl) {
           messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })

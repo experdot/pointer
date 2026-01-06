@@ -3,6 +3,7 @@ import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { streamingManager } from '../../../services/streamingManager'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
+import * as navigationService from '../../../services/navigationService'
 import { updatePage } from '../../../services/pagesService'
 import { generateSessionTitleWithOptions } from '../../../services/titleService'
 import { useChatUIStore } from '../../../stores/chatUIStore'
@@ -120,17 +121,42 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [pageId, setSearchOpen])
 
-  // 监听 selectedMessageId 变化，滚动到目标消息（用于全局搜索跳转）
-  const { cache } = useMessagesStore()
-  const selectedMessageId = cache[pageId]?.selectedMessageId
+  // 监听导航请求，执行滚动
+  const pendingNavigation = useMessagesStore((s) => s.pendingNavigation)
+  const pendingRelativeNavigation = useMessagesStore((s) => s.pendingRelativeNavigation)
+  const clearNavigation = useMessagesStore((s) => s.clearNavigation)
+  const clearRelativeNavigation = useMessagesStore((s) => s.clearRelativeNavigation)
+
+  // 处理绝对导航请求
   useEffect(() => {
-    if (selectedMessageId) {
-      // 延迟执行，确保消息列表已渲染
-      setTimeout(() => {
-        messageListRef.current?.scrollToMessage(selectedMessageId, true)
-      }, 100)
+    if (!pendingNavigation || pendingNavigation.target.pageId !== pageId) {
+      return
     }
-  }, [selectedMessageId])
+    const { version, target } = pendingNavigation
+    // 延迟执行，确保 Topic 展开后 DOM 已更新
+    const timer = setTimeout(() => {
+      messageListRef.current?.scrollToMessage(target.messageId, target.instant)
+      clearNavigation(version)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [pendingNavigation, pageId, clearNavigation])
+
+  // 处理相对导航请求（上一条/下一条）
+  useEffect(() => {
+    if (!pendingRelativeNavigation || pendingRelativeNavigation.pageId !== pageId) {
+      return
+    }
+    const { version, direction } = pendingRelativeNavigation
+    const timer = setTimeout(() => {
+      if (direction === 'prev') {
+        messageListRef.current?.scrollToPrev()
+      } else {
+        messageListRef.current?.scrollToNext()
+      }
+      clearRelativeNavigation(version)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [pendingRelativeNavigation, pageId, clearRelativeNavigation])
 
   // 全局搜索高亮
   useGlobalSearchHighlight({
@@ -143,17 +169,20 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     inputAreaRef.current?.appendText(`> ${text}\n\n`)
   }, [])
 
-  const handleScrollToMessage = useCallback((messageId: string) => {
-    messageListRef.current?.scrollToMessage(messageId)
-  }, [])
+  const handleNavigateToMessage = useCallback(
+    (messageId: string) => {
+      navigationService.navigateToMessage({ pageId, messageId, instant: false })
+    },
+    [pageId]
+  )
 
-  const handleScrollToPrev = useCallback(() => {
-    messageListRef.current?.scrollToPrev()
-  }, [])
+  const handleNavigateToPrev = useCallback(() => {
+    navigationService.requestScrollToPrev(pageId)
+  }, [pageId])
 
-  const handleScrollToNext = useCallback(() => {
-    messageListRef.current?.scrollToNext()
-  }, [])
+  const handleNavigateToNext = useCallback(() => {
+    navigationService.requestScrollToNext(pageId)
+  }, [pageId])
 
   const handleToggleCollapse = useCallback(
     (messageId: string) => {
@@ -252,9 +281,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         messages={currentPath}
         getChildMessages={getChildMessages}
         onSwitchBranch={switchBranch}
-        onScrollToMessage={handleScrollToMessage}
-        onScrollToPrev={handleScrollToPrev}
-        onScrollToNext={handleScrollToNext}
+        onNavigateToMessage={handleNavigateToMessage}
+        onNavigateToPrev={handleNavigateToPrev}
+        onNavigateToNext={handleNavigateToNext}
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
         outline={outline}

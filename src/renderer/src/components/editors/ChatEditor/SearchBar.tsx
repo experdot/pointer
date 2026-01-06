@@ -27,7 +27,8 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
   const { total, scrollToMatch } = useSearchHighlight({
     containerRef,
     messages,
-    searchState
+    searchState,
+    pageId
   })
 
   // 自动聚焦输入框

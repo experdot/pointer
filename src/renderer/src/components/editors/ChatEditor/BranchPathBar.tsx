@@ -30,9 +30,9 @@ interface BranchPathBarProps {
   messages: ChatMessage[] // 当前路径（从根到叶子）
   getChildMessages: (parentId: string | undefined) => ChatMessage[]
   onSwitchBranch: (messageId: string) => void
-  onScrollToMessage: (messageId: string) => void
-  onScrollToPrev: () => void
-  onScrollToNext: () => void
+  onNavigateToMessage: (messageId: string) => void
+  onNavigateToPrev: () => void
+  onNavigateToNext: () => void
   onCollapseAll?: () => void
   onExpandAll?: () => void
   // 大纲相关
@@ -46,9 +46,9 @@ export function BranchPathBar({
   messages,
   getChildMessages,
   onSwitchBranch,
-  onScrollToMessage,
-  onScrollToPrev,
-  onScrollToNext,
+  onNavigateToMessage,
+  onNavigateToPrev,
+  onNavigateToNext,
   onCollapseAll,
   onExpandAll,
   outline,
@@ -101,7 +101,7 @@ export function BranchPathBar({
       {/* 大纲按钮 */}
       <OutlineDropdown
         outline={outline ?? []}
-        onScrollToMessage={onScrollToMessage}
+        onNavigateToMessage={onNavigateToMessage}
         onOpenGenerateModal={onOpenGenerateModal}
         batchProgress={batchProgress}
         isSegmenting={isSegmenting}
@@ -120,7 +120,7 @@ export function BranchPathBar({
           // 层级标签（点击跳转）
           const levelLabel = (
             <Tooltip title={getPreview(message, 50)} placement="bottom">
-              <span className="branch-path-bar__item" onClick={() => onScrollToMessage(message.id)}>
+              <span className="branch-path-bar__item" onClick={() => onNavigateToMessage(message.id)}>
                 {getRoleIcon(message.role)} {index + 1}
               </span>
             </Tooltip>
@@ -156,7 +156,7 @@ export function BranchPathBar({
                     key: m.id,
                     icon: getRoleIcon(m.role),
                     label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
-                    onClick: () => onScrollToMessage(m.id)
+                    onClick: () => onNavigateToMessage(m.id)
                   }))
                 }}
                 trigger={['click']}
@@ -180,10 +180,10 @@ export function BranchPathBar({
         })}
       <div className="branch-path-bar__nav">
         <Tooltip title="上一条">
-          <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onScrollToPrev} />
+          <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToPrev} />
         </Tooltip>
         <Tooltip title="下一条">
-          <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onScrollToNext} />
+          <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToNext} />
         </Tooltip>
         <span className="branch-path-bar__nav-divider" />
         <Tooltip title="全部折叠">

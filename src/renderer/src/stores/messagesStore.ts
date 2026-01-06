@@ -3,9 +3,27 @@ import * as db from '../utils/database'
 import type { MessagesRecord } from '../utils/database'
 import type { ChatMessage, Topic } from '../types/type'
 
+// ==================== 导航请求类型 ====================
+
+export interface NavigationRequest {
+  version: number
+  target: { pageId: string; messageId: string; instant?: boolean }
+  timestamp: number
+}
+
+export interface RelativeNavigationRequest {
+  version: number
+  direction: 'prev' | 'next'
+  pageId: string
+  timestamp: number
+}
+
 interface MessagesState {
   // 按 pageId 缓存消息
   cache: Record<string, MessagesRecord>
+  // 待处理的导航请求
+  pendingNavigation: NavigationRequest | null
+  pendingRelativeNavigation: RelativeNavigationRequest | null
 }
 
 interface MessagesActions {
@@ -41,12 +59,23 @@ interface MessagesActions {
   deleteTopic: (pageId: string, topicId: string) => Promise<void>
   // 获取 Topics
   getTopics: (pageId: string) => Topic[]
+  // ============ 导航操作 ============
+  // 请求导航到消息
+  requestNavigation: (request: NavigationRequest) => void
+  // 请求相对导航（上一条/下一条）
+  requestRelativeNavigation: (request: RelativeNavigationRequest) => void
+  // 清除导航请求
+  clearNavigation: (version: number) => void
+  // 清除相对导航请求
+  clearRelativeNavigation: (version: number) => void
 }
 
 type MessagesStore = MessagesState & MessagesActions
 
 const initialState: MessagesState = {
-  cache: {}
+  cache: {},
+  pendingNavigation: null,
+  pendingRelativeNavigation: null
 }
 
 const emptyRecord = (pageId: string): MessagesRecord => ({
@@ -152,5 +181,32 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     }))
   },
 
-  getTopics: (pageId) => get().cache[pageId]?.topics ?? []
+  getTopics: (pageId) => get().cache[pageId]?.topics ?? [],
+
+  // ============ 导航操作 ============
+  requestNavigation: (request) => {
+    set({ pendingNavigation: request })
+  },
+
+  requestRelativeNavigation: (request) => {
+    set({ pendingRelativeNavigation: request })
+  },
+
+  clearNavigation: (version) => {
+    set((state) => {
+      if (state.pendingNavigation?.version === version) {
+        return { pendingNavigation: null }
+      }
+      return state
+    })
+  },
+
+  clearRelativeNavigation: (version) => {
+    set((state) => {
+      if (state.pendingRelativeNavigation?.version === version) {
+        return { pendingRelativeNavigation: null }
+      }
+      return state
+    })
+  }
 }))

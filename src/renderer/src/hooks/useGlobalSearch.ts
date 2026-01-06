@@ -3,8 +3,7 @@ import { useGlobalSearchStore } from '../stores/globalSearchStore'
 import { usePagesStore } from '../stores/pagesStore'
 import { useMessagesStore } from '../stores/messagesStore'
 import { performGlobalSearch } from '../utils/globalSearchUtils'
-import * as pagesService from '../services/pagesService'
-import * as messagesService from '../services/messagesService'
+import * as navigationService from '../services/navigationService'
 import type { GlobalSearchMatch } from '../types/type'
 
 /** 防抖延迟时间 */
@@ -116,14 +115,15 @@ export function useGlobalSearch(): UseGlobalSearchResult {
   // 跳转到搜索结果
   const navigateToResult = useCallback(
     async (match: GlobalSearchMatch) => {
-      // 1. 打开对应页面 tab（使用 preview 模式）
-      await pagesService.openPage(match.pageId, true)
+      // 使用统一的导航服务（处理页面打开、分支切换、Topic 展开、滚动）
+      await navigationService.navigateToMessage({
+        pageId: match.pageId,
+        messageId: match.messageId,
+        openPage: true,
+        instant: true
+      })
 
-      // 2. 切换到消息所在的分支，并设置 selectedMessageId
-      // switchBranch 会同时设置 leafMessageId 和 selectedMessageId
-      await messagesService.switchBranch(match.pageId, match.messageId)
-
-      // 3. 设置高亮匹配，用于在 ChatEditor 中显示高亮
+      // 设置高亮匹配，用于在 ChatEditor 中显示高亮
       setHighlightMatch(match)
     },
     [setHighlightMatch]

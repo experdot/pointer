@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import type { ChatMessage } from '../types/type'
 import type { SearchState } from '../stores/chatUIStore'
 import { findAllMatches, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
+import { expandTopicsForMessage } from '../services/navigationService'
 
 /** 防抖延迟时间 */
 const DEBOUNCE_DELAY = 500
@@ -10,6 +11,7 @@ interface UseSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
   messages: ChatMessage[]
   searchState: SearchState
+  pageId: string
   onMatchesChange?: (matches: SearchMatch[]) => void
 }
 
@@ -26,6 +28,7 @@ export function useSearchHighlight({
   containerRef,
   messages,
   searchState,
+  pageId,
   onMatchesChange
 }: UseSearchHighlightOptions): UseSearchHighlightResult {
   const rangesRef = useRef<Map<number, Range>>(new Map())
@@ -127,12 +130,18 @@ export function useSearchHighlight({
 
   // 滚动到指定匹配项
   const scrollToMatch = useCallback(
-    (index: number) => {
+    async (index: number) => {
       const container = containerRef.current
       if (!container || matches.length === 0) return
 
       const match = matches[index]
       if (!match) return
+
+      // 先展开包含目标消息的折叠 Topic
+      await expandTopicsForMessage(pageId, match.messageId)
+
+      // 等待 DOM 更新
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // 尝试滚动到具体的 Range 位置
       const range = rangesRef.current.get(index)
@@ -160,7 +169,7 @@ export function useSearchHighlight({
         }
       }
     },
-    [containerRef, matches]
+    [containerRef, matches, pageId]
   )
 
   return {
