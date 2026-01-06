@@ -18,7 +18,8 @@ import {
   PictureOutlined,
   TagOutlined,
   ThunderboltOutlined,
-  FolderOutlined
+  FolderOutlined,
+  MoreOutlined
 } from '@ant-design/icons'
 import { Streamdown } from 'streamdown'
 import { BranchNavigator } from './BranchNavigator'
@@ -459,53 +460,68 @@ export const MessageItem = React.memo(function MessageItem({
             />
             <FolderOutlined className="message-item__topic-icon" />
             {isEditingTopic ? (
-              <div className="message-item__topic-edit">
-                <Input
-                  ref={topicInputRef}
-                  size="small"
-                  value={editTopicValue}
-                  onChange={(e) => setEditTopicValue(e.target.value)}
-                  onKeyDown={handleTopicKeyDown}
-                  onBlur={(e) => {
-                    // 如果点击的是生成按钮，不触发 blur 保存
-                    if (e.relatedTarget?.closest('.message-item__topic-generate')) return
-                    handleSaveTopic()
+              <Input
+                ref={topicInputRef}
+                size="small"
+                value={editTopicValue}
+                onChange={(e) => setEditTopicValue(e.target.value)}
+                onKeyDown={handleTopicKeyDown}
+                onBlur={(e) => {
+                  // 如果点击的是生成按钮，不触发 blur 保存
+                  if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
+                  handleSaveTopic()
+                }}
+                placeholder="输入 Topic 名称..."
+                className="message-item__topic-input"
+                suffix={
+                  <Tooltip title="AI 生成">
+                    <ThunderboltOutlined
+                      className="rename-input__ai-btn"
+                      onClick={() => {
+                        onOpenGenerateModal?.('topic', message.id)
+                        setIsEditingTopic(false)
+                      }}
+                    />
+                  </Tooltip>
+                }
+              />
+            ) : (
+              <>
+                <span className="message-item__topic-name">{topic.name}</span>
+                {topicMessageCount !== undefined && (
+                  <span className="message-item__topic-count">({topicMessageCount})</span>
+                )}
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'rename',
+                        label: '重命名',
+                        icon: <EditOutlined />,
+                        onClick: () => handleStartTopicEdit()
+                      },
+                      { type: 'divider' },
+                      {
+                        key: 'delete',
+                        label: '删除',
+                        icon: <DeleteOutlined />,
+                        danger: true,
+                        onClick: () => onDeleteTopic?.(topic.id)
+                      }
+                    ]
                   }}
-                  placeholder="输入 Topic 名称..."
-                  className="message-item__topic-input"
-                />
-                <Tooltip title="AI 生成 Topic">
+                  trigger={['click']}
+                >
                   <Button
                     type="text"
                     size="small"
-                    className="message-item__topic-generate"
-                    icon={<ThunderboltOutlined />}
-                    onClick={() => {
-                      onOpenGenerateModal?.('topic', message.id)
-                      setIsEditingTopic(false)
-                    }}
+                    className="message-item__topic-more"
+                    icon={<MoreOutlined />}
+                    onClick={(e) => e.stopPropagation()}
                   />
-                </Tooltip>
-              </div>
-            ) : (
-              <Tooltip title="点击编辑 Topic">
-                <span className="message-item__topic-name" onClick={handleStartTopicEdit}>
-                  {topic.name}
-                </span>
-              </Tooltip>
+                </Dropdown>
+              </>
             )}
-            {topicMessageCount !== undefined && topicMessageCount > 1 && !isEditingTopic && (
-              <span className="message-item__topic-count">({topicMessageCount})</span>
-            )}
-            <Tooltip title="移除 Topic">
-              <Button
-                type="text"
-                size="small"
-                className="message-item__topic-remove"
-                icon={<CloseOutlined />}
-                onClick={() => onDeleteTopic?.(topic.id)}
-              />
-            </Tooltip>
           </div>
         )}
 
@@ -560,34 +576,31 @@ export const MessageItem = React.memo(function MessageItem({
         {(isEditingTitle || message.title) && (
           <div className="message-item__title-row">
             {isEditingTitle ? (
-              <div className="message-item__title-edit">
-                <Input
-                  ref={titleInputRef}
-                  size="small"
-                  value={editTitleValue}
-                  onChange={(e) => setEditTitleValue(e.target.value)}
-                  onKeyDown={handleTitleKeyDown}
-                  onBlur={(e) => {
-                    // 如果点击的是生成按钮，不触发 blur 保存
-                    if (e.relatedTarget?.closest('.message-item__title-generate')) return
-                    handleSaveTitle()
-                  }}
-                  placeholder="输入标题..."
-                  style={{ width: 150 }}
-                />
-                <Tooltip title="AI 生成标题">
-                  <Button
-                    type="text"
-                    size="small"
-                    className="message-item__title-generate"
-                    icon={<ThunderboltOutlined />}
-                    onClick={() => {
-                      onOpenGenerateModal?.('title', message.id)
-                      setIsEditingTitle(false)
-                    }}
-                  />
-                </Tooltip>
-              </div>
+              <Input
+                ref={titleInputRef}
+                size="small"
+                value={editTitleValue}
+                onChange={(e) => setEditTitleValue(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                onBlur={(e) => {
+                  // 如果点击的是生成按钮，不触发 blur 保存
+                  if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
+                  handleSaveTitle()
+                }}
+                placeholder="输入标题..."
+                style={{ width: 180 }}
+                suffix={
+                  <Tooltip title="AI 生成">
+                    <ThunderboltOutlined
+                      className="rename-input__ai-btn"
+                      onClick={() => {
+                        onOpenGenerateModal?.('title', message.id)
+                        setIsEditingTitle(false)
+                      }}
+                    />
+                  </Tooltip>
+                }
+              />
             ) : (
               <Tooltip title="点击编辑标题">
                 <span

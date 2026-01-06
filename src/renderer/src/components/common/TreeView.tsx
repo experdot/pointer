@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react'
-import { Input, Empty, Tree, Dropdown, Button } from 'antd'
+import { Input, Empty, Tree, Dropdown, Button, Tooltip } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
   FolderOutlined,
   FolderOpenOutlined,
   EditOutlined,
   DeleteOutlined,
-  MoreOutlined
+  MoreOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import { useConfirmDialog } from './ConfirmDialog'
 import './TreeView.css'
@@ -56,6 +57,7 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   onDoubleClick?: (id: string, isFolder: boolean) => void
   getItemMenuItems?: (item: TItem) => MenuProps['items']
   getFolderMenuItems?: (folder: TFolder) => MenuProps['items']
+  onGenerateItemName?: (id: string) => void
   highlightId?: string
   emptyText?: string
   className?: string
@@ -165,6 +167,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   onDoubleClick,
   getItemMenuItems,
   getFolderMenuItems,
+  onGenerateItemName,
   highlightId,
   emptyText = '暂无数据',
   className = '',
@@ -403,15 +406,37 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     const isHighlighted = id === highlightId
 
     if (editingId === id) {
+      const handleAIGenerate = (): void => {
+        if (!treeNode.isFolder && onGenerateItemName) {
+          onGenerateItemName(id)
+          setEditingId(null)
+          setEditingValue('')
+        }
+      }
+
       return (
         <Input
           size="small"
           value={editingValue}
           onChange={(e) => setEditingValue(e.target.value)}
-          onBlur={() => handleFinishRename(treeNode.isFolder)}
+          onBlur={(e) => {
+            // 如果点击的是 AI 按钮，不触发 blur 保存
+            if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
+            handleFinishRename(treeNode.isFolder)
+          }}
           onPressEnter={() => handleFinishRename(treeNode.isFolder)}
           onClick={(e) => e.stopPropagation()}
           autoFocus
+          suffix={
+            !treeNode.isFolder && onGenerateItemName ? (
+              <Tooltip title="AI 生成">
+                <ThunderboltOutlined
+                  className="rename-input__ai-btn"
+                  onClick={handleAIGenerate}
+                />
+              </Tooltip>
+            ) : undefined
+          }
         />
       )
     }

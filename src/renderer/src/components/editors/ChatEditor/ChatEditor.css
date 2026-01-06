@@ -748,27 +748,11 @@
 }
 
 .message-item__title .anticon {
-  font-size: 10px;
-}
-
-.message-item__title-edit {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.message-item__title-edit .ant-input {
   font-size: 12px;
 }
 
-.message-item__title-generate {
-  padding: 0 4px;
-  height: 22px;
-  color: var(--ant-color-text-tertiary);
-}
-
-.message-item__title-generate:hover {
-  color: var(--ant-color-primary);
+.message-item__title-input {
+  max-width: 200px;
 }
 
 /* ==================== Topic Header (Topic 头部) ==================== */
@@ -776,13 +760,12 @@
 .message-item__topic-header {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 6px;
   padding: 6px 10px;
   margin-bottom: 8px;
   background: var(--ant-color-fill-secondary);
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
   color: var(--ant-color-text);
   transition: background-color 0.2s;
 }
@@ -813,40 +796,12 @@
 }
 
 .message-item__topic-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-
-.message-item__topic-name:hover {
-  background: var(--ant-color-fill-secondary);
 }
 
 .message-item__topic-input {
   flex: 1;
   max-width: 200px;
-}
-
-.message-item__topic-edit {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-}
-
-.message-item__topic-generate {
-  padding: 0 4px;
-  height: 22px;
-  color: var(--ant-color-text-tertiary);
-}
-
-.message-item__topic-generate:hover {
-  color: var(--ant-color-primary);
 }
 
 .message-item__topic-count {
@@ -855,7 +810,7 @@
   font-weight: normal;
 }
 
-.message-item__topic-remove {
+.message-item__topic-more {
   padding: 0;
   width: 18px;
   height: 18px;
@@ -864,17 +819,18 @@
   transition: opacity 0.2s;
 }
 
-.message-item__topic-header:hover .message-item__topic-remove {
+.message-item__topic-header:hover .message-item__topic-more {
   opacity: 1;
 }
 
-.message-item__topic-remove:hover {
-  color: var(--ant-color-error);
+.message-item__topic-more:hover {
+  color: var(--ant-color-text-secondary);
 }
 
 /* User message Topic header 样式调整 */
 .message-item--user .message-item__topic-header {
   flex-direction: row-reverse;
+  align-self: flex-end;
 }
 
 .message-item--user .message-item__topic-header--collapsed {
@@ -1034,4 +990,17 @@
 .generate-modal__toolbar-left {
   display: flex;
   gap: 8px;
+}
+
+/* ==================== Rename Input AI Button (输入框内AI按钮) ==================== */
+
+.rename-input__ai-btn {
+  color: var(--ant-color-text-quaternary);
+  cursor: pointer;
+  transition: color 0.2s;
+  font-size: 12px;
+}
+
+.rename-input__ai-btn:hover {
+  color: var(--ant-color-primary);
 }

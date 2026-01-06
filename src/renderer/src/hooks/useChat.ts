@@ -615,7 +615,15 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
           modelConfigId: options.modelConfigId
         })
         if (result.success && result.title) {
-          await messagesService.createTopic(pageId, result.title, messageId)
+          // 检查是否已存在以该消息为起始的 Topic
+          const existingTopic = topics.find((t) => t.startMessageId === messageId)
+          if (existingTopic) {
+            // 更新现有 Topic
+            await messagesService.updateTopic(pageId, existingTopic.id, { name: result.title })
+          } else {
+            // 创建新 Topic
+            await messagesService.createTopic(pageId, result.title, messageId)
+          }
         } else if (result.error) {
           console.error('Failed to generate topic with options:', result.error)
         }
@@ -623,7 +631,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
         console.error('Failed to generate topic with options:', error)
       }
     },
-    [pageId, messages]
+    [pageId, messages, topics]
   )
 
   const handleBatchGenerateTitlesWithOptions = useCallback(

@@ -3,6 +3,8 @@ import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { streamingManager } from '../../../services/streamingManager'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
+import { updatePage } from '../../../services/pagesService'
+import { generateSessionTitleWithOptions } from '../../../services/titleService'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
 import { useGlobalSearchHighlight } from '../../../hooks/useGlobalSearchHighlight'
@@ -218,6 +220,14 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         case 'smart-segment':
           await smartSegmentationWithOptions(options)
           break
+        case 'session-title':
+          if (page) {
+            const result = await generateSessionTitleWithOptions(currentPath, options)
+            if (result.success && result.title) {
+              await updatePage(page.id, { title: result.title })
+            }
+          }
+          break
       }
     },
     [
@@ -225,7 +235,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       generateTitleWithOptions,
       generateTopicWithOptions,
       batchGenerateTitlesWithOptions,
-      smartSegmentationWithOptions
+      smartSegmentationWithOptions,
+      page,
+      currentPath
     ]
   )
 
@@ -235,7 +247,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   return (
     <div className="chat-editor">
-      <Header page={page} />
+      <Header page={page} onOpenGenerateModal={() => openGenerateModal('session-title')} />
       <BranchPathBar
         messages={currentPath}
         getChildMessages={getChildMessages}

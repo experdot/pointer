@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Input, type InputRef } from 'antd'
-import { EditOutlined } from '@ant-design/icons'
+import { Input, Tooltip, type InputRef } from 'antd'
+import { EditOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { updatePage } from '../../../services/pagesService'
 import type { ChatPage } from '../../../types/type'
 
 interface HeaderProps {
   page: ChatPage
+  onOpenGenerateModal?: () => void
 }
 
-export function Header({ page }: HeaderProps): React.JSX.Element {
+export function Header({ page, onOpenGenerateModal }: HeaderProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(page.title)
   const inputRef = useRef<InputRef>(null)
@@ -57,6 +58,11 @@ export function Header({ page }: HeaderProps): React.JSX.Element {
     [handleSave, handleCancel]
   )
 
+  const handleAIGenerate = useCallback(() => {
+    onOpenGenerateModal?.()
+    setIsEditing(false)
+  }, [onOpenGenerateModal])
+
   return (
     <div className="chat-editor__header">
       {isEditing ? (
@@ -65,9 +71,21 @@ export function Header({ page }: HeaderProps): React.JSX.Element {
           className="chat-editor__title-input"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleSave}
+          onBlur={(e) => {
+            // 如果点击的是生成按钮，不触发 blur 保存
+            if (e.relatedTarget?.closest('.rename-input__ai-btn')) return
+            handleSave()
+          }}
           onKeyDown={handleKeyDown}
           size="small"
+          suffix={
+            <Tooltip title="AI 生成">
+              <ThunderboltOutlined
+                className="rename-input__ai-btn"
+                onClick={handleAIGenerate}
+              />
+            </Tooltip>
+          }
         />
       ) : (
         <div className="chat-editor__title-wrapper">

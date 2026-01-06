@@ -6,7 +6,7 @@ import { ModelConfigSelector } from './ModelConfigSelector'
 
 const { TextArea } = Input
 
-export type GenerateMode = 'title' | 'topic' | 'batch-title' | 'smart-segment'
+export type GenerateMode = 'title' | 'topic' | 'batch-title' | 'smart-segment' | 'session-title'
 
 export interface GenerateOptions {
   extraRequirements?: string
@@ -26,14 +26,16 @@ const MODE_TITLES: Record<GenerateMode, string> = {
   title: '生成标题',
   topic: '生成 Topic',
   'batch-title': '批量生成标题',
-  'smart-segment': '智能分段'
+  'smart-segment': '智能分段',
+  'session-title': '生成对话标题'
 }
 
 const MODE_PLACEHOLDERS: Record<GenerateMode, string> = {
   title: '输入额外要求（可选），如：使用英文、不超过5个字...',
   topic: '输入额外要求（可选），如：突出关键词、使用动词开头...',
   'batch-title': '输入额外要求（可选），将应用于所有消息...',
-  'smart-segment': '输入额外要求（可选），如：更细粒度分段、合并相似话题...'
+  'smart-segment': '输入额外要求（可选），如：更细粒度分段、合并相似话题...',
+  'session-title': '输入额外要求（可选），如：简洁概括、突出主题...'
 }
 
 export function GenerateTitleModal({

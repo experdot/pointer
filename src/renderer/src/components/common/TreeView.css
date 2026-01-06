@@ -113,3 +113,15 @@
 .tree-view-content .ant-tree-draggable-icon {
   display: none;
 }
+
+/* Rename Input AI Button (输入框内AI按钮) */
+.rename-input__ai-btn {
+  color: var(--ant-color-text-quaternary);
+  cursor: pointer;
+  transition: color 0.2s;
+  font-size: 12px;
+}
+
+.rename-input__ai-btn:hover {
+  color: var(--ant-color-primary);
+}
