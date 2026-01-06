@@ -14,8 +14,13 @@ export function Search(): React.JSX.Element {
   const { navigateToResult } = useGlobalSearch()
 
   const handleItemClick = useCallback(
-    (match: GlobalSearchMatch, groupIndex: number, matchIndex: number) => {
-      setSelectedIndex([groupIndex, matchIndex])
+    (
+      match: GlobalSearchMatch,
+      pageIndex: number,
+      messageIndex: number,
+      matchIndex: number
+    ) => {
+      setSelectedIndex([pageIndex, messageIndex, matchIndex])
       navigateToResult(match)
     },
     [setSelectedIndex, navigateToResult]

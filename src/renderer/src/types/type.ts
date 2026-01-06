@@ -242,13 +242,33 @@ export interface GlobalSearchMatch {
   createdAt: number
 }
 
+/** 按消息分组的搜索结果 */
+export interface GlobalSearchMessageGroup {
+  messageId: string
+  pageId: string
+  role: 'user' | 'assistant' | 'system'
+  /** 消息标题（如果有） */
+  title?: string
+  /** 消息内容预览（前 N 个字符，用于 title 不存在时显示） */
+  contentPreview: string
+  /** 消息创建时间 */
+  createdAt: number
+  /** 该消息内的所有匹配项 */
+  matches: GlobalSearchMatch[]
+  /** 是否展开 */
+  expanded: boolean
+}
+
 /** 按页面分组的全局搜索结果 */
 export interface GlobalSearchResultGroup {
   pageId: string
   pageTitle: string
+  /** 页面创建时间 */
+  createdAt: number
   /** 文件夹路径（如果有） */
   folderPath?: string
-  matches: GlobalSearchMatch[]
+  /** 按消息分组的结果 */
+  messageGroups: GlobalSearchMessageGroup[]
   /** 是否展开 */
   expanded: boolean
 }

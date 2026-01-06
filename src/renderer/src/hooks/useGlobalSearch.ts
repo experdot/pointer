@@ -129,12 +129,19 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     [setHighlightMatch]
   )
 
-  // 获取所有匹配项的扁平列表
+  // 获取所有匹配项的扁平列表（三层结构：page -> message -> match）
   const flatMatches = useMemo(() => {
-    const matches: { groupIndex: number; matchIndex: number; match: GlobalSearchMatch }[] = []
-    results.forEach((group, groupIndex) => {
-      group.matches.forEach((match, matchIndex) => {
-        matches.push({ groupIndex, matchIndex, match })
+    const matches: {
+      pageIndex: number
+      messageIndex: number
+      matchIndex: number
+      match: GlobalSearchMatch
+    }[] = []
+    results.forEach((group, pageIndex) => {
+      group.messageGroups.forEach((messageGroup, messageIndex) => {
+        messageGroup.matches.forEach((match, matchIndex) => {
+          matches.push({ pageIndex, messageIndex, matchIndex, match })
+        })
       })
     })
     return matches
@@ -147,13 +154,16 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     let currentFlatIndex = -1
     if (selectedIndex) {
       currentFlatIndex = flatMatches.findIndex(
-        (m) => m.groupIndex === selectedIndex[0] && m.matchIndex === selectedIndex[1]
+        (m) =>
+          m.pageIndex === selectedIndex[0] &&
+          m.messageIndex === selectedIndex[1] &&
+          m.matchIndex === selectedIndex[2]
       )
     }
 
     const newFlatIndex = currentFlatIndex <= 0 ? flatMatches.length - 1 : currentFlatIndex - 1
     const newMatch = flatMatches[newFlatIndex]
-    setSelectedIndex([newMatch.groupIndex, newMatch.matchIndex])
+    setSelectedIndex([newMatch.pageIndex, newMatch.messageIndex, newMatch.matchIndex])
     navigateToResult(newMatch.match)
   }, [flatMatches, selectedIndex, setSelectedIndex, navigateToResult])
 
@@ -163,13 +173,16 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     let currentFlatIndex = -1
     if (selectedIndex) {
       currentFlatIndex = flatMatches.findIndex(
-        (m) => m.groupIndex === selectedIndex[0] && m.matchIndex === selectedIndex[1]
+        (m) =>
+          m.pageIndex === selectedIndex[0] &&
+          m.messageIndex === selectedIndex[1] &&
+          m.matchIndex === selectedIndex[2]
       )
     }
 
     const newFlatIndex = currentFlatIndex >= flatMatches.length - 1 ? 0 : currentFlatIndex + 1
     const newMatch = flatMatches[newFlatIndex]
-    setSelectedIndex([newMatch.groupIndex, newMatch.matchIndex])
+    setSelectedIndex([newMatch.pageIndex, newMatch.messageIndex, newMatch.matchIndex])
     navigateToResult(newMatch.match)
   }, [flatMatches, selectedIndex, setSelectedIndex, navigateToResult])
 

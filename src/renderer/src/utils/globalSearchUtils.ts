@@ -1,6 +1,7 @@
 import type {
   ChatMessage,
   GlobalSearchMatch,
+  GlobalSearchMessageGroup,
   GlobalSearchOptions,
   GlobalSearchResultGroup,
   PageFolder
@@ -11,6 +12,9 @@ import { useFoldersStore } from '../stores/foldersStore'
 
 /** 上下文长度（匹配前后各多少字符） */
 const CONTEXT_LENGTH = 40
+
+/** 内容预览长度 */
+const CONTENT_PREVIEW_LENGTH = 50
 
 /**
  * 获取页面的文件夹路径
@@ -94,15 +98,16 @@ function extractSnippet(
 }
 
 /**
- * 在单个页面的消息中搜索
+ * 在单个页面的消息中搜索，返回按消息分组的结果
  */
 function searchInMessages(
   messages: ChatMessage[],
   pattern: RegExp,
   pageId: string,
   options: GlobalSearchOptions
-): GlobalSearchMatch[] {
-  const matches: GlobalSearchMatch[] = []
+): GlobalSearchMessageGroup[] {
+  const messageGroups: GlobalSearchMessageGroup[] = []
+  let totalMatchCount = 0
 
   for (const message of messages) {
     // 角色筛选
@@ -121,10 +126,13 @@ function searchInMessages(
     // 重置正则表达式的 lastIndex
     pattern.lastIndex = 0
 
+    const matches: GlobalSearchMatch[] = []
     let match: RegExpExecArray | null
-    let matchCount = 0
 
-    while ((match = pattern.exec(content)) !== null && matchCount < MAX_MATCHES_PER_PAGE) {
+    while (
+      (match = pattern.exec(content)) !== null &&
+      totalMatchCount < MAX_MATCHES_PER_PAGE
+    ) {
       const { snippet, matchStart, matchEnd } = extractSnippet(
         content,
         match.index,
@@ -143,7 +151,7 @@ function searchInMessages(
         createdAt: message.createdAt
       })
 
-      matchCount++
+      totalMatchCount++
 
       // 防止零长度匹配导致无限循环
       if (match[0].length === 0) {
@@ -151,10 +159,30 @@ function searchInMessages(
       }
     }
 
-    if (matchCount >= MAX_MATCHES_PER_PAGE) break
+    // 如果该消息有匹配项，创建消息分组
+    if (matches.length > 0) {
+      // 提取内容预览（去除换行，截取前 N 个字符）
+      const contentPreview = content
+        .replace(/\n/g, ' ')
+        .slice(0, CONTENT_PREVIEW_LENGTH)
+        .trim()
+
+      messageGroups.push({
+        messageId: message.id,
+        pageId,
+        role: message.role,
+        title: message.title,
+        contentPreview,
+        createdAt: message.createdAt,
+        matches,
+        expanded: false
+      })
+    }
+
+    if (totalMatchCount >= MAX_MATCHES_PER_PAGE) break
   }
 
-  return matches
+  return messageGroups
 }
 
 export interface GlobalSearchResult {
@@ -206,22 +234,30 @@ export async function performGlobalSearch(
   for (const { page, record } of results) {
     if (!record?.messages.length) continue
 
-    const matches = searchInMessages(record.messages, pattern, page.id, options)
+    const messageGroups = searchInMessages(record.messages, pattern, page.id, options)
 
-    if (matches.length > 0) {
+    if (messageGroups.length > 0) {
+      // 计算该页面的总匹配数
+      const pageMatchCount = messageGroups.reduce((sum, mg) => sum + mg.matches.length, 0)
+
       groups.push({
         pageId: page.id,
         pageTitle: page.title,
+        createdAt: page.createdAt,
         folderPath: getFolderPath(page.parentFolderId, folders),
-        matches,
-        expanded: true
+        messageGroups,
+        expanded: false
       })
-      totalCount += matches.length
+      totalCount += pageMatchCount
     }
   }
 
   // 按匹配数量排序，匹配多的在前
-  groups.sort((a, b) => b.matches.length - a.matches.length)
+  groups.sort((a, b) => {
+    const aCount = a.messageGroups.reduce((sum, mg) => sum + mg.matches.length, 0)
+    const bCount = b.messageGroups.reduce((sum, mg) => sum + mg.matches.length, 0)
+    return bCount - aCount
+  })
 
   return { groups, totalCount }
 }

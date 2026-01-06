@@ -7,8 +7,8 @@ interface GlobalSearchState {
   results: GlobalSearchResultGroup[]
   totalCount: number
   isSearching: boolean
-  /** 当前选中的结果索引 [groupIndex, matchIndex] */
-  selectedIndex: [number, number] | null
+  /** 当前选中的结果索引 [pageIndex, messageIndex, matchIndex] */
+  selectedIndex: [number, number, number] | null
   /** 当前高亮的匹配项（用于在 ChatEditor 中显示高亮） */
   highlightMatch: GlobalSearchMatch | null
   /** 搜索触发器（用于强制立即搜索） */
@@ -20,8 +20,9 @@ interface GlobalSearchActions {
   setOptions: (options: Partial<GlobalSearchOptions>) => void
   setResults: (results: GlobalSearchResultGroup[], totalCount: number) => void
   setSearching: (isSearching: boolean) => void
-  setSelectedIndex: (index: [number, number] | null) => void
+  setSelectedIndex: (index: [number, number, number] | null) => void
   toggleGroupExpanded: (pageId: string) => void
+  toggleMessageExpanded: (pageId: string, messageId: string) => void
   expandAll: () => void
   collapseAll: () => void
   clearSearch: () => void
@@ -75,14 +76,36 @@ export const useGlobalSearchStore = create<GlobalSearchStore>((set) => ({
       results: state.results.map((g) => (g.pageId === pageId ? { ...g, expanded: !g.expanded } : g))
     })),
 
+  toggleMessageExpanded: (pageId, messageId) =>
+    set((state) => ({
+      results: state.results.map((g) =>
+        g.pageId === pageId
+          ? {
+              ...g,
+              messageGroups: g.messageGroups.map((mg) =>
+                mg.messageId === messageId ? { ...mg, expanded: !mg.expanded } : mg
+              )
+            }
+          : g
+      )
+    })),
+
   expandAll: () =>
     set((state) => ({
-      results: state.results.map((g) => ({ ...g, expanded: true }))
+      results: state.results.map((g) => ({
+        ...g,
+        expanded: true,
+        messageGroups: g.messageGroups.map((mg) => ({ ...mg, expanded: true }))
+      }))
     })),
 
   collapseAll: () =>
     set((state) => ({
-      results: state.results.map((g) => ({ ...g, expanded: false }))
+      results: state.results.map((g) => ({
+        ...g,
+        expanded: false,
+        messageGroups: g.messageGroups.map((mg) => ({ ...mg, expanded: false }))
+      }))
     })),
 
   clearSearch: () =>

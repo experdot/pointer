@@ -121,6 +121,11 @@
   font-size: 12px;
   padding: 0 4px;
   height: 20px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.search-summary-actions .ant-btn:hover {
+  color: var(--ant-color-text-secondary);
 }
 
 /* Search Loading */
@@ -204,6 +209,14 @@
   margin-left: 4px;
 }
 
+.search-result-group-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ant-color-text-quaternary);
+  margin-left: auto;
+  padding-left: 4px;
+}
+
 .search-result-group-count {
   flex-shrink: 0;
   font-size: 12px;
@@ -213,16 +226,73 @@
   border-radius: 4px;
 }
 
-/* Search Result Items */
-.search-result-items {
+/* Search Result Messages (二级：消息层级) */
+.search-result-messages {
   padding-left: 12px;
+}
+
+.search-result-message-group {
+  margin-bottom: 2px;
+}
+
+.search-result-message-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.search-result-message-header:hover {
+  background-color: var(--ant-color-fill-tertiary);
+}
+
+.search-result-message-icon {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.search-result-message-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-message-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ant-color-text-quaternary);
+  margin-left: 4px;
+}
+
+.search-result-message-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+  background: var(--ant-color-fill-secondary);
+  padding: 0 5px;
+  border-radius: 4px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Search Result Items (三级：匹配块层级) */
+.search-result-items {
+  padding-left: 24px;
 }
 
 .search-result-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: background-color 0.2s;
   border-left: 2px solid transparent;
@@ -262,6 +332,26 @@
   color: var(--ant-color-warning-text);
   padding: 0 2px;
   border-radius: 4px;
+}
+
+/* Load More Button */
+.search-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  margin: 4px 12px;
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.search-load-more:hover {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-tertiary);
 }
 
 /* Empty state */
