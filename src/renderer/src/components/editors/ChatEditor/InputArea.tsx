@@ -16,6 +16,7 @@ import { AttachmentPreview } from './AttachmentPreview'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useAttachment } from '../../../hooks/useAttachment'
 import type { FileAttachment } from '../../../types/type'
+import './InputArea.css'
 
 const { TextArea } = Input
 

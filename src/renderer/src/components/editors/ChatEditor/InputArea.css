@@ -1,0 +1,82 @@
+/* Input Area */
+.chat-editor__input {
+  flex-shrink: 0;
+  margin: 12px 12px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 4px;
+  background: var(--ant-color-bg-container);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.chat-editor__textarea {
+  width: 100%;
+}
+
+.chat-editor__textarea.ant-input {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  resize: none;
+}
+
+.chat-editor__textarea.ant-input:focus,
+.chat-editor__textarea.ant-input:hover {
+  border: none;
+  box-shadow: none;
+}
+
+.chat-editor__input:focus-within {
+  border-color: var(--ant-color-primary);
+}
+
+.chat-editor__input-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.chat-editor__input-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-editor__attachment-btn {
+  color: var(--ant-color-text-secondary);
+}
+
+.chat-editor__input-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Drag Over State */
+.chat-editor__input--drag-over {
+  border-color: var(--ant-color-primary);
+  border-style: dashed;
+}
+
+.chat-editor__input-drag-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(var(--ant-color-primary-rgb, 22, 119, 255), 0.1);
+  border-radius: 4px;
+  color: var(--ant-color-primary);
+  font-size: 14px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.chat-editor__input-drag-overlay .anticon {
+  font-size: 32px;
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import type { FileAttachment } from '../../../types/type'
 import { getAttachmentDataUrl } from '../../../hooks/useAttachment'
 import { ImagePreviewModal } from '../../common/ImagePreviewModal'
+import './MessageAttachments.css'
 
 interface MessageAttachmentsProps {
   attachments: FileAttachment[]

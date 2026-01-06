@@ -13,6 +13,7 @@ import {
 import { OutlineDropdown } from './OutlineDropdown'
 import type { ChatMessage, OutlineNode } from '../../../types/type'
 import type { GenerateMode } from './GenerateTitleModal'
+import './BranchPathBar.css'
 
 const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
   return role === 'user' ? <UserOutlined /> : <RobotOutlined />

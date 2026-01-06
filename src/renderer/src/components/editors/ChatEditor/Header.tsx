@@ -3,6 +3,7 @@ import { Input, Tooltip, type InputRef } from 'antd'
 import { EditOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { updatePage } from '../../../services/pagesService'
 import type { ChatPage } from '../../../types/type'
+import './Header.css'
 
 interface HeaderProps {
   page: ChatPage

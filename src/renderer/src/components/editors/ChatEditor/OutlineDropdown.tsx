@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons'
 import type { OutlineNode } from '../../../types/type'
 import type { GenerateMode } from './GenerateTitleModal'
+import './OutlineDropdown.css'
 
 interface OutlineDropdownProps {
   outline: OutlineNode[]

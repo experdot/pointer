@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
 import type { FileAttachment } from '../../../types/type'
 import { getAttachmentDataUrl } from '../../../hooks/useAttachment'
+import './AttachmentPreview.css'
 
 interface AttachmentPreviewProps {
   attachments: FileAttachment[]

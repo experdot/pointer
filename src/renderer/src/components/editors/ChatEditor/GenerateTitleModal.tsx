@@ -3,6 +3,7 @@ import { Modal, Input, Button } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
+import './GenerateTitleModal.css'
 
 const { TextArea } = Input
 

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { Drawer, Button, Input, List, Popconfirm, Typography, Empty } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ClearOutlined } from '@ant-design/icons'
 import type { QueueItem } from '../../../utils/database'
+import './MessageQueueDrawer.css'
 
 const { TextArea } = Input
 const { Text } = Typography

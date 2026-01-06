@@ -29,6 +29,7 @@ import { MessageAttachments } from './MessageAttachments'
 import { AttachmentPreview } from './AttachmentPreview'
 import { selectAndSaveAttachments } from '../../../hooks/useAttachment'
 import type { ChatMessage, FileAttachment, Topic } from '../../../types/type'
+import './MessageItem.css'
 
 const { TextArea } = Input
 
