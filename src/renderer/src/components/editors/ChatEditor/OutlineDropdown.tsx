@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { Dropdown, Button, Tooltip, Progress } from 'antd'
 import {
   UnorderedListOutlined,
@@ -38,12 +38,28 @@ export function OutlineDropdown({
 }: OutlineDropdownProps): React.JSX.Element {
   const isGenerating = !!batchProgress
 
+  // Dropdown 状态
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   // Popover 状态
   const [batchTitlePopoverOpen, setBatchTitlePopoverOpen] = useState(false)
   const [segmentPopoverOpen, setSegmentPopoverOpen] = useState(false)
 
+  // Dropdown 关闭时，同时关闭内部的 Popover
+  const handleDropdownOpenChange = useCallback((open: boolean) => {
+    setDropdownOpen(open)
+    if (!open) {
+      setBatchTitlePopoverOpen(false)
+      setSegmentPopoverOpen(false)
+    }
+  }, [])
+
   // Outline 独立的折叠状态（不与消息列表同步）
   const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set())
+
+  // Dropdown 内容容器 ref，用于 Popover 渲染
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const getPopupContainer = useCallback(() => dropdownRef.current || document.body, [])
 
   const toggleCollapse = useCallback((topicId: string) => {
     setCollapsedTopics((prev) => {
@@ -136,7 +152,7 @@ export function OutlineDropdown({
   }, [outline, onNavigateToMessage, collapsedTopics, toggleCollapse])
 
   const dropdownContent = (
-    <div className="outline-dropdown">
+    <div className="outline-dropdown" ref={dropdownRef}>
       {/* 大纲内容 */}
       <div className="outline-dropdown__content">
         {outline.length === 0 ? (
@@ -170,6 +186,7 @@ export function OutlineDropdown({
                   mode="batch-title"
                   onGenerate={onBatchGenerateTitles}
                   placement="bottom"
+                  getPopupContainer={getPopupContainer}
                 >
                   <Button
                     type="text"
@@ -190,6 +207,7 @@ export function OutlineDropdown({
                   mode="smart-segment"
                   onGenerate={onSmartSegment}
                   placement="bottom"
+                  getPopupContainer={getPopupContainer}
                 >
                   <Button
                     type="text"
@@ -210,7 +228,13 @@ export function OutlineDropdown({
   )
 
   return (
-    <Dropdown popupRender={() => dropdownContent} trigger={['click']} placement="bottomLeft">
+    <Dropdown
+      popupRender={() => dropdownContent}
+      trigger={['click']}
+      placement="bottomLeft"
+      open={dropdownOpen}
+      onOpenChange={handleDropdownOpenChange}
+    >
       <Tooltip title="大纲">
         <Button
           type="text"
