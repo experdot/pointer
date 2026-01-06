@@ -206,11 +206,11 @@
 
 .search-result-group-count {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ant-color-text-tertiary);
   background: var(--ant-color-fill-secondary);
   padding: 0 6px;
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 /* Search Result Items */
@@ -261,7 +261,7 @@
   background-color: var(--ant-color-warning-bg);
   color: var(--ant-color-warning-text);
   padding: 0 2px;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 /* Empty state */

@@ -11,7 +11,7 @@
 
 .chat-editor__title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ant-color-text);
   overflow: hidden;
   text-overflow: ellipsis;

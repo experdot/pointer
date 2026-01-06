@@ -37,7 +37,9 @@
   z-index: 10;
   background: transparent;
   opacity: 0;
-  transition: opacity 0.15s ease-out 0.3s, background 0.15s ease-out 0.3s;
+  transition:
+    opacity 0.15s ease-out 0.3s,
+    background 0.15s ease-out 0.3s;
 }
 
 .sidebar-resizer:hover {
