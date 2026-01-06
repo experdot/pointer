@@ -7,7 +7,14 @@ import * as messagesService from '../services/messagesService'
 import { updateMessageTitle } from '../services/messagesService'
 import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
-import { generateMessageTitle, generateTopicTitle, analyzeTopicSegments } from '../services/titleService'
+import {
+  generateMessageTitle,
+  generateTopicTitle,
+  analyzeTopicSegments,
+  generateMessageTitleWithOptions,
+  generateTopicTitleWithOptions,
+  analyzeTopicSegmentsWithOptions
+} from '../services/titleService'
 import type {
   ChatMessage,
   Topic,
@@ -21,6 +28,13 @@ import type { PageRecord } from '../utils/database'
 
 interface UseChatOptions {
   pageId: string
+}
+
+// 生成选项（与 GenerateTitleModal 中的 GenerateOptions 对应）
+export interface GenerateOptions {
+  extraRequirements?: string
+  llmId?: string
+  modelConfigId?: string
 }
 
 interface UseChatResult {
@@ -64,6 +78,11 @@ interface UseChatResult {
   // 智能分段
   smartSegmentation: () => Promise<void>
   isSegmenting: boolean
+  // 带选项的生成方法（用于 GenerateTitleModal）
+  generateTitleWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
+  generateTopicWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
+  batchGenerateTitlesWithOptions: (options: GenerateOptions) => Promise<void>
+  smartSegmentationWithOptions: (options: GenerateOptions) => Promise<void>
 }
 
 export function useChat({ pageId }: UseChatOptions): UseChatResult {
@@ -557,6 +576,131 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     }
   }, [currentPath, topics, pageId, isSegmenting])
 
+  // ============ 带选项的生成方法（用于 GenerateTitleModal）============
+
+  const generateTitleWithOptions = useCallback(
+    async (messageId: string, options: GenerateOptions) => {
+      const message = messages.find((m) => m.id === messageId)
+      if (!message) return
+
+      try {
+        const result = await generateMessageTitleWithOptions({
+          content: message.content,
+          extraRequirements: options.extraRequirements,
+          llmId: options.llmId,
+          modelConfigId: options.modelConfigId
+        })
+        if (result.success && result.title) {
+          updateMessageTitle(pageId, messageId, result.title)
+        } else if (result.error) {
+          console.error('Failed to generate title with options:', result.error)
+        }
+      } catch (error) {
+        console.error('Failed to generate title with options:', error)
+      }
+    },
+    [pageId, messages]
+  )
+
+  const generateTopicWithOptions = useCallback(
+    async (messageId: string, options: GenerateOptions) => {
+      const message = messages.find((m) => m.id === messageId)
+      if (!message) return
+
+      try {
+        const result = await generateTopicTitleWithOptions({
+          content: message.content,
+          extraRequirements: options.extraRequirements,
+          llmId: options.llmId,
+          modelConfigId: options.modelConfigId
+        })
+        if (result.success && result.title) {
+          await messagesService.createTopic(pageId, result.title, messageId)
+        } else if (result.error) {
+          console.error('Failed to generate topic with options:', result.error)
+        }
+      } catch (error) {
+        console.error('Failed to generate topic with options:', error)
+      }
+    },
+    [pageId, messages]
+  )
+
+  const handleBatchGenerateTitlesWithOptions = useCallback(
+    async (options: GenerateOptions) => {
+      // 筛选出没有标题的消息
+      const messagesWithoutTitle = currentPath.filter((m) => !m.title)
+      if (messagesWithoutTitle.length === 0) return
+
+      const total = messagesWithoutTitle.length
+      setBatchProgress({ current: 0, total })
+
+      try {
+        for (let i = 0; i < messagesWithoutTitle.length; i++) {
+          const message = messagesWithoutTitle[i]
+          setBatchProgress({ current: i, total })
+
+          try {
+            const result = await generateMessageTitleWithOptions({
+              content: message.content,
+              extraRequirements: options.extraRequirements,
+              llmId: options.llmId,
+              modelConfigId: options.modelConfigId
+            })
+            if (result.success && result.title) {
+              updateMessageTitle(pageId, message.id, result.title)
+            }
+          } catch (error) {
+            console.error(`Failed to generate title for message ${message.id}:`, error)
+          }
+
+          // 添加小延迟避免请求过于频繁
+          if (i < messagesWithoutTitle.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 300))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to batch generate titles with options:', error)
+      } finally {
+        setBatchProgress(null)
+      }
+    },
+    [currentPath, pageId]
+  )
+
+  const handleSmartSegmentationWithOptions = useCallback(
+    async (options: GenerateOptions) => {
+      if (currentPath.length === 0 || isSegmenting) return
+
+      setIsSegmenting(true)
+      try {
+        const result = await analyzeTopicSegmentsWithOptions(currentPath, {
+          extraRequirements: options.extraRequirements,
+          llmId: options.llmId,
+          modelConfigId: options.modelConfigId
+        })
+        if (result.success && result.segments.length > 0) {
+          // 为每个分段点创建 Topic
+          for (const segment of result.segments) {
+            const message = currentPath[segment.index]
+            // 检查该消息是否已经有 Topic
+            const existingTopic = messagesService.findTopicByStartMessageId(topics, message.id)
+            if (message && !existingTopic) {
+              await messagesService.createTopic(pageId, segment.topic, message.id)
+            }
+          }
+        } else if (result.error) {
+          console.error('Smart segmentation with options failed:', result.error)
+        }
+      } catch (error) {
+        console.error('Smart segmentation with options error:', error)
+      } finally {
+        setIsSegmenting(false)
+      }
+    },
+    [currentPath, topics, pageId, isSegmenting]
+  )
+
   return {
     page,
     messages,
@@ -589,6 +733,11 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     batchProgress,
     // 智能分段
     smartSegmentation,
-    isSegmenting
+    isSegmenting,
+    // 带选项的生成方法（用于 GenerateTitleModal）
+    generateTitleWithOptions,
+    generateTopicWithOptions,
+    batchGenerateTitlesWithOptions: handleBatchGenerateTitlesWithOptions,
+    smartSegmentationWithOptions: handleSmartSegmentationWithOptions
   }
 }

@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons'
 import { OutlineDropdown } from './OutlineDropdown'
 import type { ChatMessage, OutlineNode } from '../../../types/type'
+import type { GenerateMode } from './GenerateTitleModal'
 
 const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
   return role === 'user' ? <UserOutlined /> : <RobotOutlined />
@@ -37,9 +38,8 @@ interface BranchPathBarProps {
   outline?: OutlineNode[]
   currentMessageId?: string
   onToggleTopicCollapse?: (topicId: string) => void
-  onBatchGenerateTitles?: () => Promise<void>
+  onOpenGenerateModal?: (mode: GenerateMode) => void
   batchProgress?: { current: number; total: number } | null
-  onSmartSegmentation?: () => Promise<void>
   isSegmenting?: boolean
 }
 
@@ -55,9 +55,8 @@ export function BranchPathBar({
   outline,
   currentMessageId,
   onToggleTopicCollapse,
-  onBatchGenerateTitles,
+  onOpenGenerateModal,
   batchProgress,
-  onSmartSegmentation,
   isSegmenting
 }: BranchPathBarProps): React.JSX.Element {
   // 筛选关键节点：根节点、叶子节点、有分支的节点
@@ -108,9 +107,8 @@ export function BranchPathBar({
         currentMessageId={currentMessageId}
         onScrollToMessage={onScrollToMessage}
         onToggleTopicCollapse={onToggleTopicCollapse}
-        onBatchGenerateTitles={onBatchGenerateTitles}
+        onOpenGenerateModal={onOpenGenerateModal}
         batchProgress={batchProgress}
-        onSmartSegmentation={onSmartSegmentation}
         isSegmenting={isSegmenting}
       />
 
@@ -140,7 +138,7 @@ export function BranchPathBar({
                 items: siblings.map((s, idx) => ({
                   key: s.id,
                   icon: getRoleIcon(s.role),
-                  label: `${index + 1}.${idx + 1} ${getPreview(s)}`,
+                  label: `${index + 1}:${idx + 1} ${getPreview(s)}`,
                   onClick: () => onSwitchBranch(s.id)
                 })),
                 selectedKeys: [message.id]

@@ -39,7 +39,7 @@ interface MessageListProps {
   onExpandAll: () => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
-  onGenerateTitle?: (messageId: string) => void
+  onOpenGenerateModal?: (mode: 'title' | 'topic', messageId: string) => void
   // Topic 相关（独立 Topic 实体）
   topics: Topic[]
   topicGroups: TopicGroup[]
@@ -47,7 +47,6 @@ interface MessageListProps {
   onUpdateTopic?: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => void
   onDeleteTopic?: (topicId: string) => void
   onToggleTopicCollapse?: (topicId: string) => void
-  onGenerateTopic?: (messageId: string) => void
 }
 
 export const MessageList = forwardRef<MessageListRef, MessageListProps>(function MessageList(
@@ -67,15 +66,14 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onCollapseAll,
     onExpandAll,
     onUpdateTitle,
-    onGenerateTitle,
+    onOpenGenerateModal,
     // Topic 相关
     topics,
     topicGroups,
     onCreateTopic,
     onUpdateTopic,
     onDeleteTopic,
-    onToggleTopicCollapse,
-    onGenerateTopic
+    onToggleTopicCollapse
   },
   ref
 ) {
@@ -308,7 +306,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onQuote={onQuote}
             onToggleCollapse={onToggleCollapse}
             onUpdateTitle={onUpdateTitle}
-            onGenerateTitle={onGenerateTitle}
+            onOpenGenerateModal={onOpenGenerateModal}
             // Topic 相关
             topic={messageTopic}
             topicMessageCount={topicMessageCount}
@@ -316,7 +314,6 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onUpdateTopic={onUpdateTopic}
             onDeleteTopic={onDeleteTopic}
             onToggleTopicCollapse={onToggleTopicCollapse}
-            onGenerateTopic={onGenerateTopic}
           />
         )
       })}

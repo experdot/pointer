@@ -55,6 +55,16 @@ const TOPIC_SEGMENTATION_PROMPT = `分析以下对话，识别出话题的转折
 3. 一般3-10条消息可能构成一个话题
 4. 直接输出JSON数组，不要有任何其他内容`
 
+// ==================== 类型定义 ====================
+
+export interface TitleGenerateOptions {
+  content: string
+  extraRequirements?: string
+  llmId?: string
+  modelConfigId?: string
+  maxLength?: number
+}
+
 // ==================== 辅助函数 ====================
 
 /**
@@ -71,6 +81,48 @@ function getDefaultConfigs(): { llmConfig: LLMConfig | null; modelConfig: ModelC
     settings.modelConfigs.items.find((c) => c.id === settings.defaultModelConfigId) || null
 
   return { llmConfig, modelConfig }
+}
+
+/**
+ * 获取指定的配置（或使用默认配置）
+ */
+function getConfigsWithOptions(
+  llmId?: string,
+  modelConfigId?: string
+): { llmConfig: LLMConfig | null; modelConfig: ModelConfig | null } {
+  const settings = useSettingsStore.getState().settings
+  if (!settings) {
+    return { llmConfig: null, modelConfig: null }
+  }
+
+  // 优先使用传入的 ID，否则使用默认 ID
+  const targetLlmId = llmId || settings.defaultLLMId
+  const targetModelConfigId = modelConfigId || settings.defaultModelConfigId
+
+  const llmConfig = settings.llmConfigs.items.find((c) => c.id === targetLlmId) || null
+  const modelConfig =
+    settings.modelConfigs.items.find((c) => c.id === targetModelConfigId) || null
+
+  return { llmConfig, modelConfig }
+}
+
+/**
+ * 构建带额外要求的 Prompt
+ */
+function buildPromptWithRequirements(
+  basePrompt: string,
+  content: string,
+  extraRequirements?: string
+): string {
+  let prompt = basePrompt.replace('{content}', truncateContent(content))
+  if (extraRequirements?.trim()) {
+    // 在标题/话题名称之前插入额外要求
+    prompt = prompt.replace(
+      /(标题|话题名称)：$/,
+      `\n额外要求：${extraRequirements.trim()}\n\n$1：`
+    )
+  }
+  return prompt
 }
 
 /**
@@ -352,6 +404,186 @@ export async function analyzeTopicSegments(
     return { segments: validSegments, success: true }
   } catch (error) {
     console.error('Failed to analyze topic segments:', error)
+    return { segments: [], success: false, error: String(error) }
+  }
+}
+
+// ==================== 带选项的生成函数 ====================
+
+/**
+ * 为消息生成标题（带选项）
+ * @param options 生成选项
+ */
+export async function generateMessageTitleWithOptions(
+  options: TitleGenerateOptions
+): Promise<TitleGenerationResult> {
+  const { content, extraRequirements, llmId, modelConfigId, maxLength = 15 } = options
+  const { llmConfig, modelConfig } = getConfigsWithOptions(llmId, modelConfigId)
+
+  if (!llmConfig) {
+    return { title: '', success: false, error: '未配置 LLM' }
+  }
+
+  try {
+    const prompt = buildPromptWithRequirements(TITLE_GENERATION_PROMPT, content, extraRequirements)
+    const result = await generateWithAI(prompt, llmConfig, modelConfig || undefined)
+
+    // 清理结果：移除可能的引号和多余空白
+    let title = result
+      .replace(/^["'""]|["'""]$/g, '')
+      .replace(/^标题[：:]\s*/i, '')
+      .trim()
+
+    // 截断到最大长度
+    if (title.length > maxLength) {
+      title = title.slice(0, maxLength)
+    }
+
+    return { title, success: true }
+  } catch (error) {
+    console.error('Failed to generate title with options:', error)
+    return { title: '', success: false, error: String(error) }
+  }
+}
+
+/**
+ * 为 Topic 生成名称（带选项）
+ * @param options 生成选项
+ */
+export async function generateTopicTitleWithOptions(
+  options: TitleGenerateOptions
+): Promise<TitleGenerationResult> {
+  const { content, extraRequirements, llmId, modelConfigId, maxLength = 15 } = options
+  const { llmConfig, modelConfig } = getConfigsWithOptions(llmId, modelConfigId)
+
+  if (!llmConfig) {
+    return { title: '', success: false, error: '未配置 LLM' }
+  }
+
+  try {
+    const prompt = buildPromptWithRequirements(TOPIC_GENERATION_PROMPT, content, extraRequirements)
+    const result = await generateWithAI(prompt, llmConfig, modelConfig || undefined)
+
+    // 清理结果：移除可能的引号和多余空白
+    let title = result
+      .replace(/^["'""]|["'""]$/g, '')
+      .replace(/^(话题|主题)[：:]\s*/i, '')
+      .trim()
+
+    // 截断到最大长度
+    if (title.length > maxLength) {
+      title = title.slice(0, maxLength)
+    }
+
+    return { title, success: true }
+  } catch (error) {
+    console.error('Failed to generate topic title with options:', error)
+    return { title: '', success: false, error: String(error) }
+  }
+}
+
+/**
+ * 批量为消息生成标题（带选项）
+ * @param messages 需要生成标题的消息列表
+ * @param options 生成选项（不含 content）
+ * @param onProgress 进度回调
+ */
+export async function batchGenerateTitlesWithOptions(
+  messages: ChatMessage[],
+  options: Omit<TitleGenerateOptions, 'content'>,
+  onProgress?: (current: number, total: number) => void
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>()
+  const total = messages.length
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i]
+    onProgress?.(i + 1, total)
+
+    const result = await generateMessageTitleWithOptions({
+      content: message.content,
+      ...options
+    })
+    if (result.success && result.title) {
+      results.set(message.id, result.title)
+    }
+
+    // 添加小延迟避免请求过于频繁
+    if (i < messages.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+
+  return results
+}
+
+/**
+ * 智能分段 - 分析对话并识别话题转折点（带选项）
+ * @param messages 消息列表
+ * @param options 生成选项（不含 content）
+ */
+export async function analyzeTopicSegmentsWithOptions(
+  messages: ChatMessage[],
+  options: Omit<TitleGenerateOptions, 'content'>
+): Promise<TopicSegmentationResult> {
+  const { extraRequirements, llmId, modelConfigId } = options
+  const { llmConfig, modelConfig } = getConfigsWithOptions(llmId, modelConfigId)
+
+  if (!llmConfig) {
+    return { segments: [], success: false, error: '未配置 LLM' }
+  }
+
+  if (messages.length === 0) {
+    return { segments: [], success: true }
+  }
+
+  try {
+    // 构建对话内容（带序号）
+    const conversationStr = messages
+      .map((m, idx) => `[${idx}] ${m.role}: ${truncateContent(m.content, 150)}`)
+      .join('\n\n')
+
+    let prompt = TOPIC_SEGMENTATION_PROMPT.replace('{conversation}', conversationStr)
+
+    // 添加额外要求
+    if (extraRequirements?.trim()) {
+      prompt = prompt.replace(
+        '4. 直接输出JSON数组，不要有任何其他内容',
+        `4. 直接输出JSON数组，不要有任何其他内容\n5. 额外要求：${extraRequirements.trim()}`
+      )
+    }
+
+    const result = await generateWithAI(prompt, llmConfig, modelConfig || undefined)
+
+    // 解析 JSON 结果
+    const cleanResult = result.trim()
+    // 尝试提取 JSON 数组
+    const jsonMatch = cleanResult.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      console.error('Failed to parse topic segments: no JSON array found', cleanResult)
+      return { segments: [], success: false, error: '无法解析分段结果' }
+    }
+
+    const segments: TopicSegment[] = JSON.parse(jsonMatch[0])
+
+    // 验证并清理结果
+    const validSegments = segments
+      .filter(
+        (s) =>
+          typeof s.index === 'number' &&
+          s.index >= 0 &&
+          s.index < messages.length &&
+          typeof s.topic === 'string' &&
+          s.topic.trim().length > 0
+      )
+      .map((s) => ({
+        index: s.index,
+        topic: s.topic.trim().slice(0, 15)
+      }))
+
+    return { segments: validSegments, success: true }
+  } catch (error) {
+    console.error('Failed to analyze topic segments with options:', error)
     return { segments: [], success: false, error: String(error) }
   }
 }

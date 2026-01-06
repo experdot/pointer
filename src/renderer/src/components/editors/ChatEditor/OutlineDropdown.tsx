@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { Dropdown, Button, Tooltip, Progress } from 'antd'
 import {
   UnorderedListOutlined,
@@ -12,16 +12,16 @@ import {
   DownOutlined
 } from '@ant-design/icons'
 import type { OutlineNode } from '../../../types/type'
+import type { GenerateMode } from './GenerateTitleModal'
 
 interface OutlineDropdownProps {
   outline: OutlineNode[]
   currentMessageId?: string
   onScrollToMessage: (messageId: string) => void
   onToggleTopicCollapse?: (topicId: string) => void
-  onBatchGenerateTitles?: () => Promise<void>
+  onOpenGenerateModal?: (mode: GenerateMode) => void
   /** 批量生成进度 { current, total } */
   batchProgress?: { current: number; total: number } | null
-  onSmartSegmentation?: () => Promise<void>
   isSegmenting?: boolean
 }
 
@@ -30,27 +30,11 @@ export function OutlineDropdown({
   currentMessageId,
   onScrollToMessage,
   onToggleTopicCollapse,
-  onBatchGenerateTitles,
+  onOpenGenerateModal,
   batchProgress,
-  onSmartSegmentation,
   isSegmenting
 }: OutlineDropdownProps): React.JSX.Element {
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const handleBatchGenerate = async (): Promise<void> => {
-    if (!onBatchGenerateTitles || isGenerating) return
-    setIsGenerating(true)
-    try {
-      await onBatchGenerateTitles()
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const handleSmartSegmentation = async (): Promise<void> => {
-    if (!onSmartSegmentation || isSegmenting) return
-    await onSmartSegmentation()
-  }
+  const isGenerating = !!batchProgress
   // 扁平化渲染大纲节点
   const renderOutlineItems = useMemo(() => {
     const items: React.ReactNode[] = []
@@ -147,7 +131,7 @@ export function OutlineDropdown({
       </div>
 
       {/* 底部操作栏 */}
-      {(onBatchGenerateTitles || onSmartSegmentation) && (
+      {onOpenGenerateModal && (
         <div className="outline-dropdown__footer">
           {batchProgress ? (
             <div className="outline-dropdown__progress">
@@ -159,30 +143,26 @@ export function OutlineDropdown({
             </div>
           ) : (
             <div className="outline-dropdown__actions">
-              {onBatchGenerateTitles && (
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ThunderboltOutlined />}
-                  onClick={handleBatchGenerate}
-                  loading={isGenerating}
-                  className="outline-dropdown__action-btn"
-                >
-                  生成标题
-                </Button>
-              )}
-              {onSmartSegmentation && (
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ApartmentOutlined />}
-                  onClick={handleSmartSegmentation}
-                  loading={isSegmenting}
-                  className="outline-dropdown__action-btn"
-                >
-                  智能分段
-                </Button>
-              )}
+              <Button
+                type="text"
+                size="small"
+                icon={<ThunderboltOutlined />}
+                onClick={() => onOpenGenerateModal('batch-title')}
+                loading={isGenerating}
+                className="outline-dropdown__action-btn"
+              >
+                生成标题
+              </Button>
+              <Button
+                type="text"
+                size="small"
+                icon={<ApartmentOutlined />}
+                onClick={() => onOpenGenerateModal('smart-segment')}
+                loading={isSegmenting}
+                className="outline-dropdown__action-btn"
+              >
+                智能分段
+              </Button>
             </div>
           )}
         </div>

@@ -12,6 +12,7 @@ import { Header } from './Header'
 import { BranchPathBar } from './BranchPathBar'
 import { MessageQueueDrawer } from './MessageQueueDrawer'
 import { SearchBar } from './SearchBar'
+import { GenerateTitleModal, GenerateMode, GenerateOptions } from './GenerateTitleModal'
 import './ChatEditor.css'
 
 interface ChatEditorProps {
@@ -37,18 +38,19 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     topicGroups,
     outline,
     updateTitle,
-    generateTitle,
     // Topic 操作（独立 Topic 实体）
     createTopic,
     updateTopic,
     deleteTopic,
     toggleTopicCollapse,
-    generateTopic,
-    // 批量操作
-    batchGenerateTitles,
+    // 批量操作进度
     batchProgress,
-    smartSegmentation,
-    isSegmenting
+    isSegmenting,
+    // 带选项的生成方法
+    generateTitleWithOptions,
+    generateTopicWithOptions,
+    batchGenerateTitlesWithOptions,
+    smartSegmentationWithOptions
   } = useChat({ pageId })
 
   // 订阅 streamingManager 以获取 isStreaming 状态
@@ -83,6 +85,13 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   // Drawer 状态
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // GenerateTitleModal 状态
+  const [generateModal, setGenerateModal] = useState<{
+    open: boolean
+    mode: GenerateMode
+    messageId?: string
+  } | null>(null)
 
   const inputAreaRef = useRef<InputAreaRef>(null)
   const messageListRef = useRef<MessageListRef>(null)
@@ -178,6 +187,48 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     setDrawerOpen(false)
   }, [])
 
+  // GenerateTitleModal 处理函数
+  const openGenerateModal = useCallback((mode: GenerateMode, messageId?: string) => {
+    setGenerateModal({ open: true, mode, messageId })
+  }, [])
+
+  const closeGenerateModal = useCallback(() => {
+    setGenerateModal(null)
+  }, [])
+
+  const handleGenerate = useCallback(
+    async (options: GenerateOptions) => {
+      if (!generateModal) return
+      const { mode, messageId } = generateModal
+
+      switch (mode) {
+        case 'title':
+          if (messageId) {
+            await generateTitleWithOptions(messageId, options)
+          }
+          break
+        case 'topic':
+          if (messageId) {
+            await generateTopicWithOptions(messageId, options)
+          }
+          break
+        case 'batch-title':
+          await batchGenerateTitlesWithOptions(options)
+          break
+        case 'smart-segment':
+          await smartSegmentationWithOptions(options)
+          break
+      }
+    },
+    [
+      generateModal,
+      generateTitleWithOptions,
+      generateTopicWithOptions,
+      batchGenerateTitlesWithOptions,
+      smartSegmentationWithOptions
+    ]
+  )
+
   if (!page) {
     return <div className="chat-editor chat-editor--empty">页面不存在</div>
   }
@@ -197,9 +248,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         outline={outline}
         currentMessageId={selectedMessageId}
         onToggleTopicCollapse={toggleTopicCollapse}
-        onBatchGenerateTitles={batchGenerateTitles}
+        onOpenGenerateModal={openGenerateModal}
         batchProgress={batchProgress}
-        onSmartSegmentation={smartSegmentation}
         isSegmenting={isSegmenting}
       />
       {searchState.isOpen && (
@@ -222,7 +272,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
         onUpdateTitle={updateTitle}
-        onGenerateTitle={generateTitle}
+        onOpenGenerateModal={openGenerateModal}
         // Topic 相关
         topics={topics}
         topicGroups={topicGroups}
@@ -230,7 +280,6 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onUpdateTopic={updateTopic}
         onDeleteTopic={deleteTopic}
         onToggleTopicCollapse={toggleTopicCollapse}
-        onGenerateTopic={generateTopic}
       />
       <InputArea
         ref={inputAreaRef}
@@ -252,6 +301,13 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onRemove={removeQueueItem}
         onUpdate={updateQueueItem}
         onClear={clearQueue}
+      />
+      <GenerateTitleModal
+        open={generateModal?.open ?? false}
+        onClose={closeGenerateModal}
+        mode={generateModal?.mode ?? 'title'}
+        messageId={generateModal?.messageId}
+        onGenerate={handleGenerate}
       />
     </div>
   )

@@ -51,7 +51,7 @@ interface MessageItemProps {
   onToggleCollapse?: (messageId: string) => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
-  onGenerateTitle?: (messageId: string) => void
+  onOpenGenerateModal?: (mode: 'title' | 'topic', messageId: string) => void
   // Topic 相关（独立 Topic 实体）
   /** 此消息关联的 Topic（当此消息是 Topic 起始消息时） */
   topic?: Topic
@@ -61,7 +61,6 @@ interface MessageItemProps {
   onUpdateTopic?: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => void
   onDeleteTopic?: (topicId: string) => void
   onToggleTopicCollapse?: (topicId: string) => void
-  onGenerateTopic?: (messageId: string) => void
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -83,15 +82,14 @@ export const MessageItem = React.memo(function MessageItem({
   onQuote,
   onToggleCollapse,
   onUpdateTitle,
-  onGenerateTitle,
+  onOpenGenerateModal,
   // Topic 相关
   topic,
   topicMessageCount,
   onCreateTopic,
   onUpdateTopic,
   onDeleteTopic,
-  onToggleTopicCollapse,
-  onGenerateTopic
+  onToggleTopicCollapse
 }: MessageItemProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -483,7 +481,7 @@ export const MessageItem = React.memo(function MessageItem({
                     className="message-item__topic-generate"
                     icon={<ThunderboltOutlined />}
                     onClick={() => {
-                      onGenerateTopic?.(message.id)
+                      onOpenGenerateModal?.('topic', message.id)
                       setIsEditingTopic(false)
                     }}
                   />
@@ -584,7 +582,7 @@ export const MessageItem = React.memo(function MessageItem({
                     className="message-item__title-generate"
                     icon={<ThunderboltOutlined />}
                     onClick={() => {
-                      onGenerateTitle?.(message.id)
+                      onOpenGenerateModal?.('title', message.id)
                       setIsEditingTitle(false)
                     }}
                   />
