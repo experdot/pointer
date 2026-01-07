@@ -16,7 +16,12 @@ import {
 } from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
-import { exportMessages } from '../../../services/exportService'
+import {
+  exportMessages,
+  exportTextSnippet,
+  exportCodeBlock,
+  exportTableBlock
+} from '../../../services/exportService'
 import './MessageList.css'
 
 export interface MessageListRef {
@@ -310,6 +315,21 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
           exportMessages(pageId, [messageId])
         }
 
+        // 导出选中文本
+        const handleExportText = (text: string): void => {
+          exportTextSnippet(text, pageId)
+        }
+
+        // 导出代码块
+        const handleExportCode = (code: string, language: string): void => {
+          exportCodeBlock(code, language, pageId)
+        }
+
+        // 导出表格
+        const handleExportTable = (markdown: string): void => {
+          exportTableBlock(markdown, pageId)
+        }
+
         return (
           <MessageItem
             key={message.id}
@@ -331,6 +351,9 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onQuote={onQuote}
             onToggleCollapse={onToggleCollapse}
             onExport={handleExport}
+            onExportText={handleExportText}
+            onExportCode={handleExportCode}
+            onExportTable={handleExportTable}
             onUpdateTitle={onUpdateTitle}
             onGenerateTitle={onGenerateTitle}
             onGenerateTopic={onGenerateTopic}

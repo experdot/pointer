@@ -36,6 +36,43 @@ import './MessageItem.css'
 
 const { TextArea } = Input
 
+// 将 HTML 表格转换为 Markdown 格式
+function tableToMarkdown(table: HTMLTableElement): string {
+  const rows: string[][] = []
+  const tableRows = table.querySelectorAll('tr')
+
+  tableRows.forEach((tr) => {
+    const cells: string[] = []
+    tr.querySelectorAll('th, td').forEach((cell) => {
+      // 获取单元格文本内容，去除多余空白
+      const text = (cell.textContent || '').trim().replace(/\|/g, '\\|')
+      cells.push(text)
+    })
+    if (cells.length > 0) {
+      rows.push(cells)
+    }
+  })
+
+  if (rows.length === 0) return ''
+
+  // 构建 Markdown 表格
+  const lines: string[] = []
+  const colCount = Math.max(...rows.map((r) => r.length))
+
+  rows.forEach((row, idx) => {
+    // 补齐列数
+    while (row.length < colCount) row.push('')
+    lines.push('| ' + row.join(' | ') + ' |')
+
+    // 在第一行后添加分隔行
+    if (idx === 0) {
+      lines.push('| ' + row.map(() => '---').join(' | ') + ' |')
+    }
+  })
+
+  return lines.join('\n')
+}
+
 interface MessageItemProps {
   message: ChatMessage
   isLast?: boolean
@@ -55,6 +92,9 @@ interface MessageItemProps {
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
   onExport?: (messageId: string) => void
+  onExportText?: (text: string) => void
+  onExportCode?: (code: string, language: string) => void
+  onExportTable?: (markdown: string) => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
   onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
@@ -89,6 +129,9 @@ export const MessageItem = React.memo(function MessageItem({
   onQuote,
   onToggleCollapse,
   onExport,
+  onExportText,
+  onExportCode,
+  onExportTable,
   onUpdateTitle,
   onGenerateTitle,
   onGenerateTopic,
@@ -108,6 +151,13 @@ export const MessageItem = React.memo(function MessageItem({
   const wasStreaming = useRef(isStreaming)
   const userToggledReasoning = useRef(false) // 用户是否手动操作过
   const itemRef = useRef<HTMLDivElement>(null)
+
+  // 右键菜单上下文状态
+  const [contextMenuInfo, setContextMenuInfo] = useState<{
+    type: 'default' | 'text' | 'code' | 'table'
+    content?: string
+    language?: string
+  }>({ type: 'default' })
 
   // Title 编辑状态
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -328,6 +378,41 @@ export const MessageItem = React.memo(function MessageItem({
     return window.getSelection()?.toString() || ''
   }
 
+  // 检测右键点击的元素类型
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    const selectedText = getSelectedText()
+
+    // 检测代码���
+    const codeBlock = target.closest('pre')
+    if (codeBlock) {
+      const codeElement = codeBlock.querySelector('code')
+      const codeContent = codeElement?.textContent || codeBlock.textContent || ''
+      // 尝试从 class 中提取语言
+      const langClass = codeElement?.className?.match(/language-(\w+)/)?.[1] || 'text'
+      setContextMenuInfo({ type: 'code', content: codeContent, language: langClass })
+      return
+    }
+
+    // 检测���格
+    const table = target.closest('table')
+    if (table) {
+      // 将表格转换为 Markdown 格式
+      const tableMarkdown = tableToMarkdown(table as HTMLTableElement)
+      setContextMenuInfo({ type: 'table', content: tableMarkdown })
+      return
+    }
+
+    // 检测选中文本
+    if (selectedText.trim()) {
+      setContextMenuInfo({ type: 'text', content: selectedText })
+      return
+    }
+
+    // 默认
+    setContextMenuInfo({ type: 'default' })
+  }, [])
+
   // Topic 编辑入口（需要在 contextMenuItems 之前定义）
   const handleStartTopicEdit = useCallback(() => {
     setEditTopicValue(topic?.name || '')
@@ -335,35 +420,72 @@ export const MessageItem = React.memo(function MessageItem({
     setTimeout(() => topicInputRef.current?.focus(), 50)
   }, [topic?.name])
 
-  const contextMenuItems: MenuProps['items'] = [
-    {
-      key: 'copy',
-      label: '复制',
-      icon: <CopyOutlined />,
-      onClick: () => {
-        const selected = getSelectedText()
-        navigator.clipboard.writeText(selected || displayContent)
+  // 动态生成右键菜单项
+  const contextMenuItems: MenuProps['items'] = useMemo(() => {
+    const items: MenuProps['items'] = [
+      {
+        key: 'copy',
+        label: '复制',
+        icon: <CopyOutlined />,
+        onClick: () => {
+          const selected = getSelectedText()
+          navigator.clipboard.writeText(selected || displayContent)
+        }
+      },
+      {
+        key: 'quote',
+        label: '引用',
+        icon: <EnterOutlined />,
+        onClick: () => {
+          const selected = getSelectedText()
+          onQuote?.(selected || displayContent)
+        }
       }
-    },
-    {
-      key: 'quote',
-      label: '引用',
-      icon: <EnterOutlined />,
-      onClick: () => {
-        const selected = getSelectedText()
-        onQuote?.(selected || displayContent)
-      }
-    },
-    {
+    ]
+
+    // 根据上下文添加导出选项
+    if (contextMenuInfo.type === 'code' && contextMenuInfo.content) {
+      items.push({
+        key: 'export-code',
+        label: '导出代码块',
+        icon: <ExportOutlined />,
+        onClick: () => {
+          onExportCode?.(contextMenuInfo.content!, contextMenuInfo.language || 'text')
+        }
+      })
+    } else if (contextMenuInfo.type === 'table' && contextMenuInfo.content) {
+      items.push({
+        key: 'export-table',
+        label: '导出表格',
+        icon: <ExportOutlined />,
+        onClick: () => {
+          onExportTable?.(contextMenuInfo.content!)
+        }
+      })
+    } else if (contextMenuInfo.type === 'text' && contextMenuInfo.content) {
+      items.push({
+        key: 'export-text',
+        label: '导出选中文本',
+        icon: <ExportOutlined />,
+        onClick: () => {
+          onExportText?.(contextMenuInfo.content!)
+        }
+      })
+    }
+
+    // 导出整条消息
+    items.push({
       key: 'export',
-      label: '导出',
+      label: '导出整条消息',
       icon: <ExportOutlined />,
       onClick: () => {
         onExport?.(message.id)
       }
-    },
-    { type: 'divider' },
-    {
+    })
+
+    items.push({ type: 'divider' })
+
+    items.push({
       key: 'set-title',
       label: message.title ? '编辑标题' : '添加标题',
       icon: <TagOutlined />,
@@ -372,26 +494,44 @@ export const MessageItem = React.memo(function MessageItem({
         setIsEditingTitle(true)
         setTimeout(() => titleInputRef.current?.focus(), 50)
       }
-    },
-    { type: 'divider' },
-    topic
-      ? {
-          key: 'edit-topic',
-          label: '编辑分组',
-          icon: <FolderOutlined />,
-          onClick: handleStartTopicEdit
-        }
-      : {
-          key: 'set-topic',
-          label: '添加分组',
-          icon: <FolderOutlined />,
-          onClick: () => {
-            // 简单实现：使用标题或内容前15个字符作为 Topic 名称
-            const topicName = message.title || displayContent.slice(0, 15).replace(/\s+/g, ' ')
-            onCreateTopic?.(message.id, topicName)
+    })
+
+    items.push({ type: 'divider' })
+
+    items.push(
+      topic
+        ? {
+            key: 'edit-topic',
+            label: '编辑分组',
+            icon: <FolderOutlined />,
+            onClick: handleStartTopicEdit
           }
-        }
-  ]
+        : {
+            key: 'set-topic',
+            label: '添加分组',
+            icon: <FolderOutlined />,
+            onClick: () => {
+              const topicName = message.title || displayContent.slice(0, 15).replace(/\s+/g, ' ')
+              onCreateTopic?.(message.id, topicName)
+            }
+          }
+    )
+
+    return items
+  }, [
+    contextMenuInfo,
+    displayContent,
+    message.id,
+    message.title,
+    topic,
+    onQuote,
+    onExport,
+    onExportText,
+    onExportCode,
+    onExportTable,
+    onCreateTopic,
+    handleStartTopicEdit
+  ])
 
   // 标题编辑处理
   const handleSaveTitle = useCallback(() => {
@@ -758,13 +898,14 @@ export const MessageItem = React.memo(function MessageItem({
                 <div
                   className="message-item__preview"
                   onClick={() => onToggleCollapse?.(message.id)}
+                  onContextMenu={handleContextMenu}
                 >
                   {collapsedPreview}
                 </div>
               </Dropdown>
             ) : (
               <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-                <div className="message-item__body">
+                <div className="message-item__body" onContextMenu={handleContextMenu}>
                   <Streamdown
                     isAnimating={isStreaming && isAssistant}
                     mode={isStreaming ? 'streaming' : 'static'}
