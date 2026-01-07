@@ -16,6 +16,7 @@ import {
 } from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
+import { exportMessages } from '../../../services/exportService'
 import './MessageList.css'
 
 export interface MessageListRef {
@@ -304,6 +305,11 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         // 查找此消息关联的 Topic（当此消息是 Topic 起始消息时）
         const messageTopic = findTopicByStartMessageId(topics, message.id)
 
+        // 导出单条消息
+        const handleExport = (messageId: string): void => {
+          exportMessages(pageId, [messageId])
+        }
+
         return (
           <MessageItem
             key={message.id}
@@ -324,6 +330,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             onSwitchBranch={onSwitchBranch}
             onQuote={onQuote}
             onToggleCollapse={onToggleCollapse}
+            onExport={handleExport}
             onUpdateTitle={onUpdateTitle}
             onGenerateTitle={onGenerateTitle}
             onGenerateTopic={onGenerateTopic}

@@ -20,7 +20,8 @@ import {
   TagOutlined,
   ThunderboltOutlined,
   FolderOutlined,
-  MoreOutlined
+  MoreOutlined,
+  ExportOutlined
 } from '@ant-design/icons'
 import { Streamdown } from 'streamdown'
 import { BranchNavigator } from './BranchNavigator'
@@ -53,6 +54,7 @@ interface MessageItemProps {
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
+  onExport?: (messageId: string) => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
   onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
@@ -86,6 +88,7 @@ export const MessageItem = React.memo(function MessageItem({
   onSwitchBranch,
   onQuote,
   onToggleCollapse,
+  onExport,
   onUpdateTitle,
   onGenerateTitle,
   onGenerateTopic,
@@ -349,6 +352,14 @@ export const MessageItem = React.memo(function MessageItem({
       onClick: () => {
         const selected = getSelectedText()
         onQuote?.(selected || displayContent)
+      }
+    },
+    {
+      key: 'export',
+      label: '导出',
+      icon: <ExportOutlined />,
+      onClick: () => {
+        onExport?.(message.id)
       }
     },
     { type: 'divider' },

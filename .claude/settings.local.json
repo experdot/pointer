@@ -7,7 +7,8 @@
       "Bash(pnpm audit:*)",
       "Bash(cat:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npm run typecheck:web:*)"
     ],
     "deny": [],
     "ask": []
