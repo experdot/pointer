@@ -187,12 +187,6 @@ export interface Page<T> {
 export type ChatPage = Page<ChatSession>
 export type SettingsPage = Page<Settings>
 
-// 预设提示词列表配置
-export interface PromptListConfig extends ConfigItemBase {
-  description?: string
-  prompts: string[]
-}
-
 export interface Settings {
   fontSize: 'small' | 'medium' | 'large'
 
@@ -201,8 +195,6 @@ export interface Settings {
 
   modelConfigs: ConfigTree<ModelConfig>
   defaultModelConfigId?: string
-
-  promptLists: ConfigTree<PromptListConfig>
 
   // 自动检查更新
   autoCheckUpdate?: boolean
@@ -434,7 +426,7 @@ export interface FavoriteFolder {
 export type MessageQueueItemStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 // 消息队列项类型
-export type MessageQueueItemType = 'normal' | 'ai-generated' | 'prompt-list'
+export type MessageQueueItemType = 'normal' | 'ai-generated'
 
 // 消息队列项
 export interface MessageQueueItem {
@@ -442,7 +434,7 @@ export interface MessageQueueItem {
   content: string // 消息内容
   attachments?: FileAttachment[] // 文件附件（可选）
 
-  type: MessageQueueItemType // 消息类型：normal（普通消息）、ai-generated（AI生成的追问）、prompt-list（来自提示词列表）
+  type: MessageQueueItemType // 消息类型：normal（普通消息）、ai-generated（AI生成的追问）
   modelId?: string // 指定的模型ID（可选）
   status: MessageQueueItemStatus // 状态
   createdAt: number // 创建时间
@@ -450,9 +442,6 @@ export interface MessageQueueItem {
   completedAt?: number // 完成时间
   error?: string // 错误信息
   order: number // 队列顺序
-  // 以下字段仅在 type 为 'prompt-list' 时使用
-  promptListId?: string // 提示词列表ID
-  promptIndex?: number // 当前提示词索引
 }
 
 // 消息队列配置
@@ -492,10 +481,6 @@ export function isLLMConfig(item: ConfigItemBase): item is LLMConfig {
 
 export function isModelConfig(item: ConfigItemBase): item is ModelConfig {
   return 'systemPrompt' in item && 'topP' in item && 'temperature' in item
-}
-
-export function isPromptListConfig(item: ConfigItemBase): item is PromptListConfig {
-  return 'prompts' in item && Array.isArray((item as PromptListConfig).prompts)
 }
 
 // 页面类型守卫

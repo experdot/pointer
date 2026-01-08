@@ -6,7 +6,6 @@ import type {
   ConfigItemBase,
   LLMConfig,
   ModelConfig,
-  PromptListConfig,
   Settings
 } from '../types/type'
 import * as settingsService from '../services/settingsService'
@@ -168,57 +167,5 @@ export function useModelConfigs(): UseModelConfigsResult {
     updateFolder: settingsService.updateModelConfigFolder,
     deleteFolder: settingsService.deleteModelConfigFolder,
     toggleFolderExpanded: settingsService.toggleModelConfigFolderExpanded
-  }
-}
-
-interface UsePromptListsResult extends ConfigTreeResult<PromptListConfig> {
-  batchUpdateItemsOrder: (
-    items: (PromptListConfig | ConfigFolder)[],
-    parentFolderId?: string
-  ) => void
-  createConfig: typeof settingsService.createPromptList
-  updateConfig: typeof settingsService.updatePromptList
-  deleteConfig: typeof settingsService.deletePromptList
-  copyConfig: typeof settingsService.copyPromptList
-  createFolder: typeof settingsService.createPromptListFolder
-  updateFolder: typeof settingsService.updatePromptListFolder
-  deleteFolder: typeof settingsService.deletePromptListFolder
-  toggleFolderExpanded: typeof settingsService.togglePromptListFolderExpanded
-}
-
-export function usePromptLists(): UsePromptListsResult {
-  const { settings, batchUpdatePromptLists, batchUpdatePromptListFolders } = useSettingsStore()
-  const tree = useConfigTree(settings.promptLists)
-
-  const batchUpdateItemsOrder = useCallback(
-    (items: (PromptListConfig | ConfigFolder)[], parentFolderId?: string) => {
-      const itemUpdates: Array<{ id: string; updates: Partial<PromptListConfig> }> = []
-      const folderUpdates: Array<{ id: string; updates: Partial<ConfigFolder> }> = []
-
-      items.forEach((item, index) => {
-        if ('prompts' in item) {
-          itemUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
-        } else {
-          folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
-        }
-      })
-
-      if (itemUpdates.length) batchUpdatePromptLists(itemUpdates)
-      if (folderUpdates.length) batchUpdatePromptListFolders(folderUpdates)
-    },
-    [batchUpdatePromptLists, batchUpdatePromptListFolders]
-  )
-
-  return {
-    ...tree,
-    batchUpdateItemsOrder,
-    createConfig: settingsService.createPromptList,
-    updateConfig: settingsService.updatePromptList,
-    deleteConfig: settingsService.deletePromptList,
-    copyConfig: settingsService.copyPromptList,
-    createFolder: settingsService.createPromptListFolder,
-    updateFolder: settingsService.updatePromptListFolder,
-    deleteFolder: settingsService.deletePromptListFolder,
-    toggleFolderExpanded: settingsService.togglePromptListFolderExpanded
   }
 }

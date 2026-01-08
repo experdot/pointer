@@ -35,8 +35,7 @@ import type {
   ConfigItemBase,
   ConfigTree,
   LLMConfig,
-  ModelConfig,
-  PromptListConfig
+  ModelConfig
 } from '../../../types/type'
 
 const { Text } = Typography
@@ -47,7 +46,7 @@ interface ImportModalProps {
   onClose: () => void
 }
 
-type TabKey = 'chats' | 'llm' | 'model' | 'prompts' | 'ui'
+type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 type ConflictStrategy = 'generate-new' | 'skip' | 'overwrite'
 
 // 构建页面树（带冲突检测）
@@ -208,7 +207,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   const [checkedChats, setCheckedChats] = useState<React.Key[]>([])
   const [checkedLLM, setCheckedLLM] = useState<React.Key[]>([])
   const [checkedModel, setCheckedModel] = useState<React.Key[]>([])
-  const [checkedPrompts, setCheckedPrompts] = useState<React.Key[]>([])
   const [includeUI, setIncludeUI] = useState(false)
 
   // 现有数据的 ID 集合
@@ -231,14 +229,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   )
   const existingModelFolderIds = useMemo(
     () => new Set(existingSettings.modelConfigs.folders.map((f) => f.id)),
-    [existingSettings]
-  )
-  const existingPromptIds = useMemo(
-    () => new Set(existingSettings.promptLists.items.map((i) => i.id)),
-    [existingSettings]
-  )
-  const existingPromptFolderIds = useMemo(
-    () => new Set(existingSettings.promptLists.folders.map((f) => f.id)),
     [existingSettings]
   )
 
@@ -272,16 +262,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       existingModelFolderIds
     )
   }, [importData, existingModelIds, existingModelFolderIds])
-
-  const promptsTree = useMemo(() => {
-    if (!importData?.data.settings?.promptLists) return []
-    return buildConfigTree(
-      importData.data.settings.promptLists as ConfigTree<PromptListConfig>,
-      (item: PromptListConfig) => item.name,
-      existingPromptIds,
-      existingPromptFolderIds
-    )
-  }, [importData, existingPromptIds, existingPromptFolderIds])
 
   // 获取所有 keys
   const getAllKeys = useCallback((tree: TreeDataNode[]): React.Key[] => {
@@ -340,15 +320,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           )
           setCheckedModel(getAllKeys(tree))
         }
-        if (data.data.settings?.promptLists) {
-          const tree = buildConfigTree(
-            data.data.settings.promptLists as ConfigTree<PromptListConfig>,
-            (item: PromptListConfig) => item.name,
-            existingPromptIds,
-            existingPromptFolderIds
-          )
-          setCheckedPrompts(getAllKeys(tree))
-        }
         setIncludeUI(!!data.data.tabs || !!data.data.layout)
       }, 0)
 
@@ -371,9 +342,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       case 'model':
         setCheckedModel(checked ? getAllKeys(modelTree) : [])
         break
-      case 'prompts':
-        setCheckedPrompts(checked ? getAllKeys(promptsTree) : [])
-        break
     }
   }
 
@@ -391,19 +359,15 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     const modelIds = checkedModel
       .filter((k) => String(k).startsWith('item:'))
       .map((k) => String(k).replace('item:', ''))
-    const promptIds = checkedPrompts
-      .filter((k) => String(k).startsWith('item:'))
-      .map((k) => String(k).replace('item:', ''))
 
-    return { pageIds, folderIds, llmIds, modelIds, promptIds }
-  }, [checkedChats, checkedLLM, checkedModel, checkedPrompts])
+    return { pageIds, folderIds, llmIds, modelIds }
+  }, [checkedChats, checkedLLM, checkedModel])
 
   const stats = getStats()
   const hasSelection =
     stats.pageIds.length > 0 ||
     stats.llmIds.length > 0 ||
     stats.modelIds.length > 0 ||
-    stats.promptIds.length > 0 ||
     includeUI
 
   // 处理 ID 冲突
@@ -552,36 +516,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
         }
       }
 
-      // 导入提示词列表
-      if (stats.promptIds.length > 0 && importData.data.settings?.promptLists) {
-        const promptFolderIdMap = new Map<string, string>()
-        const promptFolderIds = checkedPrompts
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
-        for (const folder of importData.data.settings.promptLists.folders) {
-          if (!promptFolderIds.includes(folder.id)) continue
-          if (conflictStrategy === 'skip' && existingPromptFolderIds.has(folder.id)) continue
-
-          const resolved = resolveId(folder, existingPromptFolderIds, promptFolderIdMap)
-          if (resolved.parentFolderId && promptFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = promptFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addPromptListFolder(resolved)
-        }
-
-        for (const item of importData.data.settings.promptLists.items) {
-          if (!stats.promptIds.includes(item.id)) continue
-          if (conflictStrategy === 'skip' && existingPromptIds.has(item.id)) continue
-
-          const resolved = resolveId(item, existingPromptIds, new Map())
-          if (resolved.parentFolderId && promptFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = promptFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addPromptList(resolved)
-        }
-      }
-
       // 导入界面状态
       if (includeUI) {
         if (importData.data.tabs) {
@@ -615,7 +549,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     setCheckedChats([])
     setCheckedLLM([])
     setCheckedModel([])
-    setCheckedPrompts([])
     setIncludeUI(false)
     setConflictStrategy('generate-new')
     onClose()
@@ -692,11 +625,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       key: 'model',
       label: `模型配置 (${stats.modelIds.length})`,
       children: renderTree(modelTree, checkedModel, setCheckedModel, 'model')
-    },
-    {
-      key: 'prompts',
-      label: `提示词 (${stats.promptIds.length})`,
-      children: renderTree(promptsTree, checkedPrompts, setCheckedPrompts, 'prompts')
     },
     {
       key: 'ui',

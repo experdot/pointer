@@ -4,7 +4,6 @@ import type { TabsProps } from 'antd'
 import {
   ApiOutlined,
   RobotOutlined,
-  FileTextOutlined,
   SettingOutlined,
   InfoCircleOutlined,
   DatabaseOutlined
@@ -12,7 +11,6 @@ import {
 import { GeneralPanel } from './GeneralPanel'
 import { LLMConfigPanel } from './LLMConfigPanel'
 import { ModelConfigPanel } from './ModelConfigPanel'
-import { PromptListPanel } from './PromptListPanel'
 import { DataPanel } from './DataPanel'
 import { AboutPanel } from './AboutPanel'
 import { consumePendingSettingsTab } from '../../../services/settingsService'
@@ -54,15 +52,6 @@ export function SettingsEditor(): React.JSX.Element {
         </span>
       ),
       children: <ModelConfigPanel />
-    },
-    {
-      key: 'prompts',
-      label: (
-        <span>
-          <FileTextOutlined /> 提示词列表
-        </span>
-      ),
-      children: <PromptListPanel />
     },
     {
       key: 'data',

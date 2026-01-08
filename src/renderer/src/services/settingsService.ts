@@ -5,8 +5,7 @@ import type {
   ConfigFolder,
   ConfigItemBase,
   LLMConfig,
-  ModelConfig,
-  PromptListConfig
+  ModelConfig
 } from '../types/type'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useTabsStore } from '../stores/tabsStore'
@@ -197,80 +196,6 @@ export function toggleModelConfigFolderExpanded(id: string): void {
   const folder = store.settings.modelConfigs.folders.find((f) => f.id === id)
   if (folder) {
     store.updateModelConfigFolder(id, { expanded: !folder.expanded })
-  }
-}
-
-// ==================== 提示词列表 ====================
-
-export function createPromptList(
-  data: Omit<PromptListConfig, 'id' | 'createdAt' | 'order' | 'parentFolderId'>,
-  afterItemId?: string
-): PromptListConfig {
-  const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.promptLists, afterItemId)
-
-  const config: PromptListConfig = {
-    ...data,
-    id: uuidv4(),
-    parentFolderId,
-    order,
-    createdAt: Date.now()
-  }
-
-  store.addPromptList(config)
-  return config
-}
-
-export function updatePromptList(id: string, updates: Partial<PromptListConfig>): void {
-  useSettingsStore.getState().updatePromptList(id, updates)
-}
-
-export function deletePromptList(id: string): void {
-  useSettingsStore.getState().removePromptList(id)
-}
-
-export function copyPromptList(config: PromptListConfig): PromptListConfig {
-  return createPromptList(
-    {
-      name: `${config.name} 副本`,
-      description: config.description,
-      prompts: [...config.prompts]
-    },
-    config.id
-  )
-}
-
-export function createPromptListFolder(name?: string, afterItemId?: string): ConfigFolder {
-  const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.promptLists, afterItemId)
-
-  const folder: ConfigFolder = {
-    type: 'folder',
-    id: uuidv4(),
-    name: name || '新文件夹',
-    parentFolderId,
-    expanded: true,
-    order,
-    createdAt: Date.now()
-  }
-
-  store.addPromptListFolder(folder)
-  return folder
-}
-
-export function updatePromptListFolder(id: string, updates: Partial<ConfigFolder>): void {
-  useSettingsStore.getState().updatePromptListFolder(id, updates)
-}
-
-export function deletePromptListFolder(id: string): void {
-  useSettingsStore.getState().removePromptListFolder(id)
-}
-
-export function togglePromptListFolderExpanded(id: string): void {
-  const store = useSettingsStore.getState()
-  const folder = store.settings.promptLists.folders.find((f) => f.id === id)
-  if (folder) {
-    store.updatePromptListFolder(id, { expanded: !folder.expanded })
   }
 }
 

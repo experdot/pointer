@@ -6,8 +6,7 @@ import type {
   ConfigFolder,
   ConfigItemBase,
   LLMConfig,
-  ModelConfig,
-  PromptListConfig
+  ModelConfig
 } from '../types/type'
 import {
   updateTreeItem,
@@ -30,8 +29,7 @@ const emptyTree = <T extends ConfigItemBase>(): ConfigTree<T> => ({
 const initialSettings: Settings = {
   fontSize: 'medium',
   llmConfigs: emptyTree<LLMConfig>(),
-  modelConfigs: emptyTree<ModelConfig>(),
-  promptLists: emptyTree<PromptListConfig>()
+  modelConfigs: emptyTree<ModelConfig>()
 }
 
 interface SettingsState {
@@ -70,20 +68,6 @@ interface SettingsActions {
   removeModelConfigFolder: (id: string) => void
   batchUpdateModelConfigs: (updates: Array<{ id: string; updates: Partial<ModelConfig> }>) => void
   batchUpdateModelConfigFolders: (
-    updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
-  ) => void
-
-  // 提示词列表
-  addPromptList: (config: PromptListConfig) => void
-  updatePromptList: (id: string, updates: Partial<PromptListConfig>) => void
-  removePromptList: (id: string) => void
-  addPromptListFolder: (folder: ConfigFolder) => void
-  updatePromptListFolder: (id: string, updates: Partial<ConfigFolder>) => void
-  removePromptListFolder: (id: string) => void
-  batchUpdatePromptLists: (
-    updates: Array<{ id: string; updates: Partial<PromptListConfig> }>
-  ) => void
-  batchUpdatePromptListFolders: (
     updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
   ) => void
 
@@ -323,99 +307,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       const settings = {
         ...state.settings,
         modelConfigs: batchUpdateTreeFolders(state.settings.modelConfigs, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  // 提示词列表
-  addPromptList: (config) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: addTreeItem(state.settings.promptLists, config)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updatePromptList: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: updateTreeItem(state.settings.promptLists, id, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removePromptList: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: removeTreeItem(state.settings.promptLists, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  addPromptListFolder: (folder) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: addTreeFolder(state.settings.promptLists, folder)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updatePromptListFolder: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: updateTreeFolder(
-          state.settings.promptLists,
-          id,
-          updates
-        ) as ConfigTree<PromptListConfig>
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removePromptListFolder: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: removeTreeFolder(state.settings.promptLists, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdatePromptLists: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: batchUpdateTreeItems(state.settings.promptLists, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdatePromptListFolders: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        promptLists: batchUpdateTreeFolders(state.settings.promptLists, updates)
       }
       persist(settings)
       return { settings }

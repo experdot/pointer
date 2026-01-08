@@ -16,8 +16,7 @@ import type {
   ConfigItemBase,
   ConfigTree,
   LLMConfig,
-  ModelConfig,
-  PromptListConfig
+  ModelConfig
 } from '../../../types/type'
 
 const { Text } = Typography
@@ -41,7 +40,7 @@ interface ExportModalProps {
   onClose: () => void
 }
 
-type TabKey = 'chats' | 'llm' | 'model' | 'prompts' | 'ui'
+type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 
 // 构建页面树
 function buildPagesTree(pages: PageRecord[], folders: PageFolder[]): TreeDataNode[] {
@@ -166,7 +165,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const [checkedChats, setCheckedChats] = useState<React.Key[]>([])
   const [checkedLLM, setCheckedLLM] = useState<React.Key[]>([])
   const [checkedModel, setCheckedModel] = useState<React.Key[]>([])
-  const [checkedPrompts, setCheckedPrompts] = useState<React.Key[]>([])
   const [includeUI, setIncludeUI] = useState(false)
 
   // 构建树数据
@@ -178,10 +176,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const modelTree = useMemo(
     () => buildConfigTree(settings.modelConfigs, (item: ModelConfig) => item.name),
     [settings.modelConfigs]
-  )
-  const promptsTree = useMemo(
-    () => buildConfigTree(settings.promptLists, (item: PromptListConfig) => item.name),
-    [settings.promptLists]
   )
 
   // 获取所有 keys
@@ -205,10 +199,9 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       setCheckedChats(getAllKeys(chatsTree))
       setCheckedLLM(getAllKeys(llmTree))
       setCheckedModel(getAllKeys(modelTree))
-      setCheckedPrompts(getAllKeys(promptsTree))
       setIncludeUI(false)
     }
-  }, [open, chatsTree, llmTree, modelTree, promptsTree, getAllKeys])
+  }, [open, chatsTree, llmTree, modelTree, getAllKeys])
 
   // 全选/取消全选
   const handleSelectAll = (tab: TabKey, checked: boolean): void => {
@@ -221,9 +214,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
         break
       case 'model':
         setCheckedModel(checked ? getAllKeys(modelTree) : [])
-        break
-      case 'prompts':
-        setCheckedPrompts(checked ? getAllKeys(promptsTree) : [])
         break
     }
   }
@@ -242,19 +232,15 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     const modelIds = checkedModel
       .filter((k) => String(k).startsWith('item:'))
       .map((k) => String(k).replace('item:', ''))
-    const promptIds = checkedPrompts
-      .filter((k) => String(k).startsWith('item:'))
-      .map((k) => String(k).replace('item:', ''))
 
-    return { pageIds, folderIds, llmIds, modelIds, promptIds }
-  }, [checkedChats, checkedLLM, checkedModel, checkedPrompts])
+    return { pageIds, folderIds, llmIds, modelIds }
+  }, [checkedChats, checkedLLM, checkedModel])
 
   const stats = getStats()
   const hasSelection =
     stats.pageIds.length > 0 ||
     stats.llmIds.length > 0 ||
     stats.modelIds.length > 0 ||
-    stats.promptIds.length > 0 ||
     includeUI
 
   // 导出数据
@@ -309,21 +295,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
           modelConfigs: {
             items: settings.modelConfigs.items.filter((i) => stats.modelIds.includes(i.id)),
             folders: settings.modelConfigs.folders.filter((f) => modelFolderIds.includes(f.id))
-          }
-        }
-      }
-
-      // 导出提示词列表
-      if (stats.promptIds.length > 0) {
-        const promptFolderIds = checkedPrompts
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
-        exportData.data.settings = {
-          ...exportData.data.settings,
-          promptLists: {
-            items: settings.promptLists.items.filter((i) => stats.promptIds.includes(i.id)),
-            folders: settings.promptLists.folders.filter((f) => promptFolderIds.includes(f.id))
           }
         }
       }
@@ -402,11 +373,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       key: 'model',
       label: `模型配置 (${stats.modelIds.length})`,
       children: renderTree(modelTree, checkedModel, setCheckedModel, 'model')
-    },
-    {
-      key: 'prompts',
-      label: `提示词 (${stats.promptIds.length})`,
-      children: renderTree(promptsTree, checkedPrompts, setCheckedPrompts, 'prompts')
     },
     {
       key: 'ui',
