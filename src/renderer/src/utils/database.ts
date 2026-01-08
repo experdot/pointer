@@ -19,6 +19,144 @@ const STORES = {
   messageQueue: 'messageQueue'
 } as const
 
+type StoreName = (typeof STORES)[keyof typeof STORES]
+
+// ==================== 通用事务执行器 ====================
+
+/**
+ * 执行单个 IDBRequest 操作并返回 Promise
+ */
+function execRequest<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+  })
+}
+
+/**
+ * 执行事务级别操作（用于批量操作或多 store 操作）
+ */
+function execTransaction(tx: IDBTransaction, operations: () => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => resolve()
+    operations()
+  })
+}
+
+/**
+ * 通用的单记录读取
+ */
+async function dbGet<T>(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string,
+  key: IDBValidKey,
+  transform?: (result: unknown) => T | undefined
+): Promise<T | undefined> {
+  const db = await getDbFn()
+  const tx = db.transaction(storeName, 'readonly')
+  const result = await execRequest(tx.objectStore(storeName).get(key))
+  return transform ? transform(result) : (result as T | undefined)
+}
+
+/**
+ * 通用的单记录写入
+ */
+async function dbPut<T>(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string,
+  value: T
+): Promise<void> {
+  const db = await getDbFn()
+  const tx = db.transaction(storeName, 'readwrite')
+  await execRequest(tx.objectStore(storeName).put(value))
+}
+
+/**
+ * 通用的单记录删除
+ */
+async function dbDelete(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string,
+  key: IDBValidKey
+): Promise<void> {
+  const db = await getDbFn()
+  const tx = db.transaction(storeName, 'readwrite')
+  await execRequest(tx.objectStore(storeName).delete(key))
+}
+
+/**
+ * 通用的获取所有记录
+ */
+async function dbGetAll<T>(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string,
+  transform?: (results: unknown[]) => T[]
+): Promise<T[]> {
+  const db = await getDbFn()
+  const tx = db.transaction(storeName, 'readonly')
+  const results = await execRequest(tx.objectStore(storeName).getAll())
+  return transform ? transform(results ?? []) : ((results ?? []) as T[])
+}
+
+/**
+ * 通用的批量写入
+ */
+async function dbPutBatch<T>(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string,
+  items: T[]
+): Promise<void> {
+  if (items.length === 0) return
+  const db = await getDbFn()
+  const tx = db.transaction(storeName, 'readwrite')
+  const store = tx.objectStore(storeName)
+  await execTransaction(tx, () => {
+    for (const item of items) {
+      store.put(item)
+    }
+  })
+}
+
+/**
+ * 通用的批量删除
+ */
+async function dbDeleteBatch(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string | string[],
+  ids: IDBValidKey[]
+): Promise<void> {
+  if (ids.length === 0) return
+  const db = await getDbFn()
+  const storeNames = Array.isArray(storeName) ? storeName : [storeName]
+  const tx = db.transaction(storeNames, 'readwrite')
+  await execTransaction(tx, () => {
+    for (const name of storeNames) {
+      const store = tx.objectStore(name)
+      for (const id of ids) {
+        store.delete(id)
+      }
+    }
+  })
+}
+
+/**
+ * 通用的清空 store
+ */
+async function dbClear(
+  getDbFn: () => Promise<IDBDatabase>,
+  storeName: string | string[]
+): Promise<void> {
+  const db = await getDbFn()
+  const storeNames = Array.isArray(storeName) ? storeName : [storeName]
+  const tx = db.transaction(storeNames, 'readwrite')
+  await execTransaction(tx, () => {
+    for (const name of storeNames) {
+      tx.objectStore(name).clear()
+    }
+  })
+}
+
 // ==================== 账户数据库（独立） ====================
 
 const ACCOUNTS_DB_NAME = 'pointer-accounts'
@@ -49,55 +187,20 @@ function getAccountsDB(): Promise<IDBDatabase> {
   })
 }
 
-export async function getAllAccounts(): Promise<Account[]> {
-  const db = await getAccountsDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('accounts', 'readonly')
-    const request = tx.objectStore('accounts').getAll()
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result ?? [])
-  })
-}
+export const getAllAccounts = (): Promise<Account[]> => dbGetAll<Account>(getAccountsDB, 'accounts')
 
-export async function putAccount(account: Account): Promise<void> {
-  const db = await getAccountsDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('accounts', 'readwrite')
-    const request = tx.objectStore('accounts').put(account)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putAccount = (account: Account): Promise<void> =>
+  dbPut(getAccountsDB, 'accounts', account)
 
-export async function deleteAccount(id: string): Promise<void> {
-  const db = await getAccountsDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('accounts', 'readwrite')
-    const request = tx.objectStore('accounts').delete(id)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const deleteAccount = (id: string): Promise<void> => dbDelete(getAccountsDB, 'accounts', id)
 
 export async function getCurrentAccountId(): Promise<string | null> {
-  const db = await getAccountsDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('meta', 'readonly')
-    const request = tx.objectStore('meta').get('currentAccountId')
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result?.value ?? null)
-  })
+  const result = await dbGet<{ value?: string | null }>(getAccountsDB, 'meta', 'currentAccountId')
+  return result?.value ?? null
 }
 
-export async function setCurrentAccountId(id: string | null): Promise<void> {
-  const db = await getAccountsDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('meta', 'readwrite')
-    const request = tx.objectStore('meta').put({ key: 'currentAccountId', value: id })
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const setCurrentAccountId = (id: string | null): Promise<void> =>
+  dbPut(getAccountsDB, 'meta', { key: 'currentAccountId', value: id })
 
 // ==================== 用户数据库（按账户隔离） ====================
 
@@ -158,26 +261,19 @@ function getDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result
-      if (!db.objectStoreNames.contains(STORES.pages)) {
-        db.createObjectStore(STORES.pages, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(STORES.folders)) {
-        db.createObjectStore(STORES.folders, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(STORES.messages)) {
-        db.createObjectStore(STORES.messages, { keyPath: 'pageId' })
-      }
-      if (!db.objectStoreNames.contains(STORES.settings)) {
-        db.createObjectStore(STORES.settings, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(STORES.layout)) {
-        db.createObjectStore(STORES.layout, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(STORES.tabs)) {
-        db.createObjectStore(STORES.tabs, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(STORES.messageQueue)) {
-        db.createObjectStore(STORES.messageQueue, { keyPath: 'id' })
+      const storeConfigs: Array<{ name: StoreName; keyPath: string }> = [
+        { name: STORES.pages, keyPath: 'id' },
+        { name: STORES.folders, keyPath: 'id' },
+        { name: STORES.messages, keyPath: 'pageId' },
+        { name: STORES.settings, keyPath: 'id' },
+        { name: STORES.layout, keyPath: 'id' },
+        { name: STORES.tabs, keyPath: 'id' },
+        { name: STORES.messageQueue, keyPath: 'id' }
+      ]
+      for (const { name, keyPath } of storeConfigs) {
+        if (!db.objectStoreNames.contains(name)) {
+          db.createObjectStore(name, { keyPath })
+        }
       }
     }
   })
@@ -208,232 +304,68 @@ export function deleteDatabase(accountId: string): Promise<void> {
 
 // ==================== Pages ====================
 
-export async function getAllPages(): Promise<PageRecord[]> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.pages, 'readonly')
-    const store = tx.objectStore(STORES.pages)
-    const request = store.getAll()
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result ?? [])
-  })
-}
+export const getAllPages = (): Promise<PageRecord[]> => dbGetAll<PageRecord>(getDB, STORES.pages)
 
-export async function getPage(id: string): Promise<PageRecord | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.pages, 'readonly')
-    const store = tx.objectStore(STORES.pages)
-    const request = store.get(id)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
-}
+export const getPage = (id: string): Promise<PageRecord | undefined> =>
+  dbGet<PageRecord>(getDB, STORES.pages, id)
 
-export async function putPage(page: PageRecord): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.pages, 'readwrite')
-    const store = tx.objectStore(STORES.pages)
-    const request = store.put(page)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putPage = (page: PageRecord): Promise<void> => dbPut(getDB, STORES.pages, page)
 
-export async function putPagesBatch(pages: PageRecord[]): Promise<void> {
-  if (pages.length === 0) return
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.pages, 'readwrite')
-    const store = tx.objectStore(STORES.pages)
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => resolve()
-    for (const page of pages) {
-      store.put(page)
-    }
-  })
-}
+export const putPagesBatch = (pages: PageRecord[]): Promise<void> =>
+  dbPutBatch(getDB, STORES.pages, pages)
 
 export async function deletePage(id: string): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORES.pages, STORES.messages], 'readwrite')
-    tx.objectStore(STORES.pages).delete(id)
-    tx.objectStore(STORES.messages).delete(id)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await dbDeleteBatch(getDB, [STORES.pages, STORES.messages], [id])
 }
 
 export async function deletePagesBatch(ids: string[]): Promise<void> {
-  if (ids.length === 0) return
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORES.pages, STORES.messages], 'readwrite')
-    const pagesStore = tx.objectStore(STORES.pages)
-    const messagesStore = tx.objectStore(STORES.messages)
-    for (const id of ids) {
-      pagesStore.delete(id)
-      messagesStore.delete(id)
-    }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await dbDeleteBatch(getDB, [STORES.pages, STORES.messages], ids)
 }
 
-export async function clearAllPages(): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORES.pages, STORES.messages], 'readwrite')
-    tx.objectStore(STORES.pages).clear()
-    tx.objectStore(STORES.messages).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const clearAllPages = (): Promise<void> => dbClear(getDB, [STORES.pages, STORES.messages])
 
 // ==================== Folders ====================
 
-export async function getAllFolders(): Promise<PageFolder[]> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.folders, 'readonly')
-    const store = tx.objectStore(STORES.folders)
-    const request = store.getAll()
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result ?? [])
-  })
-}
+export const getAllFolders = (): Promise<PageFolder[]> =>
+  dbGetAll<PageFolder>(getDB, STORES.folders)
 
-export async function putFolder(folder: PageFolder): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.folders, 'readwrite')
-    const store = tx.objectStore(STORES.folders)
-    const request = store.put(folder)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putFolder = (folder: PageFolder): Promise<void> => dbPut(getDB, STORES.folders, folder)
 
-export async function deleteFolder(id: string): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.folders, 'readwrite')
-    const store = tx.objectStore(STORES.folders)
-    const request = store.delete(id)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const deleteFolder = (id: string): Promise<void> => dbDelete(getDB, STORES.folders, id)
 
-export async function deleteFoldersBatch(ids: string[]): Promise<void> {
-  if (ids.length === 0) return
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.folders, 'readwrite')
-    const store = tx.objectStore(STORES.folders)
-    for (const id of ids) {
-      store.delete(id)
-    }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const deleteFoldersBatch = (ids: string[]): Promise<void> =>
+  dbDeleteBatch(getDB, STORES.folders, ids)
 
-export async function clearAllFolders(): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.folders, 'readwrite')
-    tx.objectStore(STORES.folders).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const clearAllFolders = (): Promise<void> => dbClear(getDB, STORES.folders)
 
 // ==================== Messages ====================
 
-export async function getMessages(pageId: string): Promise<MessagesRecord | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messages, 'readonly')
-    const store = tx.objectStore(STORES.messages)
-    const request = store.get(pageId)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
-}
+export const getMessages = (pageId: string): Promise<MessagesRecord | undefined> =>
+  dbGet<MessagesRecord>(getDB, STORES.messages, pageId)
 
-export async function putMessages(record: MessagesRecord): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messages, 'readwrite')
-    const store = tx.objectStore(STORES.messages)
-    const request = store.put(record)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putMessages = (record: MessagesRecord): Promise<void> =>
+  dbPut(getDB, STORES.messages, record)
 
-export async function putMessagesBatch(records: MessagesRecord[]): Promise<void> {
-  if (records.length === 0) return
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messages, 'readwrite')
-    const store = tx.objectStore(STORES.messages)
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => resolve()
-    for (const record of records) {
-      store.put(record)
-    }
-  })
-}
+export const putMessagesBatch = (records: MessagesRecord[]): Promise<void> =>
+  dbPutBatch(getDB, STORES.messages, records)
 
-export async function deleteMessages(pageId: string): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messages, 'readwrite')
-    const store = tx.objectStore(STORES.messages)
-    const request = store.delete(pageId)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const deleteMessages = (pageId: string): Promise<void> =>
+  dbDelete(getDB, STORES.messages, pageId)
 
 // ==================== Settings ====================
 
-export async function getSettings(): Promise<Settings | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.settings, 'readonly')
-    const store = tx.objectStore(STORES.settings)
-    const request = store.get('settings')
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result?.data)
-  })
-}
+export const getSettings = (): Promise<Settings | undefined> =>
+  dbGet<Settings>(
+    getDB,
+    STORES.settings,
+    'settings',
+    (r) => (r as { data?: Settings } | undefined)?.data
+  )
 
-export async function putSettings(settings: Settings): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.settings, 'readwrite')
-    const store = tx.objectStore(STORES.settings)
-    const request = store.put({ id: 'settings', data: settings })
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putSettings = (settings: Settings): Promise<void> =>
+  dbPut(getDB, STORES.settings, { id: 'settings', data: settings })
 
-export async function clearSettings(): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.settings, 'readwrite')
-    tx.objectStore(STORES.settings).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const clearSettings = (): Promise<void> => dbClear(getDB, STORES.settings)
 
 // ==================== Layout ====================
 
@@ -445,37 +377,18 @@ export interface LayoutRecord {
   activePanel: ActivityPanel
 }
 
-export async function getLayout(): Promise<LayoutRecord | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.layout, 'readonly')
-    const store = tx.objectStore(STORES.layout)
-    const request = store.get('layout')
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result?.data)
-  })
-}
+export const getLayout = (): Promise<LayoutRecord | undefined> =>
+  dbGet<LayoutRecord>(
+    getDB,
+    STORES.layout,
+    'layout',
+    (r) => (r as { data?: LayoutRecord } | undefined)?.data
+  )
 
-export async function putLayout(layout: LayoutRecord): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.layout, 'readwrite')
-    const store = tx.objectStore(STORES.layout)
-    const request = store.put({ id: 'layout', data: layout })
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putLayout = (layout: LayoutRecord): Promise<void> =>
+  dbPut(getDB, STORES.layout, { id: 'layout', data: layout })
 
-export async function clearLayout(): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.layout, 'readwrite')
-    tx.objectStore(STORES.layout).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const clearLayout = (): Promise<void> => dbClear(getDB, STORES.layout)
 
 // ==================== Tabs ====================
 
@@ -486,37 +399,18 @@ export interface TabsRecord {
   historyIndex: number
 }
 
-export async function getTabs(): Promise<TabsRecord | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.tabs, 'readonly')
-    const store = tx.objectStore(STORES.tabs)
-    const request = store.get('tabs')
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result?.data)
-  })
-}
+export const getTabs = (): Promise<TabsRecord | undefined> =>
+  dbGet<TabsRecord>(
+    getDB,
+    STORES.tabs,
+    'tabs',
+    (r) => (r as { data?: TabsRecord } | undefined)?.data
+  )
 
-export async function putTabs(tabs: TabsRecord): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.tabs, 'readwrite')
-    const store = tx.objectStore(STORES.tabs)
-    const request = store.put({ id: 'tabs', data: tabs })
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putTabs = (tabs: TabsRecord): Promise<void> =>
+  dbPut(getDB, STORES.tabs, { id: 'tabs', data: tabs })
 
-export async function clearTabs(): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.tabs, 'readwrite')
-    tx.objectStore(STORES.tabs).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+export const clearTabs = (): Promise<void> => dbClear(getDB, STORES.tabs)
 
 // ==================== MessageQueue ====================
 
@@ -535,46 +429,21 @@ export interface MessageQueueRecord {
   paused: boolean
 }
 
-export async function getMessageQueue(pageId: string): Promise<MessageQueueRecord | undefined> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messageQueue, 'readonly')
-    const store = tx.objectStore(STORES.messageQueue)
-    const request = store.get(pageId)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result?.data)
-  })
-}
+export const getMessageQueue = (pageId: string): Promise<MessageQueueRecord | undefined> =>
+  dbGet<MessageQueueRecord>(
+    getDB,
+    STORES.messageQueue,
+    pageId,
+    (r) => (r as { data?: MessageQueueRecord } | undefined)?.data
+  )
 
-export async function putMessageQueue(pageId: string, record: MessageQueueRecord): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messageQueue, 'readwrite')
-    const store = tx.objectStore(STORES.messageQueue)
-    const request = store.put({ id: pageId, data: record })
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const putMessageQueue = (pageId: string, record: MessageQueueRecord): Promise<void> =>
+  dbPut(getDB, STORES.messageQueue, { id: pageId, data: record })
 
-export async function deleteMessageQueue(pageId: string): Promise<void> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messageQueue, 'readwrite')
-    const store = tx.objectStore(STORES.messageQueue)
-    const request = store.delete(pageId)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
-}
+export const deleteMessageQueue = (pageId: string): Promise<void> =>
+  dbDelete(getDB, STORES.messageQueue, pageId)
 
-export async function getAllMessageQueues(): Promise<MessageQueueRecord[]> {
-  const db = await getDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.messageQueue, 'readonly')
-    const store = tx.objectStore(STORES.messageQueue)
-    const request = store.getAll()
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve((request.result ?? []).map((r) => r.data))
-  })
-}
+export const getAllMessageQueues = (): Promise<MessageQueueRecord[]> =>
+  dbGetAll<MessageQueueRecord>(getDB, STORES.messageQueue, (results) =>
+    results.map((r) => (r as { data: MessageQueueRecord }).data)
+  )
