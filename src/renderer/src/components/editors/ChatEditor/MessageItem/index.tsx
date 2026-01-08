@@ -86,7 +86,7 @@ export const MessageItem = React.memo(function MessageItem({
   const [copied, setCopied] = useState(false)
 
   // 推理内容展开状态
-  const [reasoningExpanded, setReasoningExpanded] = useState(isStreaming && !!streamingReasoning)
+  const [reasoningExpanded, setReasoningExpanded] = useState(!!isStreaming && !!streamingReasoning)
   const wasStreaming = useRef(isStreaming)
   const userToggledReasoning = useRef(false)
 
@@ -214,13 +214,10 @@ export const MessageItem = React.memo(function MessageItem({
     [handleSaveTitle, handleCancelTitleEdit]
   )
 
-  const handleTitlePopoverOpenChange = useCallback(
-    (open: boolean) => {
-      setTitlePopoverOpen(open)
-      if (!open) setIsEditingTitle(false)
-    },
-    []
-  )
+  const handleTitlePopoverOpenChange = useCallback((open: boolean) => {
+    setTitlePopoverOpen(open)
+    if (!open) setIsEditingTitle(false)
+  }, [])
 
   // Topic 编辑处理
   const handleStartTopicEdit = useCallback(() => {
@@ -258,13 +255,10 @@ export const MessageItem = React.memo(function MessageItem({
     [handleSaveTopic, handleCancelTopicEdit]
   )
 
-  const handleTopicPopoverOpenChange = useCallback(
-    (open: boolean) => {
-      setTopicPopoverOpen(open)
-      if (!open) setIsEditingTopic(false)
-    },
-    []
-  )
+  const handleTopicPopoverOpenChange = useCallback((open: boolean) => {
+    setTopicPopoverOpen(open)
+    if (!open) setIsEditingTopic(false)
+  }, [])
 
   // Callbacks 分组
   const topicCallbacks = useMemo(

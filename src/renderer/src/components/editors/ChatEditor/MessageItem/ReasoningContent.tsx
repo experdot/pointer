@@ -8,7 +8,9 @@ export const ReasoningContent = React.memo(function ReasoningContent({
   onToggle
 }: ReasoningContentProps): React.JSX.Element {
   return (
-    <div className={`message-item__reasoning ${expanded ? 'message-item__reasoning--expanded' : ''}`}>
+    <div
+      className={`message-item__reasoning ${expanded ? 'message-item__reasoning--expanded' : ''}`}
+    >
       <div className="message-item__reasoning-label" onClick={onToggle}>
         {expanded ? <DownOutlined /> : <RightOutlined />}
         <span>思考过程</span>

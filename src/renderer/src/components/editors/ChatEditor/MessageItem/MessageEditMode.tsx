@@ -1,11 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Button, Tooltip, Input } from 'antd'
-import {
-  CloseOutlined,
-  CheckOutlined,
-  SendOutlined,
-  PictureOutlined
-} from '@ant-design/icons'
+import { CloseOutlined, CheckOutlined, SendOutlined, PictureOutlined } from '@ant-design/icons'
 import { AttachmentPreview } from '../AttachmentPreview'
 import { selectAndSaveAttachments } from '../../../../hooks/useAttachment'
 import { fileToBase64, generateFileId, filterImageFiles } from './utils'
