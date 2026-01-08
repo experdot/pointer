@@ -10,6 +10,7 @@ const { TextArea } = Input
  * Simple textarea-based editor for text content.
  * TODO: Replace with Monaco Editor for better editing experience.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const TextEditorComponent: FC<EditorProps> = ({ content, options, onChange }) => {
   const textContent = typeof content === 'string' ? content : ''
 

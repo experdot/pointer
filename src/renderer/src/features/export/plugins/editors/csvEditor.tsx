@@ -10,6 +10,7 @@ const { TextArea } = Input
  * Simple textarea-based editor for CSV content.
  * TODO: Could be enhanced with a table-based editor for better UX.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const CsvEditorComponent: FC<EditorProps> = ({ content, options, onChange }) => {
   const textContent = typeof content === 'string' ? content : ''
 

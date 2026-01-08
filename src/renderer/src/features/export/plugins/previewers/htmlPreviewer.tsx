@@ -6,6 +6,7 @@ import type { PreviewerPlugin, PreviewerProps } from '../../types'
  *
  * Renders HTML content in a sandboxed iframe.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const HtmlPreviewerComponent: FC<PreviewerProps> = ({ result, options }) => {
   const content = typeof result.content === 'string' ? result.content : ''
 

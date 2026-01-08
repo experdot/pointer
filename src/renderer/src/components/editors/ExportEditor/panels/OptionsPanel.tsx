@@ -180,12 +180,7 @@ export function OptionsPanel(): React.JSX.Element {
         >
           下载文件
         </Button>
-        <Button
-          icon={<CopyOutlined />}
-          onClick={handleCopy}
-          disabled={!canExport}
-          block
-        >
+        <Button icon={<CopyOutlined />} onClick={handleCopy} disabled={!canExport} block>
           复制到剪贴板
         </Button>
       </div>

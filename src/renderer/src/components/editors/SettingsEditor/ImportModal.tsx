@@ -365,10 +365,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
   const stats = getStats()
   const hasSelection =
-    stats.pageIds.length > 0 ||
-    stats.llmIds.length > 0 ||
-    stats.modelIds.length > 0 ||
-    includeUI
+    stats.pageIds.length > 0 || stats.llmIds.length > 0 || stats.modelIds.length > 0 || includeUI
 
   // 处理 ID 冲突
   const resolveId = <T extends { id: string }>(

@@ -8,6 +8,7 @@ import type { PreviewerPlugin, PreviewerProps } from '../../types'
  *
  * Displays image content with zoom controls.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const ImagePreviewerComponent: FC<PreviewerProps> = ({ result }) => {
   const [zoom, setZoom] = useState(100)
 

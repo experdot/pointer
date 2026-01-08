@@ -89,7 +89,8 @@ function markdownTableToHtml(markdown: string): string {
   const headerRow = rows[0]
   const bodyRows = rows.slice(1)
 
-  let html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">\n'
+  let html =
+    '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">\n'
 
   // Header
   html += '<thead><tr>'
@@ -130,7 +131,8 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
   for (const message of messages) {
     const roleLabel =
       message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
-    const bgColor = message.role === 'user' ? '#e3f2fd' : message.role === 'assistant' ? '#f5f5f5' : '#fff3e0'
+    const bgColor =
+      message.role === 'user' ? '#e3f2fd' : message.role === 'assistant' ? '#f5f5f5' : '#fff3e0'
 
     let msgHtml = `<div style="margin-bottom: 16px; padding: 12px; border-radius: 8px; background: ${bgColor};">`
 
@@ -180,7 +182,10 @@ function simpleMarkdownToHtml(markdown: string): string {
   })
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code style="background: #f0f0f0; padding: 2px 4px; border-radius: 2px;">$1</code>')
+  html = html.replace(
+    /`([^`]+)`/g,
+    '<code style="background: #f0f0f0; padding: 2px 4px; border-radius: 2px;">$1</code>'
+  )
 
   // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')

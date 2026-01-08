@@ -12,7 +12,8 @@ export const csvFormatPlugin: FormatPlugin = {
   extension: 'csv',
   mimeType: 'text/csv',
 
-  async convert(content: ExtractedContent, _options: ExportOptions): Promise<ConvertResult> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async convert(content: ExtractedContent, _: ExportOptions): Promise<ConvertResult> {
     if (content.contentType !== 'table') {
       throw new Error('CSV format only supports table content')
     }

@@ -15,6 +15,7 @@ const { TextArea } = Input
  *
  * Allows editing/viewing the text snippet content.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const TextSnippetSourceSelector: FC<SourceSelectorProps<TextSnippetSourceData>> = ({
   data,
   onChange
@@ -65,7 +66,8 @@ export const textSnippetSourcePlugin: SourcePlugin<TextSnippetSourceData> = {
   icon: '📝',
   supportedFormats: ['markdown', 'txt', 'html'],
 
-  async extract(data: TextSnippetSourceData, _options: ExportOptions): Promise<ExtractedContent> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async extract(data: TextSnippetSourceData, _: ExportOptions): Promise<ExtractedContent> {
     return {
       contentType: 'text',
       rawContent: data.text,

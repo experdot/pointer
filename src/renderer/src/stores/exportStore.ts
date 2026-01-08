@@ -181,7 +181,8 @@ export const useExportStore = create<ExportStore>((set, get) => ({
   doExport: async () => {
     const { previewResult, editedContent, isDirty, formatType } = get()
 
-    const contentToExport = isDirty && editedContent !== null ? editedContent : previewResult?.content
+    const contentToExport =
+      isDirty && editedContent !== null ? editedContent : previewResult?.content
 
     if (!contentToExport) {
       set({ error: 'No content to export' })

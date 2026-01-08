@@ -13,4 +13,9 @@ export function registerSourcePlugins(): void {
 }
 
 // Re-export plugins
-export { messagesSourcePlugin, textSnippetSourcePlugin, tableBlockSourcePlugin, codeBlockSourcePlugin }
+export {
+  messagesSourcePlugin,
+  textSnippetSourcePlugin,
+  tableBlockSourcePlugin,
+  codeBlockSourcePlugin
+}

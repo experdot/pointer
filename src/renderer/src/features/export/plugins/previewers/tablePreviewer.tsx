@@ -47,6 +47,7 @@ function parseCsv(csv: string): { headers: string[]; rows: string[][] } {
  *
  * Displays CSV content in a table format.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const TablePreviewerComponent: FC<PreviewerProps> = ({ result }) => {
   const content = typeof result.content === 'string' ? result.content : ''
 

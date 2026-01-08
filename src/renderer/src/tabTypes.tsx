@@ -55,7 +55,9 @@ registerTabType({
 registerTabType({
   type: 'export',
   icon: <ExportOutlined />,
-  renderEditor: (tab) => <ExportEditor context={(tab as Tab & { context?: ExportEditorContext }).context} />
+  renderEditor: (tab) => (
+    <ExportEditor context={(tab as Tab & { context?: ExportEditorContext }).context} />
+  )
 })
 
 // 导出空对象以避免 TS6133 警告

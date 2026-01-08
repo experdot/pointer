@@ -7,6 +7,7 @@ import type { PreviewerPlugin, PreviewerProps } from '../../types'
  * Simple text previewer for markdown and txt formats.
  * Displays content in a preformatted text block.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const TextPreviewerComponent: FC<PreviewerProps> = ({ result, options }) => {
   const content = typeof result.content === 'string' ? result.content : '[Binary content]'
 

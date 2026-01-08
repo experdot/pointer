@@ -49,6 +49,7 @@ function parseMarkdownTable(markdown: string): { headers: string[]; rows: string
  *
  * Shows table preview and allows editing markdown.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const TableBlockSourceSelector: FC<SourceSelectorProps<TableBlockSourceData>> = ({
   data,
   onChange
@@ -143,7 +144,8 @@ export const tableBlockSourcePlugin: SourcePlugin<TableBlockSourceData> = {
   icon: '📊',
   supportedFormats: ['markdown', 'txt', 'html', 'csv'],
 
-  async extract(data: TableBlockSourceData, _options: ExportOptions): Promise<ExtractedContent> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async extract(data: TableBlockSourceData, _: ExportOptions): Promise<ExtractedContent> {
     return {
       contentType: 'table',
       rawContent: data.markdown,

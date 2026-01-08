@@ -1,7 +1,10 @@
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 
 // Type declaration for html-to-image
-type ToPngFunction = (node: HTMLElement, options?: { quality?: number; pixelRatio?: number }) => Promise<string>
+type ToPngFunction = (
+  node: HTMLElement,
+  options?: { quality?: number; pixelRatio?: number }
+) => Promise<string>
 
 /**
  * Dynamically import html-to-image library
@@ -36,7 +39,9 @@ export const pngFormatPlugin: FormatPlugin = {
     // Import html-to-image dynamically
     const htmlToImage = await loadHtmlToImage()
     if (!htmlToImage) {
-      throw new Error('PNG export requires html-to-image library. Please install it with: npm install html-to-image')
+      throw new Error(
+        'PNG export requires html-to-image library. Please install it with: npm install html-to-image'
+      )
     }
     const { toPng } = htmlToImage
 
@@ -215,8 +220,7 @@ function markdownTableToHtml(markdown: string): string {
   const headerRow = rows[0]
   const bodyRows = rows.slice(1)
 
-  let html =
-    '<table style="border-collapse: collapse; width: 100%; font-size: 14px;">\n'
+  let html = '<table style="border-collapse: collapse; width: 100%; font-size: 14px;">\n'
 
   // Header
   html += '<thead><tr>'

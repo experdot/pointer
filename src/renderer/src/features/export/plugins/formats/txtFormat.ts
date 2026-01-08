@@ -63,7 +63,8 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
   const lines: string[] = []
 
   for (const message of messages) {
-    const roleLabel = message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
+    const roleLabel =
+      message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
 
     // Build header
     let header = `[${roleLabel}]`
@@ -97,7 +98,7 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
     // Add message content (strip markdown)
     lines.push(stripMarkdown(message.content))
     lines.push('')
-    lines.push('=' .repeat(50))
+    lines.push('='.repeat(50))
     lines.push('')
   }
 
@@ -108,27 +109,29 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
  * Strip basic markdown formatting from text
  */
 function stripMarkdown(text: string): string {
-  return text
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/_(.+?)_/g, '$1')
-    // Remove code blocks (keep content)
-    .replace(/```[\s\S]*?\n([\s\S]*?)```/g, '$1')
-    // Remove inline code
-    .replace(/`(.+?)`/g, '$1')
-    // Remove links (keep text)
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-    // Remove images
-    .replace(/!\[.*?\]\(.+?\)/g, '')
-    // Remove horizontal rules
-    .replace(/^[-*_]{3,}$/gm, '')
-    // Clean up extra newlines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  return (
+    text
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/__(.+?)__/g, '$1')
+      .replace(/_(.+?)_/g, '$1')
+      // Remove code blocks (keep content)
+      .replace(/```[\s\S]*?\n([\s\S]*?)```/g, '$1')
+      // Remove inline code
+      .replace(/`(.+?)`/g, '$1')
+      // Remove links (keep text)
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      // Remove images
+      .replace(/!\[.*?\]\(.+?\)/g, '')
+      // Remove horizontal rules
+      .replace(/^[-*_]{3,}$/gm, '')
+      // Clean up extra newlines
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  )
 }
 
 /**

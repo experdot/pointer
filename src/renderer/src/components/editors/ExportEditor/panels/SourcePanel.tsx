@@ -1,9 +1,4 @@
-import {
-  MessageOutlined,
-  FileTextOutlined,
-  TableOutlined,
-  CodeOutlined
-} from '@ant-design/icons'
+import { MessageOutlined, FileTextOutlined, TableOutlined, CodeOutlined } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import type { SourceType } from '../../../../features/export/types'
@@ -93,17 +88,15 @@ export function SourcePanel({ pageId }: SourcePanelProps): React.JSX.Element {
         {/* Source-specific selector */}
         {sourceType && SelectorComponent && (
           <div className="source-panel__selector">
-            <SelectorComponent
-              data={sourceData}
-              onChange={setSourceData}
-              pageId={pageId}
-            />
+            <SelectorComponent data={sourceData} onChange={setSourceData} pageId={pageId} />
           </div>
         )}
 
         {/* Placeholder when no source plugin is registered */}
         {sourceType && !SelectorComponent && (
-          <div style={{ color: 'var(--ant-color-text-secondary)', textAlign: 'center', padding: 24 }}>
+          <div
+            style={{ color: 'var(--ant-color-text-secondary)', textAlign: 'center', padding: 24 }}
+          >
             该源类型的插件尚未注册
           </div>
         )}

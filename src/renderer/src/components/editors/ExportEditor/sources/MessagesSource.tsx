@@ -132,12 +132,7 @@ export function MessagesSourceSelector({
   }
 
   if (!pageId) {
-    return (
-      <Empty
-        description="请先打开一个聊天页面"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    )
+    return <Empty description="请先打开一个聊天页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
   if (loading) {
@@ -149,12 +144,7 @@ export function MessagesSourceSelector({
   }
 
   if (messages.length === 0) {
-    return (
-      <Empty
-        description="没有消息可导出"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    )
+    return <Empty description="没有消息可导出" image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
   return (

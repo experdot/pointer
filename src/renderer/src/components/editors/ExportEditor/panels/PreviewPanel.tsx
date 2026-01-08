@@ -1,10 +1,5 @@
 import { Button, Spin, Segmented } from 'antd'
-import {
-  EyeOutlined,
-  EditOutlined,
-  ReloadOutlined,
-  FileTextOutlined
-} from '@ant-design/icons'
+import { EyeOutlined, EditOutlined, ReloadOutlined, FileTextOutlined } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import type { PreviewMode } from '../../../../features/export/types'
@@ -73,9 +68,7 @@ export function PreviewPanel(): React.JSX.Element {
             ]}
           />
           {isDirty && (
-            <span style={{ color: 'var(--ant-color-warning)', fontSize: 12 }}>
-              (已修改)
-            </span>
+            <span style={{ color: 'var(--ant-color-warning)', fontSize: 12 }}>(已修改)</span>
           )}
         </div>
         <div className="preview-panel__header-right">
@@ -114,9 +107,7 @@ export function PreviewPanel(): React.JSX.Element {
         {!isGenerating && !error && !hasPreview && (
           <div className="preview-panel__empty">
             <FileTextOutlined style={{ fontSize: 48, opacity: 0.3 }} />
-            <span>
-              {hasSource ? '点击"生成预览"按钮查看结果' : '请先选择数据源'}
-            </span>
+            <span>{hasSource ? '点击"生成预览"按钮查看结果' : '请先选择数据源'}</span>
             {hasSource && (
               <Button type="primary" onClick={handleRefresh}>
                 生成预览

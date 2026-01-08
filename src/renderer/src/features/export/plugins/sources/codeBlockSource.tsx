@@ -44,6 +44,7 @@ const LANGUAGES = [
  *
  * Allows editing code content and selecting language.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 const CodeBlockSourceSelector: FC<SourceSelectorProps<CodeBlockSourceData>> = ({
   data,
   onChange
@@ -132,7 +133,8 @@ export const codeBlockSourcePlugin: SourcePlugin<CodeBlockSourceData> = {
   icon: '💻',
   supportedFormats: ['markdown', 'txt', 'html'],
 
-  async extract(data: CodeBlockSourceData, _options: ExportOptions): Promise<ExtractedContent> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async extract(data: CodeBlockSourceData, _: ExportOptions): Promise<ExtractedContent> {
     return {
       contentType: 'code',
       rawContent: data.code,

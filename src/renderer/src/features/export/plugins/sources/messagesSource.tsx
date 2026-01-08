@@ -1,10 +1,5 @@
 import { MessageOutlined } from '@ant-design/icons'
-import type {
-  SourcePlugin,
-  MessagesSourceData,
-  ExtractedContent,
-  ExportOptions
-} from '../../types'
+import type { SourcePlugin, MessagesSourceData, ExtractedContent, ExportOptions } from '../../types'
 import { MessagesSourceSelector } from '../../../../components/editors/ExportEditor/sources/MessagesSource'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 
@@ -203,7 +198,8 @@ function generateMessagesMarkdown(
 
   for (const message of messages) {
     // Role header
-    const roleLabel = message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
+    const roleLabel =
+      message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
 
     let header = `## ${roleLabel}`
 

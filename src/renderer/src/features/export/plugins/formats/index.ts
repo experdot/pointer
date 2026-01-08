@@ -15,10 +15,4 @@ export function registerFormatPlugins(): void {
 }
 
 // Re-export plugins
-export {
-  markdownFormatPlugin,
-  txtFormatPlugin,
-  htmlFormatPlugin,
-  pngFormatPlugin,
-  csvFormatPlugin
-}
+export { markdownFormatPlugin, txtFormatPlugin, htmlFormatPlugin, pngFormatPlugin, csvFormatPlugin }
