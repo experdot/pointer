@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { Button, Spin, Segmented } from 'antd'
 import { EyeOutlined, EditOutlined, ReloadOutlined, FileTextOutlined } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
@@ -9,8 +10,9 @@ import type { PreviewMode } from '../../../../features/export/types'
  *
  * Features:
  * - Preview header with mode toggle (view/edit)
- * - Preview content area
+ * - Preview content area with configurable width
  * - Loading and error states
+ * - Screenshot target container
  */
 export function PreviewPanel(): React.JSX.Element {
   const {
@@ -27,8 +29,17 @@ export function PreviewPanel(): React.JSX.Element {
     updatePreviewOptions,
     enterEditMode,
     exitEditMode,
-    setEditedContent
+    setEditedContent,
+    setPreviewContainerElement
   } = useExportStore()
+
+  // Callback ref for the preview container
+  const containerRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      setPreviewContainerElement(node)
+    },
+    [setPreviewContainerElement]
+  )
 
   const handleModeChange = (mode: PreviewMode): void => {
     updatePreviewOptions({ mode })
@@ -94,8 +105,8 @@ export function PreviewPanel(): React.JSX.Element {
           </div>
         )}
 
-        {/* Error state */}
-        {!isGenerating && error && (
+        {/* Error state - only show if no preview available */}
+        {!isGenerating && error && !hasPreview && (
           <div className="preview-panel__error">
             <span>生成预览时出错</span>
             <span style={{ fontSize: 14 }}>{error}</span>
@@ -116,42 +127,55 @@ export function PreviewPanel(): React.JSX.Element {
           </div>
         )}
 
-        {/* Preview/Edit content */}
-        {!isGenerating && !error && hasPreview && (
-          <>
-            {previewOptions.mode === 'view' && PreviewerComponent && (
-              <PreviewerComponent
-                result={previewResult}
-                options={previewOptions}
-                onEditRequest={() => handleModeChange('edit')}
-              />
-            )}
+        {/* Preview/Edit container - always rendered for screenshot ref */}
+        <div
+          ref={containerRefCallback}
+          className="preview-panel__container"
+          style={{
+            display: !isGenerating && hasPreview ? 'block' : 'none',
+            width: previewOptions.width > 0 ? previewOptions.width : '100%',
+            maxWidth: '100%',
+            margin: '0 auto',
+            background: '#fff',
+            minHeight: 200
+          }}
+        >
+          {hasPreview && (
+            <>
+              {previewOptions.mode === 'view' && PreviewerComponent && (
+                <PreviewerComponent
+                  result={previewResult}
+                  options={previewOptions}
+                  onEditRequest={() => handleModeChange('edit')}
+                />
+              )}
 
-            {previewOptions.mode === 'edit' && EditorComponent && (
-              <EditorComponent
-                content={isDirty && editedContent !== null ? editedContent : previewResult.content}
-                format={formatType}
-                options={previewOptions}
-                onChange={setEditedContent}
-              />
-            )}
+              {previewOptions.mode === 'edit' && EditorComponent && (
+                <EditorComponent
+                  content={isDirty && editedContent !== null ? editedContent : previewResult.content}
+                  format={formatType}
+                  options={previewOptions}
+                  onChange={setEditedContent}
+                />
+              )}
 
-            {/* Fallback when no plugin is available */}
-            {previewOptions.mode === 'view' && !PreviewerComponent && (
-              <div style={{ padding: 16, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                {typeof previewResult.content === 'string'
-                  ? previewResult.content
-                  : '[Binary content]'}
-              </div>
-            )}
+              {/* Fallback when no plugin is available */}
+              {previewOptions.mode === 'view' && !PreviewerComponent && (
+                <div style={{ padding: 16, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                  {typeof previewResult.content === 'string'
+                    ? previewResult.content
+                    : '[Binary content]'}
+                </div>
+              )}
 
-            {previewOptions.mode === 'edit' && !EditorComponent && (
-              <div className="preview-panel__empty">
-                <span>该格式暂不支持编辑</span>
-              </div>
-            )}
-          </>
-        )}
+              {previewOptions.mode === 'edit' && !EditorComponent && (
+                <div className="preview-panel__empty">
+                  <span>该格式暂不支持编辑</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </>
   )

@@ -17,7 +17,7 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
   id: 'messages',
   name: '消息',
   icon: <MessageOutlined />,
-  supportedFormats: ['markdown', 'txt', 'html', 'png'],
+  supportedFormats: ['markdown', 'txt', 'html'],
 
   async extract(data: MessagesSourceData, options: ExportOptions): Promise<ExtractedContent> {
     const { pageId, selectionMode, selectedMessageIds, topicId } = data

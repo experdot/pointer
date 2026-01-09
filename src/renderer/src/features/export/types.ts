@@ -56,14 +56,14 @@ export type SourceData =
 
 // ==================== Format Types ====================
 
-export type FormatType = 'markdown' | 'txt' | 'html' | 'png' | 'csv'
+export type FormatType = 'markdown' | 'txt' | 'html' | 'csv'
 
 // Source -> Format compatibility matrix
 export const FORMAT_SUPPORT: Record<SourceType, FormatType[]> = {
-  messages: ['markdown', 'txt', 'html', 'png'],
-  'text-snippet': ['markdown', 'txt', 'html', 'png'],
-  'table-block': ['markdown', 'csv', 'html', 'png'],
-  'code-block': ['markdown', 'txt', 'html', 'png']
+  messages: ['markdown', 'txt', 'html'],
+  'text-snippet': ['markdown', 'txt', 'html'],
+  'table-block': ['markdown', 'csv', 'html'],
+  'code-block': ['markdown', 'txt', 'html']
 }
 
 // ==================== Export Options ====================
@@ -88,30 +88,14 @@ export const DEFAULT_METADATA_OPTIONS: MessageMetadataOptions = {
   showReasoningContent: false
 }
 
-export interface ImageExportOptions {
-  width: number
-  quality: number
-  theme: 'light' | 'dark'
-  backgroundColor: string
-}
-
-export const DEFAULT_IMAGE_OPTIONS: ImageExportOptions = {
-  width: 800,
-  quality: 1,
-  theme: 'light',
-  backgroundColor: '#ffffff'
-}
-
 export interface ExportOptions {
   format: FormatType
   metadata: MessageMetadataOptions
-  imageOptions: ImageExportOptions
 }
 
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   format: 'markdown',
-  metadata: DEFAULT_METADATA_OPTIONS,
-  imageOptions: DEFAULT_IMAGE_OPTIONS
+  metadata: DEFAULT_METADATA_OPTIONS
 }
 
 // ==================== Preview Options ====================
@@ -122,14 +106,14 @@ export interface PreviewOptions {
   mode: PreviewMode
   fontSize: number
   wordWrap: boolean
-  zoom: number
+  width: number // 预览区域宽度，0 表示自适应
 }
 
 export const DEFAULT_PREVIEW_OPTIONS: PreviewOptions = {
   mode: 'view',
   fontSize: 14,
   wordWrap: true,
-  zoom: 1
+  width: 800
 }
 
 // ==================== Extracted Content ====================
@@ -254,6 +238,7 @@ export interface ExportState {
   // Preview state
   previewOptions: PreviewOptions
   previewResult: ConvertResult | null
+  previewContainerElement: HTMLDivElement | null
 
   // Edit state
   editedContent: string | Blob | null
@@ -277,6 +262,7 @@ export interface ExportActions {
   // Preview actions
   updatePreviewOptions: (options: Partial<PreviewOptions>) => void
   generatePreview: () => Promise<void>
+  setPreviewContainerElement: (element: HTMLDivElement | null) => void
 
   // Edit actions
   setEditedContent: (content: string | Blob) => void
@@ -287,6 +273,8 @@ export interface ExportActions {
   // Export actions
   doExport: () => Promise<void>
   copyToClipboard: () => Promise<void>
+  downloadImage: () => Promise<void>
+  copyImageToClipboard: () => Promise<void>
 
   // Reset
   reset: () => void

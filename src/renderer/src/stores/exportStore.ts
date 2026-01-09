@@ -13,6 +13,11 @@ import {
   FORMAT_SUPPORT
 } from '../features/export/types'
 import { exportManager } from '../features/export/ExportManager'
+import {
+  screenshotElement,
+  downloadBlob,
+  copyImageToClipboard as copyImageToClipboardUtil
+} from '../utils/screenshot'
 
 /**
  * Export Store - State management for the export feature
@@ -38,6 +43,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
   // Preview state
   previewOptions: { ...DEFAULT_PREVIEW_OPTIONS },
   previewResult: null,
+  previewContainerElement: null,
 
   // Edit state
   editedContent: null,
@@ -117,6 +123,10 @@ export const useExportStore = create<ExportStore>((set, get) => ({
         ...options
       }
     })
+  },
+
+  setPreviewContainerElement: (element) => {
+    set({ previewContainerElement: element })
   },
 
   generatePreview: async () => {
@@ -221,7 +231,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
   },
 
   copyToClipboard: async () => {
-    const { previewResult, editedContent, isDirty, formatType } = get()
+    const { previewResult, editedContent, isDirty } = get()
 
     const contentToCopy = isDirty && editedContent !== null ? editedContent : previewResult?.content
 
@@ -232,18 +242,9 @@ export const useExportStore = create<ExportStore>((set, get) => ({
 
     try {
       if (contentToCopy instanceof Blob) {
-        // For images, use clipboard API
-        if (formatType === 'png') {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              [contentToCopy.type]: contentToCopy
-            })
-          ])
-        } else {
-          // For other binary formats, read as text
-          const text = await contentToCopy.text()
-          await navigator.clipboard.writeText(text)
-        }
+        // For binary formats, read as text
+        const text = await contentToCopy.text()
+        await navigator.clipboard.writeText(text)
       } else {
         await navigator.clipboard.writeText(contentToCopy)
       }
@@ -252,6 +253,29 @@ export const useExportStore = create<ExportStore>((set, get) => ({
         error: error instanceof Error ? error.message : 'Failed to copy to clipboard'
       })
     }
+  },
+
+  downloadImage: async () => {
+    const { previewContainerElement } = get()
+
+    if (!previewContainerElement) {
+      throw new Error('请先生成预览')
+    }
+
+    const blob = await screenshotElement(previewContainerElement)
+    const timestamp = new Date().toISOString().slice(0, 10)
+    downloadBlob(blob, `export-${timestamp}.png`)
+  },
+
+  copyImageToClipboard: async () => {
+    const { previewContainerElement } = get()
+
+    if (!previewContainerElement) {
+      throw new Error('请先生成预览')
+    }
+
+    const blob = await screenshotElement(previewContainerElement)
+    await copyImageToClipboardUtil(blob)
   },
 
   // ==================== Reset ====================
@@ -264,6 +288,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
       exportOptions: { ...DEFAULT_EXPORT_OPTIONS },
       previewOptions: { ...DEFAULT_PREVIEW_OPTIONS },
       previewResult: null,
+      // Note: Don't reset previewContainerElement - it's a UI ref managed by the component
       editedContent: null,
       isDirty: false,
       isEditing: false,

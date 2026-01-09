@@ -1,25 +1,15 @@
-import { Button, Checkbox, Modal, Select, Radio } from 'antd'
-import { DownloadOutlined, CopyOutlined } from '@ant-design/icons'
+import { App, Button, Checkbox, Modal, Select, Divider } from 'antd'
+import { DownloadOutlined, CopyOutlined, PictureOutlined } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
-import {
-  FORMAT_SUPPORT,
-  type FormatType,
-  type ImageExportOptions
-} from '../../../../features/export/types'
+import { FORMAT_SUPPORT, type FormatType } from '../../../../features/export/types'
 
-// Image width options
-const IMAGE_WIDTH_OPTIONS = [
+// Preview width options
+const PREVIEW_WIDTH_OPTIONS = [
   { label: '600px', value: 600 },
   { label: '800px', value: 800 },
   { label: '1000px', value: 1000 },
-  { label: '1200px', value: 1200 }
-]
-
-// Image quality options
-const IMAGE_QUALITY_OPTIONS = [
-  { label: '标准 (0.8)', value: 0.8 },
-  { label: '高质量 (0.9)', value: 0.9 },
-  { label: '最高 (1.0)', value: 1 }
+  { label: '1200px', value: 1200 },
+  { label: '自适应', value: 0 }
 ]
 
 // Format display configuration
@@ -27,7 +17,6 @@ const FORMAT_CONFIG: Record<FormatType, { name: string; extension: string }> = {
   markdown: { name: 'Markdown', extension: '.md' },
   txt: { name: 'Text', extension: '.txt' },
   html: { name: 'HTML', extension: '.html' },
-  png: { name: 'PNG', extension: '.png' },
   csv: { name: 'CSV', extension: '.csv' }
 }
 
@@ -36,20 +25,26 @@ const FORMAT_CONFIG: Record<FormatType, { name: string; extension: string }> = {
  *
  * Sections:
  * 1. Format selector
- * 2. Metadata options (for messages source)
- * 3. Export actions (download, copy)
+ * 2. Preview width
+ * 3. Metadata options (for messages source)
+ * 4. Export actions (file and image)
  */
 export function OptionsPanel(): React.JSX.Element {
+  const { message } = App.useApp()
   const {
     sourceType,
     formatType,
     exportOptions,
+    previewOptions,
     previewResult,
     isDirty,
     setFormatType,
     updateExportOptions,
+    updatePreviewOptions,
     doExport,
     copyToClipboard,
+    downloadImage,
+    copyImageToClipboard,
     confirmOverwrite,
     generatePreview
   } = useExportStore()
@@ -84,21 +79,39 @@ export function OptionsPanel(): React.JSX.Element {
     })
   }
 
-  const handleImageOptionChange = (key: keyof ImageExportOptions, value: number | string): void => {
-    updateExportOptions({
-      imageOptions: {
-        ...exportOptions.imageOptions,
-        [key]: value
-      }
-    })
+  const handleWidthChange = (width: number): void => {
+    updatePreviewOptions({ width })
   }
 
   const handleExport = (): void => {
     doExport()
   }
 
-  const handleCopy = (): void => {
-    copyToClipboard()
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await copyToClipboard()
+      message.success('已复制到剪贴板')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '复制失败')
+    }
+  }
+
+  const handleDownloadImage = async (): Promise<void> => {
+    try {
+      await downloadImage()
+      message.success('图片已下载')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '下载图片失败')
+    }
+  }
+
+  const handleCopyImage = async (): Promise<void> => {
+    try {
+      await copyImageToClipboard()
+      message.success('图片已复制到剪贴板')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '复制图片失败')
+    }
   }
 
   // Check if we can export
@@ -132,6 +145,18 @@ export function OptionsPanel(): React.JSX.Element {
               )
             })}
           </div>
+        </div>
+
+        {/* Preview width */}
+        <div className="options-panel__section">
+          <div className="options-panel__section-title">预览宽度</div>
+          <Select
+            size="small"
+            value={previewOptions.width}
+            onChange={handleWidthChange}
+            options={PREVIEW_WIDTH_OPTIONS}
+            style={{ width: '100%' }}
+          />
         </div>
 
         {/* Metadata options (only for messages source) */}
@@ -184,61 +209,11 @@ export function OptionsPanel(): React.JSX.Element {
             </div>
           </div>
         )}
-
-        {/* Image options (only for PNG format) */}
-        {formatType === 'png' && (
-          <div className="options-panel__section">
-            <div className="options-panel__section-title">图片选项</div>
-
-            {/* Width selection */}
-            <div className="options-panel__option-row">
-              <span className="options-panel__option-label">图片宽度</span>
-              <Select
-                size="small"
-                value={exportOptions.imageOptions.width}
-                onChange={(value) => handleImageOptionChange('width', value)}
-                options={IMAGE_WIDTH_OPTIONS}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            {/* Quality selection */}
-            <div className="options-panel__option-row">
-              <span className="options-panel__option-label">输出质量</span>
-              <Select
-                size="small"
-                value={exportOptions.imageOptions.quality}
-                onChange={(value) => handleImageOptionChange('quality', value)}
-                options={IMAGE_QUALITY_OPTIONS}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            {/* Theme selection */}
-            <div className="options-panel__option-row">
-              <span className="options-panel__option-label">主题</span>
-              <Radio.Group
-                size="small"
-                value={exportOptions.imageOptions.theme}
-                onChange={(e) => handleImageOptionChange('theme', e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-                style={{ width: '100%', display: 'flex' }}
-              >
-                <Radio.Button value="light" style={{ flex: 1, textAlign: 'center' }}>
-                  浅色
-                </Radio.Button>
-                <Radio.Button value="dark" style={{ flex: 1, textAlign: 'center' }}>
-                  深色
-                </Radio.Button>
-              </Radio.Group>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Export actions */}
       <div className="options-panel__actions">
+        <Divider style={{ margin: '8px 0', fontSize: 12 }}>文件</Divider>
         <Button
           type="primary"
           icon={<DownloadOutlined />}
@@ -249,7 +224,20 @@ export function OptionsPanel(): React.JSX.Element {
           下载文件
         </Button>
         <Button icon={<CopyOutlined />} onClick={handleCopy} disabled={!canExport} block>
-          复制到剪贴板
+          复制内容
+        </Button>
+
+        <Divider style={{ margin: '8px 0', fontSize: 12 }}>图片</Divider>
+        <Button
+          icon={<PictureOutlined />}
+          onClick={handleDownloadImage}
+          disabled={!canExport}
+          block
+        >
+          下载图片
+        </Button>
+        <Button icon={<CopyOutlined />} onClick={handleCopyImage} disabled={!canExport} block>
+          复制图片
         </Button>
       </div>
     </>
