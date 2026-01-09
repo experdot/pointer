@@ -8,7 +8,8 @@
       "Bash(cat:*)",
       "Bash(npx tsc:*)",
       "Bash(npm ls:*)",
-      "Bash(npm run typecheck:web:*)"
+      "Bash(npm run typecheck:web:*)",
+      "Bash(npx prettier:*)"
     ],
     "deny": [],
     "ask": []

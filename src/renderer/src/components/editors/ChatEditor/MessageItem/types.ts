@@ -1,4 +1,4 @@
-import type { MenuProps, InputRef } from 'antd'
+import type { MenuProps } from 'antd'
 import type { ChatMessage, FileAttachment, Topic } from '../../../../types/type'
 import type { GenerateOptions } from '../../../common/AIGeneratePopover'
 
@@ -65,22 +65,11 @@ export interface MessageItemProps {
   exportCallbacks: ExportCallbacks
 }
 
-// TopicHeader Props
+// TopicHeader Props - 编辑状态在组件内部管理
 export interface TopicHeaderProps {
   topic: Topic
   topicMessageCount?: number
   messageId: string
-  displayContent: string
-  isEditing: boolean
-  editValue: string
-  popoverOpen: boolean
-  inputRef: React.RefObject<InputRef | null>
-  onEditValueChange: (value: string) => void
-  onStartEdit: () => void
-  onSave: () => void
-  onCancel: () => void
-  onKeyDown: (e: React.KeyboardEvent) => void
-  onPopoverOpenChange: (open: boolean) => void
   topicCallbacks: TopicCallbacks
 }
 
@@ -98,21 +87,21 @@ export interface MessageHeaderProps {
   onSwitchBranch: (messageId: string) => void
 }
 
-// TitleRow Props
+// TitleRow Props - 编辑状态在组件内部管理
 export interface TitleRowProps {
   messageId: string
   title: string | undefined
-  isEditing: boolean
-  editValue: string
-  popoverOpen: boolean
-  inputRef: React.RefObject<InputRef | null>
-  onEditValueChange: (value: string) => void
-  onStartEdit: () => void
-  onSave: () => void
-  onCancel: () => void
-  onKeyDown: (e: React.KeyboardEvent) => void
-  onPopoverOpenChange: (open: boolean) => void
   titleCallbacks: TitleCallbacks
+}
+
+// TitleRow Ref
+export interface TitleRowRef {
+  startEdit: () => void
+}
+
+// TopicHeader Ref
+export interface TopicHeaderRef {
+  startEdit: () => void
 }
 
 // ReasoningContent Props

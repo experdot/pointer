@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Avatar } from 'antd'
-import type { InputRef } from 'antd'
 import { UserOutlined, RobotOutlined } from '@ant-design/icons'
 import { TopicHeader } from './TopicHeader'
 import { MessageHeader } from './MessageHeader'
@@ -9,43 +8,9 @@ import { ReasoningContent } from './ReasoningContent'
 import { MessageContent } from './MessageContent'
 import { MessageActions } from './MessageActions'
 import { MessageAttachments } from '../MessageAttachments'
-import type { ChatMessage, FileAttachment, Topic } from '../../../../types/type'
-import type { GenerateOptions } from '../../../common/AIGeneratePopover'
+import type { FileAttachment } from '../../../../types/type'
+import type { MessageItemProps, TitleRowRef, TopicHeaderRef } from './types'
 import '../MessageItem.css'
-
-// 保持向后兼容的 Props 接口
-interface MessageItemProps {
-  message: ChatMessage
-  isLast?: boolean
-  isLeaf?: boolean
-  isStreaming?: boolean
-  streamingContent?: string
-  streamingReasoning?: string
-  branchIndex: number
-  branchCount: number
-  siblings: ChatMessage[]
-  onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
-  onContinue: (messageId: string) => void
-  onDelete: (messageId: string) => void
-  onEdit: (messageId: string, content: string, attachments?: FileAttachment[]) => void
-  onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
-  onSwitchBranch: (messageId: string) => void
-  onQuote?: (text: string) => void
-  onToggleCollapse?: (messageId: string) => void
-  onExport?: (messageId: string) => void
-  onExportText?: (text: string) => void
-  onExportCode?: (code: string, language: string) => void
-  onExportTable?: (markdown: string) => void
-  onUpdateTitle?: (messageId: string, title: string) => void
-  onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
-  onGenerateTopic?: (messageId: string, options: GenerateOptions) => Promise<void>
-  topic?: Topic
-  topicMessageCount?: number
-  onCreateTopic?: (messageId: string, name: string) => void
-  onUpdateTopic?: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => void
-  onDeleteTopic?: (topicId: string) => void
-  onToggleTopicCollapse?: (topicId: string) => void
-}
 
 export const MessageItem = React.memo(function MessageItem({
   message,
@@ -57,27 +22,12 @@ export const MessageItem = React.memo(function MessageItem({
   branchIndex,
   branchCount,
   siblings,
-  onRetry,
-  onContinue,
-  onDelete,
-  onEdit,
-  onEditAndResend,
-  onSwitchBranch,
-  onQuote,
-  onToggleCollapse,
-  onExport,
-  onExportText,
-  onExportCode,
-  onExportTable,
-  onUpdateTitle,
-  onGenerateTitle,
-  onGenerateTopic,
   topic,
   topicMessageCount,
-  onCreateTopic,
-  onUpdateTopic,
-  onDeleteTopic,
-  onToggleTopicCollapse
+  actionCallbacks,
+  titleCallbacks,
+  topicCallbacks,
+  exportCallbacks
 }: MessageItemProps): React.JSX.Element {
   // 编辑状态
   const [isEditing, setIsEditing] = useState(false)
@@ -90,18 +40,9 @@ export const MessageItem = React.memo(function MessageItem({
   const wasStreaming = useRef(isStreaming)
   const userToggledReasoning = useRef(false)
 
-  // Title 编辑状态
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editTitleValue, setEditTitleValue] = useState(message.title || '')
-  const [titlePopoverOpen, setTitlePopoverOpen] = useState(false)
-  const titleInputRef = useRef<InputRef>(null)
-
-  // Topic 编辑状态
-  const [isEditingTopic, setIsEditingTopic] = useState(false)
-  const [editTopicValue, setEditTopicValue] = useState(topic?.name || '')
-  const [topicPopoverOpen, setTopicPopoverOpen] = useState(false)
-  const topicInputRef = useRef<InputRef>(null)
-
+  // 子组件 refs
+  const titleRowRef = useRef<TitleRowRef>(null)
+  const topicHeaderRef = useRef<TopicHeaderRef>(null)
   const itemRef = useRef<HTMLDivElement>(null)
 
   const isUser = message.role === 'user'
@@ -159,17 +100,24 @@ export const MessageItem = React.memo(function MessageItem({
       JSON.stringify(editAttachments) !== JSON.stringify(message.attachments ?? [])
 
     if (editContent.trim() && (contentChanged || attachmentsChanged)) {
-      onEdit(message.id, editContent.trim(), editAttachments)
+      actionCallbacks.onEdit(message.id, editContent.trim(), editAttachments)
     }
     setIsEditing(false)
-  }, [editContent, editAttachments, message.id, message.content, message.attachments, onEdit])
+  }, [
+    editContent,
+    editAttachments,
+    message.id,
+    message.content,
+    message.attachments,
+    actionCallbacks
+  ])
 
   const handleEditAndResend = useCallback((): void => {
     if (editContent.trim() || editAttachments.length > 0) {
-      onEditAndResend(message.id, editContent.trim(), editAttachments)
+      actionCallbacks.onEditAndResend(message.id, editContent.trim(), editAttachments)
     }
     setIsEditing(false)
-  }, [editContent, editAttachments, message.id, onEditAndResend])
+  }, [editContent, editAttachments, message.id, actionCallbacks])
 
   // 复制处理
   const handleCopy = useCallback((): void => {
@@ -184,111 +132,15 @@ export const MessageItem = React.memo(function MessageItem({
     setReasoningExpanded((prev) => !prev)
   }, [])
 
-  // Title 编辑处理
+  // 触发 TitleRow 编辑
   const handleStartTitleEdit = useCallback(() => {
-    setEditTitleValue(message.title || '')
-    setIsEditingTitle(true)
-    setTimeout(() => titleInputRef.current?.focus(), 50)
-  }, [message.title])
-
-  const handleSaveTitle = useCallback(() => {
-    const trimmedTitle = editTitleValue.trim()
-    onUpdateTitle?.(message.id, trimmedTitle)
-    setIsEditingTitle(false)
-  }, [message.id, editTitleValue, onUpdateTitle])
-
-  const handleCancelTitleEdit = useCallback(() => {
-    setIsEditingTitle(false)
-    setEditTitleValue(message.title || '')
-  }, [message.title])
-
-  const handleTitleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        handleSaveTitle()
-      } else if (e.key === 'Escape') {
-        handleCancelTitleEdit()
-      }
-    },
-    [handleSaveTitle, handleCancelTitleEdit]
-  )
-
-  const handleTitlePopoverOpenChange = useCallback((open: boolean) => {
-    setTitlePopoverOpen(open)
-    if (!open) setIsEditingTitle(false)
+    titleRowRef.current?.startEdit()
   }, [])
 
-  // Topic 编辑处理
+  // 触发 TopicHeader 编辑
   const handleStartTopicEdit = useCallback(() => {
-    setEditTopicValue(topic?.name || '')
-    setIsEditingTopic(true)
-    setTimeout(() => topicInputRef.current?.focus(), 50)
-  }, [topic?.name])
-
-  const handleSaveTopic = useCallback(() => {
-    const trimmedTopic = editTopicValue.trim()
-    if (trimmedTopic) {
-      if (topic) {
-        onUpdateTopic?.(topic.id, { name: trimmedTopic })
-      } else {
-        onCreateTopic?.(message.id, trimmedTopic)
-      }
-    }
-    setIsEditingTopic(false)
-  }, [message.id, topic, editTopicValue, onUpdateTopic, onCreateTopic])
-
-  const handleCancelTopicEdit = useCallback(() => {
-    setIsEditingTopic(false)
-    setEditTopicValue(topic?.name || '')
-  }, [topic?.name])
-
-  const handleTopicKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        handleSaveTopic()
-      } else if (e.key === 'Escape') {
-        handleCancelTopicEdit()
-      }
-    },
-    [handleSaveTopic, handleCancelTopicEdit]
-  )
-
-  const handleTopicPopoverOpenChange = useCallback((open: boolean) => {
-    setTopicPopoverOpen(open)
-    if (!open) setIsEditingTopic(false)
+    topicHeaderRef.current?.startEdit()
   }, [])
-
-  // Callbacks 分组
-  const topicCallbacks = useMemo(
-    () => ({
-      onCreateTopic,
-      onUpdateTopic,
-      onDeleteTopic,
-      onToggleTopicCollapse,
-      onGenerateTopic
-    }),
-    [onCreateTopic, onUpdateTopic, onDeleteTopic, onToggleTopicCollapse, onGenerateTopic]
-  )
-
-  const titleCallbacks = useMemo(
-    () => ({
-      onUpdateTitle,
-      onGenerateTitle
-    }),
-    [onUpdateTitle, onGenerateTitle]
-  )
-
-  const exportCallbacks = useMemo(
-    () => ({
-      onExport,
-      onExportText,
-      onExportCode,
-      onExportTable
-    }),
-    [onExport, onExportText, onExportCode, onExportTable]
-  )
 
   return (
     <div
@@ -310,20 +162,10 @@ export const MessageItem = React.memo(function MessageItem({
         {/* Topic 头部 */}
         {topic && (
           <TopicHeader
+            ref={topicHeaderRef}
             topic={topic}
             topicMessageCount={topicMessageCount}
             messageId={message.id}
-            displayContent={displayContent}
-            isEditing={isEditingTopic}
-            editValue={editTopicValue}
-            popoverOpen={topicPopoverOpen}
-            inputRef={topicInputRef}
-            onEditValueChange={setEditTopicValue}
-            onStartEdit={handleStartTopicEdit}
-            onSave={handleSaveTopic}
-            onCancel={handleCancelTopicEdit}
-            onKeyDown={handleTopicKeyDown}
-            onPopoverOpenChange={handleTopicPopoverOpenChange}
             topicCallbacks={topicCallbacks}
           />
         )}
@@ -340,25 +182,16 @@ export const MessageItem = React.memo(function MessageItem({
               branchIndex={branchIndex}
               branchCount={branchCount}
               siblings={siblings}
-              onToggleCollapse={onToggleCollapse}
-              onRetry={onRetry}
-              onSwitchBranch={onSwitchBranch}
+              onToggleCollapse={actionCallbacks.onToggleCollapse}
+              onRetry={actionCallbacks.onRetry}
+              onSwitchBranch={actionCallbacks.onSwitchBranch}
             />
 
             {/* 标题行 */}
             <TitleRow
+              ref={titleRowRef}
               messageId={message.id}
               title={message.title}
-              isEditing={isEditingTitle}
-              editValue={editTitleValue}
-              popoverOpen={titlePopoverOpen}
-              inputRef={titleInputRef}
-              onEditValueChange={setEditTitleValue}
-              onStartEdit={handleStartTitleEdit}
-              onSave={handleSaveTitle}
-              onCancel={handleCancelTitleEdit}
-              onKeyDown={handleTitleKeyDown}
-              onPopoverOpenChange={handleTitlePopoverOpenChange}
               titleCallbacks={titleCallbacks}
             />
 
@@ -394,12 +227,12 @@ export const MessageItem = React.memo(function MessageItem({
               onCancelEdit={handleCancelEdit}
               onSaveEdit={handleSaveEdit}
               onEditAndResend={handleEditAndResend}
-              onToggleCollapse={() => onToggleCollapse?.(message.id)}
+              onToggleCollapse={() => actionCallbacks.onToggleCollapse?.(message.id)}
               onStartTitleEdit={handleStartTitleEdit}
               onStartTopicEdit={handleStartTopicEdit}
               topicCallbacks={topicCallbacks}
               exportCallbacks={exportCallbacks}
-              onQuote={onQuote}
+              onQuote={actionCallbacks.onQuote}
             />
 
             {/* 操作按钮 */}
@@ -411,9 +244,9 @@ export const MessageItem = React.memo(function MessageItem({
                 copied={copied}
                 onCopy={handleCopy}
                 onStartEdit={handleStartEdit}
-                onRetry={() => onRetry(message.id)}
-                onContinue={() => onContinue(message.id)}
-                onDelete={() => onDelete(message.id)}
+                onRetry={() => actionCallbacks.onRetry(message.id)}
+                onContinue={() => actionCallbacks.onContinue(message.id)}
+                onDelete={() => actionCallbacks.onDelete(message.id)}
               />
             )}
           </>

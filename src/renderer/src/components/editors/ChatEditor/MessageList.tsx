@@ -16,6 +16,12 @@ import {
 } from '../../../services/messagesService'
 import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
+import type {
+  MessageActionCallbacks,
+  TitleCallbacks,
+  TopicCallbacks,
+  ExportCallbacks
+} from './MessageItem/types'
 import {
   exportMessages,
   exportTextSnippet,
@@ -150,6 +156,49 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const visibleMessages = useMemo(
     () => filterMessagesByTopicCollapse(messages, topicGroups),
     [messages, topicGroups]
+  )
+
+  // 分组的 callbacks - 使用 useMemo 避免每次渲染创建新对象
+  const actionCallbacks: MessageActionCallbacks = useMemo(
+    () => ({
+      onRetry,
+      onContinue,
+      onDelete,
+      onEdit,
+      onEditAndResend,
+      onSwitchBranch,
+      onQuote,
+      onToggleCollapse
+    }),
+    [
+      onRetry,
+      onContinue,
+      onDelete,
+      onEdit,
+      onEditAndResend,
+      onSwitchBranch,
+      onQuote,
+      onToggleCollapse
+    ]
+  )
+
+  const titleCallbacks: TitleCallbacks = useMemo(
+    () => ({
+      onUpdateTitle,
+      onGenerateTitle
+    }),
+    [onUpdateTitle, onGenerateTitle]
+  )
+
+  const topicCallbacks: TopicCallbacks = useMemo(
+    () => ({
+      onCreateTopic,
+      onUpdateTopic,
+      onDeleteTopic,
+      onToggleTopicCollapse,
+      onGenerateTopic
+    }),
+    [onCreateTopic, onUpdateTopic, onDeleteTopic, onToggleTopicCollapse, onGenerateTopic]
   )
 
   // 滚动到底部
@@ -310,24 +359,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         // 查找此消息关联的 Topic（当此消息是 Topic 起始消息时）
         const messageTopic = findTopicByStartMessageId(topics, message.id)
 
-        // 导出单条消息
-        const handleExport = (messageId: string): void => {
-          exportMessages(pageId, [messageId])
-        }
-
-        // 导出选中文本
-        const handleExportText = (text: string): void => {
-          exportTextSnippet(text, pageId)
-        }
-
-        // 导出代码块
-        const handleExportCode = (code: string, language: string): void => {
-          exportCodeBlock(code, language, pageId)
-        }
-
-        // 导出表格
-        const handleExportTable = (markdown: string): void => {
-          exportTableBlock(markdown, pageId)
+        // 导出 callbacks
+        const exportCallbacks: ExportCallbacks = {
+          onExport: (messageId: string) => exportMessages(pageId, [messageId]),
+          onExportText: (text: string) => exportTextSnippet(text, pageId),
+          onExportCode: (code: string, language: string) => exportCodeBlock(code, language, pageId),
+          onExportTable: (markdown: string) => exportTableBlock(markdown, pageId)
         }
 
         return (
@@ -342,28 +379,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
             branchIndex={branchInfo?.branchIndex ?? 0}
             branchCount={branchInfo?.branchCount ?? 1}
             siblings={siblings}
-            onRetry={onRetry}
-            onContinue={onContinue}
-            onDelete={onDelete}
-            onEdit={onEdit}
-            onEditAndResend={onEditAndResend}
-            onSwitchBranch={onSwitchBranch}
-            onQuote={onQuote}
-            onToggleCollapse={onToggleCollapse}
-            onExport={handleExport}
-            onExportText={handleExportText}
-            onExportCode={handleExportCode}
-            onExportTable={handleExportTable}
-            onUpdateTitle={onUpdateTitle}
-            onGenerateTitle={onGenerateTitle}
-            onGenerateTopic={onGenerateTopic}
-            // Topic 相关
             topic={messageTopic}
             topicMessageCount={topicMessageCount}
-            onCreateTopic={onCreateTopic}
-            onUpdateTopic={onUpdateTopic}
-            onDeleteTopic={onDeleteTopic}
-            onToggleTopicCollapse={onToggleTopicCollapse}
+            actionCallbacks={actionCallbacks}
+            titleCallbacks={titleCallbacks}
+            topicCallbacks={topicCallbacks}
+            exportCallbacks={exportCallbacks}
           />
         )
       })}
