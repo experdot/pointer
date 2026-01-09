@@ -1,7 +1,26 @@
-import { Button, Checkbox, Modal } from 'antd'
+import { Button, Checkbox, Modal, Select, Radio } from 'antd'
 import { DownloadOutlined, CopyOutlined } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
-import { FORMAT_SUPPORT, type FormatType } from '../../../../features/export/types'
+import {
+  FORMAT_SUPPORT,
+  type FormatType,
+  type ImageExportOptions
+} from '../../../../features/export/types'
+
+// Image width options
+const IMAGE_WIDTH_OPTIONS = [
+  { label: '600px', value: 600 },
+  { label: '800px', value: 800 },
+  { label: '1000px', value: 1000 },
+  { label: '1200px', value: 1200 }
+]
+
+// Image quality options
+const IMAGE_QUALITY_OPTIONS = [
+  { label: '标准 (0.8)', value: 0.8 },
+  { label: '高质量 (0.9)', value: 0.9 },
+  { label: '最高 (1.0)', value: 1 }
+]
 
 // Format display configuration
 const FORMAT_CONFIG: Record<FormatType, { name: string; extension: string }> = {
@@ -60,6 +79,15 @@ export function OptionsPanel(): React.JSX.Element {
     updateExportOptions({
       metadata: {
         ...exportOptions.metadata,
+        [key]: value
+      }
+    })
+  }
+
+  const handleImageOptionChange = (key: keyof ImageExportOptions, value: number | string): void => {
+    updateExportOptions({
+      imageOptions: {
+        ...exportOptions.imageOptions,
         [key]: value
       }
     })
@@ -161,9 +189,49 @@ export function OptionsPanel(): React.JSX.Element {
         {formatType === 'png' && (
           <div className="options-panel__section">
             <div className="options-panel__section-title">图片选项</div>
-            {/* TODO: Add image width, quality, theme options */}
-            <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
-              图片选项将在后续版本中添加
+
+            {/* Width selection */}
+            <div className="options-panel__option-row">
+              <span className="options-panel__option-label">图片宽度</span>
+              <Select
+                size="small"
+                value={exportOptions.imageOptions.width}
+                onChange={(value) => handleImageOptionChange('width', value)}
+                options={IMAGE_WIDTH_OPTIONS}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Quality selection */}
+            <div className="options-panel__option-row">
+              <span className="options-panel__option-label">输出质量</span>
+              <Select
+                size="small"
+                value={exportOptions.imageOptions.quality}
+                onChange={(value) => handleImageOptionChange('quality', value)}
+                options={IMAGE_QUALITY_OPTIONS}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Theme selection */}
+            <div className="options-panel__option-row">
+              <span className="options-panel__option-label">主题</span>
+              <Radio.Group
+                size="small"
+                value={exportOptions.imageOptions.theme}
+                onChange={(e) => handleImageOptionChange('theme', e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+                style={{ width: '100%', display: 'flex' }}
+              >
+                <Radio.Button value="light" style={{ flex: 1, textAlign: 'center' }}>
+                  浅色
+                </Radio.Button>
+                <Radio.Button value="dark" style={{ flex: 1, textAlign: 'center' }}>
+                  深色
+                </Radio.Button>
+              </Radio.Group>
             </div>
           </div>
         )}

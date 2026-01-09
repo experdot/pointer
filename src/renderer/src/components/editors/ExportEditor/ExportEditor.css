@@ -202,6 +202,17 @@
   gap: 8px;
 }
 
+.options-panel__option-row {
+  margin-bottom: 12px;
+}
+
+.options-panel__option-label {
+  display: block;
+  font-size: 13px;
+  color: var(--ant-color-text);
+  margin-bottom: 6px;
+}
+
 .options-panel__actions {
   padding: 16px;
   border-top: 1px solid var(--ant-color-border);

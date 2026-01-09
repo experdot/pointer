@@ -1,33 +1,11 @@
+import html2canvas from 'html2canvas'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
-
-// Type declaration for html-to-image
-type ToPngFunction = (
-  node: HTMLElement,
-  options?: { quality?: number; pixelRatio?: number }
-) => Promise<string>
-
-/**
- * Dynamically import html-to-image library
- * Returns null if the library is not installed
- */
-async function loadHtmlToImage(): Promise<{ toPng: ToPngFunction } | null> {
-  try {
-    // Use a variable to avoid TypeScript static analysis
-    const moduleName = 'html-to-image'
-    const module = await import(/* webpackIgnore: true */ moduleName)
-    return module
-  } catch {
-    return null
-  }
-}
 
 /**
  * PNG Format Plugin
  *
  * Converts content to PNG image format.
- * Uses html-to-image library to render HTML and capture as image.
- *
- * Note: This requires the html-to-image library to be installed.
+ * Uses html2canvas library to render HTML and capture as image.
  */
 export const pngFormatPlugin: FormatPlugin = {
   id: 'png',
@@ -36,15 +14,6 @@ export const pngFormatPlugin: FormatPlugin = {
   mimeType: 'image/png',
 
   async convert(content: ExtractedContent, options: ExportOptions): Promise<ConvertResult> {
-    // Import html-to-image dynamically
-    const htmlToImage = await loadHtmlToImage()
-    if (!htmlToImage) {
-      throw new Error(
-        'PNG export requires html-to-image library. Please install it with: npm install html-to-image'
-      )
-    }
-    const { toPng } = htmlToImage
-
     // Create a temporary container for rendering
     const container = document.createElement('div')
     container.style.cssText = `
@@ -67,15 +36,28 @@ export const pngFormatPlugin: FormatPlugin = {
     document.body.appendChild(container)
 
     try {
-      // Convert to PNG
-      const dataUrl = await toPng(container, {
-        quality: options.imageOptions?.quality || 0.95,
-        pixelRatio: 2
+      // Use html2canvas to render
+      const canvas = await html2canvas(container, {
+        backgroundColor: options.imageOptions?.backgroundColor || '#ffffff',
+        scale: 2, // High resolution
+        useCORS: true,
+        logging: false
       })
 
-      // Convert data URL to Blob
-      const response = await fetch(dataUrl)
-      const blob = await response.blob()
+      // Convert canvas to Blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => {
+            if (b) resolve(b)
+            else reject(new Error('Failed to create blob'))
+          },
+          'image/png',
+          options.imageOptions?.quality || 1
+        )
+      })
+
+      // Generate preview dataURL
+      const dataUrl = canvas.toDataURL('image/png', options.imageOptions?.quality || 1)
 
       return {
         content: blob,
@@ -135,13 +117,22 @@ function messagesToHtml(content: ExtractedContent, options: ExportOptions): stri
   }
 
   const { metadata } = options
+  const isDark = options.imageOptions?.theme === 'dark'
   const parts: string[] = []
 
   for (const message of messages) {
     const roleLabel =
       message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
-    const bgColor =
-      message.role === 'user' ? '#e3f2fd' : message.role === 'assistant' ? '#f5f5f5' : '#fff3e0'
+
+    // Adjust colors for dark theme
+    let bgColor: string
+    if (isDark) {
+      bgColor =
+        message.role === 'user' ? '#1e3a5f' : message.role === 'assistant' ? '#2d2d2d' : '#3d2e1f'
+    } else {
+      bgColor =
+        message.role === 'user' ? '#e3f2fd' : message.role === 'assistant' ? '#f5f5f5' : '#fff3e0'
+    }
 
     let msgHtml = `<div style="margin-bottom: 16px; padding: 16px; border-radius: 12px; background: ${bgColor};">`
 
@@ -149,12 +140,13 @@ function messagesToHtml(content: ExtractedContent, options: ExportOptions): stri
     msgHtml += `<div style="font-weight: 600; margin-bottom: 8px; font-size: 15px;">${roleLabel}`
     if (metadata?.showTimestamp && message.createdAt) {
       const date = new Date(message.createdAt)
-      msgHtml += ` <span style="font-weight: normal; color: #666; font-size: 13px;">${date.toLocaleString()}</span>`
+      const timestampColor = isDark ? '#aaa' : '#666'
+      msgHtml += ` <span style="font-weight: normal; color: ${timestampColor}; font-size: 13px;">${date.toLocaleString()}</span>`
     }
     msgHtml += '</div>'
 
     // Content
-    msgHtml += `<div style="white-space: pre-wrap; font-size: 14px;">${simpleMarkdownToHtml(message.content)}</div>`
+    msgHtml += `<div style="white-space: pre-wrap; font-size: 14px;">${simpleMarkdownToHtml(message.content, isDark)}</div>`
 
     msgHtml += '</div>'
     parts.push(msgHtml)
@@ -166,19 +158,23 @@ function messagesToHtml(content: ExtractedContent, options: ExportOptions): stri
 /**
  * Simple markdown to HTML conversion
  */
-function simpleMarkdownToHtml(markdown: string): string {
+function simpleMarkdownToHtml(markdown: string, isDark = false): string {
   let html = escapeHtml(markdown)
+
+  // Code block colors
+  const codeBlockBg = isDark ? '#1e1e1e' : '#2d2d2d'
+  const inlineCodeBg = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
 
   // Code blocks
   html = html.replace(
     /```(\w*)\n([\s\S]*?)```/g,
-    '<pre style="background: #2d2d2d; color: #ccc; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0;"><code>$2</code></pre>'
+    `<pre style="background: ${codeBlockBg}; color: #ccc; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0;"><code>$2</code></pre>`
   )
 
   // Inline code
   html = html.replace(
     /`([^`]+)`/g,
-    '<code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; font-size: 13px;">$1</code>'
+    `<code style="background: ${inlineCodeBg}; padding: 2px 6px; border-radius: 3px; font-size: 13px;">$1</code>`
   )
 
   // Bold
