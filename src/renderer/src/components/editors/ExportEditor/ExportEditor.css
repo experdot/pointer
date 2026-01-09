@@ -5,10 +5,10 @@
   background: var(--ant-color-bg-container);
 }
 
-/* Left panel: Source selection */
-.export-editor__source {
-  width: 280px;
-  min-width: 200px;
+/* Left panel: Sidebar */
+.export-editor__sidebar {
+  width: 300px;
+  min-width: 240px;
   max-width: 400px;
   border-right: 1px solid var(--ant-color-border);
   display: flex;
@@ -16,7 +16,7 @@
   overflow: hidden;
 }
 
-/* Middle panel: Preview area */
+/* Right panel: Preview area */
 .export-editor__preview {
   flex: 1;
   min-width: 300px;
@@ -25,81 +25,86 @@
   overflow: hidden;
 }
 
-/* Right panel: Options */
-.export-editor__options {
-  width: 260px;
-  min-width: 200px;
-  max-width: 320px;
-  border-left: 1px solid var(--ant-color-border);
-  overflow-y: auto;
+/* Sidebar styles */
+.export-sidebar {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
-/* Panel header */
-.export-panel__header {
+.export-sidebar__header {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--ant-color-border);
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 48px;
 }
 
-.export-panel__header-title {
+.export-sidebar__header-title {
   flex: 1;
 }
 
-/* Panel content */
-.export-panel__content {
+.export-sidebar__content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px 16px;
 }
 
-/* Source panel specific */
-.source-panel__type-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Sidebar section */
+.sidebar__section {
   margin-bottom: 16px;
 }
 
-.source-panel__type-item {
+.sidebar__section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  margin-bottom: 8px;
+}
+
+/* Sidebar section content */
+.sidebar__section-content {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar__source-selector {
+  margin-top: 4px;
+}
+
+/* Option row */
+.sidebar__option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar__option-label {
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+}
+
+/* Metadata checkboxes */
+.sidebar__metadata {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--ant-color-border);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.source-panel__type-item:hover {
-  border-color: var(--ant-color-primary);
-  background: var(--ant-color-primary-bg);
-}
-
-.source-panel__type-item--active {
-  border-color: var(--ant-color-primary);
-  background: var(--ant-color-primary-bg);
-}
-
-.source-panel__selector {
-  flex: 1;
-  overflow-y: auto;
 }
 
 /* Preview panel specific */
 .preview-panel__header {
   flex-shrink: 0;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--ant-color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 48px;
 }
 
 .preview-panel__header-left {
@@ -151,73 +156,6 @@
   text-align: center;
 }
 
-/* Options panel specific */
-.options-panel__section {
-  margin-bottom: 24px;
-}
-
-.options-panel__section-title {
-  font-weight: 500;
-  margin-bottom: 12px;
-  color: var(--ant-color-text-secondary);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.options-panel__format-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.options-panel__format-item {
-  padding: 6px 12px;
-  border: 1px solid var(--ant-color-border);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 13px;
-}
-
-.options-panel__format-item:hover {
-  border-color: var(--ant-color-primary);
-}
-
-.options-panel__format-item--active {
-  border-color: var(--ant-color-primary);
-  background: var(--ant-color-primary);
-  color: white;
-}
-
-.options-panel__format-item--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.options-panel__metadata {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.options-panel__option-row {
-  margin-bottom: 12px;
-}
-
-.options-panel__option-label {
-  display: block;
-  font-size: 13px;
-  color: var(--ant-color-text);
-  margin-bottom: 6px;
-}
-
-.options-panel__actions {
-  padding: 16px;
-  border-top: 1px solid var(--ant-color-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
+.preview-panel__container {
+  height: 100%;
 }

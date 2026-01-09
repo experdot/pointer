@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Radio, Tree, Empty, Spin } from 'antd'
+import { Select, Tree, Empty, Spin } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import type {
@@ -12,6 +12,14 @@ import type { ChatMessage, Topic } from '../../../../types/type'
 interface MessagesSourceSelectorProps extends SourceSelectorProps<MessagesSourceData> {
   pageId?: string
 }
+
+// Selection mode options for Select
+const SELECTION_MODE_OPTIONS = [
+  { value: 'current-branch', label: '当前分支' },
+  { value: 'all-branches', label: '所有分支' },
+  { value: 'free-select', label: '自由选择' },
+  { value: 'topic-messages', label: 'Topic 消息' }
+]
 
 /**
  * MessagesSourceSelector - Component for selecting messages to export
@@ -67,6 +75,14 @@ export function MessagesSourceSelector({
   const treeData = useMemo(() => {
     return buildMessageTree(messages)
   }, [messages])
+
+  // Selection mode options based on whether topics exist
+  const selectionModeOptions = useMemo(() => {
+    if (topics.length > 0) {
+      return SELECTION_MODE_OPTIONS
+    }
+    return SELECTION_MODE_OPTIONS.filter((opt) => opt.value !== 'topic-messages')
+  }, [topics.length])
 
   // Handle selection mode change
   const handleModeChange = (mode: MessageSelectionMode): void => {
@@ -152,35 +168,28 @@ export function MessagesSourceSelector({
       {/* Selection mode */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>选择模式</div>
-        <Radio.Group
+        <Select
           value={selectionMode}
-          onChange={(e) => handleModeChange(e.target.value)}
-          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-        >
-          <Radio value="current-branch">当前分支</Radio>
-          <Radio value="all-branches">所有分支</Radio>
-          <Radio value="topic-messages" disabled={topics.length === 0}>
-            Topic 消息
-          </Radio>
-          <Radio value="free-select">自由选择</Radio>
-        </Radio.Group>
+          onChange={(value) => handleModeChange(value as MessageSelectionMode)}
+          options={selectionModeOptions}
+          style={{ width: '100%' }}
+        />
       </div>
 
       {/* Topic selector (for topic-messages mode) */}
       {selectionMode === 'topic-messages' && topics.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>选择 Topic</div>
-          <Radio.Group
+          <Select
             value={selectedTopicId}
-            onChange={(e) => handleTopicSelect(e.target.value)}
-            style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-          >
-            {topics.map((topic) => (
-              <Radio key={topic.id} value={topic.id}>
-                {topic.name}
-              </Radio>
-            ))}
-          </Radio.Group>
+            onChange={(value) => handleTopicSelect(value)}
+            options={topics.map((topic) => ({
+              value: topic.id,
+              label: topic.name
+            }))}
+            placeholder="请选择 Topic"
+            style={{ width: '100%' }}
+          />
         </div>
       )}
 

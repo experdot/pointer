@@ -1,6 +1,16 @@
 import { useCallback } from 'react'
-import { Button, Spin, Segmented } from 'antd'
-import { EyeOutlined, EditOutlined, ReloadOutlined, FileTextOutlined } from '@ant-design/icons'
+import { App, Button, Spin, Segmented, Dropdown } from 'antd'
+import type { MenuProps } from 'antd'
+import {
+  EyeOutlined,
+  EditOutlined,
+  ReloadOutlined,
+  FileTextOutlined,
+  DownloadOutlined,
+  CopyOutlined,
+  PictureOutlined,
+  DownOutlined
+} from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import type { PreviewMode } from '../../../../features/export/types'
@@ -10,11 +20,13 @@ import type { PreviewMode } from '../../../../features/export/types'
  *
  * Features:
  * - Preview header with mode toggle (view/edit)
+ * - Export dropdown button in header
  * - Preview content area with configurable width
  * - Loading and error states
  * - Screenshot target container
  */
 export function PreviewPanel(): React.JSX.Element {
+  const { message } = App.useApp()
   const {
     sourceType,
     sourceData,
@@ -30,7 +42,11 @@ export function PreviewPanel(): React.JSX.Element {
     enterEditMode,
     exitEditMode,
     setEditedContent,
-    setPreviewContainerElement
+    setPreviewContainerElement,
+    doExport,
+    copyToClipboard,
+    downloadImage,
+    copyImageToClipboard
   } = useExportStore()
 
   // Callback ref for the preview container
@@ -54,6 +70,71 @@ export function PreviewPanel(): React.JSX.Element {
     generatePreview()
   }
 
+  // Export action handlers
+  const handleExport = async (): Promise<void> => {
+    try {
+      await doExport()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '导出失败')
+    }
+  }
+
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await copyToClipboard()
+      message.success('已复制到剪贴板')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '复制失败')
+    }
+  }
+
+  const handleDownloadImage = async (): Promise<void> => {
+    try {
+      await downloadImage()
+      message.success('图片已下载')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '下载图片失败')
+    }
+  }
+
+  const handleCopyImage = async (): Promise<void> => {
+    try {
+      await copyImageToClipboard()
+      message.success('图片已复制到剪贴板')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '复制图片失败')
+    }
+  }
+
+  // Export dropdown menu items
+  const exportMenuItems: MenuProps['items'] = [
+    {
+      key: 'download',
+      icon: <DownloadOutlined />,
+      label: '下载文件',
+      onClick: handleExport
+    },
+    {
+      key: 'copy',
+      icon: <CopyOutlined />,
+      label: '复制内容',
+      onClick: handleCopy
+    },
+    { type: 'divider' },
+    {
+      key: 'download-image',
+      icon: <PictureOutlined />,
+      label: '下载图片',
+      onClick: handleDownloadImage
+    },
+    {
+      key: 'copy-image',
+      icon: <CopyOutlined />,
+      label: '复制图片',
+      onClick: handleCopyImage
+    }
+  ]
+
   // Get previewer and editor plugins
   const previewerPlugin = exportManager.getPreviewerForFormat(formatType)
   const editorPlugin = exportManager.getEditorForFormat(formatType)
@@ -63,6 +144,7 @@ export function PreviewPanel(): React.JSX.Element {
   // Determine what content to show
   const hasSource = sourceType && sourceData
   const hasPreview = previewResult !== null
+  const canExport = hasPreview
 
   return (
     <>
@@ -85,13 +167,17 @@ export function PreviewPanel(): React.JSX.Element {
         <div className="preview-panel__header-right">
           <Button
             type="text"
-            size="small"
             icon={<ReloadOutlined />}
             onClick={handleRefresh}
             disabled={!hasSource || isGenerating}
           >
-            生成预览
+            刷新预览
           </Button>
+          <Dropdown menu={{ items: exportMenuItems }} disabled={!canExport}>
+            <Button type="primary" disabled={!canExport}>
+              <DownloadOutlined /> 导出 <DownOutlined />
+            </Button>
+          </Dropdown>
         </div>
       </div>
 
@@ -133,7 +219,12 @@ export function PreviewPanel(): React.JSX.Element {
           className="preview-panel__container"
           style={{
             display: !isGenerating && hasPreview ? 'block' : 'none',
-            width: previewOptions.width > 0 ? previewOptions.width : '100%',
+            width:
+              previewOptions.mode === 'edit'
+                ? '100%'
+                : previewOptions.width > 0
+                  ? previewOptions.width
+                  : '100%',
             maxWidth: '100%',
             margin: '0 auto',
             background: '#fff',
@@ -152,7 +243,9 @@ export function PreviewPanel(): React.JSX.Element {
 
               {previewOptions.mode === 'edit' && EditorComponent && (
                 <EditorComponent
-                  content={isDirty && editedContent !== null ? editedContent : previewResult.content}
+                  content={
+                    isDirty && editedContent !== null ? editedContent : previewResult.content
+                  }
                   format={formatType}
                   options={previewOptions}
                   onChange={setEditedContent}

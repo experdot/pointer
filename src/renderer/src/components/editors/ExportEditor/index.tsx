@@ -1,18 +1,16 @@
 import { useEffect } from 'react'
 import { useExportStore } from '../../../stores/exportStore'
 import type { ExportEditorProps } from '../../../features/export/types'
-import { SourcePanel } from './panels/SourcePanel'
+import { Sidebar } from './panels/Sidebar'
 import { PreviewPanel } from './panels/PreviewPanel'
-import { OptionsPanel } from './panels/OptionsPanel'
 import './ExportEditor.css'
 
 /**
  * ExportEditor - Main export editor component
  *
- * Three-column layout:
- * - Left: Source selection panel
- * - Middle: Preview panel (with edit capability)
- * - Right: Options panel (format, metadata, actions)
+ * Two-column layout:
+ * - Left: Sidebar with collapsible sections (source, format, options)
+ * - Right: Preview panel (with edit capability and export actions)
  */
 export function ExportEditor({ context }: ExportEditorProps): React.JSX.Element {
   const { setSourceType, setSourceData, reset } = useExportStore()
@@ -83,14 +81,11 @@ export function ExportEditor({ context }: ExportEditorProps): React.JSX.Element 
 
   return (
     <div className="export-editor">
-      <div className="export-editor__source">
-        <SourcePanel pageId={context?.pageId} />
+      <div className="export-editor__sidebar">
+        <Sidebar pageId={context?.pageId} />
       </div>
       <div className="export-editor__preview">
         <PreviewPanel />
-      </div>
-      <div className="export-editor__options">
-        <OptionsPanel />
       </div>
     </div>
   )
