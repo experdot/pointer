@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Select, Tree, Empty, Spin } from 'antd'
-import type { DataNode } from 'antd/es/tree'
+import { Select, Checkbox, Empty, Spin } from 'antd'
+import { FolderOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import type {
   SourceSelectorProps,
@@ -8,6 +8,12 @@ import type {
   MessageSelectionMode
 } from '../../../../features/export/types'
 import type { ChatMessage, Topic } from '../../../../types/type'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
+
+interface MessageGroup {
+  topic?: Topic
+  messages: ChatMessage[]
+}
 
 interface MessagesSourceSelectorProps extends SourceSelectorProps<MessagesSourceData> {
   pageId?: string
@@ -71,10 +77,42 @@ export function MessagesSourceSelector({
       .finally(() => setLoading(false))
   }, [pageId, load])
 
-  // Build tree data for the message tree
-  const treeData = useMemo(() => {
-    return buildMessageTree(messages)
-  }, [messages])
+  // Get current branch messages
+  const branchMessages = useMemo(() => {
+    const branchIds = getCurrentBranchIds(messages, leafMessageId)
+    return branchIds.map((id) => messages.find((m) => m.id === id)).filter((m): m is ChatMessage => !!m)
+  }, [messages, leafMessageId])
+
+  // Group messages by topic
+  const groupedMessages = useMemo((): MessageGroup[] => {
+    const groups: MessageGroup[] = []
+    let currentGroup: MessageGroup = { messages: [] }
+
+    for (const msg of branchMessages) {
+      const startingTopic = topics.find((t) => t.startMessageId === msg.id)
+
+      if (startingTopic) {
+        if (currentGroup.messages.length > 0) {
+          groups.push(currentGroup)
+        }
+        currentGroup = { topic: startingTopic, messages: [msg] }
+      } else {
+        currentGroup.messages.push(msg)
+      }
+
+      const endingTopic = topics.find((t) => t.endMessageId === msg.id)
+      if (endingTopic && currentGroup.topic?.id === endingTopic.id) {
+        groups.push(currentGroup)
+        currentGroup = { messages: [] }
+      }
+    }
+
+    if (currentGroup.messages.length > 0) {
+      groups.push(currentGroup)
+    }
+
+    return groups
+  }, [branchMessages, topics])
 
   // Selection mode options based on whether topics exist
   const selectionModeOptions = useMemo(() => {
@@ -102,8 +140,8 @@ export function MessagesSourceSelector({
         newSelectedIds = []
         break
       case 'free-select':
-        // Keep current selection
-        newSelectedIds = selectedMessageIds
+        // Initialize with current branch
+        newSelectedIds = getCurrentBranchIds(messages, leafMessageId)
         break
     }
 
@@ -116,15 +154,44 @@ export function MessagesSourceSelector({
     })
   }
 
-  // Handle tree checkbox change
-  const handleTreeCheck = (checkedKeys: React.Key[]): void => {
+  // Handle select all checkbox
+  const handleSelectAll = (e: CheckboxChangeEvent): void => {
     if (!pageId) return
-
+    const newSelectedIds = e.target.checked ? branchMessages.map((m) => m.id) : []
     onChange({
       type: 'messages',
       pageId,
       selectionMode: 'free-select',
-      selectedMessageIds: checkedKeys as string[]
+      selectedMessageIds: newSelectedIds
+    })
+  }
+
+  // Handle single item checkbox
+  const handleItemCheck = (messageId: string, checked: boolean): void => {
+    if (!pageId) return
+    const newSelectedIds = checked
+      ? [...selectedMessageIds, messageId]
+      : selectedMessageIds.filter((id) => id !== messageId)
+    onChange({
+      type: 'messages',
+      pageId,
+      selectionMode: 'free-select',
+      selectedMessageIds: newSelectedIds
+    })
+  }
+
+  // Handle topic group select all
+  const handleTopicSelectAll = (group: MessageGroup, checked: boolean): void => {
+    if (!pageId) return
+    const groupIds = group.messages.map((m) => m.id)
+    const newSelectedIds = checked
+      ? [...new Set([...selectedMessageIds, ...groupIds])]
+      : selectedMessageIds.filter((id) => !groupIds.includes(id))
+    onChange({
+      type: 'messages',
+      pageId,
+      selectionMode: 'free-select',
+      selectedMessageIds: newSelectedIds
     })
   }
 
@@ -193,21 +260,60 @@ export function MessagesSourceSelector({
         </div>
       )}
 
-      {/* Message tree (for free-select mode) */}
+      {/* Message list (for free-select mode) */}
       {selectionMode === 'free-select' && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>
-            选择消息 ({selectedMessageIds.length}/{messages.length})
+        <div className="free-select-list" style={{ marginBottom: 16 }}>
+          <div className="free-select-list__header">
+            <Checkbox
+              indeterminate={
+                selectedMessageIds.length > 0 && selectedMessageIds.length < branchMessages.length
+              }
+              checked={selectedMessageIds.length === branchMessages.length && branchMessages.length > 0}
+              onChange={handleSelectAll}
+            >
+              全选 ({selectedMessageIds.length}/{branchMessages.length})
+            </Checkbox>
           </div>
-          <Tree
-            checkable
-            selectable={false}
-            checkedKeys={selectedMessageIds}
-            onCheck={(checked) => handleTreeCheck(checked as React.Key[])}
-            treeData={treeData}
-            height={300}
-            style={{ background: 'var(--ant-color-bg-container)' }}
-          />
+          <div className="free-select-list__content">
+            {groupedMessages.map((group, groupIndex) => (
+              <div key={group.topic?.id || `group-${groupIndex}`} className="free-select-group">
+                {group.topic && (
+                  <div className="free-select-group__header">
+                    <Checkbox
+                      indeterminate={
+                        group.messages.some((m) => selectedMessageIds.includes(m.id)) &&
+                        !group.messages.every((m) => selectedMessageIds.includes(m.id))
+                      }
+                      checked={group.messages.every((m) => selectedMessageIds.includes(m.id))}
+                      onChange={(e) => handleTopicSelectAll(group, e.target.checked)}
+                    />
+                    <FolderOutlined className="free-select-group__icon" />
+                    <span className="free-select-group__name">{group.topic.name}</span>
+                  </div>
+                )}
+                {group.messages.map((message) => {
+                  const preview =
+                    message.title ||
+                    message.content.slice(0, 40) + (message.content.length > 40 ? '...' : '')
+                  return (
+                    <div
+                      key={message.id}
+                      className={`free-select-item ${group.topic ? 'free-select-item--indented' : ''}`}
+                    >
+                      <Checkbox
+                        checked={selectedMessageIds.includes(message.id)}
+                        onChange={(e) => handleItemCheck(message.id, e.target.checked)}
+                      />
+                      <span className="free-select-item__icon">
+                        {message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
+                      </span>
+                      <span className="free-select-item__text">{preview}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -277,42 +383,4 @@ function getTopicMessageIds(
 
   collectDescendants(startMessageId)
   return result
-}
-
-/**
- * Build tree data for Ant Design Tree component
- */
-function buildMessageTree(messages: ChatMessage[]): DataNode[] {
-  const childrenMap = new Map<string | undefined, ChatMessage[]>()
-
-  // Group messages by parent
-  for (const message of messages) {
-    const parentId = message.parentMessageId
-    if (!childrenMap.has(parentId)) {
-      childrenMap.set(parentId, [])
-    }
-    childrenMap.get(parentId)!.push(message)
-  }
-
-  // Sort children by branchIndex
-  for (const children of childrenMap.values()) {
-    children.sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0))
-  }
-
-  // Build tree recursively
-  function buildNode(message: ChatMessage): DataNode {
-    const children = childrenMap.get(message.id) ?? []
-    const roleLabel = message.role === 'user' ? '👤' : message.role === 'assistant' ? '🤖' : '⚙️'
-    const preview = message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '')
-
-    return {
-      key: message.id,
-      title: `${roleLabel} ${message.title || preview}`,
-      children: children.length > 0 ? children.map(buildNode) : undefined
-    }
-  }
-
-  // Start from root messages (no parent)
-  const roots = childrenMap.get(undefined) ?? []
-  return roots.map(buildNode)
 }
