@@ -8,29 +8,34 @@ export interface Account {
   updatedAt?: number
 }
 
-// ==================== 通用树形结构类型 ====================
-
-// 通用配置文件夹
-export interface ConfigFolder {
-  type: 'folder'
+// ==================== 基础树形结构类型 ====================
+// 基础树元素属性
+export interface TreeItemBase {
+  type?: 'item' | 'folder'
   id: string
   name: string
   parentFolderId?: string
-  expanded?: boolean
   order?: number
   createdAt: number
   updatedAt?: number
 }
 
+export interface TreeFolderBase extends TreeItemBase {
+  type: 'folder'
+  expanded?: boolean
+}
+
+// ==================== 通用树形结构类型 ====================
+
 // 通用配置项基础属性
-export interface ConfigItemBase {
-  type?: string // 用于区分 item 和 folder，item 的 type 不是 'folder'
-  id: string
-  name: string
-  parentFolderId?: string
-  order?: number
-  createdAt: number
-  updatedAt?: number
+export interface ConfigItemBase extends TreeItemBase {
+  type: 'item'
+}
+
+// 通用配置文件夹
+export interface ConfigFolder extends TreeFolderBase {
+  type: 'folder'
+  expanded?: boolean
 }
 
 // 泛型树容器
@@ -75,25 +80,23 @@ export interface ChatMessage {
   parentMessageId?: string
   branchIndex?: number
 
-  modelId?: string
+  modelId?: string // LLM 模型ID
   modelConfigId?: string // 模型配置ID
-  starred?: boolean
+
+  starred?: boolean // 是否星标
+  collapsed?: boolean // 是否折叠
 
   hasError?: boolean // 标记消息生成时是否发生错误
   isStreaming?: boolean
-  collapsed?: boolean // 消息折叠状态
 
-  /** 消息标题 - AI 自动生成或用户手动设置 */
+  /** 自定义消息标题 */
   title?: string
 }
 
 // ==================== Topic 类型定义 ====================
 
-/** 独立的 Topic 实体 */
 export interface Topic {
-  /** Topic 唯一 ID */
   id: string
-  /** Topic 名称 */
   name: string
   /** 起始消息 ID */
   startMessageId: string
@@ -101,14 +104,12 @@ export interface Topic {
   endMessageId?: string
   /** 缩进层级 - 0 为顶级，1 为次级，依此类推 */
   indent: number
-  /** 是否折叠 */
   collapsed: boolean
 }
 
 export interface ChatSession {
   messages: ChatMessage[]
-  /** 独立存储的 Topic 列表 */
-  topics: Topic[]
+  topics: Topic[] // 独立存储的 Topic 列表
 
   rootMessageId?: string // 根消息ID
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
@@ -157,16 +158,7 @@ export interface OutlineNode {
   collapsed?: boolean
 }
 
-export interface PageFolder {
-  type: 'folder'
-  id: string
-  name: string
-  expanded?: boolean
-  createdAt: number
-  updatedAt?: number
-  order?: number // 添加排序字段
-  parentFolderId?: string // 支持嵌套文件夹
-}
+export interface PageFolder extends TreeFolderBase {}
 
 export interface Page<T> {
   type: 'page'
@@ -178,7 +170,6 @@ export interface Page<T> {
   updatedAt?: number
 
   order?: number // 添加排序字段
-  pinned?: boolean // 是否固定标签页
   starred?: boolean // 是否标记为星标
 
   data?: T
@@ -196,8 +187,7 @@ export interface Settings {
   modelConfigs: ConfigTree<ModelConfig>
   defaultModelConfigId?: string
 
-  // 自动检查更新
-  autoCheckUpdate?: boolean
+  autoCheckUpdate?: boolean // 自动检查更新
 }
 
 export interface SearchResult {
@@ -219,8 +209,8 @@ export interface SearchOptions {
 
 /** 全局搜索单条匹配结果 */
 export interface GlobalSearchMatch {
-  messageId: string
   pageId: string
+  messageId: string
   role: 'user' | 'assistant' | 'system'
   /** 匹配文本片段（含上下文） */
   snippet: string
@@ -236,8 +226,8 @@ export interface GlobalSearchMatch {
 
 /** 按消息分组的搜索结果 */
 export interface GlobalSearchMessageGroup {
-  messageId: string
   pageId: string
+  messageId: string
   role: 'user' | 'assistant' | 'system'
   /** 消息标题（如果有） */
   title?: string
@@ -278,180 +268,6 @@ export interface GlobalSearchOptions {
   folderIds?: string[]
 }
 
-// AI任务状态
-export type AITaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
-
-// AI任务类型
-export type AITaskType = 'chat' | 'retry' | 'edit_resend' | 'model_change'
-
-// AI任务信息
-export interface AITask {
-  id: string
-  requestId: string // AI服务的请求ID，用于中止请求
-  type: AITaskType
-  status: AITaskStatus
-  title: string // 任务标题
-  description?: string // 任务描述
-
-  // 关联信息
-  chatId?: string // 关联的聊天ID
-  messageId?: string // 关联的消息ID
-  modelId?: string // 使用的模型ID
-
-  // 时间信息
-  startTime: number
-  endTime?: number
-
-  // 进度信息
-  progress?: {
-    current: number
-    total: number
-    message?: string
-  }
-
-  // 错误信息
-  error?: string
-
-  // 任务特定的数据
-  context?: {
-    // 普通聊天上下文
-    chat?: {
-      messageContent?: string
-      parentMessageId?: string
-    }
-    // 重试上下文
-    retry?: {
-      originalMessageId: string
-    }
-    // 编辑重发上下文
-    editResend?: {
-      originalMessageId: string
-      newContent: string
-    }
-    // 模型切换上下文
-    modelChange?: {
-      originalMessageId: string
-      newModelId: string
-    }
-  }
-}
-
-// ==================== 收藏功能类型定义 ====================
-
-// 收藏项类型
-export type FavoriteItemType = 'chat' | 'message' | 'text-fragment'
-
-// 收藏项来源信息（用于溯源）
-export interface FavoriteSource {
-  type: 'chat' | 'message'
-  pageId?: string // 源页面 ID
-  messageId?: string // 源消息 ID
-  pageTitle?: string // 源页面标题（快照）
-  createdAt: number
-  updatedAt?: number
-}
-
-// 会话收藏项数据
-export interface ChatFavoriteData {
-  chatSnapshot: ChatSession // 完整的会话快照
-  thumbnailUrl?: string // 可选的缩略图
-}
-
-// 消息收藏项数据
-export interface MessageFavoriteData {
-  message: ChatMessage // 消息快照
-  contextMessages?: ChatMessage[] // 可选的上下文消息（前后各2条）
-  pageTitle: string // 所属页面标题
-}
-
-// 文本片段收藏项数据
-export interface TextFragmentFavoriteData {
-  text: string // 选中的文本内容
-  fullMessage: ChatMessage // 完整的消息快照
-  pageTitle: string // 所属页面标题
-}
-
-// 收藏项基础属性
-export interface FavoriteItemBase {
-  id: string
-  title: string // 收藏项标题
-  description?: string // 可选的描述
-  parentFolderId?: string // 所属文件夹 ID
-  createdAt: number // 收藏时间
-  updatedAt?: number // 最后更新时间
-  order?: number // 排序顺序
-  source?: FavoriteSource // 来源信息
-  starred?: boolean // 是否标记为星标
-  notes?: string // 用户笔记
-}
-
-// 对话收藏项
-export interface ChatFavoriteItem extends FavoriteItemBase {
-  type: 'chat'
-  data: ChatFavoriteData
-}
-
-// 消息收藏项
-export interface MessageFavoriteItem extends FavoriteItemBase {
-  type: 'message'
-  data: MessageFavoriteData
-}
-
-// 文本片段收藏项
-export interface TextFragmentFavoriteItem extends FavoriteItemBase {
-  type: 'text-fragment'
-  data: TextFragmentFavoriteData
-}
-
-// 收藏项联合类型 - 支持类型守卫
-export type FavoriteItem = ChatFavoriteItem | MessageFavoriteItem | TextFragmentFavoriteItem
-
-// 收藏文件夹
-export interface FavoriteFolder {
-  id: string
-  name: string
-  description?: string
-  parentFolderId?: string // 支持文件夹嵌套
-  expanded?: boolean // 是否展开
-  color?: string // 文件夹颜色
-  icon?: string // 自定义图标
-  createdAt: number
-  updatedAt?: number
-  order?: number
-}
-
-// ==================== 消息队列功能类型定义 ====================
-
-// 消息队列项状态
-export type MessageQueueItemStatus = 'pending' | 'processing' | 'completed' | 'failed'
-
-// 消息队列项类型
-export type MessageQueueItemType = 'normal' | 'ai-generated'
-
-// 消息队列项
-export interface MessageQueueItem {
-  id: string // 队列项唯一ID
-  content: string // 消息内容
-  attachments?: FileAttachment[] // 文件附件（可选）
-
-  type: MessageQueueItemType // 消息类型：normal（普通消息）、ai-generated（AI生成的追问）
-  modelId?: string // 指定的模型ID（可选）
-  status: MessageQueueItemStatus // 状态
-  createdAt: number // 创建时间
-  startedAt?: number // 开始处理时间
-  completedAt?: number // 完成时间
-  error?: string // 错误信息
-  order: number // 队列顺序
-}
-
-// 消息队列配置
-export interface MessageQueueConfig {
-  enabled: boolean // 是否启用队列
-  autoProcess: boolean // 是否自动处理队列（当前任务完成后自动处理下一个）
-  paused: boolean // 是否暂停队列处理
-  maxRetries: number // 最大重试次数
-}
-
 // ==================== Tab 类型定义 ====================
 
 // Tab 基础接口
@@ -474,37 +290,7 @@ export interface TabHistoryEntry {
 
 // ==================== 类型守卫函数 ====================
 
-// 配置类型守卫
-export function isLLMConfig(item: ConfigItemBase): item is LLMConfig {
-  return 'baseUrl' in item && 'apiKey' in item && 'modelName' in item
-}
-
-export function isModelConfig(item: ConfigItemBase): item is ModelConfig {
-  return 'systemPrompt' in item && 'topP' in item && 'temperature' in item
-}
-
 // 页面类型守卫
 export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
   return item.type === 'page'
-}
-
-export function isPageFolder(item: Page<unknown> | PageFolder): item is PageFolder {
-  return item.type === 'folder'
-}
-
-export function isConfigFolder(item: ConfigItemBase | ConfigFolder): item is ConfigFolder {
-  return 'type' in item && item.type === 'folder'
-}
-
-// 收藏类型守卫
-export function isChatFavoriteItem(item: FavoriteItem): item is ChatFavoriteItem {
-  return item.type === 'chat'
-}
-
-export function isMessageFavoriteItem(item: FavoriteItem): item is MessageFavoriteItem {
-  return item.type === 'message'
-}
-
-export function isTextFragmentFavoriteItem(item: FavoriteItem): item is TextFragmentFavoriteItem {
-  return item.type === 'text-fragment'
 }

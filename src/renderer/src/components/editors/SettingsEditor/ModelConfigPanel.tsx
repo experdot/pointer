@@ -50,7 +50,7 @@ Top P: ${config.topP}`
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={() =>
-          createConfig({ name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 })
+          createConfig({ type: 'item', name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 })
         }
         updateItem={updateConfig}
         deleteItem={deleteConfig}

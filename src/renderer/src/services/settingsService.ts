@@ -76,6 +76,7 @@ export function deleteLLMConfig(id: string): void {
 export function copyLLMConfig(config: LLMConfig): LLMConfig {
   return createLLMConfig(
     {
+      type: 'item',
       name: `${config.name} 副本`,
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
@@ -156,6 +157,7 @@ export function deleteModelConfig(id: string): void {
 export function copyModelConfig(config: ModelConfig): ModelConfig {
   return createModelConfig(
     {
+      type: 'item',
       name: `${config.name} 副本`,
       systemPrompt: config.systemPrompt,
       topP: config.topP,

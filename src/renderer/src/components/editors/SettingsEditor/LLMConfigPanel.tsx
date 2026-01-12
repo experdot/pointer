@@ -89,7 +89,7 @@ API Key: ${config.apiKey}
         itemNameKey="name"
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        createItem={() => createConfig({ name: '新配置', baseUrl: '', apiKey: '', modelName: '' })}
+        createItem={() => createConfig({ type: 'item', name: '新配置', baseUrl: '', apiKey: '', modelName: '' })}
         updateItem={updateConfig}
         deleteItem={deleteConfig}
         copyItem={copyConfig}

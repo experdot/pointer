@@ -21,8 +21,13 @@ import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import type { ChatPage, PageFolder } from '../../types/type'
-import { isPage } from '../../types/type'
+import { Page } from '../../types/type'
 import './Explorer.css'
+
+// 页面类型守卫
+export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
+  return item.type === 'page'
+}
 
 export function Explorer(): React.JSX.Element {
   const {
