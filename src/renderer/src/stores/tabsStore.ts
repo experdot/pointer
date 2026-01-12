@@ -234,7 +234,9 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
 
   togglePinTab: (tabId) => {
     const state = get()
-    const tabs = state.tabs.map((t) => (t.id === tabId ? { ...t, pinned: !t.pinned } : t))
+    const tabs = state.tabs.map((t) =>
+      t.id === tabId ? { ...t, pinned: !t.pinned, preview: t.pinned ? t.preview : false } : t
+    )
     const pinnedTabs = tabs.filter((t) => t.pinned)
     const unpinnedTabs = tabs.filter((t) => !t.pinned)
     const newTabs = [...pinnedTabs, ...unpinnedTabs]
