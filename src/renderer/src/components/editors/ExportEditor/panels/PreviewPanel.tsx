@@ -4,7 +4,6 @@ import type { MenuProps } from 'antd'
 import {
   EyeOutlined,
   EditOutlined,
-  ReloadOutlined,
   FileTextOutlined,
   DownloadOutlined,
   CopyOutlined,
@@ -37,7 +36,6 @@ export function PreviewPanel(): React.JSX.Element {
     isDirty,
     isGenerating,
     error,
-    generatePreview,
     updatePreviewOptions,
     enterEditMode,
     exitEditMode,
@@ -64,10 +62,6 @@ export function PreviewPanel(): React.JSX.Element {
     } else {
       exitEditMode()
     }
-  }
-
-  const handleRefresh = (): void => {
-    generatePreview()
   }
 
   // Export action handlers
@@ -146,6 +140,12 @@ export function PreviewPanel(): React.JSX.Element {
   const hasPreview = previewResult !== null
   const canExport = hasPreview
 
+  // Build effective result for preview (use edited content if dirty)
+  const effectiveResult =
+    hasPreview && isDirty && editedContent !== null
+      ? { ...previewResult, content: editedContent }
+      : previewResult
+
   return (
     <>
       {/* Header */}
@@ -165,14 +165,6 @@ export function PreviewPanel(): React.JSX.Element {
           )}
         </div>
         <div className="preview-panel__header-right">
-          <Button
-            type="text"
-            icon={<ReloadOutlined />}
-            onClick={handleRefresh}
-            disabled={!hasSource || isGenerating}
-          >
-            刷新预览
-          </Button>
           <Dropdown menu={{ items: exportMenuItems }} disabled={!canExport}>
             <Button type="primary" disabled={!canExport}>
               <DownloadOutlined /> 导出 <DownOutlined />
@@ -196,7 +188,6 @@ export function PreviewPanel(): React.JSX.Element {
           <div className="preview-panel__error">
             <span>生成预览时出错</span>
             <span style={{ fontSize: 14 }}>{error}</span>
-            <Button onClick={handleRefresh}>重试</Button>
           </div>
         )}
 
@@ -204,12 +195,7 @@ export function PreviewPanel(): React.JSX.Element {
         {!isGenerating && !error && !hasPreview && (
           <div className="preview-panel__empty">
             <FileTextOutlined style={{ fontSize: 48, opacity: 0.3 }} />
-            <span>{hasSource ? '点击"生成预览"按钮查看结果' : '请先选择数据源'}</span>
-            {hasSource && (
-              <Button type="primary" onClick={handleRefresh}>
-                生成预览
-              </Button>
-            )}
+            <span>{hasSource ? '请在左侧点击"生成预览"按钮' : '请先选择数据源'}</span>
           </div>
         )}
 
@@ -235,7 +221,7 @@ export function PreviewPanel(): React.JSX.Element {
             <>
               {previewOptions.mode === 'view' && PreviewerComponent && (
                 <PreviewerComponent
-                  result={previewResult}
+                  result={effectiveResult!}
                   options={previewOptions}
                   onEditRequest={() => handleModeChange('edit')}
                 />

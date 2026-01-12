@@ -52,6 +52,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
 
   // Loading state
   isGenerating: false,
+  isPreviewStale: true,
   error: null,
 
   // ==================== Source Actions ====================
@@ -78,6 +79,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
   setSourceData: (data: SourceData) => {
     set({
       sourceData: data,
+      isPreviewStale: true,
       error: null
     })
   },
@@ -101,6 +103,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
       },
       previewResult: null,
       editedContent: isDirty ? get().editedContent : null,
+      isPreviewStale: true,
       error: null
     })
   },
@@ -110,7 +113,8 @@ export const useExportStore = create<ExportStore>((set, get) => ({
       exportOptions: {
         ...get().exportOptions,
         ...options
-      }
+      },
+      isPreviewStale: true
     })
   },
 
@@ -151,7 +155,8 @@ export const useExportStore = create<ExportStore>((set, get) => ({
         previewResult: result,
         editedContent: null,
         isDirty: false,
-        isGenerating: false
+        isGenerating: false,
+        isPreviewStale: false
       })
     } catch (error) {
       set({
@@ -293,6 +298,7 @@ export const useExportStore = create<ExportStore>((set, get) => ({
       isDirty: false,
       isEditing: false,
       isGenerating: false,
+      isPreviewStale: true,
       error: null
     })
   }

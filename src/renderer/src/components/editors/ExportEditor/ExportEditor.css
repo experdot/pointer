@@ -54,6 +54,12 @@
   padding: 12px 16px;
 }
 
+.export-sidebar__footer {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ant-color-border);
+}
+
 /* Sidebar section */
 .sidebar__section {
   margin-bottom: 16px;

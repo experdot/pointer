@@ -247,6 +247,7 @@ export interface ExportState {
 
   // Loading state
   isGenerating: boolean
+  isPreviewStale: boolean // Whether preview needs regeneration due to option changes
   error: string | null
 }
 

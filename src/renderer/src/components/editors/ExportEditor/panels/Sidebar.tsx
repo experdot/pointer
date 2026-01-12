@@ -1,4 +1,4 @@
-import { Checkbox, Select, Modal } from 'antd'
+import { Button, Checkbox, Select, Modal } from 'antd'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import { FORMAT_SUPPORT, type SourceType, type FormatType } from '../../../../features/export/types'
@@ -49,6 +49,8 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
     exportOptions,
     previewOptions,
     isDirty,
+    isGenerating,
+    isPreviewStale,
     setSourceType,
     setSourceData,
     setFormatType,
@@ -99,6 +101,16 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
   const handleWidthChange = (width: number): void => {
     updatePreviewOptions({ width })
   }
+
+  const handleGeneratePreview = (): void => {
+    generatePreview()
+  }
+
+  // Button should be disabled when:
+  // 1. No source data
+  // 2. Preview is generating
+  // 3. Preview is not stale (already up to date)
+  const isGenerateDisabled = !sourceData || isGenerating || !isPreviewStale
 
   return (
     <div className="export-sidebar">
@@ -211,6 +223,17 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
             </div>
           </div>
         )}
+      </div>
+      <div className="export-sidebar__footer">
+        <Button
+          type="primary"
+          block
+          loading={isGenerating}
+          disabled={isGenerateDisabled}
+          onClick={handleGeneratePreview}
+        >
+          生成预览
+        </Button>
       </div>
     </div>
   )
