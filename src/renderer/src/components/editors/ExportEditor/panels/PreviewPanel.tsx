@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { App, Button, Spin, Segmented, Dropdown } from 'antd'
+import { App, Button, Spin, Segmented, Dropdown, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   EyeOutlined,
@@ -8,11 +8,32 @@ import {
   DownloadOutlined,
   CopyOutlined,
   PictureOutlined,
-  DownOutlined
+  DownOutlined,
+  MobileOutlined,
+  TabletOutlined,
+  DesktopOutlined,
+  ColumnWidthOutlined
 } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import type { PreviewMode } from '../../../../features/export/types'
+
+// Preview width presets
+type DeviceType = 'mobile' | 'tablet' | 'desktop' | 'auto'
+
+const DEVICE_WIDTHS: Record<DeviceType, number> = {
+  mobile: 375,
+  tablet: 768,
+  desktop: 1024,
+  auto: 0
+}
+
+const DEVICE_OPTIONS = [
+  { value: 'mobile', icon: <MobileOutlined />, title: '手机 (375px)' },
+  { value: 'tablet', icon: <TabletOutlined />, title: '平板 (768px)' },
+  { value: 'desktop', icon: <DesktopOutlined />, title: '电脑 (1024px)' },
+  { value: 'auto', icon: <ColumnWidthOutlined />, title: '自适应' }
+]
 
 /**
  * PreviewPanel - Middle panel for preview and editing
@@ -62,6 +83,19 @@ export function PreviewPanel(): React.JSX.Element {
     } else {
       exitEditMode()
     }
+  }
+
+  // Get current device type from width
+  const getCurrentDevice = (): DeviceType => {
+    const width = previewOptions.width
+    for (const [device, deviceWidth] of Object.entries(DEVICE_WIDTHS)) {
+      if (width === deviceWidth) return device as DeviceType
+    }
+    return 'auto'
+  }
+
+  const handleDeviceChange = (device: DeviceType): void => {
+    updatePreviewOptions({ width: DEVICE_WIDTHS[device] })
   }
 
   // Export action handlers
@@ -165,6 +199,18 @@ export function PreviewPanel(): React.JSX.Element {
           )}
         </div>
         <div className="preview-panel__header-right">
+          {/* Device width selector - only show in view mode */}
+          {previewOptions.mode === 'view' && (
+            <Segmented
+              size="small"
+              value={getCurrentDevice()}
+              onChange={(value) => handleDeviceChange(value as DeviceType)}
+              options={DEVICE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                icon: <Tooltip title={opt.title}>{opt.icon}</Tooltip>
+              }))}
+            />
+          )}
           <Dropdown menu={{ items: exportMenuItems }} disabled={!canExport}>
             <Button type="primary" disabled={!canExport}>
               <DownloadOutlined /> 导出 <DownOutlined />
@@ -211,10 +257,7 @@ export function PreviewPanel(): React.JSX.Element {
                 : previewOptions.width > 0
                   ? previewOptions.width
                   : '100%',
-            maxWidth: '100%',
-            margin: '0 auto',
-            background: '#fff',
-            minHeight: 200
+            height: previewOptions.mode === 'edit' || formatType === 'html' ? '100%' : undefined
           }}
         >
           {hasPreview && (

@@ -2,6 +2,8 @@ import { MessageOutlined } from '@ant-design/icons'
 import type { SourcePlugin, MessagesSourceData, ExtractedContent, ExportOptions } from '../../types'
 import { MessagesSourceSelector } from '../../../../components/editors/ExportEditor/sources/MessagesSource'
 import { useMessagesStore } from '../../../../stores/messagesStore'
+import { useSettingsStore } from '../../../../stores/settingsStore'
+import type { LLMConfig, ModelConfig, Topic } from '../../../../types/type'
 
 /**
  * Messages Source Plugin
@@ -25,6 +27,11 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
     // Load messages from store
     const record = await useMessagesStore.getState().load(pageId)
     const { messages, topics, leafMessageId } = record
+
+    // Get LLM configs for model name lookup
+    const settings = useSettingsStore.getState().settings
+    const llmConfigs = settings.llmConfigs.items
+    const modelConfigs = settings.modelConfigs.items
 
     // Filter messages based on selection mode
     let filteredMessages = messages
@@ -60,7 +67,7 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
     filteredMessages = sortMessagesByTreeOrder(filteredMessages, messages)
 
     // Generate raw content (markdown format as base)
-    const rawContent = generateMessagesMarkdown(filteredMessages, options)
+    const rawContent = generateMessagesMarkdown(filteredMessages, options, llmConfigs, modelConfigs, topics)
 
     return {
       contentType: 'messages',
@@ -191,10 +198,48 @@ function sortMessagesByTreeOrder(
  */
 function generateMessagesMarkdown(
   messages: import('../../../../types/type').ChatMessage[],
-  options: ExportOptions
+  options: ExportOptions,
+  llmConfigs: LLMConfig[],
+  modelConfigs: ModelConfig[],
+  topics: Topic[]
 ): string {
   const { metadata } = options
   const lines: string[] = []
+
+  // Build maps for quick name lookup
+  const modelNameMap = new Map(llmConfigs.map((config) => [config.id, config.modelName]))
+  const modelConfigNameMap = new Map(modelConfigs.map((config) => [config.id, config.name]))
+
+  // Add topics outline if enabled
+  if (metadata?.showTopicsOutline && topics.length > 0) {
+    lines.push('# 目录')
+    lines.push('')
+
+    // Build a set of all topic start message IDs for boundary detection
+    const topicStartIds = new Set(topics.map((t) => t.startMessageId))
+
+    for (const topic of topics) {
+      const topicIndent = '  '.repeat(topic.indent)
+      lines.push(`${topicIndent}- **${topic.name}**`)
+
+      // Find messages directly within this topic (excluding sub-topics)
+      const topicMessages = getDirectTopicMessages(
+        messages,
+        topic.startMessageId,
+        topic.endMessageId,
+        topicStartIds
+      )
+      for (const msg of topicMessages) {
+        if (msg.title) {
+          const msgIndent = '  '.repeat(topic.indent + 1)
+          lines.push(`${msgIndent}- ${msg.title}`)
+        }
+      }
+    }
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+  }
 
   for (const message of messages) {
     // Role header
@@ -206,12 +251,19 @@ function generateMessagesMarkdown(
     // Add timestamp if enabled
     if (metadata?.showTimestamp && message.createdAt) {
       const date = new Date(message.createdAt)
-      header += ` (${date.toLocaleString()})`
+      header += ` \`${date.toLocaleString()}\``
     }
 
     // Add model name if enabled
     if (metadata?.showModelName && message.modelId) {
-      header += ` [${message.modelId}]`
+      const modelName = modelNameMap.get(message.modelId) || message.modelId
+      header += ` \`${modelName}\``
+    }
+
+    // Add model config name if enabled
+    if (metadata?.showModelConfig && message.modelConfigId) {
+      const configName = modelConfigNameMap.get(message.modelConfigId) || message.modelConfigId
+      header += ` \`${configName}\``
     }
 
     lines.push(header)
@@ -242,4 +294,45 @@ function generateMessagesMarkdown(
   }
 
   return lines.join('\n')
+}
+
+/**
+ * Get messages directly within a topic (excluding messages that belong to sub-topics)
+ */
+function getDirectTopicMessages(
+  messages: import('../../../../types/type').ChatMessage[],
+  startMessageId: string,
+  endMessageId: string | undefined,
+  allTopicStartIds: Set<string>
+): import('../../../../types/type').ChatMessage[] {
+  const messageMap = new Map(messages.map((m) => [m.id, m]))
+  const result: import('../../../../types/type').ChatMessage[] = []
+  const visited = new Set<string>()
+
+  function collect(id: string): void {
+    if (visited.has(id)) return
+    visited.add(id)
+
+    const msg = messageMap.get(id)
+    if (!msg) return
+
+    result.push(msg)
+
+    // Stop at end message
+    if (endMessageId && id === endMessageId) return
+
+    // Find children, but skip if child is another topic's start
+    for (const m of messages) {
+      if (m.parentMessageId === id) {
+        // Skip if this child is the start of another topic
+        if (allTopicStartIds.has(m.id) && m.id !== startMessageId) {
+          continue
+        }
+        collect(m.id)
+      }
+    }
+  }
+
+  collect(startMessageId)
+  return result
 }

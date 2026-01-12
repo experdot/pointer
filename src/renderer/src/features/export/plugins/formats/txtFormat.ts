@@ -1,4 +1,5 @@
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
+import { useSettingsStore } from '../../../../stores/settingsStore'
 
 /**
  * TXT Format Plugin
@@ -54,7 +55,7 @@ export const txtFormatPlugin: FormatPlugin = {
  * Convert messages to plain text format
  */
 function convertMessagesToText(content: ExtractedContent, options: ExportOptions): string {
-  const { messages } = content
+  const { messages, topics } = content
   if (!messages || messages.length === 0) {
     return content.rawContent
   }
@@ -62,9 +63,47 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
   const { metadata } = options
   const lines: string[] = []
 
+  // Build model name map for lookup
+  const settings = useSettingsStore.getState().settings
+  const llmConfigs = settings.llmConfigs.items
+  const modelConfigs = settings.modelConfigs.items
+  const modelNameMap = new Map(llmConfigs.map((config) => [config.id, config.modelName]))
+  const modelConfigNameMap = new Map(modelConfigs.map((config) => [config.id, config.name]))
+
+  // Add topics outline if enabled
+  if (metadata?.showTopicsOutline && topics && topics.length > 0) {
+    lines.push('目录')
+    lines.push('='.repeat(50))
+    lines.push('')
+
+    const topicStartIds = new Set(topics.map((t) => t.startMessageId))
+
+    for (const topic of topics) {
+      const indent = '  '.repeat(topic.indent)
+      lines.push(`${indent}* ${topic.name}`)
+
+      // Find messages directly within this topic
+      const topicMessages = getDirectTopicMessages(
+        messages,
+        topic.startMessageId,
+        topic.endMessageId,
+        topicStartIds
+      )
+      for (const msg of topicMessages) {
+        if (msg.title) {
+          const msgIndent = '  '.repeat(topic.indent + 1)
+          lines.push(`${msgIndent}- ${msg.title}`)
+        }
+      }
+    }
+    lines.push('')
+    lines.push('='.repeat(50))
+    lines.push('')
+  }
+
   for (const message of messages) {
     const roleLabel =
-      message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
+      message.role === 'user' ? '用户' : message.role === 'assistant' ? '助手' : '系统'
 
     // Build header
     let header = `[${roleLabel}]`
@@ -75,23 +114,29 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
     }
 
     if (metadata?.showModelName && message.modelId) {
-      header += ` (${message.modelId})`
+      const modelName = modelNameMap.get(message.modelId) || message.modelId
+      header += ` (${modelName})`
+    }
+
+    if (metadata?.showModelConfig && message.modelConfigId) {
+      const configName = modelConfigNameMap.get(message.modelConfigId) || message.modelConfigId
+      header += ` [${configName}]`
     }
 
     lines.push(header)
 
     // Add title if enabled
     if (metadata?.showMessageTitle && message.title) {
-      lines.push(`Title: ${message.title}`)
+      lines.push(`标题：${message.title}`)
     }
 
     lines.push('')
 
     // Add reasoning content if enabled
     if (metadata?.showReasoningContent && message.reasoning_content) {
-      lines.push('--- Reasoning ---')
+      lines.push('--- 思考过程 > 开始 ---')
       lines.push(message.reasoning_content)
-      lines.push('--- End Reasoning ---')
+      lines.push('--- 思考过程 > 结束---')
       lines.push('')
     }
 
@@ -103,6 +148,44 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
   }
 
   return lines.join('\n')
+}
+
+/**
+ * Get messages directly within a topic (excluding sub-topics)
+ */
+function getDirectTopicMessages(
+  messages: import('../../../../types/type').ChatMessage[],
+  startMessageId: string,
+  endMessageId: string | undefined,
+  allTopicStartIds: Set<string>
+): import('../../../../types/type').ChatMessage[] {
+  const messageMap = new Map(messages.map((m) => [m.id, m]))
+  const result: import('../../../../types/type').ChatMessage[] = []
+  const visited = new Set<string>()
+
+  function collect(id: string): void {
+    if (visited.has(id)) return
+    visited.add(id)
+
+    const msg = messageMap.get(id)
+    if (!msg) return
+
+    result.push(msg)
+
+    if (endMessageId && id === endMessageId) return
+
+    for (const m of messages) {
+      if (m.parentMessageId === id) {
+        if (allTopicStartIds.has(m.id) && m.id !== startMessageId) {
+          continue
+        }
+        collect(m.id)
+      }
+    }
+  }
+
+  collect(startMessageId)
+  return result
 }
 
 /**

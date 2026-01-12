@@ -69,7 +69,6 @@ export const FORMAT_SUPPORT: Record<SourceType, FormatType[]> = {
 // ==================== Export Options ====================
 
 export interface MessageMetadataOptions {
-  showAvatar: boolean
   showTimestamp: boolean
   showModelName: boolean
   showModelConfig: boolean
@@ -79,7 +78,6 @@ export interface MessageMetadataOptions {
 }
 
 export const DEFAULT_METADATA_OPTIONS: MessageMetadataOptions = {
-  showAvatar: false,
   showTimestamp: true,
   showModelName: false,
   showModelConfig: false,

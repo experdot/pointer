@@ -23,23 +23,13 @@ const FORMAT_OPTIONS: { value: FormatType; label: string }[] = [
   { value: 'csv', label: 'CSV' }
 ]
 
-// Preview width options
-const PREVIEW_WIDTH_OPTIONS = [
-  { label: '600px', value: 600 },
-  { label: '800px', value: 800 },
-  { label: '1000px', value: 1000 },
-  { label: '1200px', value: 1200 },
-  { label: '自适应', value: 0 }
-]
-
 /**
  * Sidebar - Combined sidebar for export options
  *
  * Sections:
  * 1. Source - type selection + messages options
  * 2. Format - export format selection
- * 3. Preview - preview width
- * 4. Metadata - metadata options (messages only)
+ * 3. Metadata - metadata options (messages only)
  */
 export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
   const {
@@ -47,7 +37,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
     sourceData,
     formatType,
     exportOptions,
-    previewOptions,
     isDirty,
     isGenerating,
     isPreviewStale,
@@ -55,7 +44,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
     setSourceData,
     setFormatType,
     updateExportOptions,
-    updatePreviewOptions,
     confirmOverwrite,
     generatePreview
   } = useExportStore()
@@ -96,10 +84,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
         [key]: value
       }
     })
-  }
-
-  const handleWidthChange = (width: number): void => {
-    updatePreviewOptions({ width })
   }
 
   const handleGeneratePreview = (): void => {
@@ -155,22 +139,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
           </div>
         </div>
 
-        {/* Preview section */}
-        <div className="sidebar__section">
-          <div className="sidebar__section-title">预览设置</div>
-          <div className="sidebar__section-content">
-            <div className="sidebar__option-row">
-              <div className="sidebar__option-label">预览宽度</div>
-              <Select
-                value={previewOptions.width}
-                onChange={handleWidthChange}
-                options={PREVIEW_WIDTH_OPTIONS}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Metadata section - only for messages source */}
         {sourceType === 'messages' && (
           <div className="sidebar__section">
@@ -182,12 +150,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
                   onChange={(e) => handleMetadataChange('showTimestamp', e.target.checked)}
                 >
                   显示时间戳
-                </Checkbox>
-                <Checkbox
-                  checked={exportOptions.metadata.showMessageTitle}
-                  onChange={(e) => handleMetadataChange('showMessageTitle', e.target.checked)}
-                >
-                  显示消息标题
                 </Checkbox>
                 <Checkbox
                   checked={exportOptions.metadata.showModelName}
@@ -202,6 +164,12 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
                   显示模型配置
                 </Checkbox>
                 <Checkbox
+                  checked={exportOptions.metadata.showMessageTitle}
+                  onChange={(e) => handleMetadataChange('showMessageTitle', e.target.checked)}
+                >
+                  显示消息标题
+                </Checkbox>
+                <Checkbox
                   checked={exportOptions.metadata.showTopicsOutline}
                   onChange={(e) => handleMetadataChange('showTopicsOutline', e.target.checked)}
                 >
@@ -212,12 +180,6 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
                   onChange={(e) => handleMetadataChange('showReasoningContent', e.target.checked)}
                 >
                   显示推理过程
-                </Checkbox>
-                <Checkbox
-                  checked={exportOptions.metadata.showAvatar}
-                  onChange={(e) => handleMetadataChange('showAvatar', e.target.checked)}
-                >
-                  显示头像
                 </Checkbox>
               </div>
             </div>

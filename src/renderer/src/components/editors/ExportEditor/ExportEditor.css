@@ -83,18 +83,6 @@
   margin-top: 4px;
 }
 
-/* Option row */
-.sidebar__option-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sidebar__option-label {
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-}
-
 /* Metadata checkboxes */
 .sidebar__metadata {
   display: flex;
@@ -163,5 +151,7 @@
 }
 
 .preview-panel__container {
-  height: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #fff;
 }

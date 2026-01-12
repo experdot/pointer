@@ -1,4 +1,5 @@
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
+import { useSettingsStore } from '../../../../stores/settingsStore'
 
 /**
  * HTML Format Plugin
@@ -128,6 +129,10 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
   const { metadata } = options
   const parts: string[] = []
 
+  // Build model name map for lookup
+  const llmConfigs = useSettingsStore.getState().settings.llmConfigs.items
+  const modelNameMap = new Map(llmConfigs.map((config) => [config.id, config.modelName]))
+
   for (const message of messages) {
     const roleLabel =
       message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
@@ -143,7 +148,8 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
       msgHtml += ` <span style="font-weight: normal; color: #666; font-size: 0.9em;">${date.toLocaleString()}</span>`
     }
     if (metadata?.showModelName && message.modelId) {
-      msgHtml += ` <span style="font-weight: normal; color: #888; font-size: 0.9em;">(${escapeHtml(message.modelId)})</span>`
+      const modelName = modelNameMap.get(message.modelId) || message.modelId
+      msgHtml += ` <span style="font-weight: normal; color: #888; font-size: 0.9em;">(${escapeHtml(modelName)})</span>`
     }
     msgHtml += '</div>'
 
