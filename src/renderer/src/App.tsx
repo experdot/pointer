@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react'
 import { ConfigProvider, theme, App as AntdApp, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import './App.css'
-import './tabTypes' // 注册 tab 类型
-import { initializeExportPlugins } from './features/export' // 注册导出插件
+import { initializeTabTypes } from './utils/tabTypeRegistrations'
+import { initializeExportPlugins } from './features/export'
 import UpdateNotification from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { MainLayout } from './components/layout/MainLayout'
 import { useAccountStore } from './stores/accountStore'
 import { initializeAccountSystem } from './services/accountService'
 
-// Initialize export plugins
+// Initialize plugins
+initializeTabTypes()
 initializeExportPlugins()
 
 function AppContent(): React.JSX.Element {
