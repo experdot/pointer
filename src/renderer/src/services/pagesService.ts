@@ -65,13 +65,13 @@ async function prepareInsertPosition(afterItemId?: string): Promise<{
 }
 
 // 创建新页面
-export async function createPage(title?: string, afterItemId?: string): Promise<PageRecord> {
+export async function createPage(name?: string, afterItemId?: string): Promise<PageRecord> {
   const { parentFolderId, order } = await prepareInsertPosition(afterItemId)
 
   const page: PageRecord = {
-    type: 'page',
+    type: 'item',
     id: uuidv4(),
-    title: title || '新对话',
+    name: name || '新对话',
     parentFolderId,
     createdAt: Date.now(),
     order
@@ -86,11 +86,11 @@ export async function updatePage(id: string, updates: Partial<PageRecord>): Prom
   await usePagesStore.getState().updatePage(id, updates)
 
   // 同步更新标签页标题
-  if (updates.title) {
+  if (updates.name) {
     const tabsStore = useTabsStore.getState()
     const tab = tabsStore.tabs.find((t) => t.dataId === id)
     if (tab) {
-      tabsStore.updateTabTitle(tab.id, updates.title)
+      tabsStore.updateTabTitle(tab.id, updates.name)
     }
   }
 }
@@ -256,7 +256,7 @@ export async function openPage(pageId: string, preview = false): Promise<void> {
       {
         id: uuidv4(),
         type: 'chat',
-        title: page.title,
+        title: page.name,
         dataId: pageId
       },
       preview

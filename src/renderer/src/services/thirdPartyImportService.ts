@@ -97,8 +97,8 @@ function prepareConversation(
     return {
       page: {
         id: pageId,
-        type: 'page',
-        title: conv.title,
+        type: 'item',
+        name: conv.title,
         parentFolderId: platformFolders.get(conv.platform),
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt

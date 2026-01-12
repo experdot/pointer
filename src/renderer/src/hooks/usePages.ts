@@ -42,7 +42,7 @@ export function usePages(): {
     const pagesArr: ChatPage[] = []
     const foldersArr: PageFolder[] = []
     for (const item of rootItems) {
-      if (item.type === 'page') pagesArr.push(item)
+      if (item.type === 'item') pagesArr.push(item)
       else foldersArr.push(item)
     }
     return { rootPages: pagesArr, rootFolders: foldersArr }
@@ -65,7 +65,7 @@ export function usePages(): {
       const folderUpdates: Array<{ id: string; updates: Partial<PageFolder> }> = []
 
       items.forEach((item, index) => {
-        if (item.type === 'page') {
+        if (item.type === 'item') {
           pageUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
         } else {
           folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })

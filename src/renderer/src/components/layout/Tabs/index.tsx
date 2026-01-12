@@ -194,7 +194,7 @@ export function Tabs(): React.JSX.Element {
       if (tab?.title) return tab.title
       if (entry.dataId) {
         const page = pages.find((p) => p.id === entry.dataId)
-        if (page?.title) return page.title
+        if (page?.name) return page.name
       }
       return '未知页面'
     }

@@ -269,7 +269,7 @@ export async function performGlobalSearch(
 
       groups.push({
         pageId: page.id,
-        pageTitle: page.title,
+        pageTitle: page.name,
         createdAt: page.createdAt,
         folderPath: getFolderPath(page.parentFolderId, folders),
         messageGroups,

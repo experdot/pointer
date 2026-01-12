@@ -11,7 +11,7 @@ export interface Account {
 // ==================== 基础树形结构类型 ====================
 // 基础树元素属性
 export interface TreeItemBase {
-  type?: 'item' | 'folder'
+  type: 'item' | 'folder'
   id: string
   name: string
   parentFolderId?: string
@@ -32,11 +32,8 @@ export interface ConfigItemBase extends TreeItemBase {
   type: 'item'
 }
 
-// 通用配置文件夹
-export interface ConfigFolder extends TreeFolderBase {
-  type: 'folder'
-  expanded?: boolean
-}
+// 通用配置文件夹（继承自 TreeFolderBase，无需重复声明属性）
+export type ConfigFolder = TreeFolderBase
 
 // 泛型树容器
 export interface ConfigTree<T extends ConfigItemBase> {
@@ -92,8 +89,6 @@ export interface ChatMessage {
   /** 自定义消息标题 */
   title?: string
 }
-
-// ==================== Topic 类型定义 ====================
 
 export interface Topic {
   id: string
@@ -158,25 +153,17 @@ export interface OutlineNode {
   collapsed?: boolean
 }
 
-export interface PageFolder extends TreeFolderBase {}
+// PageFolder 是 TreeFolderBase 的别名
+export type PageFolder = TreeFolderBase
 
-export interface Page<T> {
-  type: 'page'
-  id: string
-  title: string
-
-  parentFolderId?: string // 支持嵌套文件夹
-  createdAt: number
-  updatedAt?: number
-
-  order?: number // 添加排序字段
-  starred?: boolean // 是否标记为星标
-
+// Page 类型（继承 TreeItemBase）
+export interface Page<T> extends TreeItemBase {
+  type: 'item'
+  starred?: boolean
   data?: T
 }
 
 export type ChatPage = Page<ChatSession>
-export type SettingsPage = Page<Settings>
 
 export interface Settings {
   fontSize: 'small' | 'medium' | 'large'
@@ -286,11 +273,4 @@ export interface TabHistoryEntry {
   tabId: string
   type: string
   dataId?: string
-}
-
-// ==================== 类型守卫函数 ====================
-
-// 页面类型守卫
-export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
-  return item.type === 'page'
 }

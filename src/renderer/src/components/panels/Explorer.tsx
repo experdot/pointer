@@ -24,9 +24,9 @@ import type { ChatPage, PageFolder } from '../../types/type'
 import { Page } from '../../types/type'
 import './Explorer.css'
 
-// 页面类型守卫
+// 页面类型守卫（通过 type 属性区分 Page 和 PageFolder）
 export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
-  return item.type === 'page'
+  return item.type === 'item'
 }
 
 export function Explorer(): React.JSX.Element {
@@ -136,7 +136,7 @@ export function Explorer(): React.JSX.Element {
 
       const result = await generateSessionTitleWithOptions(pageMessages, options)
       if (result.success && result.title) {
-        await updatePage(pageId, { title: result.title })
+        await updatePage(pageId, { name: result.title })
       }
     },
     [messagesCache, updatePage]
@@ -247,10 +247,10 @@ export function Explorer(): React.JSX.Element {
         selectedId={selectedKey}
         onSelect={handleSelect}
         itemIcon={<MessageOutlined />}
-        getItemName={(page) => page.title}
+        getItemName={(page) => page.name}
         isItem={(item): item is ChatPage => isPage(item as ChatPage | PageFolder)}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        updateItem={(id, name) => updatePage(id, { title: name })}
+        updateItem={(id, name) => updatePage(id, { name })}
         deleteItem={deletePage}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}

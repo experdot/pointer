@@ -38,7 +38,7 @@ registerTabType({
     return {
       id: uuidv4(),
       type: 'chat',
-      title: page.title,
+      title: page.name,
       dataId
     }
   }

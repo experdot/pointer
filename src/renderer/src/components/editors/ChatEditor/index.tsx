@@ -221,7 +221,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onGenerate={async (options) => {
           const result = await generateSessionTitleWithOptions(currentPath, options)
           if (result.success && result.title) {
-            await updatePage(page.id, { title: result.title })
+            await updatePage(page.id, { name: result.title })
           }
         }}
       />

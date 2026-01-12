@@ -73,7 +73,7 @@ function buildPagesTree(pages: PageRecord[], folders: PageFolder[]): TreeDataNod
     const parentId = page.parentFolderId
     const pageNode: TreeDataNode = {
       key: `page:${page.id}`,
-      title: page.title || '未命名对话',
+      title: page.name || '未命名对话',
       icon: <FileTextOutlined />,
       isLeaf: true
     }

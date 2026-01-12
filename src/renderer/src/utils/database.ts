@@ -210,8 +210,8 @@ let dbInstance: IDBDatabase | null = null
 // 页面记录（不含消息）
 export interface PageRecord {
   id: string
-  type: 'page'
-  title: string
+  type: 'item'
+  name: string
   parentFolderId?: string
   order?: number
   pinned?: boolean

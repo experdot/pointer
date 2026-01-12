@@ -13,16 +13,16 @@ interface HeaderProps {
 
 export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(page.title)
+  const [editValue, setEditValue] = useState(page.name)
   const [popoverOpen, setPopoverOpen] = useState(false)
   const inputRef = useRef<InputRef>(null)
 
-  // 同步外部 title 变化
+  // 同步外部 name 变化
   useEffect(() => {
     if (!isEditing) {
-      setEditValue(page.title)
+      setEditValue(page.name)
     }
-  }, [page.title, isEditing])
+  }, [page.name, isEditing])
 
   // 进入编辑模式时聚焦输入框
   useEffect(() => {
@@ -33,22 +33,22 @@ export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
   }, [isEditing])
 
   const handleEdit = useCallback(() => {
-    setEditValue(page.title)
+    setEditValue(page.name)
     setIsEditing(true)
-  }, [page.title])
+  }, [page.name])
 
   const handleSave = useCallback(async () => {
     const trimmed = editValue.trim()
-    if (trimmed && trimmed !== page.title) {
-      await updatePage(page.id, { title: trimmed })
+    if (trimmed && trimmed !== page.name) {
+      await updatePage(page.id, { name: trimmed })
     }
     setIsEditing(false)
-  }, [editValue, page.id, page.title])
+  }, [editValue, page.id, page.name])
 
   const handleCancel = useCallback(() => {
-    setEditValue(page.title)
+    setEditValue(page.name)
     setIsEditing(false)
-  }, [page.title])
+  }, [page.name])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -124,7 +124,7 @@ export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
         />
       ) : (
         <div className="chat-editor__title-wrapper">
-          <span className="chat-editor__title">{page.title}</span>
+          <span className="chat-editor__title">{page.name}</span>
           <EditOutlined className="chat-editor__title-edit" onClick={handleEdit} />
         </div>
       )}

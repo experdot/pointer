@@ -85,7 +85,7 @@ function buildPagesTree(
       key: `page:${page.id}`,
       title: (
         <span>
-          {page.title || '未命名对话'}
+          {page.name || '未命名对话'}
           {hasConflict && (
             <Text type="warning" style={{ marginLeft: 8 }}>
               <WarningOutlined /> ID冲突

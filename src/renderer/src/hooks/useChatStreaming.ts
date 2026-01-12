@@ -169,9 +169,9 @@ export function useChatStreaming({
       }
 
       // 第一条消息且标题是"新对话"时，自动重命名
-      if (isFirstMessage && page.title === '新对话') {
+      if (isFirstMessage && page.name === '新对话') {
         const newTitle = content.slice(0, 10) + (content.length > 10 ? '...' : '')
-        pagesService.updatePage(pageId, { title: newTitle })
+        pagesService.updatePage(pageId, { name: newTitle })
       }
 
       // 获取最新的消息路径
