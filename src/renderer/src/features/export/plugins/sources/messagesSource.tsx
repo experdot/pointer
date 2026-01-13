@@ -216,23 +216,6 @@ function generateMessagesMarkdown(
   const modelNameMap = new Map(llmConfigs.map((config) => [config.id, config.modelName]))
   const modelConfigNameMap = new Map(modelConfigs.map((config) => [config.id, config.name]))
 
-  // Build message to topic indent map
-  const messageIndentMap = new Map<string, number>()
-  if (metadata?.showTopicsOutline && topics.length > 0) {
-    const topicStartIds = new Set(topics.map((t) => t.startMessageId))
-    for (const topic of topics) {
-      const topicMessages = getDirectTopicMessages(
-        messages,
-        topic.startMessageId,
-        topic.endMessageId,
-        topicStartIds
-      )
-      for (const msg of topicMessages) {
-        messageIndentMap.set(msg.id, topic.indent + 1)
-      }
-    }
-  }
-
   // Add topics outline if enabled
   if (metadata?.showTopicsOutline && topics.length > 0) {
     lines.push('# 目录')
@@ -242,8 +225,7 @@ function generateMessagesMarkdown(
     const topicStartIds = new Set(topics.map((t) => t.startMessageId))
 
     for (const topic of topics) {
-      const topicIndent = '  '.repeat(topic.indent)
-      lines.push(`${topicIndent}- **${topic.name}**`)
+      lines.push(`- **${topic.name}**`)
 
       // Find messages directly within this topic (excluding sub-topics)
       const topicMessages = getDirectTopicMessages(
@@ -254,8 +236,7 @@ function generateMessagesMarkdown(
       )
       for (const msg of topicMessages) {
         if (msg.title) {
-          const msgIndent = '  '.repeat(topic.indent + 1)
-          lines.push(`${msgIndent}- ${msg.title}`)
+          lines.push(`  - ${msg.title}`)
         }
       }
     }
@@ -292,11 +273,9 @@ function generateMessagesMarkdown(
     lines.push(header)
     lines.push('')
 
-    // Add message title if enabled (with indent based on topic)
+    // Add message title if enabled
     if (metadata?.showMessageTitle && message.title) {
-      const indent = messageIndentMap.get(message.id) ?? 0
-      const titleIndent = '  '.repeat(indent)
-      lines.push(`${titleIndent}**${message.title}**`)
+      lines.push(`**${message.title}**`)
       lines.push('')
     }
 

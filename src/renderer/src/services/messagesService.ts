@@ -239,7 +239,6 @@ export async function createTopic(
   pageId: string,
   name: string,
   startMessageId: string,
-  indent: number = 0,
   endMessageId?: string
 ): Promise<Topic> {
   const topic: Topic = {
@@ -247,7 +246,6 @@ export async function createTopic(
     name,
     startMessageId,
     endMessageId,
-    indent,
     collapsed: false
   }
   await stores.message.addTopic(pageId, topic)
@@ -343,15 +341,11 @@ export function computeTopicGroups(topics: Topic[], currentPath: ChatMessage[]):
       // 有明确的 endMessageId 且在路径上
       endIndex = messageIndexMap.get(topic.endMessageId)!
     } else {
-      // 找下一个同级或更高级的 Topic 作为结束边界
-      endIndex = currentPath.length - 1 // 默认到末尾
-
-      for (let j = i + 1; j < validTopics.length; j++) {
-        if (validTopics[j].topic.indent <= topic.indent) {
-          // 找到同级或更高级的 Topic，结束于其前一条消息
-          endIndex = validTopics[j].startIndex - 1
-          break
-        }
+      // 找下一个 Topic 作为结束边界
+      if (i + 1 < validTopics.length) {
+        endIndex = validTopics[i + 1].startIndex - 1
+      } else {
+        endIndex = currentPath.length - 1 // 默认到末尾
       }
     }
 
@@ -369,7 +363,6 @@ export function computeTopicGroups(topics: Topic[], currentPath: ChatMessage[]):
       startMessageId: topic.startMessageId,
       endMessageId: currentPath[endIndex].id,
       name: topic.name,
-      indent: topic.indent,
       messageIds,
       collapsed: topic.collapsed
     })
@@ -402,18 +395,18 @@ export function filterMessagesByTopicCollapse(
 
 /**
  * 计算大纲
- * 基于 TopicGroup 和消息的 title，形成树状结构
+ * 基于 TopicGroup 和消息的 title，形成结构
  *
  * @param topicGroups - 计算好的 TopicGroup 列表
  * @param currentPath - 当前路径的消息列表
- * @returns 树状的 OutlineNode 结构
+ * @returns OutlineNode 结构
  */
 export function computeOutline(
   topicGroups: TopicGroup[],
   currentPath: ChatMessage[]
 ): OutlineNode[] {
   const outline: OutlineNode[] = []
-  const topicStack: { node: OutlineNode; indent: number }[] = []
+  let currentTopicNode: OutlineNode | null = null
 
   // 构建消息 ID 到消息的映射
   const messageMap = new Map<string, ChatMessage>()
@@ -437,7 +430,6 @@ export function computeOutline(
         id: `topic-${topicGroup.topicId}`,
         title: topicGroup.name,
         type: 'topic',
-        indent: topicGroup.indent,
         messageId: msg.id,
         topicId: topicGroup.topicId,
         role: msg.role,
@@ -445,23 +437,9 @@ export function computeOutline(
         collapsed: topicGroup.collapsed
       }
 
-      // 根据缩进层级确定父节点
-      while (
-        topicStack.length > 0 &&
-        topicStack[topicStack.length - 1].indent >= topicNode.indent
-      ) {
-        topicStack.pop()
-      }
-
-      if (topicStack.length > 0) {
-        // 添加到父 Topic 的 children
-        topicStack[topicStack.length - 1].node.children!.push(topicNode)
-      } else {
-        // 顶级 Topic
-        outline.push(topicNode)
-      }
-
-      topicStack.push({ node: topicNode, indent: topicNode.indent })
+      // 所有 Topic 都是顶级节点
+      outline.push(topicNode)
+      currentTopicNode = topicNode
 
       // 如果 Topic 起始消息同时有 title，将 title 作为第一个子节点
       if (msg.title) {
@@ -469,7 +447,6 @@ export function computeOutline(
           id: `title-${msg.id}`,
           title: msg.title,
           type: 'title',
-          indent: topicNode.indent + 1,
           messageId: msg.id,
           role: msg.role
         }
@@ -481,14 +458,13 @@ export function computeOutline(
         id: `title-${msg.id}`,
         title: msg.title,
         type: 'title',
-        indent: topicStack.length > 0 ? topicStack[topicStack.length - 1].indent + 1 : 0,
         messageId: msg.id,
         role: msg.role
       }
 
-      if (topicStack.length > 0) {
+      if (currentTopicNode) {
         // 添加到当前 Topic 的 children
-        topicStack[topicStack.length - 1].node.children!.push(titleNode)
+        currentTopicNode.children!.push(titleNode)
       } else {
         // 没有 Topic 时直接添加到根
         outline.push(titleNode)

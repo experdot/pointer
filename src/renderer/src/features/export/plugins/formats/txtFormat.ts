@@ -79,8 +79,7 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
     const topicStartIds = new Set(topics.map((t) => t.startMessageId))
 
     for (const topic of topics) {
-      const indent = '  '.repeat(topic.indent)
-      lines.push(`${indent}* ${topic.name}`)
+      lines.push(`* ${topic.name}`)
 
       // Find messages directly within this topic
       const topicMessages = getDirectTopicMessages(
@@ -91,8 +90,7 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
       )
       for (const msg of topicMessages) {
         if (msg.title) {
-          const msgIndent = '  '.repeat(topic.indent + 1)
-          lines.push(`${msgIndent}- ${msg.title}`)
+          lines.push(`  - ${msg.title}`)
         }
       }
     }

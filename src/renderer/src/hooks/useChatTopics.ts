@@ -24,7 +24,7 @@ export interface UseChatTopicsOptions {
 
 export interface UseChatTopicsResult {
   // Topic CRUD
-  createTopic: (messageId: string, name: string, indent?: number) => Promise<Topic | undefined>
+  createTopic: (messageId: string, name: string) => Promise<Topic | undefined>
   updateTopic: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => Promise<void>
   deleteTopic: (topicId: string) => Promise<void>
   toggleTopicCollapse: (topicId: string) => Promise<void>
@@ -46,9 +46,9 @@ export function useChatTopics({
   const [isSegmenting, setIsSegmenting] = useState(false)
 
   const createTopic = useCallback(
-    async (messageId: string, name: string, indent: number = 0): Promise<Topic | undefined> => {
+    async (messageId: string, name: string): Promise<Topic | undefined> => {
       try {
-        return await messagesService.createTopic(pageId, name, messageId, indent)
+        return await messagesService.createTopic(pageId, name, messageId)
       } catch (error) {
         console.error('Failed to create topic:', error)
         return undefined

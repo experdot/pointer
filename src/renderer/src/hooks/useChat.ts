@@ -53,7 +53,7 @@ interface UseChatResult {
   batchProgress: { current: number; total: number } | null
 
   // Topic 操作
-  createTopic: (messageId: string, name: string, indent?: number) => Promise<Topic | undefined>
+  createTopic: (messageId: string, name: string) => Promise<Topic | undefined>
   updateTopic: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => Promise<void>
   deleteTopic: (topicId: string) => Promise<void>
   toggleTopicCollapse: (topicId: string) => Promise<void>

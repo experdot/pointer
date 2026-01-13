@@ -95,10 +95,8 @@ export interface Topic {
   name: string
   /** 起始消息 ID */
   startMessageId: string
-  /** 终止消息 ID（包含），空表示到下一个同级 Topic 为止 */
+  /** 终止消息 ID（包含），空表示到下一个 Topic 为止 */
   endMessageId?: string
-  /** 缩进层级 - 0 为顶级，1 为次级，依此类推 */
-  indent: number
   collapsed: boolean
 }
 
@@ -123,8 +121,6 @@ export interface TopicGroup {
   endMessageId: string
   /** Topic 名称 */
   name: string
-  /** 缩进层级 */
-  indent: number
   /** 组内消息 ID 列表（包含起始和终止消息） */
   messageIds: string[]
   /** 是否折叠 */
@@ -139,8 +135,6 @@ export interface OutlineNode {
   title: string
   /** 节点类型：topic 或 title（带标题的普通消息） */
   type: 'topic' | 'title'
-  /** 缩进层级 */
-  indent: number
   /** 关联的消息 ID */
   messageId: string
   /** 关联的 Topic ID（仅 topic 类型有） */
