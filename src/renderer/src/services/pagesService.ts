@@ -65,7 +65,11 @@ async function prepareInsertPosition(afterItemId?: string): Promise<{
 }
 
 // 创建新页面
-export async function createPage(name?: string, afterItemId?: string, inFolderId?: string): Promise<PageRecord> {
+export async function createPage(
+  name?: string,
+  afterItemId?: string,
+  inFolderId?: string
+): Promise<PageRecord> {
   let parentFolderId: string | undefined
   let order: number
 
@@ -153,7 +157,11 @@ export async function movePage(pageId: string, folderId: string | undefined): Pr
 }
 
 // 创建文件夹
-export async function createFolder(name?: string, afterItemId?: string, inFolderId?: string): Promise<PageFolder> {
+export async function createFolder(
+  name?: string,
+  afterItemId?: string,
+  inFolderId?: string
+): Promise<PageFolder> {
   let parentFolderId: string | undefined
   let order: number
 

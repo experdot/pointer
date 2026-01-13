@@ -123,7 +123,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
       const message = messages.find((m) => m.id === messageId)
       if (!message) return
 
-      // 如果有新增的附件（temp 目录），需要移动到正式目���
+      // 如果有新增的附件（temp 目录），需要移动到正式目录
       let finalAttachments = attachments
       if (attachments && attachments.length > 0) {
         const needMove = attachments.filter((a) => a.localPath.includes('temp'))

@@ -101,7 +101,11 @@ export function copyLLMConfig(config: LLMConfig): LLMConfig {
   )
 }
 
-export function createLLMConfigFolder(name?: string, afterItemId?: string, inFolderId?: string): ConfigFolder {
+export function createLLMConfigFolder(
+  name?: string,
+  afterItemId?: string,
+  inFolderId?: string
+): ConfigFolder {
   const store = useSettingsStore.getState()
   let parentFolderId: string | undefined
   let order: number
@@ -215,7 +219,11 @@ export function copyModelConfig(config: ModelConfig): ModelConfig {
   )
 }
 
-export function createModelConfigFolder(name?: string, afterItemId?: string, inFolderId?: string): ConfigFolder {
+export function createModelConfigFolder(
+  name?: string,
+  afterItemId?: string,
+  inFolderId?: string
+): ConfigFolder {
   const store = useSettingsStore.getState()
   let parentFolderId: string | undefined
   let order: number

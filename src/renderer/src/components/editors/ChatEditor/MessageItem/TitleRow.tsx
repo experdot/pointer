@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { Input, Tooltip } from 'antd'
 import type { InputRef } from 'antd'

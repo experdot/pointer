@@ -165,6 +165,11 @@ export interface Page<T> extends TreeItemBase {
 
 export type ChatPage = Page<ChatSession>
 
+// 页面类型守卫（通过 type 属性区分 Page 和 PageFolder）
+export function isPage<T>(item: Page<T> | PageFolder): item is Page<T> {
+  return item.type === 'item'
+}
+
 export interface Settings {
   fontSize: 'small' | 'medium' | 'large'
 

@@ -67,7 +67,13 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
     filteredMessages = sortMessagesByTreeOrder(filteredMessages, messages)
 
     // Generate raw content (markdown format as base)
-    const rawContent = generateMessagesMarkdown(filteredMessages, options, llmConfigs, modelConfigs, topics)
+    const rawContent = generateMessagesMarkdown(
+      filteredMessages,
+      options,
+      llmConfigs,
+      modelConfigs,
+      topics
+    )
 
     return {
       contentType: 'messages',

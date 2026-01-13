@@ -556,7 +556,17 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     (node: TreeNodeData<TItem, TFolder>) => getContextMenuItems(node),
     // 只依赖外部传入的 props，不依赖内部函数
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getItemMenuItems, getFolderMenuItems, getItemName, getFolderName, clearFolder, onCreateItemInFolder, onCreateSubFolder, createItemLabel, createFolderLabel]
+    [
+      getItemMenuItems,
+      getFolderMenuItems,
+      getItemName,
+      getFolderName,
+      clearFolder,
+      onCreateItemInFolder,
+      onCreateSubFolder,
+      createItemLabel,
+      createFolderLabel
+    ]
   )
 
   const titleRender = (node: TreeDataNode): React.ReactNode => {

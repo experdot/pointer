@@ -110,7 +110,7 @@ function buildConfigTree<T extends ConfigItemBase>(
   const folderMap = new Map<string | undefined, TreeDataNode[]>()
   folderMap.set(undefined, [])
 
-  // 创建文���夹节点
+  // 创建文件夹节点
   const folderNodes = new Map<string, TreeDataNode>()
   tree.folders.forEach((folder: ConfigFolder) => {
     folderNodes.set(folder.id, {

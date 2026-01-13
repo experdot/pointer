@@ -110,7 +110,9 @@ export function clearTreeFolder<T extends ConfigItemBase>(
   const allFolderIds = [id, ...allSubFolderIds]
 
   return {
-    items: tree.items.filter((item) => !item.parentFolderId || !allFolderIds.includes(item.parentFolderId)),
+    items: tree.items.filter(
+      (item) => !item.parentFolderId || !allFolderIds.includes(item.parentFolderId)
+    ),
     folders: tree.folders.filter((f) => !allSubFolderIds.includes(f.id))
   }
 }

@@ -75,12 +75,15 @@ export function MessagesSourceSelector({
         }
       })
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageId, load])
 
   // Get current branch messages
   const branchMessages = useMemo(() => {
     const branchIds = getCurrentBranchIds(messages, leafMessageId)
-    return branchIds.map((id) => messages.find((m) => m.id === id)).filter((m): m is ChatMessage => !!m)
+    return branchIds
+      .map((id) => messages.find((m) => m.id === id))
+      .filter((m): m is ChatMessage => !!m)
   }, [messages, leafMessageId])
 
   // Group messages by topic
@@ -268,7 +271,9 @@ export function MessagesSourceSelector({
               indeterminate={
                 selectedMessageIds.length > 0 && selectedMessageIds.length < branchMessages.length
               }
-              checked={selectedMessageIds.length === branchMessages.length && branchMessages.length > 0}
+              checked={
+                selectedMessageIds.length === branchMessages.length && branchMessages.length > 0
+              }
               onChange={handleSelectAll}
             >
               全选 ({selectedMessageIds.length}/{branchMessages.length})
