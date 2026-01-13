@@ -290,6 +290,8 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // 虚拟滚动：监听容器高度变化
   const containerRef = useRef<HTMLDivElement>(null)
+  const treeRef = useRef<any>(null)
+  const lastSelectedIdRef = useRef<string | null>(null)
   const [treeHeight, setTreeHeight] = useState<number | undefined>(undefined)
 
   useEffect(() => {
@@ -312,6 +314,43 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       resizeObserver.disconnect()
     }
   }, [])
+
+  // 展开父级文件夹并滚动到选中的节点
+  useEffect(() => {
+    // 只有当选中的节点真正改变时才执行
+    if (selectedId && selectedId !== lastSelectedIdRef.current) {
+      lastSelectedIdRef.current = selectedId
+
+      // 检查是否是 item（非文件夹）
+      const item = items.find((p) => p.id === selectedId)
+      if (item && item.parentFolderId) {
+        const foldersToExpand: string[] = []
+        let currentFolderId: string | undefined = item.parentFolderId
+
+        // 收集所有需要展开的父级文件夹
+        while (currentFolderId) {
+          foldersToExpand.push(currentFolderId)
+          const folder = folders.find((f) => f.id === currentFolderId)
+          currentFolderId = folder?.parentFolderId
+        }
+
+        // 展开所有父级文件夹
+        foldersToExpand.forEach((folderId) => {
+          const folder = folders.find((f) => f.id === folderId)
+          if (folder && !folder.expanded) {
+            toggleFolderExpanded(folderId)
+          }
+        })
+      }
+
+      // 使用虚拟化Tree的scrollTo API滚动到选中的节点
+      setTimeout(() => {
+        if (treeRef.current && treeRef.current.scrollTo) {
+          treeRef.current.scrollTo({ key: selectedId, align: 'auto' })
+        }
+      }, 300) // 延迟确保文件夹展开完成
+    }
+  }, [selectedId, items, folders, toggleFolderExpanded])
 
   const expandedKeys = useMemo(() => folders.filter((f) => f.expanded).map((f) => f.id), [folders])
 
@@ -614,6 +653,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
         <Tree
+          ref={treeRef}
           treeData={treeData}
           selectedKeys={selectedId ? [selectedId] : []}
           expandedKeys={expandedKeys}

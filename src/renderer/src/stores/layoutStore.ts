@@ -21,6 +21,7 @@ interface LayoutActions {
   setSidebarVisible: (visible: boolean) => void
   toggleSidebar: () => void
   setActivePanel: (panel: ActivityPanel) => void
+  revealPanel: (panel: ActivityPanel) => void
   setCompactMode: (isCompact: boolean) => void
   reset: () => Promise<void>
 }
@@ -87,6 +88,15 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     }
   },
 
+  revealPanel: (panel) => {
+    const state = get()
+    // 强制显示指定面板，不触发 toggle 行为
+    if (panel !== state.activePanel || !state.sidebarVisible) {
+      set({ activePanel: panel, sidebarVisible: true })
+      persist({ ...state, activePanel: panel, sidebarVisible: true })
+    }
+  },
+
   setCompactMode: (isCompact) => set({ isCompactMode: isCompact }),
 
   reset: async () => {
@@ -128,6 +138,7 @@ export function getLayoutStoreInterface(): ILayoutStore {
     setSidebarVisible: (visible) => store.getState().setSidebarVisible(visible),
     toggleSidebar: () => store.getState().toggleSidebar(),
     setActivePanel: (panel) => store.getState().setActivePanel(panel),
+    revealPanel: (panel) => store.getState().revealPanel(panel),
     setCompactMode: (isCompact) => store.getState().setCompactMode(isCompact)
   }
 }

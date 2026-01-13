@@ -1,7 +1,12 @@
 import React from 'react'
 import { Tabs as AntTabs, Dropdown, Button } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import { PushpinFilled, LeftOutlined, RightOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+  PushpinFilled,
+  LeftOutlined,
+  RightOutlined,
+  DeleteOutlined
+} from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -14,6 +19,7 @@ import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dn
 import { CSS } from '@dnd-kit/utilities'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { usePagesStore } from '../../../stores/pagesStore'
+import { useLayoutStore } from '../../../stores/layoutStore'
 import * as pagesService from '../../../services/pagesService'
 import { getTabIcon } from '../../../utils/tabRegistry'
 import './Tabs.css'
@@ -63,6 +69,7 @@ export function Tabs(): React.JSX.Element {
     clearHistory,
     navigateToHistoryIndex
   } = useTabsStore()
+  const { revealPanel } = useLayoutStore()
   // 直接使用 pagesService，避免订阅 pagesStore 导致不必要的重渲染
   const { createPage, openPage } = pagesService
 
@@ -140,6 +147,21 @@ export function Tabs(): React.JSX.Element {
         }
       }
     )
+
+    // 只有当前激活的 tab 才显示"在资源管理器中显示"
+    if (tab?.dataId && tabId === activeTabId) {
+      items.push(
+        { type: 'divider' },
+        {
+          key: 'revealInExplorer',
+          label: '在资源管理器中显示',
+          onClick: ({ domEvent }) => {
+            domEvent.stopPropagation()
+            revealPanel('explorer')
+          }
+        }
+      )
+    }
 
     return items
   }

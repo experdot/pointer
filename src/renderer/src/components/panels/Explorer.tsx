@@ -168,16 +168,6 @@ export function Explorer(): React.JSX.Element {
   const getFolderMenuItems = useCallback(
     (folder: PageFolder): MenuProps['items'] => [
       {
-        key: 'search',
-        label: '查找...',
-        icon: <SearchOutlined />,
-        onClick: ({ domEvent }) => {
-          domEvent.stopPropagation()
-          setSearchOptions({ folderIds: [folder.id] })
-          setActivePanel('search')
-        }
-      },
-      {
         key: 'move',
         label: '移动至...',
         icon: <DragOutlined />,
@@ -185,6 +175,17 @@ export function Explorer(): React.JSX.Element {
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           setMoveTarget({ type: 'folder', id: folder.id, parentFolderId: folder.parentFolderId })
+        }
+      },
+      { type: 'divider' },
+      {
+        key: 'search',
+        label: '在文件夹中查找...',
+        icon: <SearchOutlined />,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          setSearchOptions({ folderIds: [folder.id] })
+          setActivePanel('search')
         }
       }
     ],

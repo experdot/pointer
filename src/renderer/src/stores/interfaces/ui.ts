@@ -35,6 +35,7 @@ export interface ILayoutStore extends IInitializable, IResettable {
   setSidebarVisible(visible: boolean): void
   toggleSidebar(): void
   setActivePanel(panel: ActivityPanel): void
+  revealPanel(panel: ActivityPanel): void
   setCompactMode(isCompact: boolean): void
 }
 
