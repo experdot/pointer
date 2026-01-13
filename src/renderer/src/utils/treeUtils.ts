@@ -136,26 +136,26 @@ export function addTreeFolder<T extends ConfigItemBase>(
 
 export function batchUpdateTreeItems<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
-  updates: Array<{ id: string; updates: Partial<T> }>
+  updates: Array<{ id: string; changes: Partial<T> }>
 ): ConfigTree<T> {
   return {
     ...tree,
     items: tree.items.map((item) => {
       const update = updates.find((u) => u.id === item.id)
-      return update ? { ...item, ...update.updates, updatedAt: Date.now() } : item
+      return update ? { ...item, ...update.changes, updatedAt: Date.now() } : item
     })
   }
 }
 
 export function batchUpdateTreeFolders<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
-  updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
+  updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
 ): ConfigTree<T> {
   return {
     ...tree,
     folders: tree.folders.map((f) => {
       const update = updates.find((u) => u.id === f.id)
-      return update ? { ...f, ...update.updates, updatedAt: Date.now() } : f
+      return update ? { ...f, ...update.changes, updatedAt: Date.now() } : f
     })
   }
 }

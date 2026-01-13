@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as db from '../utils/database'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
 import type { Tab, TabHistoryEntry } from '../types/type'
+import type { ITabStore } from './interfaces/ui'
 
 export type { Tab, TabHistoryEntry } from '../types/type'
 
@@ -372,3 +373,46 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     set(initialState)
   }
 }))
+
+/**
+ * 获取标签页 Store 的接口实现
+ */
+export function getTabStoreInterface(): ITabStore {
+  const store = useTabsStore
+  return {
+    get initialized() {
+      return store.getState().initialized
+    },
+    get tabs() {
+      return store.getState().tabs
+    },
+    get activeTabId() {
+      return store.getState().activeTabId
+    },
+    get history() {
+      return store.getState().history
+    },
+    get historyIndex() {
+      return store.getState().historyIndex
+    },
+    init: () => store.getState().init(),
+    reset: () => store.getState().reset(),
+    openTab: (tab, preview) => store.getState().openTab(tab, preview),
+    closeTab: (tabId) => store.getState().closeTab(tabId),
+    setActiveTab: (tabId) => store.getState().setActiveTab(tabId),
+    updateTabTitle: (tabId, title) => store.getState().updateTabTitle(tabId, title),
+    reorderTabs: (fromIndex, toIndex) => store.getState().reorderTabs(fromIndex, toIndex),
+    togglePinTab: (tabId) => store.getState().togglePinTab(tabId),
+    closeOtherTabs: (tabId) => store.getState().closeOtherTabs(tabId),
+    closeRightTabs: (tabId) => store.getState().closeRightTabs(tabId),
+    closeAllTabs: () => store.getState().closeAllTabs(),
+    cleanupInvalidTabs: () => store.getState().cleanupInvalidTabs(),
+    goBack: () => store.getState().goBack(),
+    goForward: () => store.getState().goForward(),
+    canGoBack: () => store.getState().canGoBack(),
+    canGoForward: () => store.getState().canGoForward(),
+    clearHistory: () => store.getState().clearHistory(),
+    navigateToHistoryIndex: (index) => store.getState().navigateToHistoryIndex(index),
+    keepTab: (tabId) => store.getState().keepTab(tabId)
+  }
+}

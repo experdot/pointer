@@ -7,7 +7,7 @@ import * as navigationService from '../../../services/navigationService'
 import { updatePage } from '../../../services/pagesService'
 import { generateSessionTitleWithOptions } from '../../../services/titleService'
 import { useChatUIStore } from '../../../stores/chatUIStore'
-import { useMessagesStore } from '../../../stores/messagesStore'
+import { useNavigationStore } from '../../../stores/navigationStore'
 import { useGlobalSearchHighlight } from '../../../hooks/useGlobalSearchHighlight'
 import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
@@ -114,10 +114,10 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   }, [pageId, setSearchOpen])
 
   // 监听导航请求，执行滚动
-  const pendingNavigation = useMessagesStore((s) => s.pendingNavigation)
-  const pendingRelativeNavigation = useMessagesStore((s) => s.pendingRelativeNavigation)
-  const clearNavigation = useMessagesStore((s) => s.clearNavigation)
-  const clearRelativeNavigation = useMessagesStore((s) => s.clearRelativeNavigation)
+  const pendingNavigation = useNavigationStore((s) => s.pendingNavigation)
+  const pendingRelativeNavigation = useNavigationStore((s) => s.pendingRelativeNavigation)
+  const clearNavigation = useNavigationStore((s) => s.clearNavigation)
+  const clearRelativeNavigation = useNavigationStore((s) => s.clearRelativeNavigation)
 
   // 处理绝对导航请求
   useEffect(() => {

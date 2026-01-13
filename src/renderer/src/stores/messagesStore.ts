@@ -1,29 +1,17 @@
+/**
+ * 消息 Store
+ * 管理消息缓存和 Topic
+ */
+
 import { create } from 'zustand'
 import * as db from '../utils/database'
 import type { MessagesRecord } from '../utils/database'
 import type { ChatMessage, Topic } from '../types/type'
-
-// ==================== 导航请求类型 ====================
-
-export interface NavigationRequest {
-  version: number
-  target: { pageId: string; messageId: string; instant?: boolean }
-  timestamp: number
-}
-
-export interface RelativeNavigationRequest {
-  version: number
-  direction: 'prev' | 'next'
-  pageId: string
-  timestamp: number
-}
+import type { IMessageStore } from './interfaces/entities'
 
 interface MessagesState {
   // 按 pageId 缓存消息
   cache: Record<string, MessagesRecord>
-  // 待处理的导航请求
-  pendingNavigation: NavigationRequest | null
-  pendingRelativeNavigation: RelativeNavigationRequest | null
 }
 
 interface MessagesActions {
@@ -31,6 +19,8 @@ interface MessagesActions {
   load: (pageId: string) => Promise<MessagesRecord>
   // 获取缓存的消息（不触发加载）
   get: (pageId: string) => MessagesRecord | undefined
+  // 检查是否已缓存
+  has: (pageId: string) => boolean
   // 更新消息并持久化
   update: (pageId: string, updater: (record: MessagesRecord) => MessagesRecord) => Promise<void>
   // 添加消息
@@ -44,38 +34,25 @@ interface MessagesActions {
     pageId: string,
     updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages' | 'topics'>>
   ) => Promise<void>
-  // 清除缓存
-  clearCache: (pageId: string) => void
+  // 清除缓存（evict）
+  evict: (pageId: string) => void
+  // 清除所有缓存
+  evictAll: () => void
   // 删除页面消息（从数据库）
-  remove: (pageId: string) => Promise<void>
+  removeRecord: (pageId: string) => Promise<void>
   // 重置
   reset: () => void
   // ============ Topic 操作 ============
-  // 添加 Topic
   addTopic: (pageId: string, topic: Topic) => Promise<void>
-  // 更新 Topic
   updateTopic: (pageId: string, topicId: string, updates: Partial<Topic>) => Promise<void>
-  // 删除 Topic
   deleteTopic: (pageId: string, topicId: string) => Promise<void>
-  // 获取 Topics
   getTopics: (pageId: string) => Topic[]
-  // ============ 导航操作 ============
-  // 请求导航到消息
-  requestNavigation: (request: NavigationRequest) => void
-  // 请求相对导航（上一条/下一条）
-  requestRelativeNavigation: (request: RelativeNavigationRequest) => void
-  // 清除导航请求
-  clearNavigation: (version: number) => void
-  // 清除相对导航请求
-  clearRelativeNavigation: (version: number) => void
 }
 
 type MessagesStore = MessagesState & MessagesActions
 
 const initialState: MessagesState = {
-  cache: {},
-  pendingNavigation: null,
-  pendingRelativeNavigation: null
+  cache: {}
 }
 
 const emptyRecord = (pageId: string): MessagesRecord => ({
@@ -102,6 +79,8 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   },
 
   get: (pageId) => get().cache[pageId],
+
+  has: (pageId) => pageId in get().cache,
 
   update: async (pageId, updater) => {
     const current = get().cache[pageId] ?? emptyRecord(pageId)
@@ -144,7 +123,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     }))
   },
 
-  clearCache: (pageId) => {
+  evict: (pageId) => {
     set((state) => {
       const { [pageId]: _removed, ...rest } = state.cache
       void _removed // 显式标记为已使用
@@ -152,9 +131,13 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     })
   },
 
-  remove: async (pageId) => {
+  evictAll: () => {
+    set({ cache: {} })
+  },
+
+  removeRecord: async (pageId) => {
     await db.deleteMessages(pageId)
-    get().clearCache(pageId)
+    get().evict(pageId)
   },
 
   reset: () => set(initialState),
@@ -181,32 +164,37 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     }))
   },
 
-  getTopics: (pageId) => get().cache[pageId]?.topics ?? [],
-
-  // ============ 导航操作 ============
-  requestNavigation: (request) => {
-    set({ pendingNavigation: request })
-  },
-
-  requestRelativeNavigation: (request) => {
-    set({ pendingRelativeNavigation: request })
-  },
-
-  clearNavigation: (version) => {
-    set((state) => {
-      if (state.pendingNavigation?.version === version) {
-        return { pendingNavigation: null }
-      }
-      return state
-    })
-  },
-
-  clearRelativeNavigation: (version) => {
-    set((state) => {
-      if (state.pendingRelativeNavigation?.version === version) {
-        return { pendingRelativeNavigation: null }
-      }
-      return state
-    })
-  }
+  getTopics: (pageId) => get().cache[pageId]?.topics ?? []
 }))
+
+/**
+ * 获取消息 Store 的接口实现
+ */
+export function getMessageStoreInterface(): IMessageStore {
+  const store = useMessagesStore
+  return {
+    load: (key) => store.getState().load(key),
+    get: (key) => store.getState().get(key),
+    has: (key) => store.getState().has(key),
+    evict: (key) => store.getState().evict(key),
+    evictAll: () => store.getState().evictAll(),
+    reset: () => store.getState().reset(),
+    update: (pageId, updater) => store.getState().update(pageId, updater),
+    addMessage: (pageId, message) => store.getState().addMessage(pageId, message),
+    updateMessage: (pageId, messageId, changes) =>
+      store.getState().updateMessage(pageId, messageId, changes),
+    deleteMessages: (pageId, messageIds) => store.getState().deleteMessages(pageId, messageIds),
+    updateSession: (pageId, changes) => store.getState().updateSession(pageId, changes),
+    addTopic: (pageId, topic) => store.getState().addTopic(pageId, topic),
+    updateTopic: (pageId, topicId, changes) =>
+      store.getState().updateTopic(pageId, topicId, changes),
+    deleteTopic: (pageId, topicId) => store.getState().deleteTopic(pageId, topicId),
+    getTopics: (pageId) => store.getState().getTopics(pageId),
+    removeRecord: (pageId) => store.getState().removeRecord(pageId)
+  }
+}
+
+// ==================== 兼容性导出（过渡期使用）====================
+// 导航功能已移至 navigationStore
+
+export type { NavigationRequest, RelativeNavigationRequest } from './interfaces/navigation'

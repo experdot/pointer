@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-import { useTabsStore } from '../stores/tabsStore'
+import { stores } from '../stores/registry'
 import type { ExportEditorContext } from '../features/export/types'
 
 /**
@@ -13,15 +13,13 @@ import type { ExportEditorContext } from '../features/export/types'
  * Open the export tab with optional context
  */
 export function openExportTab(context?: ExportEditorContext): void {
-  const { openTab } = useTabsStore.getState()
-
-  openTab({
+  stores.tab.openTab({
     id: uuidv4(),
     type: 'export',
     title: '导出',
     closable: true,
     context
-  } as Parameters<typeof openTab>[0] & { context?: ExportEditorContext })
+  } as Parameters<typeof stores.tab.openTab>[0] & { context?: ExportEditorContext })
 }
 
 /**

@@ -1,5 +1,5 @@
 import { ChatMessage, LLMConfig, ModelConfig } from '../types/type'
-import { useSettingsStore } from '../stores/settingsStore'
+import { stores } from '../stores/registry'
 import { createAIService } from './aiService'
 
 // ==================== Prompt 模板 ====================
@@ -82,7 +82,7 @@ export interface TitleGenerateOptions {
  * 获取默认的 LLM 和 Model 配置
  */
 function getDefaultConfigs(): { llmConfig: LLMConfig | null; modelConfig: ModelConfig | null } {
-  const settings = useSettingsStore.getState().settings
+  const settings = stores.settings.settings
   if (!settings) {
     return { llmConfig: null, modelConfig: null }
   }
@@ -101,7 +101,7 @@ function getConfigsWithOptions(
   llmId?: string,
   modelConfigId?: string
 ): { llmConfig: LLMConfig | null; modelConfig: ModelConfig | null } {
-  const settings = useSettingsStore.getState().settings
+  const settings = stores.settings.settings
   if (!settings) {
     return { llmConfig: null, modelConfig: null }
   }

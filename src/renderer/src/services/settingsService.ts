@@ -7,8 +7,7 @@ import type {
   LLMConfig,
   ModelConfig
 } from '../types/type'
-import { useSettingsStore } from '../stores/settingsStore'
-import { useTabsStore } from '../stores/tabsStore'
+import { stores } from '../stores/registry'
 
 // ==================== 通用树操作 ====================
 
@@ -45,19 +44,19 @@ export function createLLMConfig(
   afterItemId?: string,
   inFolderId?: string
 ): LLMConfig {
-  const store = useSettingsStore.getState()
+  const { settings } = stores
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     parentFolderId = inFolderId
     const itemsInFolder = [
-      ...store.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
-      ...store.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+      ...settings.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...settings.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
     ]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
-    const position = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+    const position = prepareInsertPosition(settings.settings.llmConfigs, afterItemId)
     parentFolderId = position.parentFolderId
     order = position.order
   }
@@ -70,21 +69,21 @@ export function createLLMConfig(
     createdAt: Date.now()
   }
 
-  store.addLLMConfig(config)
+  settings.addLLMConfig(config)
   return config
 }
 
 export function updateLLMConfig(id: string, updates: Partial<LLMConfig>): void {
-  useSettingsStore.getState().updateLLMConfig(id, updates)
+  stores.settings.updateLLMConfig(id, updates)
 }
 
 export function deleteLLMConfig(id: string): void {
-  const store = useSettingsStore.getState()
-  store.removeLLMConfig(id)
+  const { settings } = stores
+  settings.removeLLMConfig(id)
 
   // 如果删除的是默认配置，清除默认值
-  if (store.settings.defaultLLMId === id) {
-    store.setDefaultLLMId(undefined)
+  if (settings.settings.defaultLLMId === id) {
+    settings.setDefaultLLMId(undefined)
   }
 }
 
@@ -106,19 +105,19 @@ export function createLLMConfigFolder(
   afterItemId?: string,
   inFolderId?: string
 ): ConfigFolder {
-  const store = useSettingsStore.getState()
+  const { settings } = stores
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     parentFolderId = inFolderId
     const itemsInFolder = [
-      ...store.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
-      ...store.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+      ...settings.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...settings.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
     ]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
-    const position = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+    const position = prepareInsertPosition(settings.settings.llmConfigs, afterItemId)
     parentFolderId = position.parentFolderId
     order = position.order
   }
@@ -133,27 +132,27 @@ export function createLLMConfigFolder(
     createdAt: Date.now()
   }
 
-  store.addLLMConfigFolder(folder)
+  settings.addLLMConfigFolder(folder)
   return folder
 }
 
 export function updateLLMConfigFolder(id: string, updates: Partial<ConfigFolder>): void {
-  useSettingsStore.getState().updateLLMConfigFolder(id, updates)
+  stores.settings.updateLLMConfigFolder(id, updates)
 }
 
 export function deleteLLMConfigFolder(id: string): void {
-  useSettingsStore.getState().removeLLMConfigFolder(id)
+  stores.settings.removeLLMConfigFolder(id)
 }
 
 export function clearLLMConfigFolder(id: string): void {
-  useSettingsStore.getState().clearLLMConfigFolder(id)
+  stores.settings.clearLLMConfigFolder(id)
 }
 
 export function toggleLLMConfigFolderExpanded(id: string): void {
-  const store = useSettingsStore.getState()
-  const folder = store.settings.llmConfigs.folders.find((f) => f.id === id)
+  const { settings } = stores
+  const folder = settings.settings.llmConfigs.folders.find((f) => f.id === id)
   if (folder) {
-    store.updateLLMConfigFolder(id, { expanded: !folder.expanded })
+    settings.updateLLMConfigFolder(id, { expanded: !folder.expanded })
   }
 }
 
@@ -164,19 +163,19 @@ export function createModelConfig(
   afterItemId?: string,
   inFolderId?: string
 ): ModelConfig {
-  const store = useSettingsStore.getState()
+  const { settings } = stores
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     parentFolderId = inFolderId
     const itemsInFolder = [
-      ...store.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
-      ...store.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+      ...settings.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...settings.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
     ]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
-    const position = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+    const position = prepareInsertPosition(settings.settings.modelConfigs, afterItemId)
     parentFolderId = position.parentFolderId
     order = position.order
   }
@@ -189,20 +188,20 @@ export function createModelConfig(
     createdAt: Date.now()
   }
 
-  store.addModelConfig(config)
+  settings.addModelConfig(config)
   return config
 }
 
 export function updateModelConfig(id: string, updates: Partial<ModelConfig>): void {
-  useSettingsStore.getState().updateModelConfig(id, updates)
+  stores.settings.updateModelConfig(id, updates)
 }
 
 export function deleteModelConfig(id: string): void {
-  const store = useSettingsStore.getState()
-  store.removeModelConfig(id)
+  const { settings } = stores
+  settings.removeModelConfig(id)
 
-  if (store.settings.defaultModelConfigId === id) {
-    store.setDefaultModelConfigId(undefined)
+  if (settings.settings.defaultModelConfigId === id) {
+    settings.setDefaultModelConfigId(undefined)
   }
 }
 
@@ -224,19 +223,19 @@ export function createModelConfigFolder(
   afterItemId?: string,
   inFolderId?: string
 ): ConfigFolder {
-  const store = useSettingsStore.getState()
+  const { settings } = stores
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     parentFolderId = inFolderId
     const itemsInFolder = [
-      ...store.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
-      ...store.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+      ...settings.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...settings.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
     ]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
-    const position = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+    const position = prepareInsertPosition(settings.settings.modelConfigs, afterItemId)
     parentFolderId = position.parentFolderId
     order = position.order
   }
@@ -251,42 +250,42 @@ export function createModelConfigFolder(
     createdAt: Date.now()
   }
 
-  store.addModelConfigFolder(folder)
+  settings.addModelConfigFolder(folder)
   return folder
 }
 
 export function updateModelConfigFolder(id: string, updates: Partial<ConfigFolder>): void {
-  useSettingsStore.getState().updateModelConfigFolder(id, updates)
+  stores.settings.updateModelConfigFolder(id, updates)
 }
 
 export function deleteModelConfigFolder(id: string): void {
-  useSettingsStore.getState().removeModelConfigFolder(id)
+  stores.settings.removeModelConfigFolder(id)
 }
 
 export function clearModelConfigFolder(id: string): void {
-  useSettingsStore.getState().clearModelConfigFolder(id)
+  stores.settings.clearModelConfigFolder(id)
 }
 
 export function toggleModelConfigFolderExpanded(id: string): void {
-  const store = useSettingsStore.getState()
-  const folder = store.settings.modelConfigs.folders.find((f) => f.id === id)
+  const { settings } = stores
+  const folder = settings.settings.modelConfigs.folders.find((f) => f.id === id)
   if (folder) {
-    store.updateModelConfigFolder(id, { expanded: !folder.expanded })
+    settings.updateModelConfigFolder(id, { expanded: !folder.expanded })
   }
 }
 
 // ==================== 基础设置 ====================
 
 export function setFontSize(fontSize: Settings['fontSize']): void {
-  useSettingsStore.getState().setFontSize(fontSize)
+  stores.settings.setFontSize(fontSize)
 }
 
 export function setDefaultLLMId(id: string | undefined): void {
-  useSettingsStore.getState().setDefaultLLMId(id)
+  stores.settings.setDefaultLLMId(id)
 }
 
 export function setDefaultModelConfigId(id: string | undefined): void {
-  useSettingsStore.getState().setDefaultModelConfigId(id)
+  stores.settings.setDefaultModelConfigId(id)
 }
 
 // ==================== 设置页面 ====================
@@ -295,8 +294,7 @@ let pendingSettingsTab: string | undefined
 
 export function openSettings(tab?: string): void {
   pendingSettingsTab = tab
-  const tabsStore = useTabsStore.getState()
-  tabsStore.openTab({
+  stores.tab.openTab({
     id: 'settings',
     type: 'settings',
     title: '设置',

@@ -91,14 +91,14 @@ export function useLLMConfigs(): UseLLMConfigsResult {
 
   const batchUpdateItemsOrder = useCallback(
     (items: (LLMConfig | ConfigFolder)[], parentFolderId?: string) => {
-      const itemUpdates: Array<{ id: string; updates: Partial<LLMConfig> }> = []
-      const folderUpdates: Array<{ id: string; updates: Partial<ConfigFolder> }> = []
+      const itemUpdates: Array<{ id: string; changes: Partial<LLMConfig> }> = []
+      const folderUpdates: Array<{ id: string; changes: Partial<ConfigFolder> }> = []
 
       items.forEach((item, index) => {
         if ('baseUrl' in item) {
-          itemUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          itemUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         } else {
-          folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          folderUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         }
       })
 
@@ -142,14 +142,14 @@ export function useModelConfigs(): UseModelConfigsResult {
 
   const batchUpdateItemsOrder = useCallback(
     (items: (ModelConfig | ConfigFolder)[], parentFolderId?: string) => {
-      const itemUpdates: Array<{ id: string; updates: Partial<ModelConfig> }> = []
-      const folderUpdates: Array<{ id: string; updates: Partial<ConfigFolder> }> = []
+      const itemUpdates: Array<{ id: string; changes: Partial<ModelConfig> }> = []
+      const folderUpdates: Array<{ id: string; changes: Partial<ConfigFolder> }> = []
 
       items.forEach((item, index) => {
         if ('systemPrompt' in item) {
-          itemUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          itemUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         } else {
-          folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          folderUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         }
       })
 

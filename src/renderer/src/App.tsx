@@ -4,15 +4,17 @@ import zhCN from 'antd/locale/zh_CN'
 import './App.css'
 import { initializeTabTypes } from './utils/tabTypeRegistrations'
 import { initializeExportPlugins } from './features/export'
+import { initStores } from './stores/initStores'
 import UpdateNotification from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { MainLayout } from './components/layout/MainLayout'
 import { useAccountStore } from './stores/accountStore'
 import { initializeAccountSystem } from './services/accountService'
 
-// Initialize plugins
+// Initialize plugins and stores
 initializeTabTypes()
 initializeExportPlugins()
+initStores()
 
 function AppContent(): React.JSX.Element {
   const [loading, setLoading] = useState(true)

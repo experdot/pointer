@@ -27,9 +27,9 @@ export function usePages(): {
 } {
   // 使用选择器只订阅需要的状态，避免不必要的重渲染
   const pages = usePagesStore((state) => state.pages)
-  const batchUpdatePages = usePagesStore((state) => state.batchUpdatePages)
+  const updateManyPages = usePagesStore((state) => state.updateMany)
   const folders = useFoldersStore((state) => state.folders)
-  const batchUpdateFolders = useFoldersStore((state) => state.batchUpdateFolders)
+  const updateManyFolders = useFoldersStore((state) => state.updateMany)
 
   // 获取根级别的页面和文件夹，混合排序
   const rootItems = useMemo(() => {
@@ -62,21 +62,21 @@ export function usePages(): {
   // 批量更新项目顺序（用于拖拽）
   const batchUpdateItemsOrder = useCallback(
     (items: (ChatPage | PageFolder)[], parentFolderId?: string) => {
-      const pageUpdates: Array<{ id: string; updates: Partial<ChatPage> }> = []
-      const folderUpdates: Array<{ id: string; updates: Partial<PageFolder> }> = []
+      const pageUpdates: Array<{ id: string; changes: Partial<ChatPage> }> = []
+      const folderUpdates: Array<{ id: string; changes: Partial<PageFolder> }> = []
 
       items.forEach((item, index) => {
         if (item.type === 'item') {
-          pageUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          pageUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         } else {
-          folderUpdates.push({ id: item.id, updates: { order: index, parentFolderId } })
+          folderUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
         }
       })
 
-      if (pageUpdates.length) batchUpdatePages(pageUpdates)
-      if (folderUpdates.length) batchUpdateFolders(folderUpdates)
+      if (pageUpdates.length) updateManyPages(pageUpdates)
+      if (folderUpdates.length) updateManyFolders(folderUpdates)
     },
-    [batchUpdatePages, batchUpdateFolders]
+    [updateManyPages, updateManyFolders]
   )
 
   return {

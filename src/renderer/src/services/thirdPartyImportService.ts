@@ -2,11 +2,9 @@
  * 第三方聊天数据导入服务
  */
 
-import { usePagesStore } from '../stores/pagesStore'
-import { useFoldersStore } from '../stores/foldersStore'
+import { stores } from '../stores/registry'
 import * as db from '../utils/database'
 import type { PageRecord, MessagesRecord } from '../utils/database'
-import type { PageFolder } from '../types/type'
 import type {
   ParsedConversation,
   ImportOptions,
@@ -41,19 +39,12 @@ async function createPlatformFolder(platform: ImportPlatform): Promise<string> {
   const timestamp = formatDateTime(new Date())
   const folderName = `${baseName} ${timestamp}`
 
-  const foldersStore = useFoldersStore.getState()
-
-  // 创建新文件夹
-  const folder: PageFolder = {
-    type: 'folder',
-    id: crypto.randomUUID(),
+  const folder = await stores.folder.create({
     name: folderName,
     expanded: true,
-    order: 0,
-    createdAt: Date.now()
-  }
+    order: 0
+  })
 
-  await foldersStore.addFolder(folder)
   return folder.id
 }
 
@@ -144,7 +135,7 @@ export async function importConversations(
     platformFolders.set(platform, folderId)
   }
 
-  const pagesStore = usePagesStore.getState()
+  const { page } = stores
 
   // 准备所有数据
   const prepared: Array<{ page: PageRecord; messagesRecord: MessagesRecord; title: string }> = []
@@ -161,19 +152,24 @@ export async function importConversations(
   // 分批导入
   for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
     const batch = prepared.slice(i, i + BATCH_SIZE)
-    const pages = batch.map((b) => b.page)
     const messagesRecords = batch.map((b) => b.messagesRecord)
 
     try {
       // 批量写入页面和消息
-      await Promise.all([pagesStore.addPages(pages), db.putMessagesBatch(messagesRecords)])
+      // 注意：createMany 会生成新 ID，这里需要直接写入数据库
+      await Promise.all([
+        Promise.all(batch.map((b) => db.putPage(b.page))),
+        db.putMessagesBatch(messagesRecords)
+      ])
+      // 刷新 store 以同步数据库状态
+      await page.init()
 
       result.success += batch.length
     } catch {
       // 批量失败时，逐个重试
       for (const item of batch) {
         try {
-          await pagesStore.addPage(item.page)
+          await db.putPage(item.page)
           await db.putMessages(item.messagesRecord)
           result.success++
         } catch (itemErr) {
@@ -183,6 +179,8 @@ export async function importConversations(
           )
         }
       }
+      // 刷新 store 以同步数据库状态
+      await page.init()
     }
 
     onProgress?.(Math.min(i + BATCH_SIZE, prepared.length), prepared.length)

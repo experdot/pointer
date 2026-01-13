@@ -116,7 +116,7 @@ export class PointerImporter extends BaseImporter {
 
     return {
       id: page.id || this.generateId(),
-      title: page.name || page.title || 'Untitled',
+      title: page.title || 'Untitled',
       platform: 'custom',
       createdAt: page.createdAt || Date.now(),
       updatedAt: page.updatedAt,

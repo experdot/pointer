@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import * as db from '../utils/database'
 import type { ActivityPanel, LayoutRecord } from '../utils/database'
+import type { ILayoutStore } from './interfaces/ui'
 
 export type { ActivityPanel } from '../utils/database'
 
@@ -93,3 +94,40 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     set(initialState)
   }
 }))
+
+/**
+ * 获取布局 Store 的接口实现
+ */
+export function getLayoutStoreInterface(): ILayoutStore {
+  const store = useLayoutStore
+  return {
+    get initialized() {
+      return store.getState().initialized
+    },
+    get sidebarWidth() {
+      return store.getState().sidebarWidth
+    },
+    get sidebarVisible() {
+      return store.getState().sidebarVisible
+    },
+    get activePanel() {
+      return store.getState().activePanel
+    },
+    get isCompactMode() {
+      return store.getState().isCompactMode
+    },
+    get minSidebarWidth() {
+      return store.getState().minSidebarWidth
+    },
+    get maxSidebarWidth() {
+      return store.getState().maxSidebarWidth
+    },
+    init: () => store.getState().init(),
+    reset: () => store.getState().reset(),
+    setSidebarWidth: (width) => store.getState().setSidebarWidth(width),
+    setSidebarVisible: (visible) => store.getState().setSidebarVisible(visible),
+    toggleSidebar: () => store.getState().toggleSidebar(),
+    setActivePanel: (panel) => store.getState().setActivePanel(panel),
+    setCompactMode: (isCompact) => store.getState().setCompactMode(isCompact)
+  }
+}

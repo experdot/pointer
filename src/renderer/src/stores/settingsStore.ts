@@ -8,6 +8,7 @@ import type {
   LLMConfig,
   ModelConfig
 } from '../types/type'
+import type { ISettingsStore } from './interfaces/ui'
 import {
   updateTreeItem,
   updateTreeFolder,
@@ -50,28 +51,28 @@ interface SettingsActions {
 
   // LLM 配置
   addLLMConfig: (config: LLMConfig) => void
-  updateLLMConfig: (id: string, updates: Partial<LLMConfig>) => void
+  updateLLMConfig: (id: string, changes: Partial<LLMConfig>) => void
   removeLLMConfig: (id: string) => void
   addLLMConfigFolder: (folder: ConfigFolder) => void
-  updateLLMConfigFolder: (id: string, updates: Partial<ConfigFolder>) => void
+  updateLLMConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
   removeLLMConfigFolder: (id: string) => void
   clearLLMConfigFolder: (id: string) => void
-  batchUpdateLLMConfigs: (updates: Array<{ id: string; updates: Partial<LLMConfig> }>) => void
+  batchUpdateLLMConfigs: (updates: Array<{ id: string; changes: Partial<LLMConfig> }>) => void
   batchUpdateLLMConfigFolders: (
-    updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
+    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
   ) => void
 
   // Model 配置
   addModelConfig: (config: ModelConfig) => void
-  updateModelConfig: (id: string, updates: Partial<ModelConfig>) => void
+  updateModelConfig: (id: string, changes: Partial<ModelConfig>) => void
   removeModelConfig: (id: string) => void
   addModelConfigFolder: (folder: ConfigFolder) => void
-  updateModelConfigFolder: (id: string, updates: Partial<ConfigFolder>) => void
+  updateModelConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
   removeModelConfigFolder: (id: string) => void
   clearModelConfigFolder: (id: string) => void
-  batchUpdateModelConfigs: (updates: Array<{ id: string; updates: Partial<ModelConfig> }>) => void
+  batchUpdateModelConfigs: (updates: Array<{ id: string; changes: Partial<ModelConfig> }>) => void
   batchUpdateModelConfigFolders: (
-    updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
+    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
   ) => void
 
   // 重置
@@ -343,3 +344,43 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ settings: initialSettings, initialized: false })
   }
 }))
+
+/**
+ * 获取设置 Store 的接口实现
+ */
+export function getSettingsStoreInterface(): ISettingsStore {
+  const store = useSettingsStore
+  return {
+    get initialized() {
+      return store.getState().initialized
+    },
+    get settings() {
+      return store.getState().settings
+    },
+    init: () => store.getState().init(),
+    reset: () => store.getState().reset(),
+    setFontSize: (size) => store.getState().setFontSize(size),
+    setDefaultLLMId: (id) => store.getState().setDefaultLLMId(id),
+    setDefaultModelConfigId: (id) => store.getState().setDefaultModelConfigId(id),
+    setAutoCheckUpdate: (enabled) => store.getState().setAutoCheckUpdate(enabled),
+    addLLMConfig: (config) => store.getState().addLLMConfig(config),
+    updateLLMConfig: (id, changes) => store.getState().updateLLMConfig(id, changes),
+    removeLLMConfig: (id) => store.getState().removeLLMConfig(id),
+    addLLMConfigFolder: (folder) => store.getState().addLLMConfigFolder(folder),
+    updateLLMConfigFolder: (id, changes) => store.getState().updateLLMConfigFolder(id, changes),
+    removeLLMConfigFolder: (id) => store.getState().removeLLMConfigFolder(id),
+    clearLLMConfigFolder: (id) => store.getState().clearLLMConfigFolder(id),
+    addModelConfig: (config) => store.getState().addModelConfig(config),
+    updateModelConfig: (id, changes) => store.getState().updateModelConfig(id, changes),
+    removeModelConfig: (id) => store.getState().removeModelConfig(id),
+    addModelConfigFolder: (folder) => store.getState().addModelConfigFolder(folder),
+    updateModelConfigFolder: (id, changes) => store.getState().updateModelConfigFolder(id, changes),
+    removeModelConfigFolder: (id) => store.getState().removeModelConfigFolder(id),
+    clearModelConfigFolder: (id) => store.getState().clearModelConfigFolder(id),
+    batchUpdateLLMConfigs: (updates) => store.getState().batchUpdateLLMConfigs(updates),
+    batchUpdateLLMConfigFolders: (updates) => store.getState().batchUpdateLLMConfigFolders(updates),
+    batchUpdateModelConfigs: (updates) => store.getState().batchUpdateModelConfigs(updates),
+    batchUpdateModelConfigFolders: (updates) =>
+      store.getState().batchUpdateModelConfigFolders(updates)
+  }
+}

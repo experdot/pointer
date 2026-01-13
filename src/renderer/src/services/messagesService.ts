@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-import { useMessagesStore } from '../stores/messagesStore'
+import { stores } from '../stores/registry'
 import type { ChatMessage, Topic, TopicGroup, OutlineNode } from '../types/type'
 
 // ==================== 预构建索引 ====================
@@ -42,7 +42,7 @@ export async function addMessage(
     createdAt: Date.now()
   }
 
-  await useMessagesStore.getState().addMessage(pageId, newMessage)
+  await stores.message.addMessage(pageId, newMessage)
   return newMessage
 }
 
@@ -51,12 +51,11 @@ export async function updateMessage(
   messageId: string,
   updates: Partial<ChatMessage>
 ): Promise<void> {
-  await useMessagesStore.getState().updateMessage(pageId, messageId, updates)
+  await stores.message.updateMessage(pageId, messageId, updates)
 }
 
 export async function deleteMessage(pageId: string, messageId: string): Promise<void> {
-  const store = useMessagesStore.getState()
-  const record = store.get(pageId)
+  const record = stores.message.get(pageId)
   if (!record) return
 
   const { messageMap, childrenMap } = buildMessageMaps(record.messages)
@@ -97,7 +96,7 @@ export async function deleteMessage(pageId: string, messageId: string): Promise<
     rootMessageId = rootMessages.length > 0 ? rootMessages[0].id : undefined
   }
 
-  await store.update(pageId, (r) => ({
+  await stores.message.update(pageId, (r) => ({
     ...r,
     messages: r.messages.filter((m) => !idsToDelete.has(m.id)),
     leafMessageId,
@@ -142,13 +141,15 @@ export function getNextBranchIndex(messages: ChatMessage[], parentId: string | u
 }
 
 export async function switchBranch(pageId: string, messageId: string): Promise<void> {
-  const store = useMessagesStore.getState()
-  const record = store.get(pageId)
+  const record = stores.message.get(pageId)
   if (!record) return
 
   const { childrenMap } = buildMessageMaps(record.messages)
   const leafId = findLeafFromMessage(childrenMap, messageId)
-  await store.updateSession(pageId, { leafMessageId: leafId, selectedMessageId: messageId })
+  await stores.message.updateSession(pageId, {
+    leafMessageId: leafId,
+    selectedMessageId: messageId
+  })
 }
 
 function findLeafFromMessage(
@@ -182,7 +183,7 @@ export function getMessagePath(messages: ChatMessage[], leafId: string | undefin
 }
 
 export function getCurrentPath(pageId: string): ChatMessage[] {
-  const record = useMessagesStore.getState().get(pageId)
+  const record = stores.message.get(pageId)
   if (!record) return []
   return getMessagePath(record.messages, record.leafMessageId)
 }
@@ -190,13 +191,13 @@ export function getCurrentPath(pageId: string): ChatMessage[] {
 // ==================== 辅助函数 ====================
 
 export function getMessages(pageId: string): ChatMessage[] {
-  return useMessagesStore.getState().get(pageId)?.messages ?? []
+  return stores.message.get(pageId)?.messages ?? []
 }
 
 // ==================== 消息折叠 ====================
 
 export async function toggleMessageCollapsed(pageId: string, messageId: string): Promise<void> {
-  const record = useMessagesStore.getState().get(pageId)
+  const record = stores.message.get(pageId)
   const message = record?.messages.find((m) => m.id === messageId)
   if (message) {
     await updateMessage(pageId, messageId, { collapsed: !message.collapsed })
@@ -208,8 +209,7 @@ export async function setMessagesCollapsed(
   messageIds: string[],
   collapsed: boolean
 ): Promise<void> {
-  const store = useMessagesStore.getState()
-  await store.update(pageId, (record) => ({
+  await stores.message.update(pageId, (record) => ({
     ...record,
     messages: record.messages.map((m) =>
       messageIds.includes(m.id) ? { ...m, collapsed, updatedAt: Date.now() } : m
@@ -250,7 +250,7 @@ export async function createTopic(
     indent,
     collapsed: false
   }
-  await useMessagesStore.getState().addTopic(pageId, topic)
+  await stores.message.addTopic(pageId, topic)
   return topic
 }
 
@@ -262,24 +262,24 @@ export async function updateTopic(
   topicId: string,
   updates: Partial<Omit<Topic, 'id'>>
 ): Promise<void> {
-  await useMessagesStore.getState().updateTopic(pageId, topicId, updates)
+  await stores.message.updateTopic(pageId, topicId, updates)
 }
 
 /**
  * 删除 Topic
  */
 export async function deleteTopic(pageId: string, topicId: string): Promise<void> {
-  await useMessagesStore.getState().deleteTopic(pageId, topicId)
+  await stores.message.deleteTopic(pageId, topicId)
 }
 
 /**
  * 切换 Topic 折叠状态
  */
 export async function toggleTopicCollapse(pageId: string, topicId: string): Promise<void> {
-  const topics = useMessagesStore.getState().getTopics(pageId)
+  const topics = stores.message.getTopics(pageId)
   const topic = topics.find((t) => t.id === topicId)
   if (topic) {
-    await useMessagesStore.getState().updateTopic(pageId, topicId, {
+    await stores.message.updateTopic(pageId, topicId, {
       collapsed: !topic.collapsed
     })
   }
@@ -293,14 +293,14 @@ export async function setTopicCollapsed(
   topicId: string,
   collapsed: boolean
 ): Promise<void> {
-  await useMessagesStore.getState().updateTopic(pageId, topicId, { collapsed })
+  await stores.message.updateTopic(pageId, topicId, { collapsed })
 }
 
 /**
  * 获取页面的所有 Topics
  */
 export function getTopics(pageId: string): Topic[] {
-  return useMessagesStore.getState().getTopics(pageId)
+  return stores.message.getTopics(pageId)
 }
 
 // ==================== Topic 分组计算 ====================

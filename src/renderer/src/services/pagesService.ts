@@ -1,33 +1,23 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { PageFolder } from '../types/type'
 import type { PageRecord } from '../utils/database'
-import { usePagesStore } from '../stores/pagesStore'
-import { useFoldersStore } from '../stores/foldersStore'
-import { useMessagesStore } from '../stores/messagesStore'
-import { useTabsStore } from '../stores/tabsStore'
+import { stores } from '../stores/registry'
 
 // 计算新项目的插入位置和 order，并更新同级项目的 order
 async function prepareInsertPosition(afterItemId?: string): Promise<{
   parentFolderId: string | undefined
   order: number
 }> {
-  const pagesStore = usePagesStore.getState()
-  const foldersStore = useFoldersStore.getState()
-  const tabsStore = useTabsStore.getState()
+  const { page, folder, tab } = stores
 
   // 查找参考项目
   let referenceItem: PageRecord | PageFolder | null = null
   if (afterItemId) {
-    referenceItem =
-      pagesStore.pages.find((p) => p.id === afterItemId) ||
-      foldersStore.folders.find((f) => f.id === afterItemId) ||
-      null
+    referenceItem = page.getById(afterItemId) || folder.getById(afterItemId) || null
   }
   if (!referenceItem) {
-    const activeTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId)
-    referenceItem = activeTab?.dataId
-      ? pagesStore.pages.find((p) => p.id === activeTab.dataId) || null
-      : null
+    const activeTab = tab.tabs.find((t) => t.id === tab.activeTabId)
+    referenceItem = activeTab?.dataId ? page.getById(activeTab.dataId) || null : null
   }
 
   let parentFolderId: string | undefined
@@ -42,22 +32,22 @@ async function prepareInsertPosition(afterItemId?: string): Promise<{
   }
 
   // 批量更新同级中 order >= newOrder 的项目
-  const pagesToUpdate = pagesStore.pages.filter(
+  const pagesToUpdate = page.pages.filter(
     (p) => p.parentFolderId === parentFolderId && (p.order ?? 0) >= newOrder
   )
-  const foldersToUpdate = foldersStore.folders.filter(
+  const foldersToUpdate = folder.folders.filter(
     (f) => f.parentFolderId === parentFolderId && (f.order ?? 0) >= newOrder
   )
 
   // 使用批量更新，避免 N 次 DB 写入和渲染
   if (pagesToUpdate.length > 0) {
-    await pagesStore.batchUpdatePages(
-      pagesToUpdate.map((p) => ({ id: p.id, updates: { order: (p.order ?? 0) + 1 } }))
+    await page.updateMany(
+      pagesToUpdate.map((p) => ({ id: p.id, changes: { order: (p.order ?? 0) + 1 } }))
     )
   }
   if (foldersToUpdate.length > 0) {
-    await foldersStore.batchUpdateFolders(
-      foldersToUpdate.map((f) => ({ id: f.id, updates: { order: (f.order ?? 0) + 1 } }))
+    await folder.updateMany(
+      foldersToUpdate.map((f) => ({ id: f.id, changes: { order: (f.order ?? 0) + 1 } }))
     )
   }
 
@@ -70,18 +60,15 @@ export async function createPage(
   afterItemId?: string,
   inFolderId?: string
 ): Promise<PageRecord> {
+  const { page, folder } = stores
+
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     // 直接在指定文件夹中创建
     parentFolderId = inFolderId
-    const pagesStore = usePagesStore.getState()
-    const foldersStore = useFoldersStore.getState()
-    const itemsInFolder = [
-      ...pagesStore.pages.filter((p) => p.parentFolderId === inFolderId),
-      ...foldersStore.folders.filter((f) => f.parentFolderId === inFolderId)
-    ]
+    const itemsInFolder = [...page.findByFolderId(inFolderId), ...folder.findByParentId(inFolderId)]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
     const position = await prepareInsertPosition(afterItemId)
@@ -89,43 +76,38 @@ export async function createPage(
     order = position.order
   }
 
-  const page: PageRecord = {
-    type: 'item',
-    id: uuidv4(),
+  return page.create({
     name: name || '新对话',
     parentFolderId,
-    createdAt: Date.now(),
     order
-  }
-
-  await usePagesStore.getState().addPage(page)
-  return page
+  })
 }
 
 // 更新页面
 export async function updatePage(id: string, updates: Partial<PageRecord>): Promise<void> {
-  await usePagesStore.getState().updatePage(id, updates)
+  await stores.page.update(id, updates)
 
   // 同步更新标签页标题
   if (updates.name) {
-    const tabsStore = useTabsStore.getState()
-    const tab = tabsStore.tabs.find((t) => t.dataId === id)
-    if (tab) {
-      tabsStore.updateTabTitle(tab.id, updates.name)
+    const { tab } = stores
+    const existingTab = tab.tabs.find((t) => t.dataId === id)
+    if (existingTab) {
+      tab.updateTabTitle(existingTab.id, updates.name)
     }
   }
 }
 
 // 删除页面
 export async function deletePage(id: string): Promise<void> {
-  await usePagesStore.getState().removePage(id)
-  useMessagesStore.getState().clearCache(id)
+  const { page, message, tab } = stores
+
+  await page.delete(id)
+  message.evict(id)
 
   // 关闭对应的标签页
-  const tabsStore = useTabsStore.getState()
-  const tab = tabsStore.tabs.find((t) => t.dataId === id)
-  if (tab) {
-    tabsStore.closeTab(tab.id)
+  const existingTab = tab.tabs.find((t) => t.dataId === id)
+  if (existingTab) {
+    tab.closeTab(existingTab.id)
   }
 }
 
@@ -133,27 +115,26 @@ export async function deletePage(id: string): Promise<void> {
 export async function deletePages(ids: string[]): Promise<void> {
   if (ids.length === 0) return
 
-  const messagesStore = useMessagesStore.getState()
-  const tabsStore = useTabsStore.getState()
+  const { page, message, tab } = stores
 
   // 清除消息缓存
   for (const id of ids) {
-    messagesStore.clearCache(id)
+    message.evict(id)
   }
 
   // 关闭对应的标签页
-  const tabsToClose = tabsStore.tabs.filter((t) => t.dataId && ids.includes(t.dataId))
-  for (const tab of tabsToClose) {
-    tabsStore.closeTab(tab.id)
+  const tabsToClose = tab.tabs.filter((t) => t.dataId && ids.includes(t.dataId))
+  for (const existingTab of tabsToClose) {
+    tab.closeTab(existingTab.id)
   }
 
   // 批量删除页面
-  await usePagesStore.getState().removePages(ids)
+  await page.deleteMany(ids)
 }
 
 // 移动页面到文件夹
 export async function movePage(pageId: string, folderId: string | undefined): Promise<void> {
-  await usePagesStore.getState().updatePage(pageId, { parentFolderId: folderId })
+  await stores.page.update(pageId, { parentFolderId: folderId })
 }
 
 // 创建文件夹
@@ -162,18 +143,15 @@ export async function createFolder(
   afterItemId?: string,
   inFolderId?: string
 ): Promise<PageFolder> {
+  const { page, folder } = stores
+
   let parentFolderId: string | undefined
   let order: number
 
   if (inFolderId) {
     // 直接在指定文件夹中创建
     parentFolderId = inFolderId
-    const pagesStore = usePagesStore.getState()
-    const foldersStore = useFoldersStore.getState()
-    const itemsInFolder = [
-      ...pagesStore.pages.filter((p) => p.parentFolderId === inFolderId),
-      ...foldersStore.folders.filter((f) => f.parentFolderId === inFolderId)
-    ]
+    const itemsInFolder = [...page.findByFolderId(inFolderId), ...folder.findByParentId(inFolderId)]
     order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
   } else {
     const position = await prepareInsertPosition(afterItemId)
@@ -181,23 +159,17 @@ export async function createFolder(
     order = position.order
   }
 
-  const folder: PageFolder = {
-    type: 'folder',
-    id: uuidv4(),
+  return folder.create({
     name: name || '新文件夹',
     parentFolderId,
-    expanded: true,
-    createdAt: Date.now(),
-    order
-  }
-
-  await useFoldersStore.getState().addFolder(folder)
-  return folder
+    order,
+    expanded: true
+  })
 }
 
 // 更新文件夹
 export async function updateFolder(id: string, updates: Partial<PageFolder>): Promise<void> {
-  await useFoldersStore.getState().updateFolder(id, updates)
+  await stores.folder.update(id, updates)
 }
 
 // 递归获取所有子文件夹 ID
@@ -208,75 +180,69 @@ function getAllSubFolderIds(folderId: string, folders: PageFolder[]): string[] {
 
 // 删除文件夹及其全部子项（包括嵌套的页面和子文件夹）
 export async function deleteFolder(id: string): Promise<void> {
-  const foldersStore = useFoldersStore.getState()
-  const pagesStore = usePagesStore.getState()
-  const messagesStore = useMessagesStore.getState()
-  const tabsStore = useTabsStore.getState()
+  const { page, folder, message, tab } = stores
 
-  const allFolderIds = [id, ...getAllSubFolderIds(id, foldersStore.folders)]
+  const allFolderIds = [id, ...getAllSubFolderIds(id, folder.folders)]
 
   // 删除所有子页面
-  const pagesToDelete = pagesStore.pages.filter(
+  const pagesToDelete = page.pages.filter(
     (p) => p.parentFolderId && allFolderIds.includes(p.parentFolderId)
   )
   const pageIds = pagesToDelete.map((p) => p.id)
 
   // 清除消息缓存
   for (const pageId of pageIds) {
-    messagesStore.clearCache(pageId)
+    message.evict(pageId)
   }
 
   // 关闭对应的标签页
-  const tabsToClose = tabsStore.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
-  for (const tab of tabsToClose) {
-    tabsStore.closeTab(tab.id)
+  const tabsToClose = tab.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
+  for (const existingTab of tabsToClose) {
+    tab.closeTab(existingTab.id)
   }
 
   // 批量删除页面
   if (pageIds.length > 0) {
-    await pagesStore.removePages(pageIds)
+    await page.deleteMany(pageIds)
   }
 
   // 删除所有文件夹（包括子文件夹）
-  await foldersStore.removeFolders(allFolderIds)
+  await folder.deleteMany(allFolderIds)
 }
 
 // 清空文件夹（删除子项但保留文件夹本身）
 export async function clearFolder(id: string): Promise<void> {
-  const foldersStore = useFoldersStore.getState()
-  const pagesStore = usePagesStore.getState()
-  const messagesStore = useMessagesStore.getState()
-  const tabsStore = useTabsStore.getState()
+  const { page, folder, message, tab } = stores
 
   // 获取所有子文件夹 ID
-  const subFolderIds = getAllSubFolderIds(id, foldersStore.folders)
+  const subFolderIds = getAllSubFolderIds(id, folder.folders)
   const allFolderIds = [id, ...subFolderIds]
 
   // 删除所有子页面
-  const pagesToDelete = pagesStore.pages.filter(
+  const pagesToDelete = page.pages.filter(
     (p) => p.parentFolderId && allFolderIds.includes(p.parentFolderId)
   )
   const pageIds = pagesToDelete.map((p) => p.id)
 
   // 清除消息缓存
   for (const pageId of pageIds) {
-    messagesStore.clearCache(pageId)
+    message.evict(pageId)
   }
 
   // 关闭对应的标签页
-  const tabsToClose = tabsStore.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
-  for (const tab of tabsToClose) {
-    tabsStore.closeTab(tab.id)
+  const tabsToClose = tab.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
+  for (const existingTab of tabsToClose) {
+    tab.closeTab(existingTab.id)
   }
 
   // 批量删除页面
   if (pageIds.length > 0) {
-    await pagesStore.removePages(pageIds)
+    await page.deleteMany(pageIds)
   }
 
   // 删除所有子文件夹（不删除当前文件夹）
   if (subFolderIds.length > 0) {
-    await foldersStore.removeFolders(subFolderIds)
+    await folder.deleteMany(subFolderIds)
   }
 }
 
@@ -284,68 +250,62 @@ export async function clearFolder(id: string): Promise<void> {
 export async function deleteFolders(ids: string[]): Promise<void> {
   if (ids.length === 0) return
 
-  const foldersStore = useFoldersStore.getState()
-  const pagesStore = usePagesStore.getState()
+  const { page, folder } = stores
 
   // 收集所有要删除的文件夹 ID（包括子文件夹）
   const allFolderIds = new Set<string>()
   for (const id of ids) {
     allFolderIds.add(id)
-    for (const subId of getAllSubFolderIds(id, foldersStore.folders)) {
+    for (const subId of getAllSubFolderIds(id, folder.folders)) {
       allFolderIds.add(subId)
     }
   }
 
   // 获取根目录现有页面的最大 order
-  const rootPages = pagesStore.pages.filter((p) => !p.parentFolderId)
+  const rootPages = page.pages.filter((p) => !p.parentFolderId)
   const maxOrder = rootPages.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
 
   // 批量移动页面到根目录
-  const pagesToMove = pagesStore.pages.filter(
+  const pagesToMove = page.pages.filter(
     (p) => p.parentFolderId && allFolderIds.has(p.parentFolderId)
   )
   if (pagesToMove.length > 0) {
-    await pagesStore.batchUpdatePages(
+    await page.updateMany(
       pagesToMove.map((p, index) => ({
         id: p.id,
-        updates: { parentFolderId: undefined, order: maxOrder + index + 1 }
+        changes: { parentFolderId: undefined, order: maxOrder + index + 1 }
       }))
     )
   }
 
   // 批量删除所有文件夹
-  await foldersStore.removeFolders([...allFolderIds])
+  await folder.deleteMany([...allFolderIds])
 }
 
 // 切换文件夹展开状态
 export async function toggleFolderExpanded(id: string): Promise<void> {
-  const store = useFoldersStore.getState()
-  const folder = store.folders.find((f) => f.id === id)
-  if (folder) {
-    await store.updateFolder(id, { expanded: !folder.expanded })
-  }
+  await stores.folder.toggleExpanded(id)
 }
 
 // 打开页面（在标签页中）
 export async function openPage(pageId: string, preview = false): Promise<void> {
-  const store = usePagesStore.getState()
-  const page = store.pages.find((p) => p.id === pageId)
-  if (!page) return
+  const { page, message, tab } = stores
+  const existingPage = page.getById(pageId)
+  if (!existingPage) return
 
   // 预加载消息
-  await useMessagesStore.getState().load(pageId)
+  await message.load(pageId)
 
-  const tabsStore = useTabsStore.getState()
-  const existingTab = tabsStore.tabs.find((t) => t.dataId === pageId)
+  const existingTab = tab.tabs.find((t) => t.dataId === pageId)
 
   if (existingTab) {
-    tabsStore.openTab(existingTab, preview)
+    tab.openTab(existingTab, preview)
   } else {
-    tabsStore.openTab(
+    tab.openTab(
       {
         id: uuidv4(),
         type: 'chat',
-        title: page.name,
+        title: existingPage.name,
         dataId: pageId
       },
       preview
@@ -355,16 +315,12 @@ export async function openPage(pageId: string, preview = false): Promise<void> {
 
 // 获取文件夹下的页面
 export function getPagesInFolder(folderId: string | undefined): PageRecord[] {
-  const store = usePagesStore.getState()
-  return store.pages
-    .filter((p) => p.parentFolderId === folderId)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  return stores.page.findByFolderId(folderId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
 
 // 获取子文件夹
 export function getSubFolders(parentFolderId: string | undefined): PageFolder[] {
-  const store = useFoldersStore.getState()
-  return store.folders
-    .filter((f) => f.parentFolderId === parentFolderId)
+  return stores.folder
+    .findByParentId(parentFolderId)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }

@@ -417,7 +417,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             resolved.parentFolderId = folderIdMap.get(resolved.parentFolderId)
           }
 
-          await useFoldersStore.getState().addFolder(resolved)
+          await useFoldersStore.getState().create(resolved)
         }
       }
 
@@ -437,7 +437,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             resolved.parentFolderId = folderIdMap.get(resolved.parentFolderId)
           }
 
-          await usePagesStore.getState().addPage(resolved)
+          await usePagesStore.getState().create(resolved)
 
           // 导入消息
           const messagesRecord = importData.data.messages?.find((m) => m.pageId === page.id)
