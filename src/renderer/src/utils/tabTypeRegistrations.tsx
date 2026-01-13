@@ -22,7 +22,7 @@ export function initializeTabTypes(): void {
           const page = await pagesService.createPage()
           pagesService.openPage(page.id)
         }}
-        onOpenSettings={openSettings}
+        onOpenSettings={() => openSettings()}
       />
     )
   })

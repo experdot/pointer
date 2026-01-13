@@ -3,6 +3,8 @@ import { Popover, Input, Button, type PopoverProps } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
 import { ModelSelector } from '../editors/ChatEditor/ModelSelector'
 import { ModelConfigSelector } from '../editors/ChatEditor/ModelConfigSelector'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { openSettings } from '../../services/settingsService'
 import './AIGeneratePopover.css'
 
 const { TextArea } = Input
@@ -49,6 +51,11 @@ export function AIGeneratePopover({
   const [loading, setLoading] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // 检查 LLM 配置状态
+  const { settings } = useSettingsStore()
+  const hasLLMConfig = settings.llmConfigs.items.length > 0
+  const hasDefaultLLM = settings.defaultLLMId !== undefined
+
   // 打开时重置状态并聚焦
   useEffect(() => {
     if (open) {
@@ -89,17 +96,51 @@ export function AIGeneratePopover({
     [handleGenerate, loading, onOpenChange]
   )
 
+  // 是否需要显示覆盖层
+  const needsOverlay = !hasLLMConfig || !hasDefaultLLM
+
+  // 覆盖层提示内容
+  const renderOverlay = (): React.ReactNode => {
+    if (!hasLLMConfig) {
+      return (
+        <span className="ai-generate-popover__no-config-text">
+          未配置模型，请先
+          <a
+            onClick={() => {
+              onOpenChange(false)
+              openSettings('llm')
+            }}
+          >
+            配置 LLM
+          </a>
+        </span>
+      )
+    }
+    if (!hasDefaultLLM) {
+      return (
+        <span className="ai-generate-popover__no-config-text">请先在下方选择一个模型</span>
+      )
+    }
+    return null
+  }
+
   const content = (
-    <div className="ai-generate-popover__content">
-      <TextArea
-        ref={textareaRef}
-        value={extraRequirements}
-        onChange={(e) => setExtraRequirements(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={MODE_PLACEHOLDERS[mode]}
-        autoSize={{ minRows: 2, maxRows: 4 }}
-        disabled={loading}
-      />
+    <div className="ai-generate-popover__content" onClick={(e) => e.stopPropagation()}>
+      <div className="ai-generate-popover__textarea-wrapper">
+        <TextArea
+          ref={textareaRef}
+          value={extraRequirements}
+          onChange={(e) => setExtraRequirements(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={MODE_PLACEHOLDERS[mode]}
+          autoSize={{ minRows: 2, maxRows: 4 }}
+          disabled={loading || needsOverlay}
+        />
+        {/* 提示覆盖层 */}
+        {needsOverlay && (
+          <div className="ai-generate-popover__overlay">{renderOverlay()}</div>
+        )}
+      </div>
       <div className="ai-generate-popover__toolbar">
         <div className="ai-generate-popover__toolbar-left">
           <ModelSelector value={llmId} onChange={setLlmId} disabled={loading} />
@@ -115,6 +156,7 @@ export function AIGeneratePopover({
           icon={<SendOutlined />}
           onClick={handleGenerate}
           loading={loading}
+          disabled={needsOverlay}
         >
           生成
         </Button>

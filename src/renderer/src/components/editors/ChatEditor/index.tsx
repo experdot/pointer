@@ -35,6 +35,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     editAndResend,
     switchBranch,
     getChildMessages,
+    hasLLMConfig,
+    hasDefaultLLM,
     // Title/Topic 相关
     topics,
     topicGroups,
@@ -277,6 +279,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onStop={handleStopWithQueue}
         isStreaming={isStreaming}
         disabled={!page}
+        hasLLMConfig={hasLLMConfig}
+        hasDefaultLLM={hasDefaultLLM}
         queueCount={queueCount}
         isPaused={isPaused}
         onQueueButtonClick={handleOpenDrawer}

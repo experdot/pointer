@@ -8,13 +8,19 @@ import React, {
 } from 'react'
 import { Input, Button, Tooltip } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
-import { SendOutlined, StopOutlined, CaretRightOutlined, PictureOutlined } from '@ant-design/icons'
+import {
+  SendOutlined,
+  StopOutlined,
+  CaretRightOutlined,
+  PictureOutlined
+} from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
 import { QueueButton } from './QueueButton'
 import { AttachmentPreview } from './AttachmentPreview'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useAttachment } from '../../../hooks/useAttachment'
+import { openSettings } from '../../../services/settingsService'
 import type { FileAttachment } from '../../../types/type'
 import './InputArea.css'
 
@@ -30,6 +36,8 @@ interface InputAreaProps {
   onStop: () => Promise<void>
   isStreaming: boolean
   disabled?: boolean
+  hasLLMConfig: boolean
+  hasDefaultLLM: boolean
   // 队列相关
   queueCount: number
   isPaused: boolean
@@ -44,6 +52,8 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     onStop,
     isStreaming,
     disabled,
+    hasLLMConfig,
+    hasDefaultLLM,
     queueCount,
     isPaused,
     onQueueButtonClick,
@@ -205,6 +215,29 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     )
   }
 
+  // 输入区域是否禁用（未配置 LLM 或未选择默认模型）
+  const isInputDisabled = disabled || !hasLLMConfig || !hasDefaultLLM
+
+  // 覆盖层提示内容
+  const renderOverlay = (): React.ReactNode => {
+    if (!hasLLMConfig) {
+      return (
+        <span className="chat-editor__no-config-text">
+          未配置模型，请先
+          <a onClick={() => openSettings('llm')}>配置 LLM</a>
+        </span>
+      )
+    }
+    if (!hasDefaultLLM) {
+      return (
+        <span className="chat-editor__no-config-text">请先在下方选择一个模型</span>
+      )
+    }
+    return null
+  }
+
+  const overlayContent = renderOverlay()
+
   return (
     <div
       className={`chat-editor__input ${isDragOver ? 'chat-editor__input--drag-over' : ''}`}
@@ -217,18 +250,25 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
         <AttachmentPreview attachments={pendingAttachments} onRemove={removeAttachment} />
       )}
 
-      <TextArea
-        ref={textAreaRef}
-        className="chat-editor__textarea"
-        value={content}
-        onChange={(e) => setInputContent(pageId, e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder="输入消息..."
-        autoSize={{ minRows: 2, maxRows: 10 }}
-        disabled={disabled}
-        autoFocus
-      />
+      <div className="chat-editor__textarea-wrapper">
+        <TextArea
+          ref={textAreaRef}
+          className="chat-editor__textarea"
+          value={content}
+          onChange={(e) => setInputContent(pageId, e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder="输入消息..."
+          autoSize={{ minRows: 2, maxRows: 10 }}
+          disabled={isInputDisabled}
+          autoFocus
+        />
+        {/* 提示覆盖层 */}
+        {overlayContent && (
+          <div className="chat-editor__input-no-config-overlay">{overlayContent}</div>
+        )}
+      </div>
+
       <div className="chat-editor__input-toolbar">
         <div className="chat-editor__input-toolbar-left">
           <Tooltip title="添加图片">
@@ -237,7 +277,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
               className="chat-editor__attachment-btn"
               icon={<PictureOutlined />}
               onClick={addAttachmentsFromSelector}
-              disabled={disabled || isStreaming}
+              disabled={isInputDisabled || isStreaming}
             />
           </Tooltip>
           <ModelSelector onSelect={focusInput} />

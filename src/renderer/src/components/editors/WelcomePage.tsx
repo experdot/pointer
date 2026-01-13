@@ -21,7 +21,7 @@ export function WelcomePage({ onNewChat, onOpenSettings }: WelcomePageProps): Re
       </Text>
       <Flex gap={12} className="welcome-actions">
         <Button type="primary" icon={<PlusOutlined />} size="large" onClick={onNewChat}>
-          新建聊天
+          新建对话
         </Button>
         <Button icon={<SettingOutlined />} size="large" onClick={onOpenSettings}>
           设置

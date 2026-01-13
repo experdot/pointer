@@ -22,6 +22,8 @@ interface UseChatResult {
   messages: ChatMessage[]
   currentPath: ChatMessage[]
   isLoading: boolean
+  hasLLMConfig: boolean
+  hasDefaultLLM: boolean
 
   // 消息操作
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>
@@ -81,8 +83,13 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     topicGroups,
     outline,
     getConfigs,
-    getConfigsWithOverride
+    getConfigsWithOverride,
+    settings
   } = core
+
+  // 检查 LLM 配置状态
+  const hasLLMConfig = settings.llmConfigs.items.length > 0
+  const hasDefaultLLM = settings.defaultLLMId !== undefined
 
   // 2. 流式通信
   const streaming = useChatStreaming({
@@ -191,6 +198,8 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     messages,
     currentPath,
     isLoading,
+    hasLLMConfig,
+    hasDefaultLLM,
 
     // 流式通信
     sendMessage: streaming.sendMessage,

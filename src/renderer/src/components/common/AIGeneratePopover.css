@@ -6,6 +6,10 @@
   width: 320px;
 }
 
+.ai-generate-popover__textarea-wrapper {
+  position: relative;
+}
+
 .ai-generate-popover__toolbar {
   display: flex;
   justify-content: space-between;
@@ -15,4 +19,30 @@
 .ai-generate-popover__toolbar-left {
   display: flex;
   gap: 4px;
+}
+
+/* No Config Overlay */
+.ai-generate-popover__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ant-color-bg-container-rgb, 255, 255, 255), 0.9);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.ai-generate-popover__no-config-text {
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+}
+
+.ai-generate-popover__no-config-text a {
+  color: var(--ant-color-primary);
+  cursor: pointer;
+}
+
+.ai-generate-popover__no-config-text a:hover {
+  text-decoration: underline;
 }
