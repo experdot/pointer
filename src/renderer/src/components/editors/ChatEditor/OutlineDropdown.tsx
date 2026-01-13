@@ -15,6 +15,13 @@ import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGenerate
 import type { OutlineNode } from '../../../types/type'
 import './OutlineDropdown.css'
 
+// 空心圆点图标（用于无标题消息）
+const HollowCircleIcon = (): React.JSX.Element => (
+  <svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor">
+    <circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+)
+
 interface OutlineDropdownProps {
   outline: OutlineNode[]
   onNavigateToMessage: (messageId: string) => void
@@ -79,15 +86,29 @@ export function OutlineDropdown({
 
     const renderNode = (node: OutlineNode, depth: number = 0, prefix: string = ''): void => {
       const isTopic = node.type === 'topic'
+      const isUntitled = node.type === 'untitled'
       const hasChildren = node.children && node.children.length > 0
       // 使用本地折叠状态
       const isCollapsed = node.topicId ? collapsedTopics.has(node.topicId) : false
 
+      // 根据节点类型确定样式类
+      const itemClass = isTopic
+        ? 'outline-dropdown__item--topic'
+        : isUntitled
+          ? 'outline-dropdown__item--untitled'
+          : 'outline-dropdown__item--title'
+
+      // 根据节点类型确定图标
+      const nodeIcon = isTopic ? (
+        <FolderOutlined />
+      ) : isUntitled ? (
+        <HollowCircleIcon />
+      ) : (
+        <TagOutlined />
+      )
+
       items.push(
-        <div
-          key={node.id}
-          className={`outline-dropdown__item ${isTopic ? 'outline-dropdown__item--topic' : 'outline-dropdown__item--title'}`}
-        >
+        <div key={node.id} className={`outline-dropdown__item ${itemClass}`}>
           {/* 缩进 */}
           <span className="outline-dropdown__indent" style={{ width: depth * 16 }} />
 
@@ -107,9 +128,7 @@ export function OutlineDropdown({
           )}
 
           {/* 图标 */}
-          <span className="outline-dropdown__icon">
-            {isTopic ? <FolderOutlined /> : <TagOutlined />}
-          </span>
+          <span className="outline-dropdown__icon">{nodeIcon}</span>
 
           {/* 层级序号前缀 */}
           {prefix && <span className="outline-dropdown__prefix">{prefix}</span>}
@@ -214,6 +233,7 @@ export function OutlineDropdown({
                     size="small"
                     icon={<ApartmentOutlined />}
                     loading={isSegmenting}
+                    disabled={outline.length === 0}
                     className="outline-dropdown__action-btn"
                   >
                     智能分组

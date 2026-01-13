@@ -396,6 +396,7 @@ export function filterMessagesByTopicCollapse(
 /**
  * 计算大纲
  * 基于 TopicGroup 和消息的 title，形成结构
+ * 所有消息都会显示在大纲中，无标题消息显示内容截取
  *
  * @param topicGroups - 计算好的 TopicGroup 列表
  * @param currentPath - 当前路径的消息列表
@@ -420,6 +421,12 @@ export function computeOutline(
     topicGroupMap.set(group.startMessageId, group)
   }
 
+  // 截取消息内容作为预览
+  const getContentPreview = (content: string, maxLen = 30): string => {
+    const text = content.replace(/\n/g, ' ').trim()
+    return text.length > maxLen ? text.slice(0, maxLen) + '...' : text
+  }
+
   // 遍历当前路径
   for (const msg of currentPath) {
     const topicGroup = topicGroupMap.get(msg.id)
@@ -441,7 +448,7 @@ export function computeOutline(
       outline.push(topicNode)
       currentTopicNode = topicNode
 
-      // 如果 Topic 起始消息同时有 title，将 title 作为第一个子节点
+      // Topic 起始消息作为第一个子节点
       if (msg.title) {
         const titleNode: OutlineNode = {
           id: `title-${msg.id}`,
@@ -451,23 +458,49 @@ export function computeOutline(
           role: msg.role
         }
         topicNode.children!.push(titleNode)
-      }
-    } else if (msg.title) {
-      // 处理带标题的消息节点（不是 Topic 起始消息）
-      const titleNode: OutlineNode = {
-        id: `title-${msg.id}`,
-        title: msg.title,
-        type: 'title',
-        messageId: msg.id,
-        role: msg.role
-      }
-
-      if (currentTopicNode) {
-        // 添加到当前 Topic 的 children
-        currentTopicNode.children!.push(titleNode)
       } else {
-        // 没有 Topic 时直接添加到根
-        outline.push(titleNode)
+        // 无标题的 Topic 起始消息
+        const untitledNode: OutlineNode = {
+          id: `untitled-${msg.id}`,
+          title: getContentPreview(msg.content),
+          type: 'untitled',
+          messageId: msg.id,
+          role: msg.role
+        }
+        topicNode.children!.push(untitledNode)
+      }
+    } else {
+      // 处理非 Topic 起始消息
+      if (msg.title) {
+        // 带标题的消息节点
+        const titleNode: OutlineNode = {
+          id: `title-${msg.id}`,
+          title: msg.title,
+          type: 'title',
+          messageId: msg.id,
+          role: msg.role
+        }
+
+        if (currentTopicNode) {
+          currentTopicNode.children!.push(titleNode)
+        } else {
+          outline.push(titleNode)
+        }
+      } else {
+        // 无标题的消息节点
+        const untitledNode: OutlineNode = {
+          id: `untitled-${msg.id}`,
+          title: getContentPreview(msg.content),
+          type: 'untitled',
+          messageId: msg.id,
+          role: msg.role
+        }
+
+        if (currentTopicNode) {
+          currentTopicNode.children!.push(untitledNode)
+        } else {
+          outline.push(untitledNode)
+        }
       }
     }
   }

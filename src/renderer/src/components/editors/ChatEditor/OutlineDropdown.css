@@ -39,6 +39,20 @@
   color: var(--ant-color-text-secondary);
 }
 
+/* 无标题消息：灰色弱化显示 */
+.outline-dropdown__item--untitled {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.outline-dropdown__item--untitled .outline-dropdown__text {
+  opacity: 0.7;
+}
+
+.outline-dropdown__item--untitled .outline-dropdown__icon {
+  opacity: 0.6;
+}
+
 .outline-dropdown__indent {
   flex-shrink: 0;
 }

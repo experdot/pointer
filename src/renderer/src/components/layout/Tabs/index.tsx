@@ -201,6 +201,7 @@ export function Tabs(): React.JSX.Element {
 
     const historyItems: MenuProps['items'] = history
       .map((entry, index) => ({ entry, index }))
+      .toReversed()
       .map(({ entry, index }) => {
         const isCurrent = index === historyIndex
         return {

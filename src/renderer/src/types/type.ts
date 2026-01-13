@@ -133,8 +133,8 @@ export interface OutlineNode {
   id: string
   /** 显示标题 */
   title: string
-  /** 节点类型：topic 或 title（带标题的普通消息） */
-  type: 'topic' | 'title'
+  /** 节点类型：topic、title（带标题的消息）或 untitled（无标题的消息） */
+  type: 'topic' | 'title' | 'untitled'
   /** 关联的消息 ID */
   messageId: string
   /** 关联的 Topic ID（仅 topic 类型有） */
