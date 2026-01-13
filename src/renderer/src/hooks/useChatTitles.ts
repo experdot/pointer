@@ -24,6 +24,7 @@ export interface BatchProgress {
 export interface UseChatTitlesResult {
   // 基础操作
   updateTitle: (messageId: string, title: string) => void
+  deleteTitle: (messageId: string) => void
   // AI 生成标题（统一方法，支持可选的 options）
   generateTitle: (messageId: string, options?: GenerateOptions) => Promise<void>
   // 批量生成标题（统一方法，支持可选的 options）
@@ -41,6 +42,13 @@ export function useChatTitles({
   const updateTitle = useCallback(
     (messageId: string, title: string) => {
       updateMessageTitle(pageId, messageId, title)
+    },
+    [pageId]
+  )
+
+  const deleteTitle = useCallback(
+    (messageId: string) => {
+      updateMessageTitle(pageId, messageId, '')
     },
     [pageId]
   )
@@ -121,6 +129,7 @@ export function useChatTitles({
 
   return {
     updateTitle,
+    deleteTitle,
     generateTitle,
     batchGenerateTitles,
     batchProgress

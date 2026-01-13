@@ -253,7 +253,7 @@
 
 /* Message Title */
 .message-item__title-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   margin-bottom: 6px;
 }
@@ -268,20 +268,36 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--ant-color-primary);
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.message-item__title:hover {
-  background: var(--ant-color-primary-bg-hover);
-}
-
-.message-item__title .anticon {
+.message-item__title .anticon-tag {
   font-size: 12px;
 }
 
 .message-item__title-input {
   max-width: 200px;
+}
+
+.message-item__title-more {
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--ant-color-primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.message-item__title:hover .message-item__title-more {
+  opacity: 1;
+}
+
+.message-item__title-more:hover {
+  color: var(--ant-color-primary-hover);
+}
+
+/* User message title 样式调整 */
+.message-item--user .message-item__title {
+  flex-direction: row-reverse;
 }
 
 /* Topic Header */

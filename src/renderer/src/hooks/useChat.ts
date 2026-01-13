@@ -47,6 +47,7 @@ interface UseChatResult {
 
   // Title 操作
   updateTitle: (messageId: string, title: string) => void
+  deleteTitle: (messageId: string) => void
   generateTitle: (messageId: string, options?: GenerateOptions) => Promise<void>
   batchGenerateTitles: (options?: GenerateOptions) => Promise<void>
   batchProgress: { current: number; total: number } | null
@@ -221,6 +222,7 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
 
     // Title 操作
     updateTitle: titles.updateTitle,
+    deleteTitle: titles.deleteTitle,
     generateTitle: titles.generateTitle,
     batchGenerateTitles: titles.batchGenerateTitles,
     batchProgress: titles.batchProgress,

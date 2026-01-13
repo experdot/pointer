@@ -42,6 +42,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     topicGroups,
     outline,
     updateTitle,
+    deleteTitle,
     // Topic 操作（独立 Topic 实体）
     createTopic,
     updateTopic,
@@ -262,6 +263,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
         onUpdateTitle={updateTitle}
+        onDeleteTitle={deleteTitle}
         onGenerateTitle={generateTitleWithOptions}
         onGenerateTopic={generateTopicWithOptions}
         // Topic 相关

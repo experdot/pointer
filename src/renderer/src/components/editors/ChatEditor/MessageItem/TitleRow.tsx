@@ -1,8 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
-import { Input, Tooltip } from 'antd'
+import { Input, Tooltip, Dropdown, Button } from 'antd'
 import type { InputRef } from 'antd'
-import { TagOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import {
+  TagOutlined,
+  ThunderboltOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  MoreOutlined
+} from '@ant-design/icons'
 import { AIGeneratePopover } from '../../../common/AIGeneratePopover'
 import type { TitleRowProps, TitleRowRef } from './types'
 
@@ -108,12 +114,39 @@ export const TitleRow = React.memo(
             }
           />
         ) : (
-          <Tooltip title="点击编辑标题">
-            <span className="message-item__title" onClick={handleStartEdit}>
-              <TagOutlined />
-              {title}
-            </span>
-          </Tooltip>
+          <span className="message-item__title">
+            <TagOutlined />
+            <span className="message-item__title-text">{title}</span>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'rename',
+                    label: '重命名',
+                    icon: <EditOutlined />,
+                    onClick: () => handleStartEdit()
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'delete',
+                    label: '删除',
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: () => titleCallbacks.onDeleteTitle?.(messageId)
+                  }
+                ]
+              }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                size="small"
+                className="message-item__title-more"
+                icon={<MoreOutlined />}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Dropdown>
+          </span>
         )}
       </div>
     )

@@ -21,6 +21,7 @@ export interface TopicCallbacks {
 // 标题相关 callbacks
 export interface TitleCallbacks {
   onUpdateTitle?: (messageId: string, title: string) => void
+  onDeleteTitle?: (messageId: string) => void
   onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
 }
 

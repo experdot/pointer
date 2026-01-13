@@ -56,6 +56,7 @@ interface MessageListProps {
   onExpandAll: () => void
   // Title 相关
   onUpdateTitle?: (messageId: string, title: string) => void
+  onDeleteTitle?: (messageId: string) => void
   onGenerateTitle?: (messageId: string, options: GenerateOptions) => Promise<void>
   onGenerateTopic?: (messageId: string, options: GenerateOptions) => Promise<void>
   // Topic 相关（独立 Topic 实体）
@@ -84,6 +85,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
     onCollapseAll,
     onExpandAll,
     onUpdateTitle,
+    onDeleteTitle,
     onGenerateTitle,
     onGenerateTopic,
     // Topic 相关
@@ -185,9 +187,10 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const titleCallbacks: TitleCallbacks = useMemo(
     () => ({
       onUpdateTitle,
+      onDeleteTitle,
       onGenerateTitle
     }),
-    [onUpdateTitle, onGenerateTitle]
+    [onUpdateTitle, onDeleteTitle, onGenerateTitle]
   )
 
   const topicCallbacks: TopicCallbacks = useMemo(
