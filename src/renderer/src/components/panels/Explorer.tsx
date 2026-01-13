@@ -41,6 +41,7 @@ export function Explorer(): React.JSX.Element {
     createFolder,
     deleteFolder,
     deleteFolders,
+    clearFolder,
     updateFolder,
     toggleFolderExpanded,
     openPage
@@ -92,6 +93,16 @@ export function Explorer(): React.JSX.Element {
 
   const handleCreateFolder = async (): Promise<void> => {
     const folder = await createFolder(undefined, selectedKey ?? undefined)
+    setSelectedKey(folder.id)
+  }
+
+  const handleCreatePageInFolder = async (folderId: string): Promise<void> => {
+    const page = await createPage(undefined, undefined, folderId)
+    openPage(page.id)
+  }
+
+  const handleCreateSubFolder = async (parentFolderId: string): Promise<void> => {
+    const folder = await createFolder(undefined, undefined, parentFolderId)
     setSelectedKey(folder.id)
   }
 
@@ -254,9 +265,14 @@ export function Explorer(): React.JSX.Element {
         deleteItem={deletePage}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}
+        clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         onDoubleClick={handleDoubleClick}
         onGenerateItemName={handleGenerateItemName}
+        onCreateItemInFolder={handleCreatePageInFolder}
+        onCreateSubFolder={handleCreateSubFolder}
+        createItemLabel="新建对话"
+        createFolderLabel="新建文件夹"
         getItemMenuItems={getItemMenuItems}
         getFolderMenuItems={getFolderMenuItems}
         emptyText={isEmpty ? '暂无对话' : undefined}

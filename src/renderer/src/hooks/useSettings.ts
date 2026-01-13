@@ -81,6 +81,7 @@ interface UseLLMConfigsResult extends ConfigTreeResult<LLMConfig> {
   createFolder: typeof settingsService.createLLMConfigFolder
   updateFolder: typeof settingsService.updateLLMConfigFolder
   deleteFolder: typeof settingsService.deleteLLMConfigFolder
+  clearFolder: typeof settingsService.clearLLMConfigFolder
   toggleFolderExpanded: typeof settingsService.toggleLLMConfigFolderExpanded
 }
 
@@ -117,6 +118,7 @@ export function useLLMConfigs(): UseLLMConfigsResult {
     createFolder: settingsService.createLLMConfigFolder,
     updateFolder: settingsService.updateLLMConfigFolder,
     deleteFolder: settingsService.deleteLLMConfigFolder,
+    clearFolder: settingsService.clearLLMConfigFolder,
     toggleFolderExpanded: settingsService.toggleLLMConfigFolderExpanded
   }
 }
@@ -130,6 +132,7 @@ interface UseModelConfigsResult extends ConfigTreeResult<ModelConfig> {
   createFolder: typeof settingsService.createModelConfigFolder
   updateFolder: typeof settingsService.updateModelConfigFolder
   deleteFolder: typeof settingsService.deleteModelConfigFolder
+  clearFolder: typeof settingsService.clearModelConfigFolder
   toggleFolderExpanded: typeof settingsService.toggleModelConfigFolderExpanded
 }
 
@@ -166,6 +169,7 @@ export function useModelConfigs(): UseModelConfigsResult {
     createFolder: settingsService.createModelConfigFolder,
     updateFolder: settingsService.updateModelConfigFolder,
     deleteFolder: settingsService.deleteModelConfigFolder,
+    clearFolder: settingsService.clearModelConfigFolder,
     toggleFolderExpanded: settingsService.toggleModelConfigFolderExpanded
   }
 }

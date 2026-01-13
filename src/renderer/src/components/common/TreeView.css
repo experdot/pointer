@@ -100,12 +100,22 @@
   transition: opacity 0.2s;
 }
 
+.tree-view-title-add {
+  flex-shrink: 0;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
 .tree-view-title:hover .tree-view-title-more,
-.tree-view-title-more:hover {
+.tree-view-title:hover .tree-view-title-add,
+.tree-view-title-more:hover,
+.tree-view-title-add:hover {
   opacity: 0.6;
 }
 
-.tree-view-title-more:hover {
+.tree-view-title-more:hover,
+.tree-view-title-add:hover {
   opacity: 1;
 }
 

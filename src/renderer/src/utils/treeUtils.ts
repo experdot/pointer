@@ -102,6 +102,19 @@ export function removeTreeFolder<T extends ConfigItemBase>(
   }
 }
 
+export function clearTreeFolder<T extends ConfigItemBase>(
+  tree: ConfigTree<T>,
+  id: string
+): ConfigTree<T> {
+  const allSubFolderIds = getAllSubFolderIds(tree.folders, id)
+  const allFolderIds = [id, ...allSubFolderIds]
+
+  return {
+    items: tree.items.filter((item) => !item.parentFolderId || !allFolderIds.includes(item.parentFolderId)),
+    folders: tree.folders.filter((f) => !allSubFolderIds.includes(f.id))
+  }
+}
+
 export function addTreeItem<T extends ConfigItemBase>(tree: ConfigTree<T>, item: T): ConfigTree<T> {
   return {
     ...tree,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import {
@@ -22,17 +22,20 @@ export interface ConfigTreeProps<T extends ConfigItemBase> {
   itemNameKey: keyof T
   isItem: (item: T | ConfigFolder) => item is T
   batchUpdateItemsOrder: (items: (T | ConfigFolder)[], parentFolderId?: string) => void
-  createItem: () => T
+  createItem: (inFolderId?: string) => T
   updateItem: (id: string, updates: Partial<T>) => void
   deleteItem: (id: string) => void
   copyItem?: (item: T) => T
-  createFolder: (name?: string) => ConfigFolder
+  createFolder: (name?: string, inFolderId?: string) => ConfigFolder
   updateFolder: (id: string, updates: Partial<ConfigFolder>) => void
   deleteFolder: (id: string) => void
+  clearFolder?: (id: string) => void
   toggleFolderExpanded: (id: string) => void
   defaultItemId?: string
   emptyText?: string
   addItemText?: string
+  createItemLabel?: string
+  createFolderLabel?: string
 }
 
 export function ConfigTree<T extends ConfigItemBase>({
@@ -51,10 +54,13 @@ export function ConfigTree<T extends ConfigItemBase>({
   createFolder,
   updateFolder,
   deleteFolder,
+  clearFolder,
   toggleFolderExpanded,
   defaultItemId,
   emptyText = '暂无配置',
-  addItemText = '添加配置'
+  addItemText = '新建配置',
+  createItemLabel = '新建配置',
+  createFolderLabel = '新建文件夹'
 }: ConfigTreeProps<T>): React.JSX.Element {
   const { showDeleteConfirm } = useConfirmDialog()
   const [multiSelect, setMultiSelect] = useState(false)
@@ -69,6 +75,22 @@ export function ConfigTree<T extends ConfigItemBase>({
     const folder = createFolder('新文件夹')
     onSelect(folder.id)
   }
+
+  const handleCreateItemInFolder = useCallback(
+    (folderId: string): void => {
+      const item = createItem(folderId)
+      onSelect(item.id)
+    },
+    [createItem, onSelect]
+  )
+
+  const handleCreateSubFolder = useCallback(
+    (parentFolderId: string): void => {
+      const folder = createFolder('新文件夹', parentFolderId)
+      onSelect(folder.id)
+    },
+    [createFolder, onSelect]
+  )
 
   const handleToggleMultiSelect = (): void => {
     setMultiSelect(!multiSelect)
@@ -173,8 +195,13 @@ export function ConfigTree<T extends ConfigItemBase>({
         deleteItem={deleteItem}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}
+        clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         getItemMenuItems={copyItem ? getItemMenuItems : undefined}
+        onCreateItemInFolder={handleCreateItemInFolder}
+        onCreateSubFolder={handleCreateSubFolder}
+        createItemLabel={createItemLabel}
+        createFolderLabel={createFolderLabel}
         highlightId={defaultItemId}
         emptyText={emptyText}
         className="config-tree-content"

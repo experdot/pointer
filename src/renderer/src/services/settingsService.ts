@@ -42,10 +42,25 @@ function prepareInsertPosition<T extends ConfigItemBase>(
 
 export function createLLMConfig(
   data: Omit<LLMConfig, 'id' | 'createdAt' | 'order' | 'parentFolderId'>,
-  afterItemId?: string
+  afterItemId?: string,
+  inFolderId?: string
 ): LLMConfig {
   const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    parentFolderId = inFolderId
+    const itemsInFolder = [
+      ...store.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...store.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const config: LLMConfig = {
     ...data,
@@ -86,9 +101,23 @@ export function copyLLMConfig(config: LLMConfig): LLMConfig {
   )
 }
 
-export function createLLMConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
+export function createLLMConfigFolder(name?: string, afterItemId?: string, inFolderId?: string): ConfigFolder {
   const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    parentFolderId = inFolderId
+    const itemsInFolder = [
+      ...store.settings.llmConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...store.settings.llmConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = prepareInsertPosition(store.settings.llmConfigs, afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const folder: ConfigFolder = {
     type: 'folder',
@@ -112,6 +141,10 @@ export function deleteLLMConfigFolder(id: string): void {
   useSettingsStore.getState().removeLLMConfigFolder(id)
 }
 
+export function clearLLMConfigFolder(id: string): void {
+  useSettingsStore.getState().clearLLMConfigFolder(id)
+}
+
 export function toggleLLMConfigFolderExpanded(id: string): void {
   const store = useSettingsStore.getState()
   const folder = store.settings.llmConfigs.folders.find((f) => f.id === id)
@@ -124,10 +157,25 @@ export function toggleLLMConfigFolderExpanded(id: string): void {
 
 export function createModelConfig(
   data: Omit<ModelConfig, 'id' | 'createdAt' | 'order' | 'parentFolderId'>,
-  afterItemId?: string
+  afterItemId?: string,
+  inFolderId?: string
 ): ModelConfig {
   const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    parentFolderId = inFolderId
+    const itemsInFolder = [
+      ...store.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...store.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const config: ModelConfig = {
     ...data,
@@ -167,9 +215,23 @@ export function copyModelConfig(config: ModelConfig): ModelConfig {
   )
 }
 
-export function createModelConfigFolder(name?: string, afterItemId?: string): ConfigFolder {
+export function createModelConfigFolder(name?: string, afterItemId?: string, inFolderId?: string): ConfigFolder {
   const store = useSettingsStore.getState()
-  const { parentFolderId, order } = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    parentFolderId = inFolderId
+    const itemsInFolder = [
+      ...store.settings.modelConfigs.items.filter((i) => i.parentFolderId === inFolderId),
+      ...store.settings.modelConfigs.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = prepareInsertPosition(store.settings.modelConfigs, afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const folder: ConfigFolder = {
     type: 'folder',
@@ -191,6 +253,10 @@ export function updateModelConfigFolder(id: string, updates: Partial<ConfigFolde
 
 export function deleteModelConfigFolder(id: string): void {
   useSettingsStore.getState().removeModelConfigFolder(id)
+}
+
+export function clearModelConfigFolder(id: string): void {
+  useSettingsStore.getState().clearModelConfigFolder(id)
 }
 
 export function toggleModelConfigFolderExpanded(id: string): void {

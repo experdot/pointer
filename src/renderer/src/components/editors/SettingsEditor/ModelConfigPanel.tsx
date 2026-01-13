@@ -19,6 +19,7 @@ export function ModelConfigPanel(): React.JSX.Element {
     createFolder,
     updateFolder,
     deleteFolder,
+    clearFolder,
     toggleFolderExpanded
   } = useModelConfigs()
   const { defaultModelConfigId, setDefaultModelConfigId } = useSettings()
@@ -49,19 +50,24 @@ Top P: ${config.topP}`
         itemNameKey="name"
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        createItem={() =>
-          createConfig({ type: 'item', name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 })
+        createItem={(inFolderId) =>
+          createConfig(
+            { type: 'item', name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 },
+            undefined,
+            inFolderId
+          )
         }
         updateItem={updateConfig}
         deleteItem={deleteConfig}
         copyItem={copyConfig}
-        createFolder={createFolder}
+        createFolder={(name, inFolderId) => createFolder(name, undefined, inFolderId)}
         updateFolder={updateFolder}
         deleteFolder={deleteFolder}
+        clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         defaultItemId={defaultModelConfigId}
         emptyText="暂无配置"
-        addItemText="添加配置"
+        addItemText="新建配置"
       />
 
       <div className="settings-config-detail">

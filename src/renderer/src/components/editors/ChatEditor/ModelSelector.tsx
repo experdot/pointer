@@ -45,7 +45,7 @@ function buildTree(items: LLMConfig[], folders: ConfigFolder[]): TreeNode[] {
     folderMap.set(folder.id, node.children!)
   })
 
-  // 添加配置项到对应文件夹
+  // 新建配置项到对应文件夹
   items.forEach((item) => {
     const parentId = item.parentFolderId
     if (!folderMap.has(parentId)) {

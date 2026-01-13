@@ -12,6 +12,7 @@ import {
   updateTreeItem,
   updateTreeFolder,
   removeTreeFolder,
+  clearTreeFolder,
   removeTreeItem,
   addTreeItem,
   addTreeFolder,
@@ -54,6 +55,7 @@ interface SettingsActions {
   addLLMConfigFolder: (folder: ConfigFolder) => void
   updateLLMConfigFolder: (id: string, updates: Partial<ConfigFolder>) => void
   removeLLMConfigFolder: (id: string) => void
+  clearLLMConfigFolder: (id: string) => void
   batchUpdateLLMConfigs: (updates: Array<{ id: string; updates: Partial<LLMConfig> }>) => void
   batchUpdateLLMConfigFolders: (
     updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
@@ -66,6 +68,7 @@ interface SettingsActions {
   addModelConfigFolder: (folder: ConfigFolder) => void
   updateModelConfigFolder: (id: string, updates: Partial<ConfigFolder>) => void
   removeModelConfigFolder: (id: string) => void
+  clearModelConfigFolder: (id: string) => void
   batchUpdateModelConfigs: (updates: Array<{ id: string; updates: Partial<ModelConfig> }>) => void
   batchUpdateModelConfigFolders: (
     updates: Array<{ id: string; updates: Partial<ConfigFolder> }>
@@ -198,6 +201,17 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     })
   },
 
+  clearLLMConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: clearTreeFolder(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
   batchUpdateLLMConfigs: (updates) => {
     set((state) => {
       const settings = {
@@ -285,6 +299,17 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       const settings = {
         ...state.settings,
         modelConfigs: removeTreeFolder(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  clearModelConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: clearTreeFolder(state.settings.modelConfigs, id)
       }
       persist(settings)
       return { settings }

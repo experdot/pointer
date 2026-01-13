@@ -4,8 +4,11 @@ import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
   FolderOutlined,
   FolderOpenOutlined,
+  FolderAddOutlined,
+  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  ClearOutlined,
   MoreOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
@@ -52,6 +55,7 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   deleteItem: (id: string) => void
   updateFolder: (id: string, name: string) => void
   deleteFolder: (id: string) => void
+  clearFolder?: (id: string) => void
   toggleFolderExpanded: (id: string) => void
 
   // 可选配置
@@ -59,6 +63,10 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   getItemMenuItems?: (item: TItem) => MenuProps['items']
   getFolderMenuItems?: (folder: TFolder) => MenuProps['items']
   onGenerateItemName?: (id: string, options: GenerateOptions) => Promise<void>
+  onCreateItemInFolder?: (folderId: string) => void
+  onCreateSubFolder?: (parentFolderId: string) => void
+  createItemLabel?: string
+  createFolderLabel?: string
   highlightId?: string
   emptyText?: string
   className?: string
@@ -99,6 +107,8 @@ interface TreeNodeTitleProps<TItem extends ItemLike, TFolder extends FolderLike>
   treeNode: TreeNodeData<TItem, TFolder>
   onDoubleClick?: (id: string, isFolder: boolean) => void
   getContextMenuItems: (node: TreeNodeData<TItem, TFolder>) => MenuProps['items']
+  onCreateItemInFolder?: (folderId: string) => void
+  createItemLabel?: string
 }
 
 // 使用泛型的 memo 组件
@@ -108,7 +118,9 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
   isHighlighted,
   treeNode,
   onDoubleClick,
-  getContextMenuItems
+  getContextMenuItems,
+  onCreateItemInFolder,
+  createItemLabel
 }: TreeNodeTitleProps<TItem, TFolder>): React.JSX.Element => {
   // 延迟计算菜单项 - 只在 Dropdown 展开时才计算
   const [menuItems, setMenuItems] = useState<MenuProps['items']>(undefined)
@@ -131,6 +143,20 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
         <span className={`tree-view-title-text ${isHighlighted ? 'is-highlighted' : ''}`}>
           {title}
         </span>
+        {treeNode.isFolder && onCreateItemInFolder && (
+          <Tooltip title={createItemLabel || '新建项目'}>
+            <Button
+              type="text"
+              size="small"
+              icon={<PlusOutlined />}
+              className="tree-view-title-add"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCreateItemInFolder(id)
+              }}
+            />
+          </Tooltip>
+        )}
         <Dropdown menu={{ items: menuItems }} trigger={['click']} onOpenChange={handleOpenChange}>
           <Button
             type="text"
@@ -241,11 +267,16 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   deleteItem,
   updateFolder,
   deleteFolder,
+  clearFolder,
   toggleFolderExpanded,
   onDoubleClick,
   getItemMenuItems,
   getFolderMenuItems,
   onGenerateItemName,
+  onCreateItemInFolder,
+  onCreateSubFolder,
+  createItemLabel,
+  createFolderLabel,
   highlightId,
   emptyText = '暂无数据',
   className = '',
@@ -347,10 +378,20 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const handleDeleteFolder = (folder: TFolder): void => {
     showDeleteConfirm({
       title: `删除文件夹 "${getFolderName(folder)}"`,
-      content: '文件夹内的项目将移动到根目录',
+      content: '将同时删除文件夹内的所有项目',
       onOk: () => {
         deleteFolder(folder.id)
         if (selectedId === folder.id) onSelect(null)
+      }
+    })
+  }
+
+  const handleClearFolder = (folder: TFolder): void => {
+    showDeleteConfirm({
+      title: `清空文件夹 "${getFolderName(folder)}"`,
+      content: '将删除文件夹内的所有项目，但保留文件夹',
+      onOk: () => {
+        clearFolder?.(folder.id)
       }
     })
   }
@@ -416,6 +457,33 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       const folder = node.data as TFolder
       const customItems = getFolderMenuItems?.(folder) || []
       return [
+        ...(onCreateItemInFolder
+          ? [
+              {
+                key: 'createItem',
+                label: createItemLabel || '新建项目',
+                icon: <PlusOutlined />,
+                onClick: ({ domEvent }) => {
+                  domEvent.stopPropagation()
+                  onCreateItemInFolder(folder.id)
+                }
+              }
+            ]
+          : []),
+        ...(onCreateSubFolder
+          ? [
+              {
+                key: 'createFolder',
+                label: createFolderLabel || '新建文件夹',
+                icon: <FolderAddOutlined />,
+                onClick: ({ domEvent }) => {
+                  domEvent.stopPropagation()
+                  onCreateSubFolder(folder.id)
+                }
+              }
+            ]
+          : []),
+        ...(onCreateItemInFolder || onCreateSubFolder ? [{ type: 'divider' as const }] : []),
         {
           key: 'rename',
           label: '重命名',
@@ -427,6 +495,20 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         },
         ...customItems,
         { type: 'divider' },
+        ...(clearFolder
+          ? [
+              {
+                key: 'clear',
+                label: '清空文件夹',
+                icon: <ClearOutlined />,
+                danger: true,
+                onClick: ({ domEvent }) => {
+                  domEvent.stopPropagation()
+                  handleClearFolder(folder)
+                }
+              }
+            ]
+          : []),
         {
           key: 'delete',
           label: '删除',
@@ -474,7 +556,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     (node: TreeNodeData<TItem, TFolder>) => getContextMenuItems(node),
     // 只依赖外部传入的 props，不依赖内部函数
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getItemMenuItems, getFolderMenuItems, getItemName, getFolderName]
+    [getItemMenuItems, getFolderMenuItems, getItemName, getFolderName, clearFolder, onCreateItemInFolder, onCreateSubFolder, createItemLabel, createFolderLabel]
   )
 
   const titleRender = (node: TreeDataNode): React.ReactNode => {
@@ -508,6 +590,8 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         treeNode={treeNode}
         onDoubleClick={onDoubleClick}
         getContextMenuItems={memoizedGetContextMenuItems}
+        onCreateItemInFolder={onCreateItemInFolder}
+        createItemLabel={createItemLabel}
       />
     )
   }

@@ -24,6 +24,7 @@ export function LLMConfigPanel(): React.JSX.Element {
     createFolder,
     updateFolder,
     deleteFolder,
+    clearFolder,
     toggleFolderExpanded
   } = useLLMConfigs()
   const { defaultLLMId, setDefaultLLMId } = useSettings()
@@ -89,17 +90,24 @@ API Key: ${config.apiKey}
         itemNameKey="name"
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        createItem={() => createConfig({ type: 'item', name: '新配置', baseUrl: '', apiKey: '', modelName: '' })}
+        createItem={(inFolderId) =>
+          createConfig(
+            { type: 'item', name: '新配置', baseUrl: '', apiKey: '', modelName: '' },
+            undefined,
+            inFolderId
+          )
+        }
         updateItem={updateConfig}
         deleteItem={deleteConfig}
         copyItem={copyConfig}
-        createFolder={createFolder}
+        createFolder={(name, inFolderId) => createFolder(name, undefined, inFolderId)}
         updateFolder={updateFolder}
         deleteFolder={deleteFolder}
+        clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         defaultItemId={defaultLLMId}
         emptyText="暂无配置"
-        addItemText="添加配置"
+        addItemText="新建配置"
       />
 
       <div className="settings-config-detail">

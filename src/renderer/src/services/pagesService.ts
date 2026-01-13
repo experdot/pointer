@@ -65,8 +65,25 @@ async function prepareInsertPosition(afterItemId?: string): Promise<{
 }
 
 // 创建新页面
-export async function createPage(name?: string, afterItemId?: string): Promise<PageRecord> {
-  const { parentFolderId, order } = await prepareInsertPosition(afterItemId)
+export async function createPage(name?: string, afterItemId?: string, inFolderId?: string): Promise<PageRecord> {
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    // 直接在指定文件夹中创建
+    parentFolderId = inFolderId
+    const pagesStore = usePagesStore.getState()
+    const foldersStore = useFoldersStore.getState()
+    const itemsInFolder = [
+      ...pagesStore.pages.filter((p) => p.parentFolderId === inFolderId),
+      ...foldersStore.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = await prepareInsertPosition(afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const page: PageRecord = {
     type: 'item',
@@ -136,8 +153,25 @@ export async function movePage(pageId: string, folderId: string | undefined): Pr
 }
 
 // 创建文件夹
-export async function createFolder(name?: string, afterItemId?: string): Promise<PageFolder> {
-  const { parentFolderId, order } = await prepareInsertPosition(afterItemId)
+export async function createFolder(name?: string, afterItemId?: string, inFolderId?: string): Promise<PageFolder> {
+  let parentFolderId: string | undefined
+  let order: number
+
+  if (inFolderId) {
+    // 直接在指定文件夹中创建
+    parentFolderId = inFolderId
+    const pagesStore = usePagesStore.getState()
+    const foldersStore = useFoldersStore.getState()
+    const itemsInFolder = [
+      ...pagesStore.pages.filter((p) => p.parentFolderId === inFolderId),
+      ...foldersStore.folders.filter((f) => f.parentFolderId === inFolderId)
+    ]
+    order = itemsInFolder.length > 0 ? Math.max(...itemsInFolder.map((i) => i.order ?? 0)) + 1 : 0
+  } else {
+    const position = await prepareInsertPosition(afterItemId)
+    parentFolderId = position.parentFolderId
+    order = position.order
+  }
 
   const folder: PageFolder = {
     type: 'folder',
@@ -164,30 +198,77 @@ function getAllSubFolderIds(folderId: string, folders: PageFolder[]): string[] {
   return subFolders.flatMap((f) => [f.id, ...getAllSubFolderIds(f.id, folders)])
 }
 
-// 删除文件夹
+// 删除文件夹及其全部子项（包括嵌套的页面和子文件夹）
 export async function deleteFolder(id: string): Promise<void> {
   const foldersStore = useFoldersStore.getState()
   const pagesStore = usePagesStore.getState()
+  const messagesStore = useMessagesStore.getState()
+  const tabsStore = useTabsStore.getState()
 
   const allFolderIds = [id, ...getAllSubFolderIds(id, foldersStore.folders)]
 
-  // 获取根目录现有页面的最大 order
-  const rootPages = pagesStore.pages.filter((p) => !p.parentFolderId)
-  const maxOrder = rootPages.reduce((max, p) => Math.max(max, p.order ?? 0), -1)
-
-  // 移动页面到根目录
-  let orderOffset = 0
-  const pagesToMove = pagesStore.pages.filter(
+  // 删除所有子页面
+  const pagesToDelete = pagesStore.pages.filter(
     (p) => p.parentFolderId && allFolderIds.includes(p.parentFolderId)
   )
-  for (const p of pagesToMove) {
-    orderOffset++
-    await pagesStore.updatePage(p.id, { parentFolderId: undefined, order: maxOrder + orderOffset })
+  const pageIds = pagesToDelete.map((p) => p.id)
+
+  // 清除消息缓存
+  for (const pageId of pageIds) {
+    messagesStore.clearCache(pageId)
   }
 
-  // 删除所有子文件夹
-  for (const folderId of allFolderIds) {
-    await foldersStore.removeFolder(folderId)
+  // 关闭对应的标签页
+  const tabsToClose = tabsStore.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
+  for (const tab of tabsToClose) {
+    tabsStore.closeTab(tab.id)
+  }
+
+  // 批量删除页面
+  if (pageIds.length > 0) {
+    await pagesStore.removePages(pageIds)
+  }
+
+  // 删除所有文件夹（包括子文件夹）
+  await foldersStore.removeFolders(allFolderIds)
+}
+
+// 清空文件夹（删除子项但保留文件夹本身）
+export async function clearFolder(id: string): Promise<void> {
+  const foldersStore = useFoldersStore.getState()
+  const pagesStore = usePagesStore.getState()
+  const messagesStore = useMessagesStore.getState()
+  const tabsStore = useTabsStore.getState()
+
+  // 获取所有子文件夹 ID
+  const subFolderIds = getAllSubFolderIds(id, foldersStore.folders)
+  const allFolderIds = [id, ...subFolderIds]
+
+  // 删除所有子页面
+  const pagesToDelete = pagesStore.pages.filter(
+    (p) => p.parentFolderId && allFolderIds.includes(p.parentFolderId)
+  )
+  const pageIds = pagesToDelete.map((p) => p.id)
+
+  // 清除消息缓存
+  for (const pageId of pageIds) {
+    messagesStore.clearCache(pageId)
+  }
+
+  // 关闭对应的标签页
+  const tabsToClose = tabsStore.tabs.filter((t) => t.dataId && pageIds.includes(t.dataId))
+  for (const tab of tabsToClose) {
+    tabsStore.closeTab(tab.id)
+  }
+
+  // 批量删除页面
+  if (pageIds.length > 0) {
+    await pagesStore.removePages(pageIds)
+  }
+
+  // 删除所有子文件夹（不删除当前文件夹）
+  if (subFolderIds.length > 0) {
+    await foldersStore.removeFolders(subFolderIds)
   }
 }
 

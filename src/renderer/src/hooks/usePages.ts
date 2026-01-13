@@ -21,6 +21,7 @@ export function usePages(): {
   updateFolder: typeof pagesService.updateFolder
   deleteFolder: typeof pagesService.deleteFolder
   deleteFolders: typeof pagesService.deleteFolders
+  clearFolder: typeof pagesService.clearFolder
   toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
   openPage: typeof pagesService.openPage
 } {
@@ -95,6 +96,7 @@ export function usePages(): {
     updateFolder: pagesService.updateFolder,
     deleteFolder: pagesService.deleteFolder,
     deleteFolders: pagesService.deleteFolders,
+    clearFolder: pagesService.clearFolder,
     toggleFolderExpanded: pagesService.toggleFolderExpanded,
     openPage: pagesService.openPage
   }
