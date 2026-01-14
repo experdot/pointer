@@ -25,29 +25,34 @@ Pointer is a cross-platform desktop AI chat client built with Electron, React 19
 ## Features
 
 ### Multi-Model Support
+
 - Configure multiple AI providers (OpenAI GPT, Anthropic Claude, DeepSeek, etc.)
 - Switch between models seamlessly during conversations
 - Streaming responses with real-time reasoning process display
 
 ### Conversation Branch Management
+
 - Tree-structured message history with version control
 - Create and switch between conversation branches
 - Maintain context inheritance across branches
 - Navigate conversation history with ease
 
 ### Knowledge Organization
+
 - Folder-based hierarchical organization
 - Message bookmarking and tagging
 - Parallel tab workflow for multiple conversations
 - Global search with keyword highlighting
 
 ### Data Management
+
 - Import data from ChatGPT and DeepSeek exports
 - Export conversations for backup
 - Local data storage with privacy focus
 - Batch operations and drag-and-drop sorting
 
 ### Task Monitoring
+
 - Global AI generation task management
 - Real-time task status and cancellation
 - Cross-page Q&A traceability
@@ -65,6 +70,7 @@ Download the latest release for your platform from the [Releases](https://github
 ### Build from Source
 
 Requirements:
+
 - Node.js 18+
 - pnpm
 
@@ -98,13 +104,13 @@ pnpm build:linux  # Linux
 
 ## Tech Stack
 
-| Category | Technologies |
-|----------|-------------|
-| Frontend | React 19, TypeScript, Ant Design, Tailwind CSS |
-| Desktop | Electron 35, electron-vite |
-| State | Zustand, Immer |
-| Build | Vite, Electron Builder |
-| Editor | Monaco Editor |
+| Category  | Technologies                                                 |
+| --------- | ------------------------------------------------------------ |
+| Frontend  | React 19, TypeScript, Ant Design, Tailwind CSS               |
+| Desktop   | Electron 35, electron-vite                                   |
+| State     | Zustand, Immer                                               |
+| Build     | Vite, Electron Builder                                       |
+| Editor    | Monaco Editor                                                |
 | Rendering | Shiki (syntax highlighting), Streamdown (streaming markdown) |
 
 ## Project Structure
