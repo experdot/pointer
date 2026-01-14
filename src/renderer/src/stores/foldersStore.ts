@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import * as db from '../utils/database'
+import { persistence } from '../persistence/registry'
 import type { PageFolder } from '../types/type'
 import type { IFolderStore, FolderCreateDTO } from './interfaces/entities'
 
@@ -42,7 +42,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const folders = await db.getAllFolders()
+    const folders = await persistence.folders.getAll()
     set({ folders, initialized: true })
   },
 
@@ -60,7 +60,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
       expanded: data.expanded ?? true,
       createdAt: Date.now()
     }
-    await db.putFolder(folder)
+    await persistence.folders.put(folder)
     set((state) => ({ folders: [...state.folders, folder] }))
     return folder
   },
@@ -76,7 +76,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
       expanded: data.expanded ?? true,
       createdAt: Date.now()
     }))
-    await Promise.all(folders.map((f) => db.putFolder(f)))
+    await Promise.all(folders.map((f) => persistence.folders.put(f)))
     set((state) => ({ folders: [...state.folders, ...folders] }))
     return folders
   },
@@ -86,7 +86,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
     if (!folder) return
 
     const updated = { ...folder, ...changes, updatedAt: Date.now() }
-    await db.putFolder(updated)
+    await persistence.folders.put(updated)
     set((state) => ({
       folders: state.folders.map((f) => (f.id === id ? updated : f))
     }))
@@ -102,26 +102,26 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
     await Promise.all(
       updates.map((u) => {
         const folder = updatedFolders.find((f) => f.id === u.id)
-        return folder ? db.putFolder(folder) : Promise.resolve()
+        return folder ? persistence.folders.put(folder) : Promise.resolve()
       })
     )
     set({ folders: updatedFolders })
   },
 
   delete: async (id) => {
-    await db.deleteFolder(id)
+    await persistence.folders.delete(id)
     set((state) => ({ folders: state.folders.filter((f) => f.id !== id) }))
   },
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    await db.deleteFoldersBatch(ids)
+    await persistence.folders.deleteBatch(ids)
     const idSet = new Set(ids)
     set((state) => ({ folders: state.folders.filter((f) => !idSet.has(f.id)) }))
   },
 
   reset: async () => {
-    await db.clearAllFolders()
+    await persistence.folders.clear()
     set(initialState)
   },
 

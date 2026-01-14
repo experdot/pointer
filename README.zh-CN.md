@@ -25,29 +25,34 @@ Pointer 是一款基于 Electron、React 19 和 TypeScript 构建的跨平台桌
 ## 功能特性
 
 ### 多模型支持
+
 - 配置多个 AI 服务商（OpenAI GPT、Anthropic Claude、DeepSeek 等）
 - 对话中无缝切换模型
 - 流式响应，实时显示推理过程
 
 ### 对话分支管理
+
 - 树状消息历史结构，支持版本控制
 - 创建并切换对话分支
 - 跨分支上下文继承
 - 便捷的历史记录导航
 
 ### 知识组织
+
 - 基于文件夹的层级组织
 - 消息收藏和标记
 - 多标签页并行工作流
 - 全局搜索与关键词高亮
 
 ### 数据管理
+
 - 导入 ChatGPT 和 DeepSeek 导出数据
 - 导出对话备份
 - 本地数据存储，注重隐私
 - 批量操作和拖拽排序
 
 ### 任务监控
+
 - 全局 AI 生成任务管理
 - 实时任务状态与取消
 - 跨页面问答溯源
@@ -65,6 +70,7 @@ Pointer 是一款基于 Electron、React 19 和 TypeScript 构建的跨平台桌
 ### 从源码构建
 
 环境要求：
+
 - Node.js 18+
 - pnpm
 
@@ -98,14 +104,14 @@ pnpm build:linux  # Linux
 
 ## 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| 前端 | React 19、TypeScript、Ant Design、Tailwind CSS |
-| 桌面端 | Electron 35、electron-vite |
-| 状态管理 | Zustand、Immer |
-| 构建工具 | Vite、Electron Builder |
-| 编辑器 | Monaco Editor |
-| 渲染 | Shiki（语法高亮）、Streamdown（流式 Markdown） |
+| 类别     | 技术                                           |
+| -------- | ---------------------------------------------- |
+| 前端     | React 19、TypeScript、Ant Design、Tailwind CSS |
+| 桌面端   | Electron 35、electron-vite                     |
+| 状态管理 | Zustand、Immer                                 |
+| 构建工具 | Vite、Electron Builder                         |
+| 编辑器   | Monaco Editor                                  |
+| 渲染     | Shiki（语法高亮）、Streamdown（流式 Markdown） |
 
 ## 项目结构
 

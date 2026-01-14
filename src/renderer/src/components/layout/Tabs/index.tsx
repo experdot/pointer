@@ -1,12 +1,7 @@
 import React from 'react'
 import { Tabs as AntTabs, Dropdown, Button } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import {
-  PushpinFilled,
-  LeftOutlined,
-  RightOutlined,
-  DeleteOutlined
-} from '@ant-design/icons'
+import { PushpinFilled, LeftOutlined, RightOutlined, DeleteOutlined } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,

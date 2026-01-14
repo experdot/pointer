@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import * as db from '../utils/database'
-import type { QueueItem, MessageQueueRecord } from '../utils/database'
+import { persistence } from '../persistence/registry'
+import type { QueueItem, MessageQueueRecord } from '../persistence/interfaces/userData'
 
 interface MessageQueueState {
   // 按 pageId 缓存队列
@@ -51,7 +51,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
-    const records = await db.getAllMessageQueues()
+    const records = await persistence.messageQueue.getAll()
     const cache: Record<string, MessageQueueRecord> = {}
     for (const record of records) {
       cache[record.pageId] = record
@@ -76,7 +76,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       pageId,
       items: [...current.items, newItem]
     }
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -92,7 +92,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
         .filter((item) => item.id !== itemId)
         .map((item, index) => ({ ...item, order: index }))
     }
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -105,7 +105,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: current.items.map((item) => (item.id === itemId ? { ...item, content } : item))
     }
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -118,7 +118,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: []
     }
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -132,7 +132,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: rest.map((item, index) => ({ ...item, order: index }))
     }
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -151,7 +151,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
     // 再异步持久化
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
   },
 
   resume: async (pageId) => {
@@ -166,7 +166,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
     // 再异步持久化
-    await db.putMessageQueue(pageId, updated)
+    await persistence.messageQueue.put(pageId, updated)
   },
 
   reset: () => set(initialState)

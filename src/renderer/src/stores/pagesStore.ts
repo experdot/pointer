@@ -5,8 +5,8 @@
 
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import * as db from '../utils/database'
-import type { PageRecord } from '../utils/database'
+import { persistence } from '../persistence/registry'
+import type { PageRecord } from '../persistence/interfaces/userData'
 import type { IPageStore, PageCreateDTO } from './interfaces/entities'
 
 interface PagesState {
@@ -41,7 +41,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const pages = await db.getAllPages()
+    const pages = await persistence.pages.getAll()
     set({ pages, initialized: true })
   },
 
@@ -59,7 +59,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       starred: data.starred,
       createdAt: Date.now()
     }
-    await db.putPage(page)
+    await persistence.pages.put(page)
     set((state) => ({ pages: [...state.pages, page] }))
     return page
   },
@@ -75,7 +75,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       starred: data.starred,
       createdAt: Date.now()
     }))
-    await db.putPagesBatch(pages)
+    await persistence.pages.putBatch(pages)
     set((state) => ({ pages: [...state.pages, ...pages] }))
     return pages
   },
@@ -85,7 +85,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     if (!page) return
 
     const updated = { ...page, ...changes, updatedAt: Date.now() }
-    await db.putPage(updated)
+    await persistence.pages.put(updated)
     set((state) => ({
       pages: state.pages.map((p) => (p.id === id ? updated : p))
     }))
@@ -101,26 +101,26 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     await Promise.all(
       updates.map((u) => {
         const page = updatedPages.find((p) => p.id === u.id)
-        return page ? db.putPage(page) : Promise.resolve()
+        return page ? persistence.pages.put(page) : Promise.resolve()
       })
     )
     set({ pages: updatedPages })
   },
 
   delete: async (id) => {
-    await db.deletePage(id)
+    await persistence.pages.deleteWithMessages(id)
     set((state) => ({ pages: state.pages.filter((p) => p.id !== id) }))
   },
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    await db.deletePagesBatch(ids)
+    await persistence.pages.deleteWithMessagesBatch(ids)
     const idSet = new Set(ids)
     set((state) => ({ pages: state.pages.filter((p) => !idSet.has(p.id)) }))
   },
 
   reset: async () => {
-    await db.clearAllPages()
+    await persistence.pages.clearAllWithMessages()
     set(initialState)
   },
 

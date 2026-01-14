@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import * as db from '../utils/database'
+import { persistence } from '../persistence/registry'
 import type {
   Settings,
   ConfigTree,
@@ -83,7 +83,7 @@ type SettingsStore = SettingsState & SettingsActions
 
 // 持久化辅助函数
 const persist = (settings: Settings): void => {
-  db.putSettings(settings)
+  persistence.settings.put(settings)
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -91,7 +91,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   initialized: false,
 
   init: async () => {
-    const settings = await db.getSettings()
+    const settings = await persistence.settings.get()
     set({
       settings: settings ? { ...initialSettings, ...settings } : initialSettings,
       initialized: true
@@ -340,7 +340,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   },
 
   reset: async () => {
-    await db.clearSettings()
+    await persistence.settings.clear()
     set({ settings: initialSettings, initialized: false })
   }
 }))

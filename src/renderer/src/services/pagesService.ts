@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { PageFolder } from '../types/type'
-import type { PageRecord } from '../utils/database'
+import type { PageRecord } from '../persistence/interfaces/userData'
 import { stores } from '../stores/registry'
 
 // 计算新项目的插入位置和 order，并更新同级项目的 order

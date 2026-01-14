@@ -117,9 +117,7 @@ export function AIGeneratePopover({
       )
     }
     if (!hasDefaultLLM) {
-      return (
-        <span className="ai-generate-popover__no-config-text">请先在下方选择一个模型</span>
-      )
+      return <span className="ai-generate-popover__no-config-text">请先在下方选择一个模型</span>
     }
     return null
   }
@@ -137,9 +135,7 @@ export function AIGeneratePopover({
           disabled={loading || needsOverlay}
         />
         {/* 提示覆盖层 */}
-        {needsOverlay && (
-          <div className="ai-generate-popover__overlay">{renderOverlay()}</div>
-        )}
+        {needsOverlay && <div className="ai-generate-popover__overlay">{renderOverlay()}</div>}
       </div>
       <div className="ai-generate-popover__toolbar">
         <div className="ai-generate-popover__toolbar-left">

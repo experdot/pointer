@@ -4,8 +4,8 @@
  */
 
 import { create } from 'zustand'
-import * as db from '../utils/database'
-import type { MessagesRecord } from '../utils/database'
+import { persistence } from '../persistence/registry'
+import type { MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatMessage, Topic } from '../types/type'
 import type { IMessageStore } from './interfaces/entities'
 
@@ -71,7 +71,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     const cached = get().cache[pageId]
     if (cached) return cached
 
-    const record = (await db.getMessages(pageId)) ?? emptyRecord(pageId)
+    const record = (await persistence.messages.get(pageId)) ?? emptyRecord(pageId)
     set((state) => ({
       cache: { ...state.cache, [pageId]: record }
     }))
@@ -85,7 +85,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   update: async (pageId, updater) => {
     const current = get().cache[pageId] ?? emptyRecord(pageId)
     const updated = updater(current)
-    await db.putMessages(updated)
+    await persistence.messages.put(pageId, updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -136,7 +136,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   },
 
   removeRecord: async (pageId) => {
-    await db.deleteMessages(pageId)
+    await persistence.messages.delete(pageId)
     get().evict(pageId)
   },
 

@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import * as messagesService from '../services/messagesService'
 import type { ChatMessage, Topic, TopicGroup, OutlineNode, FileAttachment } from '../types/type'
-import type { PageRecord } from '../utils/database'
+import type { PageRecord } from '../persistence/interfaces/userData'
 
 // 导入拆分的 hooks
 import { useChatCore } from './useChatCore'

@@ -27,8 +27,8 @@ import { useFoldersStore } from '../../../stores/foldersStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import * as db from '../../../utils/database'
-import type { PageRecord, MessagesRecord } from '../../../utils/database'
+import { persistence } from '../../../persistence/registry'
+import type { PageRecord, MessagesRecord } from '../../../persistence/interfaces/userData'
 import type {
   PageFolder,
   ConfigFolder,
@@ -446,7 +446,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
               ...messagesRecord,
               pageId: resolved.id
             }
-            await db.putMessages(newRecord)
+            await persistence.messages.put(resolved.id, newRecord)
           }
         }
       }

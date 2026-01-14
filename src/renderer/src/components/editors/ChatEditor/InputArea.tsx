@@ -8,12 +8,7 @@ import React, {
 } from 'react'
 import { Input, Button, Tooltip } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
-import {
-  SendOutlined,
-  StopOutlined,
-  CaretRightOutlined,
-  PictureOutlined
-} from '@ant-design/icons'
+import { SendOutlined, StopOutlined, CaretRightOutlined, PictureOutlined } from '@ant-design/icons'
 import { ModelSelector } from './ModelSelector'
 import { ModelConfigSelector } from './ModelConfigSelector'
 import { QueueButton } from './QueueButton'
@@ -229,9 +224,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       )
     }
     if (!hasDefaultLLM) {
-      return (
-        <span className="chat-editor__no-config-text">请先在下方选择一个模型</span>
-      )
+      return <span className="chat-editor__no-config-text">请先在下方选择一个模型</span>
     }
     return null
   }

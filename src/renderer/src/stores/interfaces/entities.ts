@@ -4,7 +4,7 @@
  */
 
 import type { IEntityStore, ICachedStore, IResettable } from './base'
-import type { PageRecord, MessagesRecord } from '../../utils/database'
+import type { PageRecord, MessagesRecord } from '../../persistence/interfaces/userData'
 import type { PageFolder, ChatMessage, Topic, Account } from '../../types/type'
 
 // ==================== Page Store ====================

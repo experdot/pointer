@@ -7,8 +7,13 @@ import { useFoldersStore } from '../../../stores/foldersStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import * as db from '../../../utils/database'
-import type { PageRecord, MessagesRecord, TabsRecord, LayoutRecord } from '../../../utils/database'
+import { persistence } from '../../../persistence/registry'
+import type {
+  PageRecord,
+  MessagesRecord,
+  TabsRecord,
+  LayoutRecord
+} from '../../../persistence/interfaces/userData'
 import type {
   PageFolder,
   Settings,
@@ -258,7 +263,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
         // 加载消息
         const messages: MessagesRecord[] = []
         for (const pageId of stats.pageIds) {
-          const record = await db.getMessages(pageId)
+          const record = await persistence.messages.get(pageId)
           if (record) {
             messages.push(record)
           }

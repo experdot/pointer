@@ -11,7 +11,7 @@ import type {
   TopicGroup,
   OutlineNode
 } from '../types/type'
-import type { PageRecord } from '../utils/database'
+import type { PageRecord } from '../persistence/interfaces/userData'
 
 export interface UseChatCoreOptions {
   pageId: string

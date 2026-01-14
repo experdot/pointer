@@ -3,8 +3,8 @@
  */
 
 import { stores } from '../stores/registry'
-import * as db from '../utils/database'
-import type { PageRecord, MessagesRecord } from '../utils/database'
+import { persistence } from '../persistence/registry'
+import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import type {
   ParsedConversation,
   ImportOptions,
@@ -158,8 +158,8 @@ export async function importConversations(
       // 批量写入页面和消息
       // 注意：createMany 会生成新 ID，这里需要直接写入数据库
       await Promise.all([
-        Promise.all(batch.map((b) => db.putPage(b.page))),
-        db.putMessagesBatch(messagesRecords)
+        Promise.all(batch.map((b) => persistence.pages.put(b.page))),
+        persistence.messages.putBatch(messagesRecords)
       ])
       // 刷新 store 以同步数据库状态
       await page.init()
@@ -169,8 +169,8 @@ export async function importConversations(
       // 批量失败时，逐个重试
       for (const item of batch) {
         try {
-          await db.putPage(item.page)
-          await db.putMessages(item.messagesRecord)
+          await persistence.pages.put(item.page)
+          await persistence.messages.put(item.messagesRecord.pageId, item.messagesRecord)
           result.success++
         } catch (itemErr) {
           result.failed++

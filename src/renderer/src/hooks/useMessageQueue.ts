@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
-import type { QueueItem } from '../utils/database'
+import type { QueueItem } from '../persistence/interfaces/userData'
 import type { FileAttachment } from '../types/type'
 
 interface UseMessageQueueOptions {

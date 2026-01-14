@@ -4,7 +4,7 @@ import * as messagesService from '../services/messagesService'
 import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
 import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../types/type'
-import type { PageRecord, MessagesRecord } from '../utils/database'
+import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatConfigs } from './useChatCore'
 
 export interface UseChatStreamingOptions {

@@ -4,7 +4,7 @@
  */
 
 import type { IInitializable, IResettable } from './base'
-import type { ActivityPanel } from '../../utils/database'
+import type { ActivityPanel } from '../../persistence/interfaces/userData'
 import type {
   Tab,
   TabHistoryEntry,

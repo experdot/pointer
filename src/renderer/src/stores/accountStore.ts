@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
-import * as db from '../utils/database'
+import { persistence } from '../persistence/registry'
 import type { Account } from '../types/type'
 import type { IAccountStore, AccountCreateDTO } from './interfaces/entities'
 
@@ -47,8 +47,8 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
   init: async () => {
     const [accounts, currentAccountId] = await Promise.all([
-      db.getAllAccounts(),
-      db.getCurrentAccountId()
+      persistence.accounts.getAll(),
+      persistence.accounts.getCurrentAccountId()
     ])
     set({ accounts, currentAccountId, initialized: true })
   },
@@ -64,7 +64,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       avatar: data.avatar,
       createdAt: Date.now()
     }
-    await db.putAccount(account)
+    await persistence.accounts.put(account)
     set((state) => {
       // 避免重复添加
       if (state.accounts.some((a) => a.id === account.id)) {
@@ -83,7 +83,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       avatar: data.avatar,
       createdAt: Date.now()
     }))
-    await Promise.all(accounts.map((a) => db.putAccount(a)))
+    await Promise.all(accounts.map((a) => persistence.accounts.put(a)))
     set((state) => ({ accounts: [...state.accounts, ...accounts] }))
     return accounts
   },
@@ -92,7 +92,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     const account = get().accounts.find((a) => a.id === id)
     if (!account) return
     const updated = { ...account, ...changes, updatedAt: Date.now() }
-    await db.putAccount(updated)
+    await persistence.accounts.put(updated)
     set((state) => ({
       accounts: state.accounts.map((a) => (a.id === id ? updated : a))
     }))
@@ -108,14 +108,14 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     await Promise.all(
       updates.map((u) => {
         const account = updatedAccounts.find((a) => a.id === u.id)
-        return account ? db.putAccount(account) : Promise.resolve()
+        return account ? persistence.accounts.put(account) : Promise.resolve()
       })
     )
     set({ accounts: updatedAccounts })
   },
 
   delete: async (id) => {
-    await db.deleteAccount(id)
+    await persistence.accounts.delete(id)
     set((state) => ({
       accounts: state.accounts.filter((a) => a.id !== id),
       currentAccountId: state.currentAccountId === id ? null : state.currentAccountId
@@ -124,7 +124,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    await Promise.all(ids.map((id) => db.deleteAccount(id)))
+    await Promise.all(ids.map((id) => persistence.accounts.delete(id)))
     const idSet = new Set(ids)
     set((state) => ({
       accounts: state.accounts.filter((a) => !idSet.has(a.id)),
@@ -138,7 +138,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
   },
 
   setCurrentAccountId: async (id) => {
-    await db.setCurrentAccountId(id)
+    await persistence.accounts.setCurrentAccountId(id)
     set({ currentAccountId: id })
   },
 

@@ -5,6 +5,7 @@ import './App.css'
 import { initializeTabTypes } from './utils/tabTypeRegistrations'
 import { initializeExportPlugins } from './features/export'
 import { initStores } from './stores/initStores'
+import { initPersistence } from './persistence/initPersistence'
 import { UpdateNotification } from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { MainLayout } from './components/layout/MainLayout'
@@ -14,6 +15,7 @@ import { initializeAccountSystem } from './services/accountService'
 // Initialize plugins and stores
 initializeTabTypes()
 initializeExportPlugins()
+initPersistence()
 initStores()
 
 function AppContent(): React.JSX.Element {

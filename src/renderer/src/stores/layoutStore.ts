@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import * as db from '../utils/database'
-import type { ActivityPanel, LayoutRecord } from '../utils/database'
+import { persistence } from '../persistence/registry'
+import type { ActivityPanel, LayoutRecord } from '../persistence/interfaces/userData'
 import type { ILayoutStore } from './interfaces/ui'
 
-export type { ActivityPanel } from '../utils/database'
+export type { ActivityPanel } from '../persistence/interfaces/userData'
 
 // 紧凑模式阈值
 const COMPACT_MODE_THRESHOLD = 768
@@ -39,7 +39,7 @@ const initialState: LayoutState = {
 }
 
 const persist = (state: LayoutState): void => {
-  db.putLayout({
+  persistence.layout.put({
     sidebarWidth: state.sidebarWidth,
     sidebarVisible: state.sidebarVisible,
     activePanel: state.activePanel
@@ -50,7 +50,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const layout = await db.getLayout()
+    const layout = await persistence.layout.get()
     set({
       ...(layout ?? {}),
       initialized: true
@@ -100,7 +100,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   setCompactMode: (isCompact) => set({ isCompactMode: isCompact }),
 
   reset: async () => {
-    await db.clearLayout()
+    await persistence.layout.clear()
     set(initialState)
   }
 }))

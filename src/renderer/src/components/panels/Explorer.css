@@ -59,7 +59,10 @@
   background-color: transparent !important;
 }
 
-.explorer-tree .ant-tree .ant-tree-treenode:not(.ant-tree-treenode-disabled) .ant-tree-node-content-wrapper:hover {
+.explorer-tree
+  .ant-tree
+  .ant-tree-treenode:not(.ant-tree-treenode-disabled)
+  .ant-tree-node-content-wrapper:hover {
   background-color: transparent;
 }
 

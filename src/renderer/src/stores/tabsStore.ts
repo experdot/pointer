@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import * as db from '../utils/database'
+import { persistence } from '../persistence/registry'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
 import type { Tab, TabHistoryEntry } from '../types/type'
 import type { ITabStore } from './interfaces/ui'
@@ -109,7 +109,7 @@ function tryNavigateToHistory(
 }
 
 const persist = (state: TabsState): void => {
-  db.putTabs({
+  persistence.tabs.put({
     tabs: state.tabs,
     activeTabId: state.activeTabId,
     history: state.history,
@@ -121,7 +121,7 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const data = await db.getTabs()
+    const data = await persistence.tabs.get()
     if (data) {
       set({ ...data, initialized: true })
     } else {
@@ -369,7 +369,7 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   },
 
   reset: async () => {
-    await db.clearTabs()
+    await persistence.tabs.clear()
     set(initialState)
   }
 }))

@@ -1,7 +1,7 @@
 import type { Account } from '../types/type'
 import { stores } from '../stores/registry'
+import { persistence } from '../persistence/registry'
 import { createDefaultAccount, getDefaultAccountId } from '../stores/accountStore'
-import { setDatabaseName, deleteDatabase } from '../utils/database'
 
 // 初始化所有用户数据 store
 async function initAllStores(): Promise<void> {
@@ -45,7 +45,7 @@ export async function initializeAccountSystem(): Promise<void> {
 
   // 设置数据库名称
   const accountId = account.currentAccountId || getDefaultAccountId()
-  setDatabaseName(accountId)
+  persistence.database.setDatabase(accountId)
 
   // 初始化所有用户数据 store
   await initAllStores()
@@ -67,7 +67,7 @@ export async function switchAccount(accountId: string): Promise<void> {
   resetAllStores()
 
   // 切换数据库
-  setDatabaseName(accountId)
+  persistence.database.setDatabase(accountId)
 
   // 更新当前账户
   await account.setCurrentAccountId(accountId)
@@ -107,7 +107,7 @@ export async function removeAccount(accountId: string): Promise<void> {
   await account.delete(accountId)
 
   try {
-    await deleteDatabase(accountId)
+    await persistence.database.deleteDatabase(accountId)
   } catch (error) {
     console.error('Failed to delete account database:', error)
   }
