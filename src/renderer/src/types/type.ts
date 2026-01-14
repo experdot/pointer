@@ -32,7 +32,7 @@ export interface ConfigItemBase extends TreeItemBase {
   type: 'item'
 }
 
-// 通用配置文件夹（继承自 TreeFolderBase，无需重复声明属性）
+// 通用配置文件夹
 export type ConfigFolder = TreeFolderBase
 
 // 泛型树容器
@@ -104,7 +104,7 @@ export interface ChatSession {
   messages: ChatMessage[]
   topics: Topic[] // 独立存储的 Topic 列表
 
-  rootMessageId?: string // 根消息ID
+  rootMessageId?: string // 当前的根消息ID（可能有多个根消息）
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
   selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
 }
@@ -147,10 +147,10 @@ export interface OutlineNode {
   collapsed?: boolean
 }
 
-// PageFolder 是 TreeFolderBase 的别名
+// PageFolder
 export type PageFolder = TreeFolderBase
 
-// Page 类型（继承 TreeItemBase）
+// Page 类型
 export interface Page<T> extends TreeItemBase {
   type: 'item'
   starred?: boolean

@@ -10,7 +10,7 @@ interface DownloadProgress {
   percent: number
 }
 
-export default function UpdateNotification(): React.JSX.Element | null {
+export function UpdateNotification(): React.JSX.Element | null {
   const { notification } = App.useApp()
   const { settings } = useSettingsStore()
   const [downloading, setDownloading] = useState(false)

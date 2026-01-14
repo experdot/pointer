@@ -17,7 +17,6 @@ export type PageCreateDTO = {
   name: string
   parentFolderId?: string
   order?: number
-  pinned?: boolean
   starred?: boolean
 }
 

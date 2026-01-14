@@ -56,7 +56,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       name: data.name,
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
-      pinned: data.pinned,
       starred: data.starred,
       createdAt: Date.now()
     }
@@ -73,7 +72,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       name: data.name,
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
-      pinned: data.pinned,
       starred: data.starred,
       createdAt: Date.now()
     }))

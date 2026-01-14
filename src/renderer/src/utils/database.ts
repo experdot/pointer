@@ -214,7 +214,6 @@ export interface PageRecord {
   name: string
   parentFolderId?: string
   order?: number
-  pinned?: boolean
   starred?: boolean
   createdAt: number
   updatedAt?: number
