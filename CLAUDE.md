@@ -68,7 +68,7 @@ Each store exposes a `get[Name]StoreInterface()` function that returns an interf
 
 ### Data Layer
 
-**IndexedDB** (`utils/database.ts`):
+**IndexedDB** (`persistence/`):
 
 - Multi-account support via separate databases (`pointer-{accountId}`)
 - Separate accounts DB (`pointer-accounts`) for account management

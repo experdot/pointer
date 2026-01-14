@@ -290,7 +290,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // 虚拟滚动：监听容器高度变化
   const containerRef = useRef<HTMLDivElement>(null)
-  const treeRef = useRef<any>(null)
+  const treeRef = useRef<React.ComponentRef<typeof Tree>>(null)
   const lastSelectedIdRef = useRef<string | null>(null)
   const [treeHeight, setTreeHeight] = useState<number | undefined>(undefined)
 
