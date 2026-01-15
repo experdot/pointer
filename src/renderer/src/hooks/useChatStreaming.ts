@@ -3,6 +3,7 @@ import { createAIService } from '../services/aiService'
 import * as messagesService from '../services/messagesService'
 import * as pagesService from '../services/pagesService'
 import { streamingManager } from '../services/streamingManager'
+import { stores } from '../stores/registry'
 import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../types/type'
 import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatConfigs } from './useChatCore'
@@ -168,10 +169,13 @@ export function useChatStreaming({
         })
       }
 
-      // 第一条消息且标题是"新对话"时，自动重命名
-      if (isFirstMessage && page.name === '新对话') {
+      // 第一条消息且标题是默认名称时，自动重命名
+      // 获取最新的页面状态，避免使用过时的 page 对象
+      const currentPage = stores.page.getById(pageId)
+      const isDefaultName = currentPage?.name && /^新对话(?: \(\d+\))?$/.test(currentPage.name)
+      if (isFirstMessage && isDefaultName) {
         const newTitle = content.slice(0, 10) + (content.length > 10 ? '...' : '')
-        pagesService.updatePage(pageId, { name: newTitle })
+        await pagesService.updatePage(pageId, { name: newTitle })
       }
 
       // 获取最新的消息路径

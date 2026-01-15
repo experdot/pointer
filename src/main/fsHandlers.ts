@@ -79,6 +79,66 @@ export function setupFileSystemHandlers(): void {
     }
   )
 
+  // 读取文本文件
+  ipcMain.handle(
+    'fs:read-text',
+    async (
+      _event,
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; content?: string; error?: string }> => {
+      try {
+        const validation = validatePath(filePath, options?.allowCustomPath)
+        if (!validation.valid) {
+          return { success: false, error: validation.error }
+        }
+
+        const content = await readFile(filePath, 'utf-8')
+        return { success: true, content }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return { success: false, error: 'FILE_NOT_FOUND' }
+        }
+        console.error('Read text error:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '未知错误'
+        }
+      }
+    }
+  )
+
+  // 写入文本文件
+  ipcMain.handle(
+    'fs:write-text',
+    async (
+      _event,
+      filePath: string,
+      content: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const validation = validatePath(filePath, options?.allowCustomPath)
+        if (!validation.valid) {
+          return { success: false, error: validation.error }
+        }
+
+        // 确保父目录存在
+        const dir = path.dirname(filePath)
+        await mkdir(dir, { recursive: true })
+
+        await writeFile(filePath, content, 'utf-8')
+        return { success: true }
+      } catch (error) {
+        console.error('Write text error:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '未知错误'
+        }
+      }
+    }
+  )
+
   // 读取 JSON 文件
   ipcMain.handle(
     'fs:read-json',

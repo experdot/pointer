@@ -149,6 +149,15 @@ declare global {
           path?: string
           error?: string
         }>
+        readText: (
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; content?: string; error?: string }>
+        writeText: (
+          filePath: string,
+          content: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
         readJson: <T = unknown>(
           filePath: string,
           options?: { allowCustomPath?: boolean }

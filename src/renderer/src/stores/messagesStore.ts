@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
+import { getMessagesQueue } from './persistenceQueue'
 import type { MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatMessage, Topic } from '../types/type'
 import type { IMessageStore } from './interfaces/entities'
@@ -85,10 +86,12 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   update: async (pageId, updater) => {
     const current = get().cache[pageId] ?? emptyRecord(pageId)
     const updated = updater(current)
-    await persistence.messages.put(pageId, updated)
+    // 先更新内存状态（UI 立即响应）
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
+    // 异步持久化（防抖合并，不阻塞 UI）
+    getMessagesQueue().enqueue(pageId, updated)
   },
 
   addMessage: async (pageId, message) => {

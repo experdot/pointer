@@ -150,6 +150,19 @@ const api = {
     selectDirectory: (options?: { title?: string; defaultPath?: string }) =>
       ipcRenderer.invoke('fs:select-directory', options),
 
+    readText: (
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; content?: string; error?: string }> =>
+      ipcRenderer.invoke('fs:read-text', filePath, options),
+
+    writeText: (
+      filePath: string,
+      content: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-text', filePath, content, options),
+
     readJson: <T = unknown>(
       filePath: string,
       options?: { allowCustomPath?: boolean }

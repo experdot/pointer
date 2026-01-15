@@ -3,6 +3,40 @@ import type { PageFolder } from '../types/type'
 import type { PageRecord } from '../persistence/interfaces/userData'
 import { stores } from '../stores/registry'
 
+/**
+ * Generate a unique name by adding number suffix if needed
+ * e.g., "新对话" -> "新对话 (1)" -> "新对话 (2)"
+ */
+export function generateUniqueName(baseName: string, existingNames: string[]): string {
+  // Check if base name is available
+  if (!existingNames.includes(baseName)) {
+    return baseName
+  }
+
+  // Find all names matching pattern "baseName" or "baseName (n)"
+  const pattern = new RegExp(`^${escapeRegExp(baseName)}(?: \\((\\d+)\\))?$`)
+  let maxNumber = 0
+
+  for (const name of existingNames) {
+    const match = name.match(pattern)
+    if (match) {
+      const num = match[1] ? parseInt(match[1], 10) : 0
+      if (num > maxNumber) {
+        maxNumber = num
+      }
+    }
+  }
+
+  return `${baseName} (${maxNumber + 1})`
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // 计算新项目的插入位置和 order，并更新同级项目的 order
 async function prepareInsertPosition(afterItemId?: string): Promise<{
   parentFolderId: string | undefined
@@ -76,8 +110,14 @@ export async function createPage(
     order = position.order
   }
 
+  // Generate unique name among sibling pages
+  const baseName = name || '新对话'
+  const siblingPages = page.findByFolderId(parentFolderId)
+  const existingNames = siblingPages.map((p) => p.name)
+  const uniqueName = generateUniqueName(baseName, existingNames)
+
   return page.create({
-    name: name || '新对话',
+    name: uniqueName,
     parentFolderId,
     order
   })
@@ -132,9 +172,72 @@ export async function deletePages(ids: string[]): Promise<void> {
   await page.deleteMany(ids)
 }
 
-// 移动页面到文件夹
-export async function movePage(pageId: string, folderId: string | undefined): Promise<void> {
-  await stores.page.update(pageId, { parentFolderId: folderId })
+// 检查页面在目标文件夹是否重名
+export function checkPageNameConflict(
+  pageId: string,
+  targetFolderId: string | undefined
+): string | null {
+  const { page } = stores
+  const movingPage = page.getById(pageId)
+  if (!movingPage) return null
+
+  const siblingPages = page.findByFolderId(targetFolderId)
+  const conflict = siblingPages.find((p) => p.id !== pageId && p.name === movingPage.name)
+  return conflict ? movingPage.name : null
+}
+
+// 检查文件夹在目标文件夹是否重名
+export function checkFolderNameConflict(
+  folderId: string,
+  targetFolderId: string | undefined
+): string | null {
+  const { folder } = stores
+  const movingFolder = folder.getById(folderId)
+  if (!movingFolder) return null
+
+  const siblingFolders = folder.findByParentId(targetFolderId)
+  const conflict = siblingFolders.find((f) => f.id !== folderId && f.name === movingFolder.name)
+  return conflict ? movingFolder.name : null
+}
+
+// 移动页面到文件夹（带重名检查）
+export async function movePage(
+  pageId: string,
+  folderId: string | undefined,
+  autoRename = false
+): Promise<void> {
+  const { page } = stores
+  const movingPage = page.getById(pageId)
+  if (!movingPage) return
+
+  let newName = movingPage.name
+  if (autoRename) {
+    const siblingPages = page.findByFolderId(folderId)
+    const existingNames = siblingPages.filter((p) => p.id !== pageId).map((p) => p.name)
+    newName = generateUniqueName(movingPage.name, existingNames)
+  }
+
+  await page.update(pageId, { parentFolderId: folderId, name: newName })
+}
+
+// 移动文件夹到目标文件夹（带重名检查）
+export async function moveFolder(
+  folderId: string,
+  targetFolderId: string | undefined,
+  autoRename = false
+): Promise<void> {
+  const { folder } = stores
+  const movingFolder = folder.getById(folderId)
+  if (!movingFolder) return
+
+  let newName = movingFolder.name
+  if (autoRename) {
+    const siblingFolders = folder.findByParentId(targetFolderId)
+    const existingNames = siblingFolders.filter((f) => f.id !== folderId).map((f) => f.name)
+    newName = generateUniqueName(movingFolder.name, existingNames)
+  }
+
+  await folder.update(folderId, { parentFolderId: targetFolderId, name: newName })
 }
 
 // 创建文件夹
@@ -159,8 +262,14 @@ export async function createFolder(
     order = position.order
   }
 
+  // Generate unique name among sibling folders
+  const baseName = name || '新文件夹'
+  const siblingFolders = folder.findByParentId(parentFolderId)
+  const existingNames = siblingFolders.map((f) => f.name)
+  const uniqueName = generateUniqueName(baseName, existingNames)
+
   return folder.create({
-    name: name || '新文件夹',
+    name: uniqueName,
     parentFolderId,
     order,
     expanded: true

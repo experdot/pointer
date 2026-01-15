@@ -19,7 +19,9 @@ import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
+import * as pagesService from '../../services/pagesService'
 import { MoveToFolderModal } from './MoveToFolderModal'
+import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { ChatPage, PageFolder } from '../../types/type'
 import { isPage } from '../../types/type'
 import './Explorer.css'
@@ -29,6 +31,8 @@ export function Explorer(): React.JSX.Element {
     pages,
     folders,
     batchUpdateItemsOrder,
+    batchUpdateItemsOrderWithRename,
+    checkBatchMoveConflicts,
     createPage,
     deletePage,
     deletePages,
@@ -55,6 +59,12 @@ export function Explorer(): React.JSX.Element {
     type: 'page' | 'folder'
     id: string
     parentFolderId?: string
+  } | null>(null)
+  const [moveConflict, setMoveConflict] = useState<MoveConflictInfo | null>(null)
+  const [pendingDragOperation, setPendingDragOperation] = useState<{
+    items: (ChatPage | PageFolder)[]
+    parentFolderId: string | undefined
+    conflictNames: string[]
   } | null>(null)
 
   const messagesCache = useMessagesStore((state) => state.cache)
@@ -195,15 +205,90 @@ export function Explorer(): React.JSX.Element {
   const handleMoveConfirm = useCallback(
     async (targetFolderId: string | undefined): Promise<void> => {
       if (!moveTarget) return
+
+      // 检查是否有重名冲突
+      let conflictName: string | null = null
       if (moveTarget.type === 'page') {
-        await updatePage(moveTarget.id, { parentFolderId: targetFolderId })
+        conflictName = pagesService.checkPageNameConflict(moveTarget.id, targetFolderId)
       } else {
-        await updateFolder(moveTarget.id, { parentFolderId: targetFolderId })
+        conflictName = pagesService.checkFolderNameConflict(moveTarget.id, targetFolderId)
+      }
+
+      if (conflictName) {
+        // 有冲突，显示冲突对话框
+        setMoveConflict({
+          type: moveTarget.type,
+          id: moveTarget.id,
+          name: conflictName,
+          targetFolderId
+        })
+        return
+      }
+
+      // 无冲突，直接移动
+      if (moveTarget.type === 'page') {
+        await pagesService.movePage(moveTarget.id, targetFolderId)
+      } else {
+        await pagesService.moveFolder(moveTarget.id, targetFolderId)
       }
       setMoveTarget(null)
     },
-    [moveTarget, updatePage, updateFolder]
+    [moveTarget]
   )
+
+  const handleConflictAutoRename = useCallback(async (): Promise<void> => {
+    if (!moveConflict) return
+
+    if (moveConflict.type === 'page') {
+      await pagesService.movePage(moveConflict.id, moveConflict.targetFolderId, true)
+    } else {
+      await pagesService.moveFolder(moveConflict.id, moveConflict.targetFolderId, true)
+    }
+
+    setMoveConflict(null)
+    setMoveTarget(null)
+  }, [moveConflict])
+
+  const handleConflictCancel = useCallback((): void => {
+    setMoveConflict(null)
+    setPendingDragOperation(null)
+    // 保持 moveTarget 不变，用户可以选择其他目标文件夹
+  }, [])
+
+  // 包装 batchUpdateItemsOrder，检查拖拽冲突
+  const handleBatchUpdateItemsOrder = useCallback(
+    (items: (ChatPage | PageFolder)[], parentFolderId?: string) => {
+      const { hasConflict, conflictNames } = checkBatchMoveConflicts(items, parentFolderId)
+
+      if (hasConflict) {
+        // 有冲突，保存待处理操作，显示冲突对话框
+        setPendingDragOperation({ items, parentFolderId, conflictNames })
+        setMoveConflict({
+          type: items[0]?.type === 'item' ? 'page' : 'folder',
+          id: items[0]?.id ?? '',
+          name: conflictNames[0] ?? '',
+          targetFolderId: parentFolderId
+        })
+        return
+      }
+
+      // 无冲突，直接执行
+      batchUpdateItemsOrder(items, parentFolderId)
+    },
+    [checkBatchMoveConflicts, batchUpdateItemsOrder]
+  )
+
+  // 处理拖拽冲突的自动重命名
+  const handleDragConflictAutoRename = useCallback((): void => {
+    if (pendingDragOperation) {
+      batchUpdateItemsOrderWithRename(
+        pendingDragOperation.items,
+        pendingDragOperation.parentFolderId
+      )
+    }
+    setPendingDragOperation(null)
+    setMoveConflict(null)
+  }, [pendingDragOperation, batchUpdateItemsOrderWithRename])
 
   const menuItems: MenuProps['items'] = [
     { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
@@ -256,7 +341,7 @@ export function Explorer(): React.JSX.Element {
         itemIcon={<MessageOutlined />}
         getItemName={(page) => page.name}
         isItem={(item): item is ChatPage => isPage(item as ChatPage | PageFolder)}
-        batchUpdateItemsOrder={batchUpdateItemsOrder}
+        batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
         updateItem={(id, name) => updatePage(id, { name })}
         deleteItem={deletePage}
         updateFolder={(id, name) => updateFolder(id, { name })}
@@ -284,6 +369,12 @@ export function Explorer(): React.JSX.Element {
         folders={folders}
         excludeFolderIds={moveTarget?.type === 'folder' ? [moveTarget.id] : []}
         currentFolderId={moveTarget?.parentFolderId}
+      />
+      <MoveConflictModal
+        open={moveConflict !== null}
+        conflict={moveConflict}
+        onCancel={handleConflictCancel}
+        onAutoRename={pendingDragOperation ? handleDragConflictAutoRename : handleConflictAutoRename}
       />
     </Flex>
   )

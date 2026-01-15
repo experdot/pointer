@@ -3,6 +3,10 @@
  * Path management and file operations for persistence layer
  */
 
+// ==================== Constants ====================
+
+export const PAGE_FILE_EXTENSION = '.pointer.md'
+
 // ==================== Path Utilities ====================
 
 /**
@@ -190,11 +194,118 @@ export function getPagesDirectoryPath(workspacePath?: string): string {
   return joinPath(getWorkspaceDataPath(workspacePath), 'pages')
 }
 
+// Windows reserved names (case-insensitive)
+const WINDOWS_RESERVED_NAMES = new Set([
+  'CON', 'PRN', 'AUX', 'NUL',
+  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+])
+
+// Max filename length (leave room for extension and suffix)
+const MAX_FILENAME_LENGTH = 200
+
 /**
- * Get single page file path (workspace level)
+ * Sanitize file name - remove/replace invalid characters
+ * Handles:
+ * - Invalid characters: < > : " / \ | ? *
+ * - Control characters (ASCII 0-31)
+ * - Leading/trailing spaces and dots
+ * - Windows reserved names (CON, PRN, etc.)
+ * - Filename length limits
+ */
+export function sanitizeFileName(name: string): string {
+  let result = name
+    // Remove control characters (ASCII 0-31)
+    .replace(/[\x00-\x1f]/g, '')
+    // Replace invalid characters with underscore
+    .replace(/[<>:"/\\|?*]/g, '_')
+    // Normalize multiple spaces to single space
+    .replace(/\s+/g, ' ')
+    // Remove leading/trailing spaces and dots
+    .replace(/^[\s.]+|[\s.]+$/g, '')
+
+  // Check for empty result
+  if (!result) {
+    return 'Untitled'
+  }
+
+  // Check for Windows reserved names (case-insensitive)
+  const upperName = result.toUpperCase()
+  // Handle cases like "CON" or "CON.txt" -> "_CON" or "_CON.txt"
+  const baseName = upperName.split('.')[0]
+  if (WINDOWS_RESERVED_NAMES.has(baseName)) {
+    result = '_' + result
+  }
+
+  // Truncate if too long (leave room for suffix like " (99)")
+  if (result.length > MAX_FILENAME_LENGTH) {
+    result = result.substring(0, MAX_FILENAME_LENGTH).trimEnd()
+  }
+
+  return result
+}
+
+/**
+ * Build page file path from page name and optional folder path
+ * @param pageName - The page name (will be sanitized)
+ * @param folderPath - Optional relative folder path within pages directory
+ */
+export function buildPageFilePath(
+  pageName: string,
+  folderPath?: string,
+  workspacePath?: string
+): string {
+  const sanitizedName = sanitizeFileName(pageName)
+  const fileName = `${sanitizedName}${PAGE_FILE_EXTENSION}`
+  const pagesDir = getPagesDirectoryPath(workspacePath)
+
+  if (folderPath) {
+    return joinPath(pagesDir, folderPath, fileName)
+  }
+  return joinPath(pagesDir, fileName)
+}
+
+/**
+ * Recursively scan directory for .pointer.md files
+ * Returns array of file paths relative to start directory
+ */
+export async function scanPageFiles(
+  dirPath: string,
+  options?: { allowCustomPath?: boolean }
+): Promise<string[]> {
+  const results: string[] = []
+
+  async function scanDir(currentPath: string): Promise<void> {
+    try {
+      const entries = await listDirectory(currentPath, options)
+
+      for (const entry of entries) {
+        const entryPath = joinPath(currentPath, entry.name)
+
+        if (entry.isDirectory) {
+          // Skip hidden directories
+          if (!entry.name.startsWith('.')) {
+            await scanDir(entryPath)
+          }
+        } else if (entry.name.endsWith(PAGE_FILE_EXTENSION)) {
+          results.push(entryPath)
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read, skip
+    }
+  }
+
+  await scanDir(dirPath)
+  return results
+}
+
+/**
+ * @deprecated Use buildPageFilePath instead - pages can now be anywhere
+ * Get single page file path by ID (legacy - for migration only)
  */
 export function getPageFilePath(pageId: string, workspacePath?: string): string {
-  return joinPath(getPagesDirectoryPath(workspacePath), `${pageId}.json`)
+  return joinPath(getPagesDirectoryPath(workspacePath), `${pageId}${PAGE_FILE_EXTENSION}`)
 }
 
 /**
@@ -317,4 +428,35 @@ export async function listDirectory(
     throw new Error(result.error)
   }
   return result.entries ?? []
+}
+
+/**
+ * Read text file
+ */
+export async function readTextFile(
+  filePath: string,
+  options?: { allowCustomPath?: boolean }
+): Promise<string | null> {
+  const result = await window.api.fs.readText(filePath, options)
+  if (!result.success) {
+    if (result.error === 'FILE_NOT_FOUND') {
+      return null
+    }
+    throw new Error(result.error)
+  }
+  return result.content ?? null
+}
+
+/**
+ * Write text file
+ */
+export async function writeTextFile(
+  filePath: string,
+  content: string,
+  options?: { allowCustomPath?: boolean }
+): Promise<void> {
+  const result = await window.api.fs.writeText(filePath, content, options)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
 }
