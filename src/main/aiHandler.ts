@@ -82,8 +82,24 @@ class AIHandler {
           for (const attachment of msg.attachments) {
             if (attachment.type.startsWith('image/')) {
               try {
-                const fullPath = path.join(attachmentsDir, attachment.localPath)
-                const buffer = await readFile(fullPath)
+                // 安全验证：防止路径遍历攻击
+                const normalizedLocalPath = path.normalize(attachment.localPath)
+                if (
+                  normalizedLocalPath.startsWith('..') ||
+                  path.isAbsolute(normalizedLocalPath)
+                ) {
+                  console.error('Invalid attachment path (path traversal attempt):', attachment.localPath)
+                  continue
+                }
+                const fullPath = path.join(attachmentsDir, normalizedLocalPath)
+                // 二次验证：确保最终路径在 attachmentsDir 内
+                const resolvedPath = path.resolve(fullPath)
+                const resolvedAttachmentsDir = path.resolve(attachmentsDir)
+                if (!resolvedPath.startsWith(resolvedAttachmentsDir + path.sep)) {
+                  console.error('Invalid attachment path (outside attachments dir):', attachment.localPath)
+                  continue
+                }
+                const buffer = await readFile(resolvedPath)
                 const base64Content = buffer.toString('base64')
 
                 contentParts.push({

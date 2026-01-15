@@ -6,7 +6,7 @@ import type {
   GlobalSearchResultGroup,
   PageFolder
 } from '../types/type'
-import type { PageRecord, MessagesRecord } from './database'
+import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import { createSearchPattern } from './searchUtils'
 import { useFoldersStore } from '../stores/foldersStore'
 

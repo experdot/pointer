@@ -1,7 +1,22 @@
 import { ipcMain, BrowserWindow, dialog, app } from 'electron'
 import { writeFile, readFile } from 'fs/promises'
+import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
 import { autoUpdater } from './autoUpdater'
+
+/**
+ * 验证文件路径是否在允许的目录内
+ * @param filePath 要验证的文件路径
+ * @param allowedDirs 允许的目录列表
+ * @returns 如果路径安全返回 true，否则返回 false
+ */
+function isPathAllowed(filePath: string, allowedDirs: string[]): boolean {
+  const resolvedPath = path.resolve(filePath)
+  return allowedDirs.some((dir) => {
+    const resolvedDir = path.resolve(dir)
+    return resolvedPath.startsWith(resolvedDir + path.sep) || resolvedPath === resolvedDir
+  })
+}
 
 export function setupIpcHandlers(): void {
   // 更新相关的IPC处理程序
@@ -111,9 +126,21 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  // Handle read file
+  // Handle read file - 仅允许读取 userData 目录下的文件
   ipcMain.handle('read-file', async (_event, filePath: string) => {
     try {
+      // 安全验证：仅允许读取 userData 目录下的文件
+      const userDataPath = app.getPath('userData')
+      const allowedDirs = [userDataPath]
+
+      if (!isPathAllowed(filePath, allowedDirs)) {
+        console.error('Unauthorized file access attempt:', filePath)
+        return {
+          success: false,
+          error: '访问被拒绝：只允许读取应用数据目录下的文件'
+        }
+      }
+
       const buffer = await readFile(filePath)
       const base64 = buffer.toString('base64')
       return { success: true, content: base64 }
