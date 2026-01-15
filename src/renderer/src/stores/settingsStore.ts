@@ -340,7 +340,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   },
 
   reset: async () => {
-    await persistence.settings.clear()
+    // Only reset memory state, don't clear persistence data
     set({ settings: initialSettings, initialized: false })
   }
 }))

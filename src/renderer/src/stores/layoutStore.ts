@@ -100,7 +100,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   setCompactMode: (isCompact) => set({ isCompactMode: isCompact }),
 
   reset: async () => {
-    await persistence.layout.clear()
+    // Only reset memory state, don't clear persistence data
     set(initialState)
   }
 }))
