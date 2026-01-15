@@ -4,13 +4,13 @@
  */
 
 import { initPersistenceRegistry } from './registry'
-import { createIndexedDBPersistence } from './implementations/indexeddb'
+import { createFileSystemPersistence } from './implementations/filesystem'
 
 /**
  * Initialize persistence layer
  * Must be called once at application startup, BEFORE initStores()
  */
 export function initPersistence(): void {
-  const persistence = createIndexedDBPersistence()
+  const persistence = createFileSystemPersistence()
   initPersistenceRegistry(persistence)
 }

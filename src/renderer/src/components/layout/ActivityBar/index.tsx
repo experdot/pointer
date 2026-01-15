@@ -5,11 +5,13 @@ import {
   SearchOutlined,
   StarOutlined,
   UnorderedListOutlined,
-  SettingOutlined
+  SettingOutlined,
+  FolderOutlined
 } from '@ant-design/icons'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { useAccountStore } from '../../../stores/accountStore'
 import { UserProfileCard, getAvatarConfig } from './UserProfileCard'
+import { WorkspaceCard } from './WorkspaceCard'
 import { openSettings } from '../../../services/settingsService'
 import './ActivityBar.css'
 
@@ -31,7 +33,8 @@ export function ActivityBar(): React.JSX.Element {
   const { accounts, currentAccountId } = useAccountStore()
   const currentAccount = accounts.find((a) => a.id === currentAccountId)
   const avatarConfig = getAvatarConfig(currentAccount?.avatar)
-  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [userPopoverOpen, setUserPopoverOpen] = useState(false)
+  const [workspacePopoverOpen, setWorkspacePopoverOpen] = useState(false)
 
   return (
     <Flex className="activity-bar" vertical justify="space-between">
@@ -48,18 +51,33 @@ export function ActivityBar(): React.JSX.Element {
         ))}
       </Flex>
       <Flex vertical className="activity-bar-bottom">
+        <Popover
+          content={<WorkspaceCard onClose={() => setWorkspacePopoverOpen(false)} />}
+          trigger="click"
+          placement="rightBottom"
+          arrow={false}
+          open={workspacePopoverOpen}
+          onOpenChange={setWorkspacePopoverOpen}
+          destroyOnHidden
+        >
+          <Tooltip title="工作区" placement="right">
+            <button className="activity-bar-item">
+              <FolderOutlined />
+            </button>
+          </Tooltip>
+        </Popover>
         <Tooltip title="设置" placement="right">
           <button className="activity-bar-item" onClick={() => openSettings()}>
             <SettingOutlined />
           </button>
         </Tooltip>
         <Popover
-          content={<UserProfileCard onClose={() => setPopoverOpen(false)} />}
+          content={<UserProfileCard onClose={() => setUserPopoverOpen(false)} />}
           trigger="click"
           placement="rightBottom"
           arrow={false}
-          open={popoverOpen}
-          onOpenChange={setPopoverOpen}
+          open={userPopoverOpen}
+          onOpenChange={setUserPopoverOpen}
           destroyOnHidden
         >
           <button className="activity-bar-item activity-bar-avatar">

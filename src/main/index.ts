@@ -4,6 +4,7 @@ import { setupAIHandlers } from './aiHandler'
 import { setupAutoUpdater } from './autoUpdater'
 import { setupIpcHandlers } from './ipcHandlers'
 import { setupAttachmentHandlers } from './attachmentHandler'
+import { setupFileSystemHandlers } from './fsHandlers'
 import { createWindow } from './window'
 
 // This method will be called when Electron has finished
@@ -28,6 +29,9 @@ app.whenReady().then(async () => {
 
   // Setup IPC handlers
   setupIpcHandlers()
+
+  // Setup file system handlers
+  setupFileSystemHandlers()
 
   // Setup attachment handlers
   setupAttachmentHandlers()

@@ -22,6 +22,9 @@ export type { ILayoutStore, ITabStore, ISettingsStore } from './ui'
 // 导航接口
 export type { INavigationStore, NavigationRequest, RelativeNavigationRequest } from './navigation'
 
+// 工作区接口
+export type { IWorkspaceStore, WorkspaceCreateDTO } from './workspaceStore'
+
 /**
  * Store 注册表接口
  * 包含所有 Store 的统一访问入口
@@ -35,4 +38,5 @@ export interface IStoreRegistry {
   readonly tab: import('./ui').ITabStore
   readonly settings: import('./ui').ISettingsStore
   readonly navigation: import('./navigation').INavigationStore
+  readonly workspace: import('./workspaceStore').IWorkspaceStore
 }

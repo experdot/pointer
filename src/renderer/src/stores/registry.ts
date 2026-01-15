@@ -75,6 +75,9 @@ export const stores = {
   },
   get navigation() {
     return getStoreRegistry().navigation
+  },
+  get workspace() {
+    return getStoreRegistry().workspace
   }
 } as const
 

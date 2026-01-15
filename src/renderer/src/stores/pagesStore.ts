@@ -120,7 +120,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   },
 
   reset: async () => {
-    await persistence.pages.clearAllWithMessages()
+    // Only reset memory state, don't clear persistence data
     set(initialState)
   },
 

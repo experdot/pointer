@@ -56,6 +56,9 @@ export const persistence = {
   get accounts() {
     return getPersistenceRegistry().accounts
   },
+  get workspaces() {
+    return getPersistenceRegistry().workspaces
+  },
   get pages() {
     return getPersistenceRegistry().pages
   },

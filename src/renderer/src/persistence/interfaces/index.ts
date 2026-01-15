@@ -26,6 +26,9 @@ export type {
   IMessageQueueRepository
 } from './userData'
 
+// Workspace interfaces
+export type { IWorkspaceRepository } from './workspace'
+
 // Re-import for IPersistenceRegistry definition
 import type { IDatabaseManager } from './base'
 import type { IAccountRepository } from './accounts'
@@ -38,6 +41,7 @@ import type {
   ITabsRepository,
   IMessageQueueRepository
 } from './userData'
+import type { IWorkspaceRepository } from './workspace'
 
 /**
  * Persistence registry interface
@@ -49,6 +53,9 @@ export interface IPersistenceRegistry {
 
   /** Account repository (independent database) */
   readonly accounts: IAccountRepository
+
+  /** Workspace repository (account-level) */
+  readonly workspaces: IWorkspaceRepository
 
   /** Page repository */
   readonly pages: IPageRepository

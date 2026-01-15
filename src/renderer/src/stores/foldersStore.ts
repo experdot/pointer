@@ -121,7 +121,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
   },
 
   reset: async () => {
-    await persistence.folders.clear()
+    // Only reset memory state, don't clear persistence data
     set(initialState)
   },
 

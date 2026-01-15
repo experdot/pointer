@@ -12,6 +12,7 @@ import { getLayoutStoreInterface } from './layoutStore'
 import { getTabStoreInterface } from './tabsStore'
 import { getSettingsStoreInterface } from './settingsStore'
 import { getNavigationStoreInterface } from './navigationStore'
+import { getWorkspaceStoreInterface } from './workspaceStore'
 
 /**
  * 初始化所有 Store
@@ -26,6 +27,7 @@ export function initStores(): void {
     layout: getLayoutStoreInterface(),
     tab: getTabStoreInterface(),
     settings: getSettingsStoreInterface(),
-    navigation: getNavigationStoreInterface()
+    navigation: getNavigationStoreInterface(),
+    workspace: getWorkspaceStoreInterface()
   })
 }

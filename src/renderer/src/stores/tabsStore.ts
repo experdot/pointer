@@ -369,7 +369,7 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   },
 
   reset: async () => {
-    await persistence.tabs.clear()
+    // Only reset memory state, don't clear persistence data
     set(initialState)
   }
 }))

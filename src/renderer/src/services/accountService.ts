@@ -2,29 +2,29 @@ import type { Account } from '../types/type'
 import { stores } from '../stores/registry'
 import { persistence } from '../persistence/registry'
 import { createDefaultAccount, getDefaultAccountId } from '../stores/accountStore'
+import { initializeWorkspaceSystem, resetWorkspaceSystem } from './workspaceService'
 
-// 初始化所有用户数据 store
-async function initAllStores(): Promise<void> {
-  const { page, folder, settings, layout, tab } = stores
-  await Promise.all([page.init(), folder.init(), settings.init(), layout.init(), tab.init()])
+// 初始化账户级 stores (不包括工作区级 stores)
+async function initAccountStores(): Promise<void> {
+  const { settings, layout } = stores
+  await Promise.all([settings.init(), layout.init()])
 }
 
-// 重置所有用户数据 store
-function resetAllStores(): void {
-  const { page, folder, message, settings, layout, tab } = stores
-  page.reset()
-  folder.reset()
-  message.reset()
+// 重置账户级 stores
+function resetAccountStores(): void {
+  const { settings, layout } = stores
   settings.reset()
   layout.reset()
-  tab.reset()
 }
 
 // 初始化账户系统
 export async function initializeAccountSystem(): Promise<void> {
   const { account } = stores
 
-  // 先初始化账户 store
+  // 初始化持久化层（确保 appDataPath 已初始化）
+  await persistence.database.init()
+
+  // 初始化账户 store
   await account.init()
 
   // 如果没有账户，创建默认账户
@@ -43,12 +43,15 @@ export async function initializeAccountSystem(): Promise<void> {
     await account.setCurrentAccountId(account.accounts[0].id)
   }
 
-  // 设置数据库名称
+  // 设置当前账户路径
   const accountId = account.currentAccountId || getDefaultAccountId()
-  persistence.database.setDatabase(accountId)
+  persistence.database.setAccount(accountId)
 
-  // 初始化所有用户数据 store
-  await initAllStores()
+  // 初始化账户级 stores
+  await initAccountStores()
+
+  // 初始化工作区系统
+  await initializeWorkspaceSystem()
 
   account.setInitialized(true)
 }
@@ -63,17 +66,23 @@ export async function switchAccount(accountId: string): Promise<void> {
     throw new Error(`Account not found: ${accountId}`)
   }
 
-  // 重置所有 store
-  resetAllStores()
+  // 重置工作区系统（包括工作区级 stores）
+  resetWorkspaceSystem()
 
-  // 切换数据库
-  persistence.database.setDatabase(accountId)
+  // 重置账户级 stores
+  resetAccountStores()
+
+  // 切换账户路径
+  persistence.database.setAccount(accountId)
 
   // 更新当前账户
   await account.setCurrentAccountId(accountId)
 
-  // 从新数据库加载数据
-  await initAllStores()
+  // 初始化账户级 stores
+  await initAccountStores()
+
+  // 初始化工作区系统
+  await initializeWorkspaceSystem()
 }
 
 // 创建新账户
@@ -103,13 +112,13 @@ export async function removeAccount(accountId: string): Promise<void> {
     throw new Error('Cannot delete current account')
   }
 
-  // 先从列表中移除，再删除数据库
+  // 先从列表中移除，再删除数据
   await account.delete(accountId)
 
   try {
-    await persistence.database.deleteDatabase(accountId)
+    await persistence.database.deleteAccountData(accountId)
   } catch (error) {
-    console.error('Failed to delete account database:', error)
+    console.error('Failed to delete account data:', error)
   }
 }
 

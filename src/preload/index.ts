@@ -141,6 +141,74 @@ const api = {
     cleanupPage: (pageId: string) => ipcRenderer.invoke('attachment:cleanup-page', pageId),
 
     cleanupTemp: () => ipcRenderer.invoke('attachment:cleanup-temp')
+  },
+
+  // 文件系统 API
+  fs: {
+    getAppDataPath: (): Promise<string> => ipcRenderer.invoke('fs:get-app-data-path'),
+
+    selectDirectory: (options?: { title?: string; defaultPath?: string }) =>
+      ipcRenderer.invoke('fs:select-directory', options),
+
+    readJson: <T = unknown>(
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; data?: T; error?: string }> =>
+      ipcRenderer.invoke('fs:read-json', filePath, options),
+
+    writeJson: (
+      filePath: string,
+      data: unknown,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-json', filePath, data, options),
+
+    delete: (
+      targetPath: string,
+      options?: { allowCustomPath?: boolean; recursive?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:delete', targetPath, options),
+
+    ensureDir: (
+      dirPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:ensure-dir', dirPath, options),
+
+    exists: (
+      targetPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; exists?: boolean; isDirectory?: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:exists', targetPath, options),
+
+    listDir: (
+      dirPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{
+      success: boolean
+      entries?: Array<{ name: string; isDirectory: boolean }>
+      error?: string
+    }> => ipcRenderer.invoke('fs:list-dir', dirPath, options),
+
+    copyFile: (
+      sourcePath: string,
+      destPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:copy-file', sourcePath, destPath, options),
+
+    readBinary: (
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; content?: string; error?: string }> =>
+      ipcRenderer.invoke('fs:read-binary', filePath, options),
+
+    writeBinary: (
+      filePath: string,
+      base64Content: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-binary', filePath, base64Content, options)
   }
 }
 

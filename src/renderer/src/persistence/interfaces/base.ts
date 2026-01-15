@@ -47,9 +47,15 @@ export interface IKeyedRepository<T, TKey = string> {
 
 /**
  * Database manager interface
- * For database-level operations (switching accounts, deleting databases)
+ * For database-level operations (switching accounts, workspaces, deleting databases)
  */
 export interface IDatabaseManager {
-  setDatabase(name: string): void
-  deleteDatabase(name: string): Promise<void>
+  /** Initialize the persistence layer */
+  init(): Promise<void>
+  /** Set current account (switches account-level storage) */
+  setAccount(accountId: string): void
+  /** Set current workspace path (switches workspace-level storage) */
+  setWorkspace(workspacePath: string): void
+  /** Delete account data */
+  deleteAccountData(accountId: string): Promise<void>
 }

@@ -138,6 +138,66 @@ declare global {
         cleanupPage: (pageId: string) => Promise<{ success: boolean; error?: string }>
         cleanupTemp: () => Promise<{ success: boolean; error?: string }>
       }
+      fs: {
+        getAppDataPath: () => Promise<string>
+        selectDirectory: (options?: {
+          title?: string
+          defaultPath?: string
+        }) => Promise<{
+          success: boolean
+          cancelled?: boolean
+          path?: string
+          error?: string
+        }>
+        readJson: <T = unknown>(
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; data?: T; error?: string }>
+        writeJson: (
+          filePath: string,
+          data: unknown,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        delete: (
+          targetPath: string,
+          options?: { allowCustomPath?: boolean; recursive?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        ensureDir: (
+          dirPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        exists: (
+          targetPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{
+          success: boolean
+          exists?: boolean
+          isDirectory?: boolean
+          error?: string
+        }>
+        listDir: (
+          dirPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{
+          success: boolean
+          entries?: Array<{ name: string; isDirectory: boolean }>
+          error?: string
+        }>
+        copyFile: (
+          sourcePath: string,
+          destPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        readBinary: (
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; content?: string; error?: string }>
+        writeBinary: (
+          filePath: string,
+          base64Content: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+      }
     }
     electronWindow: {
       minimize: () => Promise<void>

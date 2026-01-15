@@ -1,0 +1,189 @@
+/**
+ * Workspace Service
+ * 工作区业务逻辑，处理工作区切换和初始化
+ */
+
+import type { Workspace, ValidateWorkspaceResult } from '../types/workspace'
+import { stores } from '../stores/registry'
+import { persistence } from '../persistence/registry'
+
+// ==================== 工作区级 Stores 操作 ====================
+
+/**
+ * 初始化所有工作区级 stores
+ */
+async function initWorkspaceStores(): Promise<void> {
+  const { page, folder, tab } = stores
+  await Promise.all([page.init(), folder.init(), tab.init()])
+}
+
+/**
+ * 重置所有工作区级 stores
+ */
+function resetWorkspaceStores(): void {
+  const { page, folder, message, tab } = stores
+  page.reset()
+  folder.reset()
+  message.reset()
+  tab.reset()
+}
+
+// ==================== 工作区初始化 ====================
+
+/**
+ * 初始化工作区系统
+ * 在账户初始化后调用
+ */
+export async function initializeWorkspaceSystem(): Promise<void> {
+  const { workspace } = stores
+
+  // 初始化工作区 store
+  await workspace.init()
+
+  // 如果没有工作区，创建默认工作区
+  if (workspace.workspaces.length === 0) {
+    const defaultWorkspace = await workspace.initDefaultWorkspace()
+    await workspace.setCurrentWorkspaceId(defaultWorkspace.id)
+  }
+
+  // 如果没有当前工作区，设置为第一个工作区
+  if (!workspace.currentWorkspaceId && workspace.workspaces.length > 0) {
+    await workspace.setCurrentWorkspaceId(workspace.workspaces[0].id)
+  }
+
+  // 设置持久化层的当前工作区
+  const currentWorkspace = workspace.currentWorkspace
+  if (currentWorkspace) {
+    persistence.database.setWorkspace(currentWorkspace.path)
+  }
+
+  // 初始化工作区级 stores
+  await initWorkspaceStores()
+}
+
+// ==================== 工作区切换 ====================
+
+/**
+ * 切换工作区
+ */
+export async function switchWorkspace(workspaceId: string): Promise<void> {
+  const { workspace } = stores
+
+  // 验证工作区存在
+  const targetWorkspace = await workspace.getById(workspaceId)
+  if (!targetWorkspace) {
+    throw new Error(`Workspace not found: ${workspaceId}`)
+  }
+
+  // 重置工作区级 stores
+  resetWorkspaceStores()
+
+  // 切换持久化层
+  persistence.database.setWorkspace(targetWorkspace.path)
+
+  // 更新当前工作区
+  await workspace.setCurrentWorkspaceId(workspaceId)
+
+  // 重新加载工作区数据
+  await initWorkspaceStores()
+}
+
+// ==================== 自定义工作区 ====================
+
+/**
+ * 打开文件夹作为工作区
+ */
+export async function openFolderAsWorkspace(dirPath: string, name?: string): Promise<Workspace> {
+  const { workspace } = stores
+
+  // 验证路径
+  const validation = await validateWorkspacePath(dirPath)
+
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Invalid workspace path')
+  }
+
+  if (validation.lockedByAccountId) {
+    throw new Error(`This folder is already used by another account`)
+  }
+
+  // 使用目录名作为默认名称
+  const workspaceName = name || dirPath.split(/[/\\]/).pop() || 'Workspace'
+
+  // 如果已经是工作区且属于当前账户，直接切换
+  if (validation.isWorkspace && validation.workspaceId) {
+    const existing = await workspace.getById(validation.workspaceId)
+    if (existing) {
+      await switchWorkspace(existing.id)
+      return existing
+    }
+  }
+
+  // 创建/初始化自定义工作区
+  const newWorkspace = await workspace.openCustomWorkspace(dirPath, workspaceName)
+
+  // 重置并加载新工作区数据
+  resetWorkspaceStores()
+  await initWorkspaceStores()
+
+  return newWorkspace
+}
+
+/**
+ * 验证目录是否可作为工作区
+ */
+export async function validateWorkspacePath(dirPath: string): Promise<ValidateWorkspaceResult> {
+  return stores.workspace.validateWorkspacePath(dirPath)
+}
+
+// ==================== 工作区管理 ====================
+
+/**
+ * 删除工作区
+ * 注意：只从列表中移除，不删除文件
+ */
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const { workspace } = stores
+
+  const targetWorkspace = await workspace.getById(workspaceId)
+  if (!targetWorkspace) {
+    throw new Error(`Workspace not found: ${workspaceId}`)
+  }
+
+  // 不能删除默认工作区
+  if (targetWorkspace.type === 'default') {
+    throw new Error('Cannot delete default workspace')
+  }
+
+  // 如果删除的是当前工作区，切换到默认工作区
+  if (workspace.currentWorkspaceId === workspaceId) {
+    const defaultWs = workspace.workspaces.find((w) => w.type === 'default')
+    if (defaultWs) {
+      await switchWorkspace(defaultWs.id)
+    }
+  }
+
+  await workspace.delete(workspaceId)
+}
+
+/**
+ * 获取当前工作区
+ */
+export function getCurrentWorkspace(): Workspace | null {
+  return stores.workspace.currentWorkspace
+}
+
+/**
+ * 获取所有工作区
+ */
+export function getAllWorkspaces() {
+  return stores.workspace.workspaces
+}
+
+/**
+ * 重置工作区系统（用于账户切换）
+ */
+export function resetWorkspaceSystem(): void {
+  resetWorkspaceStores()
+  stores.workspace.reset()
+}
