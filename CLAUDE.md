@@ -75,10 +75,10 @@ persistence/    # Data persistence layer initialization
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/main/aiHandler.ts` | AI API streaming and request handling |
-| `src/main/ipcHandlers.ts` | IPC event handlers |
-| `src/renderer/src/stores/messagesStore.ts` | Message state and tree structure |
-| `src/renderer/src/hooks/useChat.ts` | Core chat logic hook |
-| `src/renderer/src/utils/tabRegistry.ts` | Tab type registration system |
+| File                                       | Purpose                               |
+| ------------------------------------------ | ------------------------------------- |
+| `src/main/aiHandler.ts`                    | AI API streaming and request handling |
+| `src/main/ipcHandlers.ts`                  | IPC event handlers                    |
+| `src/renderer/src/stores/messagesStore.ts` | Message state and tree structure      |
+| `src/renderer/src/hooks/useChat.ts`        | Core chat logic hook                  |
+| `src/renderer/src/utils/tabRegistry.ts`    | Tab type registration system          |
