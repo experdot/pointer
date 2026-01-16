@@ -9,7 +9,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm ls:*)",
       "Bash(npm run typecheck:web:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,120 +2,83 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build and Development Commands
+## Project Overview
+
+Pointer is a cross-platform desktop AI chat application built with Electron, React 19, and TypeScript. It features tree-structured conversation branches, multi-model support (OpenAI, Claude, DeepSeek, etc.), and a VSCode-like interface with tabs, sidebar, and activity bar.
+
+## Commands
 
 ```bash
-# Install dependencies
-pnpm install
+# Development
+pnpm dev              # Start development server with hot reload
+pnpm start            # Run preview mode
 
-# Development mode with hot reload
-pnpm dev
+# Code quality
+pnpm lint             # Run ESLint
+pnpm format           # Run Prettier
+pnpm typecheck        # Type check both main and renderer processes
 
-# Type checking (runs both node and web)
-pnpm typecheck
+# Building
+pnpm build            # Build with type checking
+pnpm build:win        # Windows build
+pnpm build:mac        # macOS build
+pnpm build:linux      # Linux build
+pnpm build:unpack     # Build without packaging (for testing)
 
-# Linting
-pnpm lint
-
-# Code formatting
-pnpm format
-
-# Build for production (includes typecheck)
-pnpm build
-
-# Platform-specific builds
-pnpm build:win    # Windows
-pnpm build:mac    # macOS
-pnpm build:linux  # Linux
+# Release
+pnpm release          # Build and publish to GitHub Releases
+pnpm release:draft    # Build for release testing (no publish)
 ```
 
-## Architecture Overview
+## Architecture
 
-Pointer is an Electron desktop AI chat application with a VS Code-like interface. The codebase follows a three-process Electron architecture.
+### Three-Tier Electron Structure
 
-### Process Structure
+- **Main Process** (`src/main/`): Window management, IPC handlers, AI API streaming
+- **Preload** (`src/preload/`): Context bridge exposing APIs to renderer
+- **Renderer** (`src/renderer/src/`): React application
 
-- **Main Process** (`src/main/`): Electron main process handling system operations
-  - `aiHandler.ts` - OpenAI-compatible API streaming via SSE, manages concurrent requests with AbortController
-  - `ipcHandlers.ts` - IPC communication bridge
-  - `attachmentHandler.ts` - File attachment management in userData directory
-  - `autoUpdater.ts` - electron-updater integration
-
-- **Preload** (`src/preload/`): Context bridge exposing safe APIs to renderer
-
-- **Renderer** (`src/renderer/src/`): React 19 application
-
-### State Management Pattern
-
-The app uses Zustand with a **Store Registry** pattern for dependency inversion:
-
-```
-stores/registry.ts      - Central access point via `stores` object
-stores/interfaces/      - TypeScript interfaces defining store contracts
-stores/initStores.ts    - Registry initialization at app startup
-```
-
-Each store exposes a `get[Name]StoreInterface()` function that returns an interface implementation, enabling loose coupling between services and stores.
-
-**Core Stores:**
-
-- `pagesStore` - Chat session metadata (name, folder, timestamps)
-- `messagesStore` - Message cache with lazy loading per page
-- `foldersStore` - Folder hierarchy for organization
-- `tabsStore` - Multi-tab navigation with history
-- `settingsStore` - LLM configurations and app preferences
-- `navigationStore` - Message tree navigation (branching conversations)
-
-### Data Layer
-
-**IndexedDB** (`persistence/`):
-
-- Multi-account support via separate databases (`pointer-{accountId}`)
-- Separate accounts DB (`pointer-accounts`) for account management
-- Messages stored separately from page metadata for performance
-
-**Key data separation:**
-
-- `PageRecord` - Page metadata without messages
-- `MessagesRecord` - Messages, topics, and tree navigation state per page
-
-### Message Tree Structure
-
-Conversations use a tree structure for branching:
-
-- Messages have `parentId` for tree relationships
-- `rootMessageId`, `leafMessageId`, `selectedMessageId` track navigation state
-- `Topic` entities mark conversation segments within the tree
-
-### Services Layer
-
-Services (`services/`) orchestrate business logic using the store registry:
-
-- `aiService.ts` - AI request/response handling
-- `streamingManager.ts` - SSE stream lifecycle management
-- `navigationService.ts` - Message tree traversal
-- `messagesService.ts` - Message CRUD operations
-
-### Component Organization
+### Renderer Organization
 
 ```
 components/
-├── layout/          # Shell: TitleBar, ActivityBar, Sidebar, EditorArea, Tabs
-├── editors/         # Tab content: ChatEditor, SettingsEditor
-├── panels/          # Sidebar panels: Explorer, Search
-└── common/          # Shared components
+  layout/       # MainLayout, ActivityBar, Sidebar, EditorArea, Tabs, TitleBar
+  editors/      # ChatEditor, SettingsEditor, ExportEditor, WelcomePage
+  panels/       # Explorer (conversation tree), Search
+  common/       # Reusable components
+
+stores/         # Zustand stores (messagesStore, pagesStore, settingsStore, etc.)
+services/       # Business logic (aiService, messagesService, pagesService, etc.)
+hooks/          # Custom hooks (useChat, useChatStreaming, usePages, etc.)
+utils/          # Utilities including tab registry system
+types/          # TypeScript type definitions (ChatMessage, LLMConfig, Account, etc.)
+features/       # Feature modules (export plugins, etc.)
+persistence/    # Data persistence layer initialization
 ```
 
-### Key Technical Details
+### Key Architectural Patterns
 
-- **Path alias**: `@renderer/*` maps to `src/renderer/src/*`
-- **Streaming**: Uses `eventsource-parser` for SSE parsing, supports `reasoning_content` field for reasoning models
-- **Markdown rendering**: Shiki for syntax highlighting, Streamdown for streaming markdown
-- **Drag-and-drop**: @dnd-kit for sortable lists
-- **Editor**: Monaco Editor for code blocks
+1. **Message Tree Structure**: Three-level hierarchy - Page (conversation) → Message branches (for branching conversations) → Individual messages
 
-### UI Framework Notes
+2. **Tab Registry System** (`utils/tabRegistry.ts`): Plugin-style registration for different tab types (chat, settings, export, welcome)
 
-- Uses Ant Design (antd) - prefer official components and patterns
-- Tailwind CSS for utility styling
-- Sass for component-scoped styles (`.css` files use SCSS)
+3. **State Management**: Zustand stores with Immer for immutable updates, file-based persistence via IPC
+
+4. **AI Streaming**: Main process handles API calls; renderer receives streamed responses via IPC
+
+## Code Style
+
+- Single quotes, no semicolons, 100 char line width
+- Prefer Ant Design components and patterns
+- Decompose into small, focused components
+- Chinese language context in some documentation
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/main/aiHandler.ts` | AI API streaming and request handling |
+| `src/main/ipcHandlers.ts` | IPC event handlers |
+| `src/renderer/src/stores/messagesStore.ts` | Message state and tree structure |
+| `src/renderer/src/hooks/useChat.ts` | Core chat logic hook |
+| `src/renderer/src/utils/tabRegistry.ts` | Tab type registration system |
