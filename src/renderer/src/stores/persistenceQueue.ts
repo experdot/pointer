@@ -13,6 +13,38 @@ interface QueueOptions {
   debounceMs?: number
   /** 最大延迟 (ms)，超过后强制写入，默认 2000ms */
   maxDelayMs?: number
+  /** 最大重试次数，默认 3 */
+  maxRetries?: number
+  /** 初始重试延迟 (ms)，默认 1000ms */
+  initialRetryDelay?: number
+}
+
+/**
+ * 指数退避重试
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number,
+  initialDelay: number,
+  context: string
+): Promise<T> {
+  let lastError: Error | undefined
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < maxRetries) {
+        const delay = initialDelay * Math.pow(2, attempt)
+        console.warn(
+          `[PersistenceQueue] ${context} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms:`,
+          lastError.message
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+  }
+  throw lastError
 }
 
 /**
@@ -24,8 +56,15 @@ interface QueueOptions {
 export function createPersistenceQueue<TKey extends string, TData>(
   persistFn: (key: TKey, data: TData) => Promise<void>,
   options: QueueOptions = {}
-) {
-  const { debounceMs = 300, maxDelayMs = 2000 } = options
+): {
+  enqueue: (key: TKey, data: TData) => void
+  flush: (key: TKey) => Promise<void>
+  flushAll: () => Promise<void>
+  waitForWrites: () => Promise<void>
+  hasPending: (key?: TKey) => boolean
+  dispose: () => Promise<void>
+} {
+  const { debounceMs = 300, maxDelayMs = 2000, maxRetries = 3, initialRetryDelay = 1000 } = options
 
   // 每个 key 的待写入数据
   const pending = new Map<TKey, WriteTask<TData>>()
@@ -92,11 +131,14 @@ export function createPersistenceQueue<TKey extends string, TData>(
     pending.delete(key)
     firstQueueTime.delete(key)
 
-    // 执行写入
-    const writePromise = persistFn(key, task.data).catch((err) => {
-      console.error(`[PersistenceQueue] Failed to persist ${key}:`, err)
-      // 写入失败，重新排队（可选：添加重试逻辑）
-      // enqueue(key, task.data)
+    // 执行写入（带重试）
+    const writePromise = retryWithBackoff(
+      () => persistFn(key, task.data),
+      maxRetries,
+      initialRetryDelay,
+      `persist ${key}`
+    ).catch((err) => {
+      console.error(`[PersistenceQueue] Failed to persist ${key} after all retries:`, err)
     })
 
     writing.set(key, writePromise)
@@ -162,21 +204,47 @@ import { persistence } from '../persistence/registry'
 import type { MessagesRecord } from '../persistence/interfaces/userData'
 
 let messagesQueue: ReturnType<typeof createPersistenceQueue<string, MessagesRecord>> | null = null
+let flushListenerRegistered = false
 
-export function getMessagesQueue() {
+type MessagesQueueType = ReturnType<typeof createPersistenceQueue<string, MessagesRecord>>
+
+export function getMessagesQueue(): MessagesQueueType {
   if (!messagesQueue) {
     messagesQueue = createPersistenceQueue<string, MessagesRecord>(
       (pageId, data) => persistence.messages.put(pageId, data),
       {
         debounceMs: 300, // 300ms 内的多次更新合并
-        maxDelayMs: 2000 // 最多延迟 2 秒
+        maxDelayMs: 2000, // 最多延迟 2 秒
+        maxRetries: 3, // 重试 3 次
+        initialRetryDelay: 1000 // 初始延迟 1 秒
       }
     )
 
-    // 应用退出前确保数据写入
-    window.addEventListener('beforeunload', () => {
-      void messagesQueue?.dispose()
-    })
+    // 使用 IPC 机制监听主进程的 flush 请求
+    if (!flushListenerRegistered && window.api?.persistence?.onFlushRequest) {
+      window.api.persistence.onFlushRequest(async () => {
+        console.log('[PersistenceQueue] Received flush request from main process')
+        try {
+          await messagesQueue?.dispose()
+          console.log('[PersistenceQueue] Flush completed')
+          window.api.persistence.notifyFlushComplete()
+        } catch (err) {
+          console.error('[PersistenceQueue] Flush failed:', err)
+          window.api.persistence.notifyFlushComplete()
+        }
+      })
+      flushListenerRegistered = true
+    }
   }
   return messagesQueue
+}
+
+/**
+ * 重置消息队列（用于 workspace 切换）
+ */
+export function resetMessagesQueue(): void {
+  if (messagesQueue) {
+    void messagesQueue.dispose()
+    messagesQueue = null
+  }
 }

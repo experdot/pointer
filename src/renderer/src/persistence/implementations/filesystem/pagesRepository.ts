@@ -7,6 +7,7 @@
 
 import type { PageFolder } from '../../../types/type'
 import type { IPageRepository, PageRecord } from '../../interfaces'
+import { getPersistenceRegistry } from '../../registry'
 import {
   getPagesDirectoryPath,
   buildPageFilePath,
@@ -21,7 +22,7 @@ import {
   pathExists
 } from './core'
 import { parseMarkdownPage, serializePageToMarkdown, type PageFile } from './markdown'
-import { createFolderRepository } from './foldersRepository'
+import { withWriteLock } from './writeLock'
 
 // Cache for pageId -> filePath mapping
 let pageFileCache: Map<string, string> = new Map()
@@ -102,8 +103,8 @@ function pageRecordFromFile(file: PageFile): PageRecord {
 async function buildFolderPath(folderId: string | undefined): Promise<string | undefined> {
   if (!folderId) return undefined
 
-  const folderRepo = createFolderRepository()
-  const folders = await folderRepo.getAll()
+  // Use the registry to get the cached folder repository
+  const folders = await getPersistenceRegistry().folders.getAll()
   const folderMap = new Map<string, PageFolder>()
   for (const f of folders) {
     folderMap.set(f.id, f)
@@ -210,46 +211,49 @@ export function createPageRepository(): IPageRepository {
     },
 
     async put(page: PageRecord): Promise<void> {
-      const options = getFileOptions()
+      // Wrap in write lock to prevent concurrent writes for the same page
+      await withWriteLock(page.id, async () => {
+        const options = getFileOptions()
 
-      // Find existing file
-      const existing = await findPageFile(page.id)
+        // Find existing file
+        const existing = await findPageFile(page.id)
 
-      // Build target path based on page name and folder
-      // Uses unique path generation to handle filename conflicts
-      const folderPath = await buildFolderPath(page.parentFolderId)
-      const targetPath = await generateUniqueFilePath(page.name, folderPath, page.id, options)
+        // Build target path based on page name and folder
+        // Uses unique path generation to handle filename conflicts
+        const folderPath = await buildFolderPath(page.parentFolderId)
+        const targetPath = await generateUniqueFilePath(page.name, folderPath, page.id, options)
 
-      // Prepare file content
-      const file: PageFile = {
-        ...page,
-        messages: existing?.file.messages ?? [],
-        topics: existing?.file.topics ?? [],
-        rootMessageId: existing?.file.rootMessageId,
-        leafMessageId: existing?.file.leafMessageId,
-        selectedMessageId: existing?.file.selectedMessageId
-      }
-
-      const content = serializePageToMarkdown(file)
-
-      // Ensure target directory exists
-      const targetDir = targetPath.substring(0, targetPath.lastIndexOf('/'))
-      await ensureDirectory(targetDir, options)
-
-      // Delete old file if path changed
-      if (existing && existing.path !== targetPath) {
-        try {
-          await deleteFile(existing.path, options)
-        } catch {
-          // Ignore deletion errors
+        // Prepare file content
+        const file: PageFile = {
+          ...page,
+          messages: existing?.file.messages ?? [],
+          topics: existing?.file.topics ?? [],
+          rootMessageId: existing?.file.rootMessageId,
+          leafMessageId: existing?.file.leafMessageId,
+          selectedMessageId: existing?.file.selectedMessageId
         }
-      }
 
-      // Write to new path
-      await writeTextFile(targetPath, content, options)
+        const content = serializePageToMarkdown(file)
 
-      // Update cache
-      pageFileCache.set(page.id, targetPath)
+        // Ensure target directory exists
+        const targetDir = targetPath.substring(0, targetPath.lastIndexOf('/'))
+        await ensureDirectory(targetDir, options)
+
+        // Delete old file if path changed
+        if (existing && existing.path !== targetPath) {
+          try {
+            await deleteFile(existing.path, options)
+          } catch {
+            // Ignore deletion errors
+          }
+        }
+
+        // Write to new path
+        await writeTextFile(targetPath, content, options)
+
+        // Update cache
+        pageFileCache.set(page.id, targetPath)
+      })
     },
 
     async putBatch(pages: PageRecord[]): Promise<void> {

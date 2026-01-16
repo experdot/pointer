@@ -207,6 +207,10 @@ declare global {
           options?: { allowCustomPath?: boolean }
         ) => Promise<{ success: boolean; error?: string }>
       }
+      persistence: {
+        onFlushRequest: (callback: () => void) => void
+        notifyFlushComplete: () => void
+      }
     }
     electronWindow: {
       minimize: () => Promise<void>

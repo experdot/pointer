@@ -4,6 +4,37 @@ import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
 import { autoUpdater } from './autoUpdater'
 
+// Map to track pending flush completions per window
+const pendingFlushResolves = new Map<number, () => void>()
+const FLUSH_TIMEOUT_MS = 5000
+
+/**
+ * Request the renderer process to flush its data
+ * Returns a promise that resolves when flush is complete or timeout occurs
+ */
+export function requestRendererFlush(window: BrowserWindow): Promise<void> {
+  return new Promise((resolve) => {
+    const windowId = window.id
+
+    // Set up timeout protection
+    const timeoutId = setTimeout(() => {
+      console.warn(`[Main] Flush timeout for window ${windowId}`)
+      pendingFlushResolves.delete(windowId)
+      resolve()
+    }, FLUSH_TIMEOUT_MS)
+
+    // Store resolve function
+    pendingFlushResolves.set(windowId, () => {
+      clearTimeout(timeoutId)
+      pendingFlushResolves.delete(windowId)
+      resolve()
+    })
+
+    // Send flush request to renderer
+    window.webContents.send('persistence:flush-request')
+  })
+}
+
 /**
  * 验证文件路径是否在允许的目录内
  * @param filePath 要验证的文件路径
@@ -200,4 +231,22 @@ export function setupIpcHandlers(): void {
       }
     }
   )
+
+  // Handle flush complete notification from renderer
+  ipcMain.on('persistence:flush-complete', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      const resolve = pendingFlushResolves.get(window.id)
+      if (resolve) {
+        console.log(`[Main] Flush complete for window ${window.id}`)
+        resolve()
+      }
+    }
+  })
+
+  // Get window ID for renderer
+  ipcMain.handle('get-window-id', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window?.id
+  })
 }

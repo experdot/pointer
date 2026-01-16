@@ -222,6 +222,16 @@ const api = {
       options?: { allowCustomPath?: boolean }
     ): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('fs:write-binary', filePath, base64Content, options)
+  },
+
+  // Persistence flush API
+  persistence: {
+    onFlushRequest: (callback: () => void): void => {
+      ipcRenderer.on('persistence:flush-request', () => callback())
+    },
+    notifyFlushComplete: (): void => {
+      ipcRenderer.send('persistence:flush-complete')
+    }
   }
 }
 

@@ -4,6 +4,7 @@
 
 import type { ChatMessage, Topic, FileAttachment } from '../../../../types/type'
 import type { PageFile } from './types'
+import { MESSAGE_HEADER_PREFIX, MESSAGE_SEPARATOR } from './constants'
 
 /**
  * Escape XML special characters
@@ -143,9 +144,9 @@ function getRoleDisplayName(role: ChatMessage['role']): string {
  */
 function serializeMessage(message: ChatMessage, layer: number, branch: number): string {
   const roleDisplay = getRoleDisplayName(message.role)
-  // Format: "## layer:branch Role" or "## layer Role" if branch is 1
+  // Format: "<!-- [POINTER-MSG] -->\n## layer:branch Role" or "## layer Role" if branch is 1
   const numbering = branch > 1 ? `${layer}:${branch}` : `${layer}`
-  const header = `## ${numbering} ${roleDisplay}`
+  const header = `${MESSAGE_HEADER_PREFIX}\n## ${numbering} ${roleDisplay}`
   const meta = serializeMessageMetadata(message)
   const reasoning = message.reasoning_content
     ? serializeReasoningContent(message.reasoning_content)
@@ -201,9 +202,8 @@ export function serializePageToMarkdown(page: PageFile): string {
     parts.push(serializeMessage(message, layer, branch))
     // Add separator between messages (except after last)
     if (i < page.messages.length - 1) {
-      parts.push('')
-      parts.push('---')
-      parts.push('')
+      // Use the new separator (MESSAGE_SEPARATOR already includes newlines)
+      parts.push(MESSAGE_SEPARATOR.trim())
     }
   }
 

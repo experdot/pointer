@@ -4,6 +4,7 @@
 
 import type { ChatMessage, Topic, FileAttachment } from '../../../../types/type'
 import type { PageFile, ParsedPageMeta, ParsedMessageHeader } from './types'
+import { MESSAGE_HEADER_PREFIX } from './constants'
 
 /**
  * Unescape XML special characters
@@ -216,31 +217,27 @@ function extractReasoningContent(content: string): { content: string; reasoning?
 
 /**
  * Split markdown into message sections
+ * Uses MESSAGE_HEADER_PREFIX to identify message boundaries
  */
 function splitIntoMessageSections(content: string): string[] {
   // Remove page metadata block first
   const pageMetaEnd = content.indexOf('-->', content.indexOf('<page>'))
   const contentWithoutPageMeta = pageMetaEnd > 0 ? content.substring(pageMetaEnd + 3) : content
 
-  // Split by message headers (## layer:branch Role or ## layer Role)
+  // Split by MESSAGE_HEADER_PREFIX
   const sections: string[] = []
-  const headerRegex = /^##\s+\d+(?::\d+)?\s+(User|Assistant|System)/gm
-  let match
+  const parts = contentWithoutPageMeta.split(MESSAGE_HEADER_PREFIX)
 
-  const matches: { index: number; text: string }[] = []
-  while ((match = headerRegex.exec(contentWithoutPageMeta)) !== null) {
-    matches.push({ index: match.index, text: match[0] })
-  }
+  for (let i = 1; i < parts.length; i++) {
+    // Each part starts after the prefix
+    let section = parts[i].trim()
 
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i].index
-    const end = i + 1 < matches.length ? matches[i + 1].index : contentWithoutPageMeta.length
+    // Remove trailing separator
+    section = section.replace(/\n*<!-- ═+══ -->\s*$/, '')
 
-    // Get section content, remove leading/trailing separators
-    let section = contentWithoutPageMeta.substring(start, end).trim()
-    // Remove trailing --- separator
-    section = section.replace(/\n---\s*$/, '')
-    sections.push(section)
+    if (section) {
+      sections.push(section)
+    }
   }
 
   return sections

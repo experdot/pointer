@@ -13,6 +13,7 @@ import {
 } from './core'
 import { serializePageToMarkdown, type PageFile } from './markdown'
 import { findPageFile, scanAllPages } from './pagesRepository'
+import { withWriteLock } from './writeLock'
 
 function getFileOptions(): { allowCustomPath?: boolean } {
   const wsPath = getCurrentWorkspacePath()
@@ -38,36 +39,39 @@ export function createMessagesRepository(): IMessagesRepository {
     },
 
     async put(pageId: string, record: MessagesRecord): Promise<void> {
-      const options = getFileOptions()
+      // Wrap in write lock to prevent concurrent writes for the same page
+      await withWriteLock(pageId, async () => {
+        const options = getFileOptions()
 
-      // Find existing file
-      const existing = await findPageFile(pageId)
+        // Find existing file
+        const existing = await findPageFile(pageId)
 
-      if (!existing) {
-        // Page doesn't exist yet - this shouldn't normally happen
-        // as pages should be created first, but handle it gracefully
-        console.warn(`messagesRepository.put: Page ${pageId} not found, cannot save messages`)
-        return
-      }
+        if (!existing) {
+          // Page doesn't exist yet - this shouldn't normally happen
+          // as pages should be created first, but handle it gracefully
+          console.warn(`messagesRepository.put: Page ${pageId} not found, cannot save messages`)
+          return
+        }
 
-      // Update messages in existing file
-      const file: PageFile = {
-        ...existing.file,
-        messages: record.messages,
-        topics: record.topics,
-        rootMessageId: record.rootMessageId,
-        leafMessageId: record.leafMessageId,
-        selectedMessageId: record.selectedMessageId
-      }
+        // Update messages in existing file
+        const file: PageFile = {
+          ...existing.file,
+          messages: record.messages,
+          topics: record.topics,
+          rootMessageId: record.rootMessageId,
+          leafMessageId: record.leafMessageId,
+          selectedMessageId: record.selectedMessageId
+        }
 
-      const content = serializePageToMarkdown(file)
+        const content = serializePageToMarkdown(file)
 
-      // Ensure directory exists
-      const targetDir = existing.path.substring(0, existing.path.lastIndexOf('/'))
-      await ensureDirectory(targetDir, options)
+        // Ensure directory exists
+        const targetDir = existing.path.substring(0, existing.path.lastIndexOf('/'))
+        await ensureDirectory(targetDir, options)
 
-      // Write to same path
-      await writeTextFile(existing.path, content, options)
+        // Write to same path
+        await writeTextFile(existing.path, content, options)
+      })
     },
 
     async delete(pageId: string): Promise<void> {
