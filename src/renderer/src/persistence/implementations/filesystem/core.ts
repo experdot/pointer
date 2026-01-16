@@ -181,10 +181,10 @@ export function getFoldersFilePath(workspacePath?: string): string {
 }
 
 /**
- * Get tabs file path (workspace level)
+ * Get tabs file path (workspace level - internal)
  */
 export function getTabsFilePath(workspacePath?: string): string {
-  return joinPath(getWorkspaceDataPath(workspacePath), 'tabs.json')
+  return joinPath(getWorkspaceInternalPath(workspacePath), 'tabs.json')
 }
 
 /**
