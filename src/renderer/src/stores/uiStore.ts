@@ -10,6 +10,7 @@ export interface UIState {
   selectedNodeId: string | null
   selectedNodeType: 'folder' | 'chat' | null
   checkedNodeIds: string[]
+  isMultiSelectMode: boolean
 
   // 收藏面板选中状态
   selectedFavoriteId: string | null
@@ -34,6 +35,8 @@ export interface UIActions {
   setCheckedNodes: (nodeIds: string[]) => void
   clearCheckedNodes: () => void
   toggleNodeCheck: (nodeId: string) => void
+  enterMultiSelectMode: () => void
+  exitMultiSelectMode: () => void
 
   // 收藏面板选择
   setSelectedFavorite: (favoriteId: string | null, favoriteType: 'folder' | 'item' | null) => void
@@ -65,6 +68,7 @@ const initialState: UIState = {
   selectedNodeId: null,
   selectedNodeType: null,
   checkedNodeIds: [],
+  isMultiSelectMode: false,
   selectedFavoriteId: null,
   selectedFavoriteType: null,
   sidebarCollapsed: false,
@@ -113,6 +117,20 @@ export const useUIStore = create<UIState & UIActions>()(
           } else {
             state.checkedNodeIds.push(nodeId)
           }
+        })
+      },
+
+      enterMultiSelectMode: () => {
+        set((state) => {
+          state.isMultiSelectMode = true
+          state.checkedNodeIds = []
+        })
+      },
+
+      exitMultiSelectMode: () => {
+        set((state) => {
+          state.isMultiSelectMode = false
+          state.checkedNodeIds = []
         })
       },
 
@@ -239,6 +257,7 @@ export const useUIStore = create<UIState & UIActions>()(
           state.selectedNodeId = null
           state.selectedNodeType = null
           state.checkedNodeIds = []
+          state.isMultiSelectMode = false
           state.selectedFavoriteId = null
           state.selectedFavoriteType = null
           state.collapsedMessages = {}

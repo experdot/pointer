@@ -40,6 +40,7 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     selectedNodeId,
     selectedNodeType,
     checkedNodeIds,
+    isMultiSelectMode,
     setSelectedNode,
     setCheckedNodes,
     clearCheckedNodes
@@ -736,6 +737,19 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
     ]
   )
 
+  // 处理多选模式下的勾选事件
+  const handleCheck = useCallback(
+    (
+      checked: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] },
+      info: { checked: boolean; checkedNodes: any[]; node: any; event: 'check'; halfCheckedKeys?: React.Key[] }
+    ) => {
+      // 处理 checked 可能是数组或对象的情况
+      const checkedKeys = Array.isArray(checked) ? checked : checked.checked
+      setCheckedNodes(checkedKeys.map(String))
+    },
+    [setCheckedNodes]
+  )
+
   const expandedKeys = useMemo(
     () => folders.filter((f) => f.expanded).map((f) => `folder-${f.id}`),
     [folders]
@@ -748,15 +762,17 @@ export default function ChatHistoryTree({ onChatClick, onFindInFolder }: ChatHis
         className="chat-history-tree"
         showIcon
         blockNode
-        draggable={!editingNodeKey}
-        checkable={false}
+        draggable={!editingNodeKey && !isMultiSelectMode}
+        checkable={isMultiSelectMode}
         multiple
         virtual
         height={virtualHeight}
         expandedKeys={expandedKeys}
         selectedKeys={checkedNodeIds.length > 0 ? checkedKeys : selectedKeys}
+        checkedKeys={isMultiSelectMode ? checkedNodeIds : undefined}
         treeData={treeData}
         onSelect={handleTreeSelect}
+        onCheck={handleCheck}
         onDrop={handleDrop}
         allowDrop={({ dropNode, dragNode, dropPosition }) => {
           const dragNodeInfo = parseNodeKey(dragNode.key)

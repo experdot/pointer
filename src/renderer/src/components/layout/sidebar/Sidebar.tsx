@@ -38,8 +38,16 @@ export default function Sidebar({
     deleteMultiplePages
   } = usePagesStore()
   const { openTab } = useTabsStore()
-  const { selectedNodeType, selectedNodeId, checkedNodeIds, setSelectedNode, clearCheckedNodes } =
-    useUIStore()
+  const {
+    selectedNodeType,
+    selectedNodeId,
+    checkedNodeIds,
+    isMultiSelectMode,
+    setSelectedNode,
+    clearCheckedNodes,
+    enterMultiSelectMode,
+    exitMultiSelectMode
+  } = useUIStore()
   const { filterFolderId } = useSearchStore()
   const { modal } = App.useApp()
 
@@ -106,8 +114,68 @@ export default function Sidebar({
 
   // 批量删除选中的聊天
   const handleBatchDelete = useCallback(() => {
-    // TODO
-  }, [checkedNodeIds, clearCheckedNodes, deleteMultiplePages])
+    if (checkedNodeIds.length === 0) return
+
+    // 解析选中的节点，分离聊天和文件夹
+    const chatIds: string[] = []
+    const folderIds: string[] = []
+
+    checkedNodeIds.forEach((nodeKey) => {
+      if (nodeKey.startsWith('chat-')) {
+        chatIds.push(nodeKey.replace('chat-', ''))
+      } else if (nodeKey.startsWith('folder-')) {
+        folderIds.push(nodeKey.replace('folder-', ''))
+      }
+    })
+
+    const totalCount = chatIds.length + folderIds.length
+    const description =
+      folderIds.length > 0
+        ? `确定要删除选中的 ${totalCount} 项吗？包含 ${chatIds.length} 个聊天和 ${folderIds.length} 个文件夹。文件夹中的所有内容也将被删除。此操作无法撤销。`
+        : `确定要删除选中的 ${chatIds.length} 个聊天吗？此操作无法撤销。`
+
+    modal.confirm({
+      title: '批量删除',
+      content: description,
+      okText: '确定删除',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk() {
+        const { deleteFolder, deletePage } = usePagesStore.getState()
+
+        // 递归删除文件夹及其内容
+        const deleteRecursive = (folderId: string) => {
+          const currentState = usePagesStore.getState()
+          // 删除该文件夹下的所有聊天
+          const chatsToDelete = currentState.pages.filter(
+            (p) => p.folderId === folderId && p.type !== 'settings'
+          )
+          chatsToDelete.forEach((chat) => deletePage(chat.id))
+
+          // 递归删除子文件夹
+          const subFolders = currentState.folders.filter((f) => f.parentId === folderId)
+          subFolders.forEach((subFolder) => {
+            deleteRecursive(subFolder.id)
+            deleteFolder(subFolder.id)
+          })
+        }
+
+        // 先删除文件夹（包含递归删除内容）
+        folderIds.forEach((folderId) => {
+          deleteRecursive(folderId)
+          deleteFolder(folderId)
+        })
+
+        // 再删除独立的聊天
+        if (chatIds.length > 0) {
+          deleteMultiplePages(chatIds)
+        }
+
+        // 清空选中状态并退出多选模式
+        exitMultiSelectMode()
+      }
+    })
+  }, [checkedNodeIds, deleteMultiplePages, exitMultiSelectMode, modal])
 
   // 检查是否有选中的项目
   const hasCheckedItems = checkedNodeIds.length > 0
@@ -127,16 +195,21 @@ export default function Sidebar({
               <SidebarActions
                 collapsed={false}
                 hasCheckedItems={hasCheckedItems}
+                isMultiSelectMode={isMultiSelectMode}
                 onCreateChat={handleCreateChat}
                 onCreateCrosstabChat={handleCreateCrosstabChat}
                 onCreateObjectChat={handleCreateObjectChat}
                 onCreateFolder={handleCreateFolder}
                 onBatchDelete={handleBatchDelete}
+                onEnterMultiSelectMode={enterMultiSelectMode}
+                onExitMultiSelectMode={exitMultiSelectMode}
               />
             </div>
             <div className="sidebar-content">
-              {hasCheckedItems && (
-                <div className="multi-select-indicator">已选中 {checkedNodeIds.length} 项</div>
+              {isMultiSelectMode && (
+                <div className="multi-select-indicator">
+                  {hasCheckedItems ? `已选中 ${checkedNodeIds.length} 项` : '请勾选要操作的项目'}
+                </div>
               )}
               <ChatHistoryTree onChatClick={handleChatClick} onFindInFolder={onFindInFolder} />
             </div>

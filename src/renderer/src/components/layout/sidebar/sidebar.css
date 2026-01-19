@@ -62,3 +62,16 @@
   flex-direction: column;
   height: 100%;
 }
+
+.multi-select-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  background: #e6f4ff;
+  border: 1px solid #91caff;
+  border-radius: 4px;
+  color: #1677ff;
+  font-size: 12px;
+}

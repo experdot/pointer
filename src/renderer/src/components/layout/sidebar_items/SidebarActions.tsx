@@ -7,27 +7,35 @@ import {
   DeleteOutlined,
   TableOutlined,
   BlockOutlined,
-  DownOutlined
+  DownOutlined,
+  CheckSquareOutlined,
+  CloseOutlined
 } from '@ant-design/icons'
 
 interface SidebarActionsProps {
   collapsed?: boolean
   hasCheckedItems?: boolean
+  isMultiSelectMode?: boolean
   onCreateChat: () => void
   onCreateCrosstabChat: () => void
   onCreateObjectChat: () => void
   onCreateFolder: () => void
   onBatchDelete?: () => void
+  onEnterMultiSelectMode?: () => void
+  onExitMultiSelectMode?: () => void
 }
 
 export default function SidebarActions({
   collapsed = false,
   hasCheckedItems = false,
+  isMultiSelectMode = false,
   onCreateChat,
   onCreateCrosstabChat,
   onCreateObjectChat,
   onCreateFolder,
-  onBatchDelete
+  onBatchDelete,
+  onEnterMultiSelectMode,
+  onExitMultiSelectMode
 }: SidebarActionsProps) {
   const createOptions: MenuProps['items'] = [
     {
@@ -47,6 +55,15 @@ export default function SidebarActions({
       label: '新建文件夹',
       icon: <FolderAddOutlined />,
       onClick: onCreateFolder
+    },
+    {
+      type: 'divider'
+    },
+    {
+      key: 'multiselect',
+      label: isMultiSelectMode ? '退出多选模式' : '进入多选模式',
+      icon: isMultiSelectMode ? <CloseOutlined /> : <CheckSquareOutlined />,
+      onClick: isMultiSelectMode ? onExitMultiSelectMode : onEnterMultiSelectMode
     }
   ]
   if (collapsed) {
