@@ -34,6 +34,7 @@ export interface SettingsActions {
 
   // 外观设置
   setFontSize: (size: 'small' | 'medium' | 'large') => void
+  setInputMinRows: (rows: number) => void
 
   // 提示词列表管理
   addPromptList: (config: PromptListConfig) => void
@@ -162,6 +163,16 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           })
         } catch (error) {
           handleStoreError('settingsStore', 'setFontSize', error)
+        }
+      },
+
+      setInputMinRows: (rows) => {
+        try {
+          set((state) => {
+            state.settings.inputMinRows = Math.max(1, Math.min(10, rows))
+          })
+        } catch (error) {
+          handleStoreError('settingsStore', 'setInputMinRows', error)
         }
       },
 

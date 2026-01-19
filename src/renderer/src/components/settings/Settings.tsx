@@ -77,7 +77,8 @@ export default function Settings({
         form={form}
         layout="vertical"
         initialValues={{
-          fontSize: settings.fontSize
+          fontSize: settings.fontSize,
+          inputMinRows: settings.inputMinRows
         }}
         style={{
           height: '100%',

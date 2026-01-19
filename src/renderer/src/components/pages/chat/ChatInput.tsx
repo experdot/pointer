@@ -518,7 +518,7 @@ const ChatInput = React.memo(
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
               onPaste={handlePaste}
-              autoSize={{ minRows: 1, maxRows: 10 }}
+              autoSize={{ minRows: settings.inputMinRows ?? 1, maxRows: 10 }}
               disabled={hasNoModels}
             />
             <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>

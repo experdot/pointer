@@ -321,6 +321,7 @@ export interface Settings {
   modelConfigs: ModelConfig[]
   defaultModelConfigId?: string
   fontSize: 'small' | 'medium' | 'large'
+  inputMinRows: number // 输入框初始行高 (1-10)
   promptLists: PromptListConfig[]
 }
 
