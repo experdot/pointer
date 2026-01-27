@@ -14,6 +14,7 @@ import { ModelConfigSelector } from './ModelConfigSelector'
 import { QueueButton } from './QueueButton'
 import { AttachmentPreview } from './AttachmentPreview'
 import { useChatUIStore } from '../../../stores/chatUIStore'
+import { useTabsStore } from '../../../stores/tabsStore'
 import { useAttachment } from '../../../hooks/useAttachment'
 import { openSettings } from '../../../services/settingsService'
 import type { FileAttachment } from '../../../types/type'
@@ -62,13 +63,23 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     useAttachment(pageId)
   const textAreaRef = useRef<TextAreaRef>(null)
 
+  // 获取当前 tab 的活跃状态
+  const isTabActive = useTabsStore((state) => {
+    const tab = state.tabs.find((t) => t.dataId === pageId)
+    return tab ? tab.id === state.activeTabId : false
+  })
+
   // 拖拽上传状态
   const [isDragOver, setIsDragOver] = useState(false)
 
-  // pageId 变化时自动聚焦
+  // tab 变为活跃时自动聚焦
   useEffect(() => {
-    textAreaRef.current?.focus()
-  }, [pageId])
+    if (!isTabActive) return
+    const timer = setTimeout(() => {
+      textAreaRef.current?.focus()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [isTabActive])
 
   // 拖拽上传处理
   const handleDragOver = useCallback((e: React.DragEvent) => {
