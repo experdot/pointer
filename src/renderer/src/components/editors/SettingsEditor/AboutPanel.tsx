@@ -8,6 +8,7 @@ import {
   InfoCircleOutlined,
   DownloadOutlined
 } from '@ant-design/icons'
+import { Streamdown } from 'streamdown'
 import { useUpdateStore } from '../../../stores/updateStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 
@@ -206,9 +207,9 @@ export function AboutPanel(): React.JSX.Element {
             {updateInfo.releaseNotes && (
               <div>
                 <Text strong>更新说明:</Text>
-                <Paragraph style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>
-                  {updateInfo.releaseNotes}
-                </Paragraph>
+                <div style={{ marginTop: 8 }}>
+                  <Streamdown mode="static">{updateInfo.releaseNotes}</Streamdown>
+                </div>
               </div>
             )}
           </Space>
@@ -325,7 +326,7 @@ export function AboutPanel(): React.JSX.Element {
       </Flex>
 
       <Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
-        一个探索性的AI聊天应用，致力于提供更好的 AI 交互体验。
+        一个探索性的 AI 聊天应用，致力于提供更好的 AI 交互体验。
       </Paragraph>
     </Flex>
   )
