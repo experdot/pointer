@@ -228,7 +228,6 @@ export function createPageRepository(): IPageRepository {
           ...page,
           messages: existing?.file.messages ?? [],
           topics: existing?.file.topics ?? [],
-          rootMessageId: existing?.file.rootMessageId,
           leafMessageId: existing?.file.leafMessageId,
           selectedMessageId: existing?.file.selectedMessageId
         }

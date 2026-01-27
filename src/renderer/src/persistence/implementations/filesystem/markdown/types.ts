@@ -11,7 +11,6 @@ import type { PageRecord, MessagesRecord } from '../../../interfaces'
 export interface PageFile extends PageRecord {
   messages: MessagesRecord['messages']
   topics: MessagesRecord['topics']
-  rootMessageId?: string
   leafMessageId?: string
   selectedMessageId?: string
 }
@@ -51,7 +50,6 @@ export interface ParsedPageMeta {
   order?: number
   createdAt: number
   updatedAt?: number
-  rootMessageId?: string
   leafMessageId?: string
   selectedMessageId?: string
   topics: Topic[]

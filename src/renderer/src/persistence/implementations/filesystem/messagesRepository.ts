@@ -25,7 +25,6 @@ function messagesRecordFromFile(file: PageFile): MessagesRecord {
     pageId: file.id,
     messages: file.messages ?? [],
     topics: file.topics ?? [],
-    rootMessageId: file.rootMessageId,
     leafMessageId: file.leafMessageId,
     selectedMessageId: file.selectedMessageId
   }
@@ -58,7 +57,6 @@ export function createMessagesRepository(): IMessagesRepository {
           ...existing.file,
           messages: record.messages,
           topics: record.topics,
-          rootMessageId: record.rootMessageId,
           leafMessageId: record.leafMessageId,
           selectedMessageId: record.selectedMessageId
         }
@@ -86,7 +84,6 @@ export function createMessagesRepository(): IMessagesRepository {
           ...existing.file,
           messages: [],
           topics: [],
-          rootMessageId: undefined,
           leafMessageId: undefined,
           selectedMessageId: undefined
         }

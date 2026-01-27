@@ -25,7 +25,6 @@ export interface ParsedConversation {
   createdAt: number
   updatedAt?: number
   messages: ParsedMessage[]
-  rootMessageId?: string
   leafMessageId?: string
 }
 

@@ -98,7 +98,6 @@ function prepareConversation(
         pageId,
         messages,
         topics: [],
-        rootMessageId: rootMessage?.id,
         leafMessageId: leafMessageId || messages[messages.length - 1]?.id
       }
     }

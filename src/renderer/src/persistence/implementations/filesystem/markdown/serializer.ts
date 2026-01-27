@@ -67,7 +67,6 @@ function serializePageMetadata(page: PageFile): string {
   if (page.order !== undefined) xml += xmlElement('order', page.order)
   xml += xmlElement('createdAt', page.createdAt)
   if (page.updatedAt) xml += xmlElement('updatedAt', page.updatedAt)
-  if (page.rootMessageId) xml += xmlElement('rootMessageId', page.rootMessageId)
   if (page.leafMessageId) xml += xmlElement('leafMessageId', page.leafMessageId)
   if (page.selectedMessageId) xml += xmlElement('selectedMessageId', page.selectedMessageId)
   xml += serializeTopics(page.topics)

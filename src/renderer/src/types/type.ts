@@ -104,7 +104,6 @@ export interface ChatSession {
   messages: ChatMessage[]
   topics: Topic[] // 独立存储的 Topic 列表
 
-  rootMessageId?: string // 当前的根消息ID（可能有多个根消息）
   leafMessageId?: string // 当前选择的消息路径（叶子节点）
   selectedMessageId?: string // 当前选中的消息ID（用于滚动定位）
 }

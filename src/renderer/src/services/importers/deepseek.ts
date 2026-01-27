@@ -74,7 +74,6 @@ export class DeepSeekImporter extends BaseImporter {
       createdAt: this.parseTimestamp(conv.inserted_at),
       updatedAt: this.parseTimestamp(conv.updated_at),
       messages,
-      rootMessageId: rootMessage?.id,
       leafMessageId: leafId
     }
   }

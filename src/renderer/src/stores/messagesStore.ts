@@ -60,7 +60,6 @@ const emptyRecord = (pageId: string): MessagesRecord => ({
   pageId,
   messages: [],
   topics: [],
-  rootMessageId: undefined,
   leafMessageId: undefined,
   selectedMessageId: undefined
 })
@@ -98,7 +97,6 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     await get().update(pageId, (record) => ({
       ...record,
       messages: [...record.messages, message],
-      rootMessageId: record.rootMessageId ?? message.id,
       leafMessageId: message.id
     }))
   },

@@ -89,18 +89,10 @@ export async function deleteMessage(pageId: string, messageId: string): Promise<
     }
   }
 
-  // 计算新的 rootMessageId
-  let rootMessageId = record.rootMessageId
-  if (rootMessageId && idsToDelete.has(rootMessageId)) {
-    const rootMessages = (childrenMap.get(undefined) ?? []).filter((m) => !idsToDelete.has(m.id))
-    rootMessageId = rootMessages.length > 0 ? rootMessages[0].id : undefined
-  }
-
   await stores.message.update(pageId, (r) => ({
     ...r,
     messages: r.messages.filter((m) => !idsToDelete.has(m.id)),
-    leafMessageId,
-    rootMessageId
+    leafMessageId
   }))
 }
 

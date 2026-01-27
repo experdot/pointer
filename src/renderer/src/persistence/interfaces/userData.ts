@@ -36,7 +36,6 @@ export interface MessagesRecord {
   pageId: string
   messages: ChatMessage[]
   topics: Topic[]
-  rootMessageId?: string
   leafMessageId?: string
   selectedMessageId?: string
 }

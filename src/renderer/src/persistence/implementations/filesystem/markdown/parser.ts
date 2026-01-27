@@ -137,7 +137,6 @@ function parsePageMetadata(content: string): ParsedPageMeta | null {
     order: getXmlNumber(xml, 'order'),
     createdAt,
     updatedAt: getXmlNumber(xml, 'updatedAt'),
-    rootMessageId: getXmlElement(xml, 'rootMessageId'),
     leafMessageId: getXmlElement(xml, 'leafMessageId'),
     selectedMessageId: getXmlElement(xml, 'selectedMessageId'),
     topics: parseTopics(xml)
@@ -316,7 +315,6 @@ export function parseMarkdownPage(content: string): PageFile | null {
     order: pageMeta.order,
     createdAt: pageMeta.createdAt,
     updatedAt: pageMeta.updatedAt,
-    rootMessageId: pageMeta.rootMessageId,
     leafMessageId: pageMeta.leafMessageId,
     selectedMessageId: pageMeta.selectedMessageId,
     messages,

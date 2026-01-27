@@ -121,7 +121,6 @@ export class PointerImporter extends BaseImporter {
       createdAt: page.createdAt || Date.now(),
       updatedAt: page.updatedAt,
       messages,
-      rootMessageId: rootMessage?.id,
       leafMessageId
     }
   }

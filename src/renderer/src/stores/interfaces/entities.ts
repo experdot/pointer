@@ -104,7 +104,7 @@ export interface IMessageStore extends ICachedStore<MessagesRecord>, IResettable
   // ==================== 会话状态 ====================
 
   /**
-   * 更新会话状态（rootMessageId, leafMessageId, selectedMessageId）
+   * 更新会话状态（leafMessageId, selectedMessageId）
    */
   updateSession(
     pageId: string,

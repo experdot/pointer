@@ -96,7 +96,6 @@ export class OpenAIImporter extends BaseImporter {
       createdAt: this.parseTimestamp(conv.create_time),
       updatedAt: this.parseTimestamp(conv.update_time),
       messages,
-      rootMessageId: rootMessage?.id,
       leafMessageId
     }
   }
