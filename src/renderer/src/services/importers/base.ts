@@ -83,11 +83,4 @@ export abstract class BaseImporter implements ConversationImporter {
     }
     return undefined
   }
-
-  /**
-   * 查找根消息（没有父消息的可见消息）
-   */
-  protected findRootMessage(messages: ParsedMessage[]): ParsedMessage | undefined {
-    return messages.find((m) => !m.parentMessageId && !m.hidden)
-  }
 }

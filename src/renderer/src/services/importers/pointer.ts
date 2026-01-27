@@ -103,9 +103,6 @@ export class PointerImporter extends BaseImporter {
     // 计算 branchIndex
     this.calculateBranchIndices(mapping, messages)
 
-    // 找到根消息（没有父消息的第一条消息）
-    const rootMessage = this.findRootMessage(messages)
-
     // 叶子消息从 currentPath 获取，或者找没有子消息的消息
     let leafMessageId: string | undefined
     if (page.currentPath && page.currentPath.length > 0) {

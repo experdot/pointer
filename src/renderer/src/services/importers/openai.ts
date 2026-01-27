@@ -79,9 +79,6 @@ export class OpenAIImporter extends BaseImporter {
     // 计算 branchIndex
     this.calculateBranchIndices(mapping, messages)
 
-    // 找到根消息
-    const rootMessage = this.findRootMessage(messages)
-
     // 找到有效的叶子节点（current_node 可能指向被跳过的节点）
     let leafMessageId: string | undefined = conv.current_node
     if (leafMessageId && skippedNodes.has(leafMessageId)) {

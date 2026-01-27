@@ -63,8 +63,6 @@ export class DeepSeekImporter extends BaseImporter {
     // 计算 branchIndex
     this.calculateBranchIndices(mapping, messages)
 
-    // 找到根消息和叶子消息
-    const rootMessage = this.findRootMessage(messages)
     const leafId = this.findLeafNode(mapping)
 
     return {
