@@ -96,7 +96,7 @@ export function getAccountsFilePath(): string {
 /**
  * Set current workspace path
  */
-export function setCurrentWorkspace(workspacePath: string): void {
+export function setCurrentWorkspace(workspacePath: string | null): void {
   currentWorkspacePath = workspacePath
 }
 

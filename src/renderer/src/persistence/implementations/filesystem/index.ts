@@ -18,6 +18,7 @@ import {
   initAppDataPath,
   setCurrentAccount,
   setCurrentWorkspace,
+  getCurrentWorkspacePath,
   getAccountPath,
   deleteFile
 } from './core'
@@ -170,6 +171,11 @@ export function createFileSystemPersistence(): IPersistenceRegistry {
       currentWorkspacePath: string | null,
       approvedWorkspacePaths: string[]
     ): Promise<void> {
+      if (getCurrentWorkspacePath() !== currentWorkspacePath) {
+        setCurrentWorkspace(currentWorkspacePath)
+        resetWorkspaceRepositoryCache()
+      }
+
       await window.api.fs.syncWorkspaceAccess({
         currentWorkspacePath,
         approvedWorkspacePaths
