@@ -52,6 +52,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       persistence.workspaces.getCurrentWorkspaceId()
     ])
 
+    const currentWorkspacePath =
+      workspaces.find((workspace) => workspace.id === currentWorkspaceId)?.path ?? null
+    await persistence.database.syncWorkspaceAccess(
+      currentWorkspacePath,
+      workspaces.map((workspace) => workspace.path)
+    )
+
     let currentWorkspace: Workspace | null = null
     if (currentWorkspaceId) {
       currentWorkspace = (await persistence.workspaces.getById(currentWorkspaceId)) || null
@@ -79,7 +86,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     set((state) => ({
       workspaces: state.workspaces.map((w) =>
-        w.id === id ? { id: updated.id, name: updated.name, type: updated.type, path: updated.path } : w
+        w.id === id
+          ? { id: updated.id, name: updated.name, type: updated.type, path: updated.path }
+          : w
       ),
       currentWorkspace: state.currentWorkspaceId === id ? updated : state.currentWorkspace
     }))
@@ -111,7 +120,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     // 更新持久化层的当前工作区
     await persistence.workspaces.setCurrentWorkspaceId(id)
-    persistence.database.setWorkspace(workspace.path)
+    await persistence.database.setWorkspace(workspace.path)
 
     set({
       currentWorkspaceId: id,
@@ -122,6 +131,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   setCurrentWorkspaceId: async (id) => {
     if (id === null) {
       await persistence.workspaces.setCurrentWorkspaceId(null)
+      await persistence.database.syncWorkspaceAccess(null, [])
       set({ currentWorkspaceId: null, currentWorkspace: null })
       return
     }

@@ -25,10 +25,7 @@ export function createMessageQueueRepository(): IMessageQueueRepository {
   return {
     async get(pageId: string): Promise<MessageQueueRecord | undefined> {
       const options = getFileOptions()
-      const data = await readJsonFile<MessageQueueRecord>(
-        getMessageQueueFilePath(pageId),
-        options
-      )
+      const data = await readJsonFile<MessageQueueRecord>(getMessageQueueFilePath(pageId), options)
       return data ?? undefined
     },
 

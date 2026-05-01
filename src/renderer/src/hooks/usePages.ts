@@ -13,7 +13,10 @@ export function usePages(): {
   rootItems: (ChatPage | PageFolder)[]
   getItemsInFolder: (folderId: string | undefined) => (ChatPage | PageFolder)[]
   batchUpdateItemsOrder: (items: (ChatPage | PageFolder)[], parentFolderId?: string) => void
-  batchUpdateItemsOrderWithRename: (items: (ChatPage | PageFolder)[], parentFolderId?: string) => void
+  batchUpdateItemsOrderWithRename: (
+    items: (ChatPage | PageFolder)[],
+    parentFolderId?: string
+  ) => void
   checkBatchMoveConflicts: (
     items: (ChatPage | PageFolder)[],
     parentFolderId?: string

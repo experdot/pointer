@@ -82,7 +82,6 @@ function prepareConversation(
       }
     })
 
-    const rootMessage = messages.find((m) => !m.parentMessageId)
     const leafMessageId = conv.leafMessageId ? idMap.get(conv.leafMessageId) : undefined
 
     return {

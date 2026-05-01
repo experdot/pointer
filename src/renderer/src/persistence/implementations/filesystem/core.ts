@@ -196,9 +196,28 @@ export function getPagesDirectoryPath(workspacePath?: string): string {
 
 // Windows reserved names (case-insensitive)
 const WINDOWS_RESERVED_NAMES = new Set([
-  'CON', 'PRN', 'AUX', 'NUL',
-  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+  'CON',
+  'PRN',
+  'AUX',
+  'NUL',
+  'COM1',
+  'COM2',
+  'COM3',
+  'COM4',
+  'COM5',
+  'COM6',
+  'COM7',
+  'COM8',
+  'COM9',
+  'LPT1',
+  'LPT2',
+  'LPT3',
+  'LPT4',
+  'LPT5',
+  'LPT6',
+  'LPT7',
+  'LPT8',
+  'LPT9'
 ])
 
 // Max filename length (leave room for extension and suffix)
@@ -216,7 +235,9 @@ const MAX_FILENAME_LENGTH = 200
 export function sanitizeFileName(name: string): string {
   let result = name
     // Remove control characters (ASCII 0-31)
-    .replace(/[\x00-\x1f]/g, '')
+    .split('')
+    .filter((char) => char.charCodeAt(0) >= 32)
+    .join('')
     // Replace invalid characters with underscore
     .replace(/[<>:"/\\|?*]/g, '_')
     // Normalize multiple spaces to single space

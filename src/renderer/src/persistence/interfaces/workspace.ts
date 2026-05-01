@@ -3,11 +3,7 @@
  * Account-level storage for workspace management
  */
 
-import type {
-  Workspace,
-  WorkspaceMetadata,
-  ValidateWorkspaceResult
-} from '../../types/workspace'
+import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../../types/workspace'
 
 /**
  * Workspace repository interface

@@ -374,7 +374,9 @@ export function Explorer(): React.JSX.Element {
         open={moveConflict !== null}
         conflict={moveConflict}
         onCancel={handleConflictCancel}
-        onAutoRename={pendingDragOperation ? handleDragConflictAutoRename : handleConflictAutoRename}
+        onAutoRename={
+          pendingDragOperation ? handleDragConflictAutoRename : handleConflictAutoRename
+        }
       />
     </Flex>
   )

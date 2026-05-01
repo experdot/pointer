@@ -147,6 +147,14 @@ const api = {
   fs: {
     getAppDataPath: (): Promise<string> => ipcRenderer.invoke('fs:get-app-data-path'),
 
+    syncWorkspaceAccess: (context: {
+      currentWorkspacePath: string | null
+      approvedWorkspacePaths: string[]
+    }) => ipcRenderer.invoke('fs:sync-workspace-access', context),
+
+    approveWorkspacePath: (workspacePath: string): Promise<void> =>
+      ipcRenderer.invoke('fs:approve-workspace-path', workspacePath),
+
     selectDirectory: (options?: { title?: string; defaultPath?: string }) =>
       ipcRenderer.invoke('fs:select-directory', options),
 

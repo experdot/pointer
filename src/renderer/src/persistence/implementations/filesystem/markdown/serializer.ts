@@ -162,10 +162,7 @@ function serializeMessage(message: ChatMessage, layer: number, branch: number): 
 /**
  * Calculate message layer (depth in tree, 1-based)
  */
-function calculateMessageLayer(
-  messageId: string,
-  messagesMap: Map<string, ChatMessage>
-): number {
+function calculateMessageLayer(messageId: string, messagesMap: Map<string, ChatMessage>): number {
   let layer = 1
   let currentId: string | undefined = messageId
   while (currentId) {

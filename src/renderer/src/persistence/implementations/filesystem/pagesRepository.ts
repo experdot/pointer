@@ -25,7 +25,7 @@ import { parseMarkdownPage, serializePageToMarkdown, type PageFile } from './mar
 import { withWriteLock } from './writeLock'
 
 // Cache for pageId -> filePath mapping
-let pageFileCache: Map<string, string> = new Map()
+const pageFileCache: Map<string, string> = new Map()
 let cacheValid = false
 
 function getFileOptions(): { allowCustomPath?: boolean } {
@@ -161,9 +161,7 @@ async function scanAllPages(): Promise<Map<string, { file: PageFile; path: strin
 /**
  * Find page file by ID (uses cache if valid)
  */
-async function findPageFile(
-  pageId: string
-): Promise<{ file: PageFile; path: string } | null> {
+async function findPageFile(pageId: string): Promise<{ file: PageFile; path: string } | null> {
   const options = getFileOptions()
 
   // Try cache first

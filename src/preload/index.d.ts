@@ -1,42 +1,17 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type { AIRequest, AIStreamCallbacks, LLMConfig } from '../shared/ai'
 
-export interface LLMConfig {
-  baseUrl: string
-  apiKey: string
-  modelName: string
-}
+export type {
+  AIRequest,
+  AIStreamChunk,
+  AIStreamCallbacks,
+  LLMConfig,
+  ModelConfig
+} from '../shared/ai'
 
-export interface ModelConfig {
-  systemPrompt: string
-  topP: number
-  temperature: number
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-}
-
-export interface AIRequest {
-  requestId: string
-  llmConfig: LLMConfig
-  modelConfig?: ModelConfig
-  messages: ChatMessage[]
-}
-
-export interface AIStreamChunk {
-  requestId: string
-  type: 'chunk' | 'complete' | 'error' | 'reasoning_content'
-  content?: string
-  reasoning_content?: string
-  error?: string
-}
-
-export interface AIStreamCallbacks {
-  onChunk: (chunk: string) => void
-  onReasoning?: (reasoning: string) => void
-  onComplete?: (fullResponse: string, reasoning?: string) => void
-  onError?: (error: string) => void
+export interface WorkspaceAccessContext {
+  currentWorkspacePath: string | null
+  approvedWorkspacePaths: string[]
 }
 
 export interface TestConnectionResult {
@@ -140,10 +115,9 @@ declare global {
       }
       fs: {
         getAppDataPath: () => Promise<string>
-        selectDirectory: (options?: {
-          title?: string
-          defaultPath?: string
-        }) => Promise<{
+        syncWorkspaceAccess: (context: WorkspaceAccessContext) => Promise<void>
+        approveWorkspacePath: (workspacePath: string) => Promise<void>
+        selectDirectory: (options?: { title?: string; defaultPath?: string }) => Promise<{
           success: boolean
           cancelled?: boolean
           path?: string

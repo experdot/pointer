@@ -264,7 +264,7 @@ function parseMessageSection(section: string): ChatMessage | null {
   if (!messageId) return null
 
   // Extract content (after metadata block)
-  let rawContent = afterHeader.substring(metaResult.contentStart).trim()
+  const rawContent = afterHeader.substring(metaResult.contentStart).trim()
 
   // Extract reasoning content
   const { content, reasoning } = extractReasoningContent(rawContent)

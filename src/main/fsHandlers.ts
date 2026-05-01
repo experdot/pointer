@@ -1,6 +1,12 @@
 import { ipcMain, dialog, app } from 'electron'
 import { readFile, writeFile, unlink, mkdir, readdir, stat, rm } from 'fs/promises'
 import * as path from 'path'
+import {
+  approveWorkspacePath,
+  getAllowedFileSystemRoots,
+  syncWorkspaceAccessContext,
+  type WorkspaceAccessContext
+} from './workspaceRuntime'
 
 /**
  * 获取应用数据目录路径
@@ -26,18 +32,10 @@ function isPathAllowed(filePath: string, allowedDirs: string[]): boolean {
  * @param allowCustom 是否允许自定义路径（用于工作区）
  */
 function validatePath(targetPath: string, allowCustom = false): { valid: boolean; error?: string } {
-  const appDataPath = getAppDataPath()
-
-  // 始终允许 appData 目录
-  if (isPathAllowed(targetPath, [appDataPath])) {
+  const allowedRoots = getAllowedFileSystemRoots(allowCustom)
+  if (isPathAllowed(targetPath, allowedRoots)) {
     return { valid: true }
   }
-
-  // 如果允许自定义路径，检查是否是有效的绝对路径
-  if (allowCustom && path.isAbsolute(targetPath)) {
-    return { valid: true }
-  }
-
   return { valid: false, error: '访问被拒绝：路径不在允许的范围内' }
 }
 
@@ -45,6 +43,14 @@ export function setupFileSystemHandlers(): void {
   // 获取应用数据目录
   ipcMain.handle('fs:get-app-data-path', () => {
     return getAppDataPath()
+  })
+
+  ipcMain.handle('fs:sync-workspace-access', (_event, context: WorkspaceAccessContext) => {
+    syncWorkspaceAccessContext(context)
+  })
+
+  ipcMain.handle('fs:approve-workspace-path', (_event, workspacePath: string) => {
+    approveWorkspacePath(workspacePath)
   })
 
   // 选择目录
@@ -63,6 +69,10 @@ export function setupFileSystemHandlers(): void {
           defaultPath: options?.defaultPath,
           properties: ['openDirectory', 'createDirectory']
         })
+
+        if (!result.canceled && result.filePaths[0]) {
+          approveWorkspacePath(result.filePaths[0])
+        }
 
         return {
           success: !result.canceled,

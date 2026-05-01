@@ -47,6 +47,15 @@ async function retryWithBackoff<T>(
   throw lastError
 }
 
+export interface PersistenceQueue<TKey extends string, TData> {
+  enqueue: (key: TKey, data: TData) => void
+  flush: (key: TKey) => Promise<void>
+  flushAll: () => Promise<void>
+  waitForWrites: () => Promise<void>
+  hasPending: (key?: TKey) => boolean
+  dispose: () => Promise<void>
+}
+
 /**
  * 创建一个持久化队列
  * - 内存更新立即生效
@@ -56,14 +65,7 @@ async function retryWithBackoff<T>(
 export function createPersistenceQueue<TKey extends string, TData>(
   persistFn: (key: TKey, data: TData) => Promise<void>,
   options: QueueOptions = {}
-): {
-  enqueue: (key: TKey, data: TData) => void
-  flush: (key: TKey) => Promise<void>
-  flushAll: () => Promise<void>
-  waitForWrites: () => Promise<void>
-  hasPending: (key?: TKey) => boolean
-  dispose: () => Promise<void>
-} {
+): PersistenceQueue<TKey, TData> {
   const { debounceMs = 300, maxDelayMs = 2000, maxRetries = 3, initialRetryDelay = 1000 } = options
 
   // 每个 key 的待写入数据
@@ -203,12 +205,10 @@ export function createPersistenceQueue<TKey extends string, TData>(
 import { persistence } from '../persistence/registry'
 import type { MessagesRecord } from '../persistence/interfaces/userData'
 
-let messagesQueue: ReturnType<typeof createPersistenceQueue<string, MessagesRecord>> | null = null
+let messagesQueue: PersistenceQueue<string, MessagesRecord> | null = null
 let flushListenerRegistered = false
 
-type MessagesQueueType = ReturnType<typeof createPersistenceQueue<string, MessagesRecord>>
-
-export function getMessagesQueue(): MessagesQueueType {
+export function getMessagesQueue(): PersistenceQueue<string, MessagesRecord> {
   if (!messagesQueue) {
     messagesQueue = createPersistenceQueue<string, MessagesRecord>(
       (pageId, data) => persistence.messages.put(pageId, data),

@@ -53,9 +53,16 @@ export interface IDatabaseManager {
   /** Initialize the persistence layer */
   init(): Promise<void>
   /** Set current account (switches account-level storage) */
-  setAccount(accountId: string): void
+  setAccount(accountId: string): Promise<void>
   /** Set current workspace path (switches workspace-level storage) */
-  setWorkspace(workspacePath: string): void
+  setWorkspace(workspacePath: string): Promise<void>
+  /** Synchronize main-process access roots for workspaces */
+  syncWorkspaceAccess(
+    currentWorkspacePath: string | null,
+    approvedWorkspacePaths: string[]
+  ): Promise<void>
+  /** Allow a specific workspace path before it is added to the workspace list */
+  approveWorkspacePath(workspacePath: string): Promise<void>
   /** Delete account data */
   deleteAccountData(accountId: string): Promise<void>
 }

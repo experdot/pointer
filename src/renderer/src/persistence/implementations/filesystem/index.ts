@@ -146,16 +146,38 @@ export function createFileSystemPersistence(): IPersistenceRegistry {
       await initAppDataPath()
     },
 
-    setAccount(accountId: string): void {
+    async setAccount(accountId: string): Promise<void> {
       setCurrentAccount(accountId)
       // Reset all caches when account changes
       resetAllRepositoryCache()
+      await window.api.fs.syncWorkspaceAccess({
+        currentWorkspacePath: null,
+        approvedWorkspacePaths: []
+      })
     },
 
-    setWorkspace(workspacePath: string): void {
+    async setWorkspace(workspacePath: string): Promise<void> {
       setCurrentWorkspace(workspacePath)
       // Reset workspace-level caches when workspace changes
       resetWorkspaceRepositoryCache()
+      await window.api.fs.syncWorkspaceAccess({
+        currentWorkspacePath: workspacePath,
+        approvedWorkspacePaths: [workspacePath]
+      })
+    },
+
+    async syncWorkspaceAccess(
+      currentWorkspacePath: string | null,
+      approvedWorkspacePaths: string[]
+    ): Promise<void> {
+      await window.api.fs.syncWorkspaceAccess({
+        currentWorkspacePath,
+        approvedWorkspacePaths
+      })
+    },
+
+    async approveWorkspacePath(workspacePath: string): Promise<void> {
+      await window.api.fs.approveWorkspacePath(workspacePath)
     },
 
     async deleteAccountData(accountId: string): Promise<void> {

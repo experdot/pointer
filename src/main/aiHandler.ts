@@ -1,135 +1,182 @@
-import { ipcMain, app } from 'electron'
-import { createParser, EventSourceParser } from 'eventsource-parser'
+import { ipcMain } from 'electron'
+import { createParser, type EventSourceParser } from 'eventsource-parser'
 import { readFile } from 'fs/promises'
-import * as path from 'path'
+import type {
+  AIContentPart,
+  AIRequest,
+  AIStreamChunk,
+  ChatMessage,
+  LLMConfig,
+  ModelConfig
+} from '../shared/ai'
+import { resolveAttachmentPathForAI } from './attachmentStorage'
 
-export interface LLMConfig {
-  baseUrl: string
-  apiKey: string
-  modelName: string
-}
+type RequestStatus = 'running' | 'completed' | 'failed' | 'aborted'
 
-export interface ModelConfig {
-  systemPrompt: string
-  topP: number
-  temperature: number
-}
-
-export interface FileAttachment {
-  id: string
-  name: string
-  type: string
-  size: number
-  localPath: string
-  createdAt: number
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content:
-    | string
-    | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>
-  attachments?: FileAttachment[]
-}
-
-export interface AIRequest {
-  requestId: string
-  llmConfig: LLMConfig
-  modelConfig?: ModelConfig
-  messages: ChatMessage[]
-}
-
-export interface AIStreamChunk {
-  requestId: string
-  type: 'chunk' | 'complete' | 'error' | 'reasoning_content'
-  content?: string
-  reasoning_content?: string
-  error?: string
+interface RequestState {
+  event: Electron.IpcMainInvokeEvent
+  eventChannel: string
+  fullResponse: string
+  fullReasoning: string
+  status: RequestStatus
 }
 
 class AIHandler {
-  // 使用 Map 管理多个并行请求的 AbortController
   private abortControllers = new Map<string, AbortController>()
+  private requestStates = new Map<string, RequestState>()
 
-  /**
-   * 准备 API 消息数组，处理 systemPrompt 和文件附件
-   */
+  private initRequestState(
+    requestId: string,
+    event: Electron.IpcMainInvokeEvent,
+    eventChannel: string
+  ): void {
+    this.requestStates.set(requestId, {
+      event,
+      eventChannel,
+      fullResponse: '',
+      fullReasoning: '',
+      status: 'running'
+    })
+  }
+
+  private cleanupRequest(requestId: string): void {
+    this.abortControllers.delete(requestId)
+    this.requestStates.delete(requestId)
+  }
+
+  private emitChunk(requestId: string, content: string): void {
+    const state = this.requestStates.get(requestId)
+    if (!state || state.status !== 'running') {
+      return
+    }
+
+    state.fullResponse += content
+    state.event.sender.send(state.eventChannel, {
+      requestId,
+      type: 'chunk',
+      content
+    } as AIStreamChunk)
+  }
+
+  private emitReasoning(requestId: string, reasoning: string): void {
+    const state = this.requestStates.get(requestId)
+    if (!state || state.status !== 'running') {
+      return
+    }
+
+    state.fullReasoning += reasoning
+    state.event.sender.send(state.eventChannel, {
+      requestId,
+      type: 'reasoning_content',
+      reasoning_content: reasoning
+    } as AIStreamChunk)
+  }
+
+  private finalizeComplete(requestId: string): void {
+    const state = this.requestStates.get(requestId)
+    if (!state || (state.status !== 'running' && state.status !== 'aborted')) {
+      return
+    }
+
+    state.status = 'completed'
+    state.event.sender.send(state.eventChannel, {
+      requestId,
+      type: 'complete',
+      content: state.fullResponse,
+      reasoning_content: state.fullReasoning || undefined
+    } as AIStreamChunk)
+
+    this.cleanupRequest(requestId)
+  }
+
+  private finalizeError(requestId: string, error: string): void {
+    const state = this.requestStates.get(requestId)
+    if (!state || state.status !== 'running') {
+      return
+    }
+
+    state.status = 'failed'
+    state.event.sender.send(state.eventChannel, {
+      requestId,
+      type: 'error',
+      error
+    } as AIStreamChunk)
+
+    this.cleanupRequest(requestId)
+  }
+
+  private finalizeTerminalError(requestId: string, error: string): void {
+    const state = this.requestStates.get(requestId)
+    if (!state) {
+      return
+    }
+
+    if (state.status === 'aborted') {
+      this.finalizeComplete(requestId)
+      return
+    }
+
+    this.finalizeError(requestId, error)
+  }
+
+  private getModelConfig(modelConfig?: ModelConfig): ModelConfig {
+    return (
+      modelConfig || {
+        systemPrompt: '',
+        topP: 1,
+        temperature: 1
+      }
+    )
+  }
+
   private async prepareApiMessages(
     messages: ChatMessage[],
     modelConfig: ModelConfig
   ): Promise<ChatMessage[]> {
-    const attachmentsDir = path.join(app.getPath('userData'), 'attachments')
-
     const apiMessages = await Promise.all(
-      messages.map(async (msg) => {
-        // 如果消息有附件，需要转换为多模态格式
-        if (msg.attachments && msg.attachments.length > 0) {
-          const contentParts: Array<{
-            type: 'text' | 'image_url'
-            text?: string
-            image_url?: { url: string }
-          }> = []
-
-          // 添加文本内容
-          if (typeof msg.content === 'string' && msg.content.trim()) {
-            contentParts.push({
-              type: 'text',
-              text: msg.content
-            })
-          }
-
-          // 添加图片附件 - 从文件系统读取
-          for (const attachment of msg.attachments) {
-            if (attachment.type.startsWith('image/')) {
-              try {
-                // 安全验证：防止路径遍历攻击
-                const normalizedLocalPath = path.normalize(attachment.localPath)
-                if (
-                  normalizedLocalPath.startsWith('..') ||
-                  path.isAbsolute(normalizedLocalPath)
-                ) {
-                  console.error('Invalid attachment path (path traversal attempt):', attachment.localPath)
-                  continue
-                }
-                const fullPath = path.join(attachmentsDir, normalizedLocalPath)
-                // 二次验证：确保最终路径在 attachmentsDir 内
-                const resolvedPath = path.resolve(fullPath)
-                const resolvedAttachmentsDir = path.resolve(attachmentsDir)
-                if (!resolvedPath.startsWith(resolvedAttachmentsDir + path.sep)) {
-                  console.error('Invalid attachment path (outside attachments dir):', attachment.localPath)
-                  continue
-                }
-                const buffer = await readFile(resolvedPath)
-                const base64Content = buffer.toString('base64')
-
-                contentParts.push({
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${attachment.type};base64,${base64Content}`
-                  }
-                })
-              } catch (error) {
-                console.error('Failed to read attachment file:', attachment.localPath, error)
-                // 跳过无法读取的附件
-              }
-            }
-          }
-
+      messages.map(async (message) => {
+        if (!message.attachments || message.attachments.length === 0) {
           return {
-            role: msg.role,
-            content: contentParts
+            role: message.role,
+            content: message.content
           }
         }
 
-        // 普通文本消息
+        const contentParts: AIContentPart[] = []
+
+        if (typeof message.content === 'string' && message.content.trim()) {
+          contentParts.push({
+            type: 'text',
+            text: message.content
+          })
+        }
+
+        for (const attachment of message.attachments) {
+          if (!attachment.type.startsWith('image/')) {
+            continue
+          }
+
+          try {
+            const filePath = await resolveAttachmentPathForAI(attachment.localPath)
+            const buffer = await readFile(filePath)
+            contentParts.push({
+              type: 'image_url',
+              image_url: {
+                url: `data:${attachment.type};base64,${buffer.toString('base64')}`
+              }
+            })
+          } catch (error) {
+            console.error('Failed to read attachment for AI request:', attachment.localPath, error)
+          }
+        }
+
         return {
-          role: msg.role,
-          content: msg.content
+          role: message.role,
+          content: contentParts
         }
       })
     )
 
-    // 如果有systemPrompt且第一条消息不是system消息，则插入system消息
     if (
       modelConfig.systemPrompt &&
       (apiMessages.length === 0 || apiMessages[0].role !== 'system')
@@ -143,55 +190,13 @@ class AIHandler {
     return apiMessages
   }
 
-  /**
-   * 获取或创建默认的 ModelConfig
-   */
-  private getModelConfig(modelConfig?: ModelConfig): ModelConfig {
-    return (
-      modelConfig || {
-        systemPrompt: '',
-        topP: 1,
-        temperature: 1
-      }
-    )
-  }
-
-  /**
-   * 发送错误消息给渲染进程
-   */
-  private sendError(event: Electron.IpcMainInvokeEvent, eventChannel: string, error: string): void {
-    event.sender.send(eventChannel, {
-      type: 'error',
-      error
-    } as AIStreamChunk)
-  }
-
-  /**
-   * 发送完成消息给渲染进程
-   */
-  private sendComplete(
-    event: Electron.IpcMainInvokeEvent,
-    eventChannel: string,
-    content: string,
-    reasoning_content?: string
-  ): void {
-    event.sender.send(eventChannel, {
-      type: 'complete',
-      content,
-      reasoning_content: reasoning_content || undefined
-    } as AIStreamChunk)
-  }
-
-  /**
-   * 创建并发送 API 请求
-   */
   private async fetchStreamingResponse(
     request: AIRequest,
     apiMessages: ChatMessage[],
     modelConfig: ModelConfig,
     abortController: AbortController
   ): Promise<Response> {
-    return await fetch(`${request.llmConfig.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+    return fetch(`${request.llmConfig.baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -208,19 +213,10 @@ class AIHandler {
     })
   }
 
-  /**
-   * 创建 SSE 事件解析器
-   */
-  private createStreamParser(
-    event: Electron.IpcMainInvokeEvent,
-    eventChannel: string,
-    fullResponse: { value: string },
-    fullReasoning: { value: string }
-  ): EventSourceParser {
+  private createStreamParser(requestId: string): EventSourceParser {
     return createParser({
       onEvent: (eventData) => {
         if (eventData.data === '[DONE]') {
-          this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
           return
         }
 
@@ -228,67 +224,54 @@ class AIHandler {
           const parsed = JSON.parse(eventData.data)
           const delta = parsed.choices?.[0]?.delta
           const content = delta?.content
-          const reasoning_content =
+          const reasoningContent =
             delta?.reasoning_content ||
             delta?.reasoning ||
             parsed.reasoning_content ||
-            parsed?.reasoning
+            parsed.reasoning
 
           if (content) {
-            fullResponse.value += content
-            event.sender.send(eventChannel, {
-              type: 'chunk',
-              content: content
-            } as AIStreamChunk)
+            this.emitChunk(requestId, content)
           }
 
-          if (reasoning_content) {
-            fullReasoning.value += reasoning_content
-            event.sender.send(eventChannel, {
-              type: 'reasoning_content',
-              reasoning_content: reasoning_content
-            } as AIStreamChunk)
+          if (reasoningContent) {
+            this.emitReasoning(requestId, reasoningContent)
           }
-        } catch (e) {
-          console.warn('Failed to parse streaming data:', e)
+        } catch (error) {
+          console.warn('Failed to parse streaming data:', error)
         }
       }
     })
   }
 
-  /**
-   * 处理流式响应
-   */
   private async processStreamResponse(
+    requestId: string,
     reader: ReadableStreamDefaultReader<Uint8Array>,
-    parser: ReturnType<typeof createParser>,
-    event: Electron.IpcMainInvokeEvent,
-    eventChannel: string,
-    fullResponse: { value: string },
-    fullReasoning: { value: string }
+    parser: EventSourceParser
   ): Promise<void> {
     const decoder = new TextDecoder()
 
     try {
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
 
-        const chunk = decoder.decode(value, { stream: true })
-        parser.feed(chunk)
+        parser.feed(decoder.decode(value, { stream: true }))
       }
 
-      this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
+      this.finalizeComplete(requestId)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.sendComplete(event, eventChannel, fullResponse.value, fullReasoning.value)
-      } else {
-        this.sendError(
-          event,
-          eventChannel,
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+        this.finalizeComplete(requestId)
+        return
       }
+
+      this.finalizeTerminalError(
+        requestId,
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
   }
 
@@ -299,11 +282,11 @@ class AIHandler {
   ): Promise<void> {
     const abortController = new AbortController()
     this.abortControllers.set(request.requestId, abortController)
+    this.initRequestState(request.requestId, event, eventChannel)
 
     try {
       const modelConfig = this.getModelConfig(request.modelConfig)
       const apiMessages = await this.prepareApiMessages(request.messages, modelConfig)
-
       const response = await this.fetchStreamingResponse(
         request,
         apiMessages,
@@ -320,49 +303,42 @@ class AIHandler {
         } catch {
           errorDetail = response.statusText
         }
-        this.sendError(event, eventChannel, `HTTP ${response.status}: ${errorDetail}`)
+
+        this.finalizeTerminalError(request.requestId, `HTTP ${response.status}: ${errorDetail}`)
         return
       }
 
       const reader = response.body?.getReader()
       if (!reader) {
-        this.sendError(event, eventChannel, 'No response body reader available')
+        this.finalizeTerminalError(request.requestId, 'No response body reader available')
         return
       }
 
-      const fullResponse = { value: '' }
-      const fullReasoning = { value: '' }
-
-      const parser = this.createStreamParser(event, eventChannel, fullResponse, fullReasoning)
-
-      await this.processStreamResponse(
-        reader,
-        parser,
-        event,
-        eventChannel,
-        fullResponse,
-        fullReasoning
-      )
+      const parser = this.createStreamParser(request.requestId)
+      await this.processStreamResponse(request.requestId, reader, parser)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.sendComplete(event, eventChannel, '', undefined)
-      } else {
-        this.sendError(
-          event,
-          eventChannel,
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+        this.finalizeComplete(request.requestId)
+        return
       }
-    } finally {
-      this.abortControllers.delete(request.requestId)
+
+      this.finalizeTerminalError(
+        request.requestId,
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
   }
 
   public async stopStreaming(requestId: string): Promise<void> {
     const abortController = this.abortControllers.get(requestId)
+    const state = this.requestStates.get(requestId)
+
+    if (state && state.status === 'running') {
+      state.status = 'aborted'
+    }
+
     if (abortController) {
       abortController.abort()
-      this.abortControllers.delete(requestId)
     }
   }
 
@@ -383,12 +359,12 @@ class AIHandler {
 
       if (response.ok) {
         return { success: true }
-      } else {
-        const errorText = await response.text()
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${errorText || response.statusText}`
-        }
+      }
+
+      const errorText = await response.text()
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${errorText || response.statusText}`
       }
     } catch (error) {
       return {
@@ -409,16 +385,16 @@ class AIHandler {
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        const models = data.data?.map((model: { id: string }) => model.id) || []
-        return { success: true, models }
-      } else {
+      if (!response.ok) {
         return {
           success: false,
           error: `HTTP ${response.status}: ${response.statusText}`
         }
       }
+
+      const data = await response.json()
+      const models = data.data?.map((model: { id: string }) => model.id) || []
+      return { success: true, models }
     } catch (error) {
       return {
         success: false,

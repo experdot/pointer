@@ -39,12 +39,6 @@ app.whenReady().then(async () => {
   // Setup attachment handlers
   setupAttachmentHandlers()
 
-  // Clean up temp attachments on startup
-  const { attachmentHandler } = await import('./attachmentHandler')
-  attachmentHandler.cleanupTempAttachments().catch((error) => {
-    console.error('Failed to cleanup temp attachments on startup:', error)
-  })
-
   createWindow()
 
   app.on('activate', function () {

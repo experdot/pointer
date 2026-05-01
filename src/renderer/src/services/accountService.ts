@@ -45,7 +45,7 @@ export async function initializeAccountSystem(): Promise<void> {
 
   // 设置当前账户路径
   const accountId = account.currentAccountId || getDefaultAccountId()
-  persistence.database.setAccount(accountId)
+  await persistence.database.setAccount(accountId)
 
   // 初始化账户级 stores
   await initAccountStores()
@@ -73,7 +73,7 @@ export async function switchAccount(accountId: string): Promise<void> {
   resetAccountStores()
 
   // 切换账户路径
-  persistence.database.setAccount(accountId)
+  await persistence.database.setAccount(accountId)
 
   // 更新当前账户
   await account.setCurrentAccountId(accountId)

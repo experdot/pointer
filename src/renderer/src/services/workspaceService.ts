@@ -3,7 +3,7 @@
  * 工作区业务逻辑，处理工作区切换和初始化
  */
 
-import type { Workspace, ValidateWorkspaceResult } from '../types/workspace'
+import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../types/workspace'
 import { stores } from '../stores/registry'
 import { persistence } from '../persistence/registry'
 
@@ -26,6 +26,26 @@ function resetWorkspaceStores(): void {
   folder.reset()
   message.reset()
   tab.reset()
+}
+
+async function syncWorkspaceAccess(extraApprovedPaths: string[] = []): Promise<void> {
+  const currentWorkspacePath = stores.workspace.currentWorkspace?.path ?? null
+  const approvedWorkspacePaths = Array.from(
+    new Set([
+      ...stores.workspace.workspaces.map((workspace) => workspace.path),
+      ...extraApprovedPaths
+    ])
+  )
+
+  await persistence.database.syncWorkspaceAccess(currentWorkspacePath, approvedWorkspacePaths)
+}
+
+async function cleanupWorkspaceTempAttachments(): Promise<void> {
+  try {
+    await window.api.attachment.cleanupTemp()
+  } catch (error) {
+    console.error('Failed to cleanup workspace temp attachments:', error)
+  }
 }
 
 // ==================== 工作区初始化 ====================
@@ -51,11 +71,8 @@ export async function initializeWorkspaceSystem(): Promise<void> {
     await workspace.setCurrentWorkspaceId(workspace.workspaces[0].id)
   }
 
-  // 设置持久化层的当前工作区
-  const currentWorkspace = workspace.currentWorkspace
-  if (currentWorkspace) {
-    persistence.database.setWorkspace(currentWorkspace.path)
-  }
+  await syncWorkspaceAccess()
+  await cleanupWorkspaceTempAttachments()
 
   // 初始化工作区级 stores
   await initWorkspaceStores()
@@ -78,11 +95,11 @@ export async function switchWorkspace(workspaceId: string): Promise<void> {
   // 重置工作区级 stores
   resetWorkspaceStores()
 
-  // 切换持久化层
-  persistence.database.setWorkspace(targetWorkspace.path)
-
   // 更新当前工作区
   await workspace.setCurrentWorkspaceId(workspaceId)
+
+  await syncWorkspaceAccess()
+  await cleanupWorkspaceTempAttachments()
 
   // 重新加载工作区数据
   await initWorkspaceStores()
@@ -95,6 +112,8 @@ export async function switchWorkspace(workspaceId: string): Promise<void> {
  */
 export async function openFolderAsWorkspace(dirPath: string, name?: string): Promise<Workspace> {
   const { workspace } = stores
+
+  await persistence.database.approveWorkspacePath(dirPath)
 
   // 验证路径
   const validation = await validateWorkspacePath(dirPath)
@@ -124,6 +143,8 @@ export async function openFolderAsWorkspace(dirPath: string, name?: string): Pro
 
   // 重置并加载新工作区数据
   resetWorkspaceStores()
+  await syncWorkspaceAccess()
+  await cleanupWorkspaceTempAttachments()
   await initWorkspaceStores()
 
   return newWorkspace
@@ -164,6 +185,7 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
   }
 
   await workspace.delete(workspaceId)
+  await syncWorkspaceAccess()
 }
 
 /**
@@ -176,7 +198,7 @@ export function getCurrentWorkspace(): Workspace | null {
 /**
  * 获取所有工作区
  */
-export function getAllWorkspaces() {
+export function getAllWorkspaces(): WorkspaceMetadata[] {
   return stores.workspace.workspaces
 }
 

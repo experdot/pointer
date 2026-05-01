@@ -65,10 +65,7 @@ export async function acquireWriteLock(pageId: string): Promise<() => void> {
  * Execute a function with write lock protection
  * Automatically acquires and releases the lock
  */
-export async function withWriteLock<T>(
-  pageId: string,
-  fn: () => Promise<T>
-): Promise<T> {
+export async function withWriteLock<T>(pageId: string, fn: () => Promise<T>): Promise<T> {
   const release = await acquireWriteLock(pageId)
   try {
     return await fn()
