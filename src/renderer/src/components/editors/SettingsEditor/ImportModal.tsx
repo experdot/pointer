@@ -24,10 +24,10 @@ import type { TreeDataNode, UploadFile } from 'antd'
 import type { ExportData } from './ExportModal'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
+import { useMessagesStore } from '../../../stores/messagesStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import { persistence } from '../../../persistence/registry'
 import type { PageRecord, MessagesRecord } from '../../../persistence/interfaces/userData'
 import type {
   PageFolder,
@@ -446,7 +446,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
               ...messagesRecord,
               pageId: resolved.id
             }
-            await persistence.messages.put(resolved.id, newRecord)
+            await useMessagesStore.getState().update(resolved.id, () => newRecord)
           }
         }
       }

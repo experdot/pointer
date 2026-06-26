@@ -3,38 +3,32 @@
  * Workspace-level storage: {workspace}/tabs.json
  */
 
-import type { ITabsRepository, TabsRecord } from '../../interfaces'
+import type { ITabsRepository, TabsRecord, WorkspaceScope } from '../../interfaces'
 import {
   getTabsFilePath,
-  isCustomWorkspacePath,
-  getCurrentWorkspacePath,
+  getWorkspaceFileOptions,
   readJsonFile,
   writeJsonFile,
   deleteFile
 } from './core'
 
-function getFileOptions(): { allowCustomPath?: boolean } {
-  const wsPath = getCurrentWorkspacePath()
-  return wsPath && isCustomWorkspacePath(wsPath) ? { allowCustomPath: true } : {}
-}
-
-export function createTabsRepository(): ITabsRepository {
+export function createTabsRepository(scope: WorkspaceScope): ITabsRepository {
   return {
     async get(): Promise<TabsRecord | undefined> {
-      const options = getFileOptions()
-      const data = await readJsonFile<TabsRecord>(getTabsFilePath(), options)
+      const options = getWorkspaceFileOptions(scope)
+      const data = await readJsonFile<TabsRecord>(getTabsFilePath(scope), options)
       return data ?? undefined
     },
 
     async put(tabs: TabsRecord): Promise<void> {
-      const options = getFileOptions()
-      await writeJsonFile(getTabsFilePath(), tabs, options)
+      const options = getWorkspaceFileOptions(scope)
+      await writeJsonFile(getTabsFilePath(scope), tabs, options)
     },
 
     async clear(): Promise<void> {
-      const options = getFileOptions()
+      const options = getWorkspaceFileOptions(scope)
       try {
-        await deleteFile(getTabsFilePath(), options)
+        await deleteFile(getTabsFilePath(scope), options)
       } catch {
         // Ignore if file doesn't exist
       }

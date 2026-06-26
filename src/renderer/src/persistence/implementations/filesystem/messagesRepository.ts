@@ -4,21 +4,15 @@
  * Messages are stored together with page data in the same Markdown file
  */
 
-import type { IMessagesRepository, MessagesRecord } from '../../interfaces'
+import type { IMessagesRepository, MessagesRecord, WorkspaceScope } from '../../interfaces'
 import {
-  isCustomWorkspacePath,
-  getCurrentWorkspacePath,
+  getWorkspaceFileOptions,
   writeTextFile,
   ensureDirectory
 } from './core'
 import { serializePageToMarkdown, type PageFile } from './markdown'
 import { findPageFile, scanAllPages } from './pagesRepository'
 import { withWriteLock } from './writeLock'
-
-function getFileOptions(): { allowCustomPath?: boolean } {
-  const wsPath = getCurrentWorkspacePath()
-  return wsPath && isCustomWorkspacePath(wsPath) ? { allowCustomPath: true } : {}
-}
 
 function messagesRecordFromFile(file: PageFile): MessagesRecord {
   return {
@@ -30,20 +24,20 @@ function messagesRecordFromFile(file: PageFile): MessagesRecord {
   }
 }
 
-export function createMessagesRepository(): IMessagesRepository {
+export function createMessagesRepository(scope: WorkspaceScope): IMessagesRepository {
   return {
     async get(pageId: string): Promise<MessagesRecord | undefined> {
-      const result = await findPageFile(pageId)
+      const result = await findPageFile(pageId, scope)
       return result ? messagesRecordFromFile(result.file) : undefined
     },
 
     async put(pageId: string, record: MessagesRecord): Promise<void> {
       // Wrap in write lock to prevent concurrent writes for the same page
       await withWriteLock(pageId, async () => {
-        const options = getFileOptions()
+        const options = getWorkspaceFileOptions(scope)
 
         // Find existing file
-        const existing = await findPageFile(pageId)
+        const existing = await findPageFile(pageId, scope)
 
         if (!existing) {
           // Page doesn't exist yet - this shouldn't normally happen
@@ -73,28 +67,30 @@ export function createMessagesRepository(): IMessagesRepository {
     },
 
     async delete(pageId: string): Promise<void> {
-      const options = getFileOptions()
+      await withWriteLock(pageId, async () => {
+        const options = getWorkspaceFileOptions(scope)
 
-      // Find existing file
-      const existing = await findPageFile(pageId)
+        // Find existing file
+        const existing = await findPageFile(pageId, scope)
 
-      if (existing) {
-        // Clear messages but keep the page
-        const file: PageFile = {
-          ...existing.file,
-          messages: [],
-          topics: [],
-          leafMessageId: undefined,
-          selectedMessageId: undefined
+        if (existing) {
+          // Clear messages but keep the page
+          const file: PageFile = {
+            ...existing.file,
+            messages: [],
+            topics: [],
+            leafMessageId: undefined,
+            selectedMessageId: undefined
+          }
+
+          const content = serializePageToMarkdown(file)
+          await writeTextFile(existing.path, content, options)
         }
-
-        const content = serializePageToMarkdown(file)
-        await writeTextFile(existing.path, content, options)
-      }
+      })
     },
 
     async getAll(): Promise<MessagesRecord[]> {
-      const allPages = await scanAllPages()
+      const allPages = await scanAllPages(scope)
       return Array.from(allPages.values()).map(({ file }) => messagesRecordFromFile(file))
     },
 

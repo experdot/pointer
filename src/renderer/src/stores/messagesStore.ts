@@ -5,7 +5,8 @@
 
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
-import { getMessagesQueue } from './persistenceQueue'
+import { tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { queueMessagesDelete, queueMessagesPut } from './persistenceQueue'
 import type { MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatMessage, Topic } from '../types/type'
 import type { IMessageStore } from './interfaces/entities'
@@ -71,7 +72,12 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     const cached = get().cache[pageId]
     if (cached) return cached
 
-    const record = (await persistence.messages.get(pageId)) ?? emptyRecord(pageId)
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      return emptyRecord(pageId)
+    }
+
+    const record = (await persistence.workspace(scope).messages.get(pageId)) ?? emptyRecord(pageId)
     set((state) => ({
       cache: { ...state.cache, [pageId]: record }
     }))
@@ -83,6 +89,9 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   has: (pageId) => pageId in get().cache,
 
   update: async (pageId, updater) => {
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) return
+
     const current = get().cache[pageId] ?? emptyRecord(pageId)
     const updated = updater(current)
     // 先更新内存状态（UI 立即响应）
@@ -90,7 +99,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
     // 异步持久化（防抖合并，不阻塞 UI）
-    getMessagesQueue().enqueue(pageId, updated)
+    queueMessagesPut(scope, pageId, updated)
   },
 
   addMessage: async (pageId, message) => {
@@ -137,7 +146,13 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   },
 
   removeRecord: async (pageId) => {
-    await persistence.messages.delete(pageId)
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      get().evict(pageId)
+      return
+    }
+
+    queueMessagesDelete(scope, pageId)
     get().evict(pageId)
   },
 

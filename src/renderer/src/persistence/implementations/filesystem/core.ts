@@ -3,6 +3,8 @@
  * Path management and file operations for persistence layer
  */
 
+import type { AccountScope, PersistenceContext, WorkspaceScope } from '../../interfaces'
+
 // ==================== Constants ====================
 
 export const PAGE_FILE_EXTENSION = '.pointer.md'
@@ -32,6 +34,23 @@ function joinPath(...parts: string[]): string {
 let appDataPath: string | null = null
 let currentAccountId: string | null = null
 let currentWorkspacePath: string | null = null
+
+function resolveAccountId(scope?: AccountScope | string | null): string {
+  const accountId = typeof scope === 'string' ? scope : scope?.accountId ?? currentAccountId
+  if (!accountId) {
+    throw new Error('No account ID specified and no current account set')
+  }
+  return accountId
+}
+
+function resolveWorkspacePath(scope?: WorkspaceScope | string | null): string {
+  const workspacePath =
+    typeof scope === 'string' ? scope : scope?.workspacePath ?? currentWorkspacePath
+  if (!workspacePath) {
+    throw new Error('No workspace path specified and no current workspace set')
+  }
+  return workspacePath
+}
 
 // ==================== Path Initialization ====================
 
@@ -76,12 +95,8 @@ export function getCurrentAccountId(): string | null {
 /**
  * Get account directory path
  */
-export function getAccountPath(accountId?: string): string {
-  const id = accountId ?? currentAccountId
-  if (!id) {
-    throw new Error('No account ID specified and no current account set')
-  }
-  return joinPath(getAppDataPath(), 'accounts', id)
+export function getAccountPath(scope?: AccountScope | string): string {
+  return joinPath(getAppDataPath(), 'accounts', resolveAccountId(scope))
 }
 
 /**
@@ -107,18 +122,25 @@ export function getCurrentWorkspacePath(): string | null {
   return currentWorkspacePath
 }
 
+export function getCurrentPersistenceContext(): PersistenceContext {
+  return {
+    accountId: currentAccountId,
+    workspacePath: currentWorkspacePath
+  }
+}
+
 /**
  * Get default workspace path for an account
  */
-export function getDefaultWorkspacePath(accountId?: string): string {
-  return joinPath(getAccountPath(accountId), 'workspaces', 'default')
+export function getDefaultWorkspacePath(scope?: AccountScope | string): string {
+  return joinPath(getAccountPath(scope), 'workspaces', 'default')
 }
 
 /**
  * Get workspaces list file path for an account
  */
-export function getWorkspacesFilePath(accountId?: string): string {
-  return joinPath(getAccountPath(accountId), 'workspaces.json')
+export function getWorkspacesFilePath(scope?: AccountScope | string): string {
+  return joinPath(getAccountPath(scope), 'workspaces.json')
 }
 
 /**
@@ -126,11 +148,8 @@ export function getWorkspacesFilePath(accountId?: string): string {
  * For default workspace: account/workspaces/default/
  * For custom workspace: {custom-path}/ (root directory)
  */
-export function getWorkspaceDataPath(workspacePath?: string): string {
-  const wsPath = workspacePath ?? currentWorkspacePath
-  if (!wsPath) {
-    throw new Error('No workspace path specified and no current workspace set')
-  }
+export function getWorkspaceDataPath(scope?: WorkspaceScope | string): string {
+  const wsPath = resolveWorkspacePath(scope)
   // Both default and custom workspaces store user data directly in workspace root
   return wsPath
 }
@@ -139,11 +158,8 @@ export function getWorkspaceDataPath(workspacePath?: string): string {
  * Get workspace internal directory path (for config/cache: workspace.json, messageQueue, attachments)
  * Always uses .pointer subdirectory for both default and custom workspaces
  */
-export function getWorkspaceInternalPath(workspacePath?: string): string {
-  const wsPath = workspacePath ?? currentWorkspacePath
-  if (!wsPath) {
-    throw new Error('No workspace path specified and no current workspace set')
-  }
+export function getWorkspaceInternalPath(scope?: WorkspaceScope | string): string {
+  const wsPath = resolveWorkspacePath(scope)
 
   // Both default and custom workspaces use .pointer for internal data
   return joinPath(wsPath, '.pointer')
@@ -152,9 +168,20 @@ export function getWorkspaceInternalPath(workspacePath?: string): string {
 /**
  * Check if workspace path is a default workspace (inside account directory)
  */
-export function isDefaultWorkspace(wsPath: string): boolean {
-  const accountPath = currentAccountId ? getAccountPath() : null
+export function isDefaultWorkspace(
+  wsPath: string,
+  scope?: AccountScope | WorkspaceScope | string
+): boolean {
+  const accountPath =
+    scope || currentAccountId ? getAccountPath(typeof scope === 'object' ? scope.accountId : scope) : null
   return !!accountPath && wsPath.startsWith(accountPath)
+}
+
+export function getWorkspaceFileOptions(
+  scope?: WorkspaceScope | string
+): { allowCustomPath?: boolean } {
+  const workspacePath = resolveWorkspacePath(scope)
+  return isCustomWorkspacePath(workspacePath, scope) ? { allowCustomPath: true } : {}
 }
 
 // ==================== File Paths ====================
@@ -162,36 +189,36 @@ export function isDefaultWorkspace(wsPath: string): boolean {
 /**
  * Get settings file path (account level)
  */
-export function getSettingsFilePath(accountId?: string): string {
-  return joinPath(getAccountPath(accountId), 'settings.json')
+export function getSettingsFilePath(scope?: AccountScope | string): string {
+  return joinPath(getAccountPath(scope), 'settings.json')
 }
 
 /**
  * Get layout file path (account level)
  */
-export function getLayoutFilePath(accountId?: string): string {
-  return joinPath(getAccountPath(accountId), 'layout.json')
+export function getLayoutFilePath(scope?: AccountScope | string): string {
+  return joinPath(getAccountPath(scope), 'layout.json')
 }
 
 /**
  * Get folders file path (workspace level)
  */
-export function getFoldersFilePath(workspacePath?: string): string {
-  return joinPath(getWorkspaceDataPath(workspacePath), 'folders.json')
+export function getFoldersFilePath(scope?: WorkspaceScope | string): string {
+  return joinPath(getWorkspaceDataPath(scope), 'folders.json')
 }
 
 /**
  * Get tabs file path (workspace level - internal)
  */
-export function getTabsFilePath(workspacePath?: string): string {
-  return joinPath(getWorkspaceInternalPath(workspacePath), 'tabs.json')
+export function getTabsFilePath(scope?: WorkspaceScope | string): string {
+  return joinPath(getWorkspaceInternalPath(scope), 'tabs.json')
 }
 
 /**
  * Get pages directory path (workspace level)
  */
-export function getPagesDirectoryPath(workspacePath?: string): string {
-  return joinPath(getWorkspaceDataPath(workspacePath), 'pages')
+export function getPagesDirectoryPath(scope?: WorkspaceScope | string): string {
+  return joinPath(getWorkspaceDataPath(scope), 'pages')
 }
 
 // Windows reserved names (case-insensitive)
@@ -274,11 +301,11 @@ export function sanitizeFileName(name: string): string {
 export function buildPageFilePath(
   pageName: string,
   folderPath?: string,
-  workspacePath?: string
+  scope?: WorkspaceScope | string
 ): string {
   const sanitizedName = sanitizeFileName(pageName)
   const fileName = `${sanitizedName}${PAGE_FILE_EXTENSION}`
-  const pagesDir = getPagesDirectoryPath(workspacePath)
+  const pagesDir = getPagesDirectoryPath(scope)
 
   if (folderPath) {
     return joinPath(pagesDir, folderPath, fileName)
@@ -325,29 +352,29 @@ export async function scanPageFiles(
  * @deprecated Use buildPageFilePath instead - pages can now be anywhere
  * Get single page file path by ID (legacy - for migration only)
  */
-export function getPageFilePath(pageId: string, workspacePath?: string): string {
-  return joinPath(getPagesDirectoryPath(workspacePath), `${pageId}${PAGE_FILE_EXTENSION}`)
+export function getPageFilePath(pageId: string, scope?: WorkspaceScope | string): string {
+  return joinPath(getPagesDirectoryPath(scope), `${pageId}${PAGE_FILE_EXTENSION}`)
 }
 
 /**
  * Get message queue directory path (workspace level - internal/cache)
  */
-export function getMessageQueueDirectoryPath(workspacePath?: string): string {
-  return joinPath(getWorkspaceInternalPath(workspacePath), 'messageQueue')
+export function getMessageQueueDirectoryPath(scope?: WorkspaceScope | string): string {
+  return joinPath(getWorkspaceInternalPath(scope), 'messageQueue')
 }
 
 /**
  * Get single message queue file path (workspace level)
  */
-export function getMessageQueueFilePath(pageId: string, workspacePath?: string): string {
-  return joinPath(getMessageQueueDirectoryPath(workspacePath), `${pageId}.json`)
+export function getMessageQueueFilePath(pageId: string, scope?: WorkspaceScope | string): string {
+  return joinPath(getMessageQueueDirectoryPath(scope), `${pageId}.json`)
 }
 
 /**
  * Get attachments directory path (workspace level - internal/cache)
  */
-export function getAttachmentsDirectoryPath(workspacePath?: string): string {
-  return joinPath(getWorkspaceInternalPath(workspacePath), 'attachments')
+export function getAttachmentsDirectoryPath(scope?: WorkspaceScope | string): string {
+  return joinPath(getWorkspaceInternalPath(scope), 'attachments')
 }
 
 /**
@@ -362,8 +389,11 @@ export function getWorkspaceConfigFilePath(workspacePath: string): string {
 /**
  * Check if path is a custom workspace (not inside account directory)
  */
-export function isCustomWorkspacePath(wsPath: string): boolean {
-  return !isDefaultWorkspace(wsPath)
+export function isCustomWorkspacePath(
+  wsPath: string,
+  scope?: AccountScope | WorkspaceScope | string
+): boolean {
+  return !isDefaultWorkspace(wsPath, scope)
 }
 
 /**

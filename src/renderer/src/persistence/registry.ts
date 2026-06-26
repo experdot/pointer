@@ -56,6 +56,12 @@ export const persistence = {
   get accounts() {
     return getPersistenceRegistry().accounts
   },
+  account(scope: Parameters<IPersistenceRegistry['account']>[0]) {
+    return getPersistenceRegistry().account(scope)
+  },
+  workspace(scope: Parameters<IPersistenceRegistry['workspace']>[0]) {
+    return getPersistenceRegistry().workspace(scope)
+  },
   get workspaces() {
     return getPersistenceRegistry().workspaces
   },

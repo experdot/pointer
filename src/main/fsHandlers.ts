@@ -1,5 +1,5 @@
 import { ipcMain, dialog, app } from 'electron'
-import { readFile, writeFile, unlink, mkdir, readdir, stat, rm } from 'fs/promises'
+import { readFile, writeFile, unlink, mkdir, readdir, stat, rm, rename } from 'fs/promises'
 import * as path from 'path'
 import {
   approveWorkspacePath,
@@ -37,6 +37,28 @@ function validatePath(targetPath: string, allowCustom = false): { valid: boolean
     return { valid: true }
   }
   return { valid: false, error: '访问被拒绝：路径不在允许的范围内' }
+}
+
+async function writeFileAtomically(filePath: string, content: string | Buffer): Promise<void> {
+  const dir = path.dirname(filePath)
+  await mkdir(dir, { recursive: true })
+
+  const tmpPath = path.join(
+    dir,
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`
+  )
+
+  try {
+    await writeFile(tmpPath, content)
+    await rename(tmpPath, filePath)
+  } catch (error) {
+    try {
+      await unlink(tmpPath)
+    } catch {
+      // Ignore temp cleanup errors
+    }
+    throw error
+  }
 }
 
 export function setupFileSystemHandlers(): void {
@@ -133,11 +155,7 @@ export function setupFileSystemHandlers(): void {
           return { success: false, error: validation.error }
         }
 
-        // 确保父目录存在
-        const dir = path.dirname(filePath)
-        await mkdir(dir, { recursive: true })
-
-        await writeFile(filePath, content, 'utf-8')
+        await writeFileAtomically(filePath, Buffer.from(content, 'utf-8'))
         return { success: true }
       } catch (error) {
         console.error('Write text error:', error)
@@ -194,12 +212,8 @@ export function setupFileSystemHandlers(): void {
           return { success: false, error: validation.error }
         }
 
-        // 确保父目录存在
-        const dir = path.dirname(filePath)
-        await mkdir(dir, { recursive: true })
-
         const content = JSON.stringify(data, null, 2)
-        await writeFile(filePath, content, 'utf-8')
+        await writeFileAtomically(filePath, Buffer.from(content, 'utf-8'))
         return { success: true }
       } catch (error) {
         console.error('Write JSON error:', error)

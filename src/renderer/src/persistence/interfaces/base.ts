@@ -2,6 +2,25 @@
  * Persistence layer base interfaces
  */
 
+export interface AccountScope {
+  accountId: string
+}
+
+export interface WorkspaceScope extends AccountScope {
+  workspacePath: string
+}
+
+export interface PersistenceContext {
+  accountId: string | null
+  workspacePath: string | null
+}
+
+export interface ContextCommitInput {
+  accountId: string
+  workspacePath: string | null
+  approvedWorkspacePaths?: string[]
+}
+
 /**
  * Standard CRUD repository interface
  * For entities with id-based storage (pages, folders, accounts)
@@ -63,6 +82,14 @@ export interface IDatabaseManager {
   ): Promise<void>
   /** Allow a specific workspace path before it is added to the workspace list */
   approveWorkspacePath(workspacePath: string): Promise<void>
-  /** Delete account data */
-  deleteAccountData(accountId: string): Promise<void>
+  /** Commit the active account/workspace context in one step */
+  commitContext(input: ContextCommitInput): Promise<void>
+  /** Get the active persistence context */
+  getActiveContext(): PersistenceContext
+  /** Flush all queued and tracked writes for the active context */
+  flushActiveContext(): Promise<void>
+  /** Wait for account-scoped writes to finish */
+  waitForAccountIdle(accountId: string): Promise<void>
+  /** Wait for workspace-scoped writes to finish */
+  waitForWorkspaceIdle(scope: WorkspaceScope): Promise<void>
 }

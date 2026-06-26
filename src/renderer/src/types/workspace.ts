@@ -35,6 +35,14 @@ export interface WorkspaceConfigFile {
   updatedAt?: number
 }
 
+export type WorkspaceRepairIssue =
+  | 'missing_pointer_dir'
+  | 'missing_pages_dir'
+  | 'missing_workspace_config'
+  | 'missing_message_queue_dir'
+  | 'missing_attachments_dir'
+  | 'missing_workspace_registry_entry'
+
 /** 创建工作区的 DTO */
 export interface CreateWorkspaceDTO {
   name: string
@@ -52,6 +60,10 @@ export interface ValidateWorkspaceResult {
   workspaceId?: string
   /** 如果被其他账户占用，占用账户 ID */
   lockedByAccountId?: string
+  /** 是否可以通过补齐目录/元数据进行修复 */
+  repairable?: boolean
+  /** 需要修复的问题列表 */
+  repairIssues?: WorkspaceRepairIssue[]
   /** 错误信息 */
   error?: string
 }

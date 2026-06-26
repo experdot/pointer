@@ -49,7 +49,9 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
       }
       return state
     })
-  }
+  },
+
+  reset: () => set(initialState)
 }))
 
 /**
@@ -67,6 +69,7 @@ export function getNavigationStoreInterface(): INavigationStore {
     requestNavigation: (request) => store.getState().requestNavigation(request),
     requestRelativeNavigation: (request) => store.getState().requestRelativeNavigation(request),
     clearNavigation: (version) => store.getState().clearNavigation(version),
-    clearRelativeNavigation: (version) => store.getState().clearRelativeNavigation(version)
+    clearRelativeNavigation: (version) => store.getState().clearRelativeNavigation(version),
+    reset: () => store.getState().reset()
   }
 }

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
+import { getCurrentAccountScope } from '../persistence/scope'
+import { getSettingsQueue } from './persistenceQueue'
 import type {
   Settings,
   ConfigTree,
@@ -83,7 +85,8 @@ type SettingsStore = SettingsState & SettingsActions
 
 // 持久化辅助函数
 const persist = (settings: Settings): void => {
-  persistence.settings.put(settings)
+  const scope = getCurrentAccountScope()
+  getSettingsQueue(scope).enqueue('settings', settings)
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -91,7 +94,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   initialized: false,
 
   init: async () => {
-    const settings = await persistence.settings.get()
+    const settings = await persistence.account(getCurrentAccountScope()).settings.get()
     set({
       settings: settings ? { ...initialSettings, ...settings } : initialSettings,
       initialized: true

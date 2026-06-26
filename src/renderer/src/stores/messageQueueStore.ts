@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { persistence } from '../persistence/registry'
+import { getCurrentWorkspaceScope, tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { getMessageQueueMutationQueue, queueMessageQueueDelete } from './persistenceQueue'
 import type { QueueItem, MessageQueueRecord } from '../persistence/interfaces/userData'
 
 interface MessageQueueState {
@@ -29,6 +31,8 @@ interface MessageQueueActions {
   pause: (pageId: string) => Promise<void>
   // 恢复队列
   resume: (pageId: string) => Promise<void>
+  // 删除页面关联的队列记录
+  removeRecord: (pageId: string) => Promise<void>
   // 重置 store
   reset: () => void
 }
@@ -46,12 +50,26 @@ const emptyRecord = (pageId: string): MessageQueueRecord => ({
   paused: false
 })
 
+function persistRecord(record: MessageQueueRecord): void {
+  const scope = getCurrentWorkspaceScope()
+  getMessageQueueMutationQueue(scope).enqueue(record.pageId, {
+    type: 'put',
+    value: record
+  })
+}
+
 export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
     if (get().initialized) return
-    const records = await persistence.messageQueue.getAll()
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      set(initialState)
+      return
+    }
+
+    const records = await persistence.workspace(scope).messageQueue.getAll()
     const cache: Record<string, MessageQueueRecord> = {}
     for (const record of records) {
       cache[record.pageId] = record
@@ -76,7 +94,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       pageId,
       items: [...current.items, newItem]
     }
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -92,7 +110,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
         .filter((item) => item.id !== itemId)
         .map((item, index) => ({ ...item, order: index }))
     }
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -105,7 +123,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: current.items.map((item) => (item.id === itemId ? { ...item, content } : item))
     }
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -118,7 +136,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: []
     }
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -132,7 +150,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       ...current,
       items: rest.map((item, index) => ({ ...item, order: index }))
     }
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
@@ -150,8 +168,7 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
-    // 再异步持久化
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
   },
 
   resume: async (pageId) => {
@@ -165,8 +182,20 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
     set((state) => ({
       cache: { ...state.cache, [pageId]: updated }
     }))
-    // 再异步持久化
-    await persistence.messageQueue.put(pageId, updated)
+    persistRecord(updated)
+  },
+
+  removeRecord: async (pageId) => {
+    const scope = tryGetCurrentWorkspaceScope()
+    if (scope) {
+      queueMessageQueueDelete(scope, pageId)
+    }
+
+    set((state) => {
+      const { [pageId]: _removed, ...rest } = state.cache
+      void _removed
+      return { cache: rest }
+    })
   },
 
   reset: () => set(initialState)

@@ -63,7 +63,7 @@ export function useChatStreaming({
 
       // 2. 开始 streaming
       const aiService = createAIService(llmConfig, modelConfig)
-      streamingManager.start(assistantMessage.id, aiService)
+      streamingManager.start(pageId, assistantMessage.id, aiService)
 
       try {
         await aiService.sendMessage(pathMessages, {

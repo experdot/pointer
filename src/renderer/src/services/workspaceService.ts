@@ -4,8 +4,10 @@
  */
 
 import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../types/workspace'
+import type { WorkspaceRepairResult } from '../persistence/interfaces'
 import { stores } from '../stores/registry'
 import { persistence } from '../persistence/registry'
+import { runSwitchTransaction } from './switchTransactionService'
 
 // ==================== 工作区级 Stores 操作 ====================
 
@@ -28,16 +30,31 @@ function resetWorkspaceStores(): void {
   tab.reset()
 }
 
-async function syncWorkspaceAccess(extraApprovedPaths: string[] = []): Promise<void> {
-  const currentWorkspacePath = stores.workspace.currentWorkspace?.path ?? null
-  const approvedWorkspacePaths = Array.from(
-    new Set([
-      ...stores.workspace.workspaces.map((workspace) => workspace.path),
-      ...extraApprovedPaths
-    ])
+function getApprovedWorkspacePaths(extraApprovedPaths: string[] = []): string[] {
+  return Array.from(
+    new Set([...stores.workspace.workspaces.map((workspace) => workspace.path), ...extraApprovedPaths])
   )
+}
 
-  await persistence.database.syncWorkspaceAccess(currentWorkspacePath, approvedWorkspacePaths)
+async function commitWorkspaceContext(
+  accountId: string,
+  workspacePath: string | null,
+  extraApprovedPaths: string[] = []
+): Promise<void> {
+  await persistence.database.commitContext({
+    accountId,
+    workspacePath,
+    approvedWorkspacePaths: getApprovedWorkspacePaths(extraApprovedPaths)
+  })
+}
+
+export class WorkspaceRepairRequiredError extends Error {
+  constructor(
+    readonly dirPath: string,
+    readonly validation: ValidateWorkspaceResult
+  ) {
+    super('Workspace repair required')
+  }
 }
 
 async function cleanupWorkspaceTempAttachments(): Promise<void> {
@@ -71,7 +88,15 @@ export async function initializeWorkspaceSystem(): Promise<void> {
     await workspace.setCurrentWorkspaceId(workspace.workspaces[0].id)
   }
 
-  await syncWorkspaceAccess()
+  if (workspace.currentWorkspace) {
+    await commitWorkspaceContext(workspace.currentWorkspace.accountId, workspace.currentWorkspace.path)
+  } else {
+    const accountId = persistence.database.getActiveContext().accountId
+    if (!accountId) {
+      throw new Error('No active account context')
+    }
+    await commitWorkspaceContext(accountId, null)
+  }
   await cleanupWorkspaceTempAttachments()
 
   // 初始化工作区级 stores
@@ -92,17 +117,13 @@ export async function switchWorkspace(workspaceId: string): Promise<void> {
     throw new Error(`Workspace not found: ${workspaceId}`)
   }
 
-  // 重置工作区级 stores
-  resetWorkspaceStores()
-
-  // 更新当前工作区
-  await workspace.setCurrentWorkspaceId(workspaceId)
-
-  await syncWorkspaceAccess()
-  await cleanupWorkspaceTempAttachments()
-
-  // 重新加载工作区数据
-  await initWorkspaceStores()
+  await runSwitchTransaction('workspace', targetWorkspace.name, async () => {
+    await workspace.setCurrentWorkspaceId(workspaceId)
+    await commitWorkspaceContext(targetWorkspace.accountId, targetWorkspace.path)
+    await cleanupWorkspaceTempAttachments()
+    resetWorkspaceStores()
+    await initWorkspaceStores()
+  })
 }
 
 // ==================== 自定义工作区 ====================
@@ -126,6 +147,10 @@ export async function openFolderAsWorkspace(dirPath: string, name?: string): Pro
     throw new Error(`This folder is already used by another account`)
   }
 
+  if (validation.repairable) {
+    throw new WorkspaceRepairRequiredError(dirPath, validation)
+  }
+
   // 使用目录名作为默认名称
   const workspaceName = name || dirPath.split(/[/\\]/).pop() || 'Workspace'
 
@@ -141,11 +166,13 @@ export async function openFolderAsWorkspace(dirPath: string, name?: string): Pro
   // 创建/初始化自定义工作区
   const newWorkspace = await workspace.openCustomWorkspace(dirPath, workspaceName)
 
-  // 重置并加载新工作区数据
-  resetWorkspaceStores()
-  await syncWorkspaceAccess()
-  await cleanupWorkspaceTempAttachments()
-  await initWorkspaceStores()
+  await runSwitchTransaction('workspace', newWorkspace.name, async () => {
+    await workspace.setCurrentWorkspaceId(newWorkspace.id)
+    await commitWorkspaceContext(newWorkspace.accountId, newWorkspace.path, [dirPath])
+    await cleanupWorkspaceTempAttachments()
+    resetWorkspaceStores()
+    await initWorkspaceStores()
+  })
 
   return newWorkspace
 }
@@ -155,6 +182,12 @@ export async function openFolderAsWorkspace(dirPath: string, name?: string): Pro
  */
 export async function validateWorkspacePath(dirPath: string): Promise<ValidateWorkspaceResult> {
   return stores.workspace.validateWorkspacePath(dirPath)
+}
+
+export async function repairWorkspacePath(dirPath: string): Promise<WorkspaceRepairResult> {
+  const result = await stores.workspace.repairWorkspacePath(dirPath)
+  await stores.workspace.init()
+  return result
 }
 
 // ==================== 工作区管理 ====================
@@ -185,7 +218,11 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
   }
 
   await workspace.delete(workspaceId)
-  await syncWorkspaceAccess()
+  const activeContext = persistence.database.getActiveContext()
+  if (!activeContext.accountId) {
+    throw new Error('No active account context')
+  }
+  await commitWorkspaceContext(activeContext.accountId, activeContext.workspacePath)
 }
 
 /**

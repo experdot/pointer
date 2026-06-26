@@ -15,6 +15,7 @@ import { Header } from './Header'
 import { BranchPathBar } from './BranchPathBar'
 import { MessageQueueDrawer } from './MessageQueueDrawer'
 import { SearchBar } from './SearchBar'
+import { getSwitchGeneration } from '../../../stores/switchTransactionStore'
 import './ChatEditor.css'
 
 interface ChatEditorProps {
@@ -222,8 +223,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       <Header
         page={page}
         onGenerate={async (options) => {
+          const generation = getSwitchGeneration()
           const result = await generateSessionTitleWithOptions(currentPath, options)
-          if (result.success && result.title) {
+          if (generation === getSwitchGeneration() && result.success && result.title) {
             await updatePage(page.id, { name: result.title })
           }
         }}

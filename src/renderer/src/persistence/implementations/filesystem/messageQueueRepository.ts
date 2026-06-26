@@ -3,12 +3,11 @@
  * Workspace-level storage: {workspace}/messageQueue/{pageId}.json
  */
 
-import type { IMessageQueueRepository, MessageQueueRecord } from '../../interfaces'
+import type { IMessageQueueRepository, MessageQueueRecord, WorkspaceScope } from '../../interfaces'
 import {
   getMessageQueueDirectoryPath,
   getMessageQueueFilePath,
-  isCustomWorkspacePath,
-  getCurrentWorkspacePath,
+  getWorkspaceFileOptions,
   readJsonFile,
   writeJsonFile,
   deleteFile,
@@ -16,37 +15,32 @@ import {
   ensureDirectory
 } from './core'
 
-function getFileOptions(): { allowCustomPath?: boolean } {
-  const wsPath = getCurrentWorkspacePath()
-  return wsPath && isCustomWorkspacePath(wsPath) ? { allowCustomPath: true } : {}
-}
-
-export function createMessageQueueRepository(): IMessageQueueRepository {
+export function createMessageQueueRepository(scope: WorkspaceScope): IMessageQueueRepository {
   return {
     async get(pageId: string): Promise<MessageQueueRecord | undefined> {
-      const options = getFileOptions()
-      const data = await readJsonFile<MessageQueueRecord>(getMessageQueueFilePath(pageId), options)
+      const options = getWorkspaceFileOptions(scope)
+      const data = await readJsonFile<MessageQueueRecord>(getMessageQueueFilePath(pageId, scope), options)
       return data ?? undefined
     },
 
     async put(pageId: string, record: MessageQueueRecord): Promise<void> {
-      const options = getFileOptions()
-      await ensureDirectory(getMessageQueueDirectoryPath(), options)
-      await writeJsonFile(getMessageQueueFilePath(pageId), record, options)
+      const options = getWorkspaceFileOptions(scope)
+      await ensureDirectory(getMessageQueueDirectoryPath(scope), options)
+      await writeJsonFile(getMessageQueueFilePath(pageId, scope), record, options)
     },
 
     async delete(pageId: string): Promise<void> {
-      const options = getFileOptions()
+      const options = getWorkspaceFileOptions(scope)
       try {
-        await deleteFile(getMessageQueueFilePath(pageId), options)
+        await deleteFile(getMessageQueueFilePath(pageId, scope), options)
       } catch {
         // Ignore if file doesn't exist
       }
     },
 
     async getAll(): Promise<MessageQueueRecord[]> {
-      const options = getFileOptions()
-      const queueDir = getMessageQueueDirectoryPath()
+      const options = getWorkspaceFileOptions(scope)
+      const queueDir = getMessageQueueDirectoryPath(scope)
 
       try {
         const entries = await listDirectory(queueDir, options)
@@ -55,7 +49,7 @@ export function createMessageQueueRepository(): IMessageQueueRepository {
         for (const entry of entries) {
           if (!entry.isDirectory && entry.name.endsWith('.json')) {
             const pageId = entry.name.replace('.json', '')
-            const filePath = getMessageQueueFilePath(pageId)
+            const filePath = getMessageQueueFilePath(pageId, scope)
             const record = await readJsonFile<MessageQueueRecord>(filePath, options)
             if (record) {
               records.push(record)

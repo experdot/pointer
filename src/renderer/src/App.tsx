@@ -8,8 +8,10 @@ import { initStores } from './stores/initStores'
 import { initPersistence } from './persistence/initPersistence'
 import { UpdateNotification } from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { SwitchTransactionOverlay } from './components/common/SwitchTransactionOverlay'
 import { MainLayout } from './components/layout/MainLayout'
 import { useAccountStore } from './stores/accountStore'
+import { useSwitchTransactionStore } from './stores/switchTransactionStore'
 import { initializeAccountSystem } from './services/accountService'
 
 // Initialize plugins and stores
@@ -21,6 +23,7 @@ initStores()
 function AppContent(): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const initialized = useAccountStore((state) => state.initialized)
+  const switchInProgress = useSwitchTransactionStore((state) => state.inProgress)
 
   useEffect(() => {
     initializeAccountSystem().finally(() => setLoading(false))
@@ -34,6 +37,10 @@ function AppContent(): React.JSX.Element {
         <Spin size="large" />
       </div>
     )
+  }
+
+  if (switchInProgress) {
+    return <SwitchTransactionOverlay />
   }
 
   return (

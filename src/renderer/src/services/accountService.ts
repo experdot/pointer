@@ -3,6 +3,7 @@ import { stores } from '../stores/registry'
 import { persistence } from '../persistence/registry'
 import { createDefaultAccount, getDefaultAccountId } from '../stores/accountStore'
 import { initializeWorkspaceSystem, resetWorkspaceSystem } from './workspaceService'
+import { runSwitchTransaction } from './switchTransactionService'
 
 // 初始化账户级 stores (不包括工作区级 stores)
 async function initAccountStores(): Promise<void> {
@@ -45,7 +46,10 @@ export async function initializeAccountSystem(): Promise<void> {
 
   // 设置当前账户路径
   const accountId = account.currentAccountId || getDefaultAccountId()
-  await persistence.database.setAccount(accountId)
+  await persistence.database.commitContext({
+    accountId,
+    workspacePath: null
+  })
 
   // 初始化账户级 stores
   await initAccountStores()
@@ -66,23 +70,17 @@ export async function switchAccount(accountId: string): Promise<void> {
     throw new Error(`Account not found: ${accountId}`)
   }
 
-  // 重置工作区系统（包括工作区级 stores）
-  resetWorkspaceSystem()
-
-  // 重置账户级 stores
-  resetAccountStores()
-
-  // 切换账户路径
-  await persistence.database.setAccount(accountId)
-
-  // 更新当前账户
-  await account.setCurrentAccountId(accountId)
-
-  // 初始化账户级 stores
-  await initAccountStores()
-
-  // 初始化工作区系统
-  await initializeWorkspaceSystem()
+  await runSwitchTransaction('account', targetAccount.name, async () => {
+    await account.setCurrentAccountId(accountId)
+    await persistence.database.commitContext({
+      accountId,
+      workspacePath: null
+    })
+    resetWorkspaceSystem()
+    resetAccountStores()
+    await initAccountStores()
+    await initializeWorkspaceSystem()
+  })
 }
 
 // 创建新账户
@@ -114,12 +112,6 @@ export async function removeAccount(accountId: string): Promise<void> {
 
   // 先从列表中移除，再删除数据
   await account.delete(accountId)
-
-  try {
-    await persistence.database.deleteAccountData(accountId)
-  } catch (error) {
-    console.error('Failed to delete account data:', error)
-  }
 }
 
 // 获取当前账户

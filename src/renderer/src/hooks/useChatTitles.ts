@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { updateMessageTitle } from '../services/messagesService'
 import { generateMessageTitle, generateMessageTitleWithOptions } from '../services/titleService'
 import type { ChatMessage } from '../types/type'
+import { getSwitchGeneration } from '../stores/switchTransactionStore'
 
 // 生成选项接口（与 useChatTopics 共享）
 export interface GenerateOptions {
@@ -60,6 +61,7 @@ export function useChatTitles({
       if (!message) return
 
       try {
+        const generation = getSwitchGeneration()
         const result =
           options?.llmId || options?.extraRequirements || options?.modelConfigId
             ? await generateMessageTitleWithOptions({
@@ -70,7 +72,7 @@ export function useChatTitles({
               })
             : await generateMessageTitle(message.content)
 
-        if (result.success && result.title) {
+        if (generation === getSwitchGeneration() && result.success && result.title) {
           updateMessageTitle(pageId, messageId, result.title)
         } else if (result.error) {
           console.error('Failed to generate title:', result.error)
@@ -93,7 +95,9 @@ export function useChatTitles({
       setBatchProgress({ current: 0, total })
 
       try {
+        const generation = getSwitchGeneration()
         for (let i = 0; i < messagesWithoutTitle.length; i++) {
+          if (generation !== getSwitchGeneration()) break
           const message = messagesWithoutTitle[i]
           setBatchProgress({ current: i, total })
 
@@ -108,7 +112,7 @@ export function useChatTitles({
                   })
                 : await generateMessageTitle(message.content)
 
-            if (result.success && result.title) {
+            if (generation === getSwitchGeneration() && result.success && result.title) {
               updateMessageTitle(pageId, message.id, result.title)
             }
           } catch (error) {

@@ -3,7 +3,6 @@
  */
 
 import { stores } from '../stores/registry'
-import { persistence } from '../persistence/registry'
 import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import type {
   ParsedConversation,
@@ -133,8 +132,6 @@ export async function importConversations(
     platformFolders.set(platform, folderId)
   }
 
-  const { page } = stores
-
   // 准备所有数据
   const prepared: Array<{ page: PageRecord; messagesRecord: MessagesRecord; title: string }> = []
   for (const conv of selected) {
@@ -150,35 +147,18 @@ export async function importConversations(
   // 分批导入
   for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
     const batch = prepared.slice(i, i + BATCH_SIZE)
-    const messagesRecords = batch.map((b) => b.messagesRecord)
 
-    try {
-      // 批量写入页面和消息
-      // 注意：createMany 会生成新 ID，这里需要直接写入数据库
-      await Promise.all([
-        Promise.all(batch.map((b) => persistence.pages.put(b.page))),
-        persistence.messages.putBatch(messagesRecords)
-      ])
-      // 刷新 store 以同步数据库状态
-      await page.init()
-
-      result.success += batch.length
-    } catch {
-      // 批量失败时，逐个重试
-      for (const item of batch) {
-        try {
-          await persistence.pages.put(item.page)
-          await persistence.messages.put(item.messagesRecord.pageId, item.messagesRecord)
-          result.success++
-        } catch (itemErr) {
-          result.failed++
-          result.errors.push(
-            `${item.title}: ${itemErr instanceof Error ? itemErr.message : 'Unknown error'}`
-          )
-        }
+    for (const item of batch) {
+      try {
+        await stores.page.create(item.page)
+        await stores.message.update(item.messagesRecord.pageId, () => item.messagesRecord)
+        result.success++
+      } catch (itemErr) {
+        result.failed++
+        result.errors.push(
+          `${item.title}: ${itemErr instanceof Error ? itemErr.message : 'Unknown error'}`
+        )
       }
-      // 刷新 store 以同步数据库状态
-      await page.init()
     }
 
     onProgress?.(Math.min(i + BATCH_SIZE, prepared.length), prepared.length)

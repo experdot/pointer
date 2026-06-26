@@ -6,15 +6,15 @@
  */
 
 import type { PageFolder } from '../../../types/type'
-import type { IPageRepository, PageRecord } from '../../interfaces'
+import type { IPageRepository, PageRecord, WorkspaceScope } from '../../interfaces'
 import { getPersistenceRegistry } from '../../registry'
 import {
   getPagesDirectoryPath,
   buildPageFilePath,
   scanPageFiles,
   sanitizeFileName,
-  isCustomWorkspacePath,
-  getCurrentWorkspacePath,
+  getWorkspaceFileOptions,
+  getMessageQueueFilePath,
   readTextFile,
   writeTextFile,
   deleteFile,
@@ -25,13 +25,8 @@ import { parseMarkdownPage, serializePageToMarkdown, type PageFile } from './mar
 import { withWriteLock } from './writeLock'
 
 // Cache for pageId -> filePath mapping
-const pageFileCache: Map<string, string> = new Map()
-let cacheValid = false
-
-function getFileOptions(): { allowCustomPath?: boolean } {
-  const wsPath = getCurrentWorkspacePath()
-  return wsPath && isCustomWorkspacePath(wsPath) ? { allowCustomPath: true } : {}
-}
+const pageFileCache = new Map<string, Map<string, string>>()
+const validWorkspaceCache = new Set<string>()
 
 /**
  * Generate a unique file path for a page
@@ -42,10 +37,11 @@ async function generateUniqueFilePath(
   baseName: string,
   folderPath: string | undefined,
   currentPageId: string,
+  scope: WorkspaceScope,
   options: { allowCustomPath?: boolean }
 ): Promise<string> {
   const sanitizedName = sanitizeFileName(baseName)
-  let targetPath = buildPageFilePath(sanitizedName, folderPath)
+  let targetPath = buildPageFilePath(sanitizedName, folderPath, scope)
 
   // Check if file exists and belongs to a different page
   let suffix = 0
@@ -76,12 +72,12 @@ async function generateUniqueFilePath(
     // File exists and belongs to a different page, try next suffix
     suffix++
     const nameWithSuffix = `${sanitizedName} (${suffix})`
-    targetPath = buildPageFilePath(nameWithSuffix, folderPath)
+    targetPath = buildPageFilePath(nameWithSuffix, folderPath, scope)
   }
 
   // Fallback: use page ID as filename (should never happen in practice)
   console.warn(`Could not generate unique filename for "${baseName}" after ${maxAttempts} attempts`)
-  return buildPageFilePath(currentPageId, folderPath)
+  return buildPageFilePath(currentPageId, folderPath, scope)
 }
 
 function pageRecordFromFile(file: PageFile): PageRecord {
@@ -127,10 +123,25 @@ async function buildFolderPath(folderId: string | undefined): Promise<string | u
 /**
  * Scan all page files and build cache
  */
-async function scanAllPages(): Promise<Map<string, { file: PageFile; path: string }>> {
-  const options = getFileOptions()
-  const pagesDir = getPagesDirectoryPath()
+function getWorkspaceKey(scope: WorkspaceScope): string {
+  return scope.workspacePath
+}
+
+function getWorkspaceCache(scope: WorkspaceScope): Map<string, string> {
+  const key = getWorkspaceKey(scope)
+  let cache = pageFileCache.get(key)
+  if (!cache) {
+    cache = new Map<string, string>()
+    pageFileCache.set(key, cache)
+  }
+  return cache
+}
+
+async function scanAllPages(scope: WorkspaceScope): Promise<Map<string, { file: PageFile; path: string }>> {
+  const options = getWorkspaceFileOptions(scope)
+  const pagesDir = getPagesDirectoryPath(scope)
   const results = new Map<string, { file: PageFile; path: string }>()
+  const cache = getWorkspaceCache(scope)
 
   try {
     const filePaths = await scanPageFiles(pagesDir, options)
@@ -143,14 +154,14 @@ async function scanAllPages(): Promise<Map<string, { file: PageFile; path: strin
         const file = parseMarkdownPage(content)
         if (file) {
           results.set(file.id, { file, path: filePath })
-          pageFileCache.set(file.id, filePath)
+          cache.set(file.id, filePath)
         }
       } catch {
         // Skip invalid files
       }
     }
 
-    cacheValid = true
+    validWorkspaceCache.add(getWorkspaceKey(scope))
   } catch {
     // Directory doesn't exist yet
   }
@@ -161,12 +172,17 @@ async function scanAllPages(): Promise<Map<string, { file: PageFile; path: strin
 /**
  * Find page file by ID (uses cache if valid)
  */
-async function findPageFile(pageId: string): Promise<{ file: PageFile; path: string } | null> {
-  const options = getFileOptions()
+async function findPageFile(
+  pageId: string,
+  scope: WorkspaceScope
+): Promise<{ file: PageFile; path: string } | null> {
+  const options = getWorkspaceFileOptions(scope)
+  const key = getWorkspaceKey(scope)
+  const cache = getWorkspaceCache(scope)
 
   // Try cache first
-  if (cacheValid && pageFileCache.has(pageId)) {
-    const cachedPath = pageFileCache.get(pageId)!
+  if (validWorkspaceCache.has(key) && cache.has(pageId)) {
+    const cachedPath = cache.get(pageId)!
     try {
       const content = await readTextFile(cachedPath, options)
       if (content) {
@@ -179,11 +195,11 @@ async function findPageFile(pageId: string): Promise<{ file: PageFile; path: str
       // Cache miss, file moved or deleted
     }
     // Remove invalid cache entry
-    pageFileCache.delete(pageId)
+    cache.delete(pageId)
   }
 
   // Scan all files to find the page
-  const allPages = await scanAllPages()
+  const allPages = await scanAllPages(scope)
   const result = allPages.get(pageId)
   return result ?? null
 }
@@ -191,35 +207,40 @@ async function findPageFile(pageId: string): Promise<{ file: PageFile; path: str
 /**
  * Invalidate cache (call when workspace changes)
  */
-export function invalidatePageCache(): void {
+export function invalidatePageCache(workspacePath?: string): void {
+  if (workspacePath) {
+    pageFileCache.delete(workspacePath)
+    validWorkspaceCache.delete(workspacePath)
+    return
+  }
   pageFileCache.clear()
-  cacheValid = false
+  validWorkspaceCache.clear()
 }
 
-export function createPageRepository(): IPageRepository {
+export function createPageRepository(scope: WorkspaceScope): IPageRepository {
   return {
     async getAll(): Promise<PageRecord[]> {
-      const allPages = await scanAllPages()
+      const allPages = await scanAllPages(scope)
       return Array.from(allPages.values()).map(({ file }) => pageRecordFromFile(file))
     },
 
     async getById(id: string): Promise<PageRecord | undefined> {
-      const result = await findPageFile(id)
+      const result = await findPageFile(id, scope)
       return result ? pageRecordFromFile(result.file) : undefined
     },
 
     async put(page: PageRecord): Promise<void> {
       // Wrap in write lock to prevent concurrent writes for the same page
       await withWriteLock(page.id, async () => {
-        const options = getFileOptions()
+        const options = getWorkspaceFileOptions(scope)
 
         // Find existing file
-        const existing = await findPageFile(page.id)
+        const existing = await findPageFile(page.id, scope)
 
         // Build target path based on page name and folder
         // Uses unique path generation to handle filename conflicts
         const folderPath = await buildFolderPath(page.parentFolderId)
-        const targetPath = await generateUniqueFilePath(page.name, folderPath, page.id, options)
+        const targetPath = await generateUniqueFilePath(page.name, folderPath, page.id, scope, options)
 
         // Prepare file content
         const file: PageFile = {
@@ -249,7 +270,7 @@ export function createPageRepository(): IPageRepository {
         await writeTextFile(targetPath, content, options)
 
         // Update cache
-        pageFileCache.set(page.id, targetPath)
+        getWorkspaceCache(scope).set(page.id, targetPath)
       })
     },
 
@@ -260,8 +281,8 @@ export function createPageRepository(): IPageRepository {
     },
 
     async delete(id: string): Promise<void> {
-      const options = getFileOptions()
-      const result = await findPageFile(id)
+      const options = getWorkspaceFileOptions(scope)
+      const result = await findPageFile(id, scope)
 
       if (result) {
         try {
@@ -269,7 +290,13 @@ export function createPageRepository(): IPageRepository {
         } catch {
           // Ignore if file doesn't exist
         }
-        pageFileCache.delete(id)
+        getWorkspaceCache(scope).delete(id)
+      }
+
+      try {
+        await deleteFile(getMessageQueueFilePath(id, scope), options)
+      } catch {
+        // Ignore if queue file doesn't exist
       }
     },
 
@@ -280,14 +307,14 @@ export function createPageRepository(): IPageRepository {
     },
 
     async clear(): Promise<void> {
-      const options = getFileOptions()
+      const options = getWorkspaceFileOptions(scope)
       try {
-        await deleteFile(getPagesDirectoryPath(), { ...options, recursive: true })
-        await ensureDirectory(getPagesDirectoryPath(), options)
+        await deleteFile(getPagesDirectoryPath(scope), { ...options, recursive: true })
+        await ensureDirectory(getPagesDirectoryPath(scope), options)
       } catch {
         // Ignore errors
       }
-      invalidatePageCache()
+      invalidatePageCache(scope.workspacePath)
     },
 
     async deleteWithMessages(id: string): Promise<void> {

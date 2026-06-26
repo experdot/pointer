@@ -56,4 +56,9 @@ export interface INavigationStore {
    * 清除相对导航请求
    */
   clearRelativeNavigation(version: number): void
+
+  /**
+   * 重置所有导航状态
+   */
+  reset(): void
 }

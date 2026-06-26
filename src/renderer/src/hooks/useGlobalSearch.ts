@@ -5,6 +5,7 @@ import { useMessagesStore } from '../stores/messagesStore'
 import { performGlobalSearch } from '../utils/globalSearchUtils'
 import * as navigationService from '../services/navigationService'
 import type { GlobalSearchMatch } from '../types/type'
+import { getSwitchGeneration } from '../stores/switchTransactionStore'
 
 /** 防抖延迟时间 */
 const DEBOUNCE_DELAY = 500
@@ -47,6 +48,7 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
   // 执行搜索
   const executeSearch = useCallback(async () => {
+    const generation = getSwitchGeneration()
     // 取消之前的搜索
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -63,14 +65,22 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
     try {
       const result = await performGlobalSearch(query, options, pages, loadMessages)
+      if (generation !== getSwitchGeneration()) {
+        return
+      }
       setResults(result.groups, result.totalCount)
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Global search error:', error)
       }
+      if (generation !== getSwitchGeneration()) {
+        return
+      }
       setResults([], 0)
     } finally {
-      setSearching(false)
+      if (generation === getSwitchGeneration()) {
+        setSearching(false)
+      }
     }
   }, [query, options, pages, loadMessages, setResults, setSearching])
 

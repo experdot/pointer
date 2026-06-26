@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 import { persistence } from '../../../persistence/registry'
+import { getCurrentWorkspaceScope } from '../../../persistence/scope'
 import type {
   PageRecord,
   MessagesRecord,
@@ -257,13 +258,14 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
 
       // 导出对话数据
       if (stats.pageIds.length > 0) {
+        const workspacePersistence = persistence.workspace(getCurrentWorkspaceScope())
         exportData.data.pages = pages.filter((p) => stats.pageIds.includes(p.id))
         exportData.data.folders = folders.filter((f) => stats.folderIds.includes(f.id))
 
         // 加载消息
         const messages: MessagesRecord[] = []
         for (const pageId of stats.pageIds) {
-          const record = await persistence.messages.get(pageId)
+          const record = await workspacePersistence.messages.get(pageId)
           if (record) {
             messages.push(record)
           }

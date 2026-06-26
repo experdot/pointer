@@ -6,6 +6,8 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { persistence } from '../persistence/registry'
+import { getCurrentWorkspaceScope, tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { queuePageDelete, queuePagePut } from './persistenceQueue'
 import type { PageRecord } from '../persistence/interfaces/userData'
 import type { IPageStore, PageCreateDTO } from './interfaces/entities'
 
@@ -41,7 +43,13 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const pages = await persistence.pages.getAll()
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      set(initialState)
+      return
+    }
+
+    const pages = await persistence.workspace(scope).pages.getAll()
     set({ pages, initialized: true })
   },
 
@@ -50,6 +58,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   getAll: () => get().pages,
 
   create: async (data) => {
+    const createdAt = data.createdAt ?? Date.now()
     const page: PageRecord = {
       type: 'item',
       id: data.id || uuidv4(),
@@ -57,10 +66,15 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
       starred: data.starred,
-      createdAt: Date.now()
+      createdAt,
+      updatedAt: data.updatedAt
     }
-    await persistence.pages.put(page)
-    set((state) => ({ pages: [...state.pages, page] }))
+    queuePagePut(getCurrentWorkspaceScope(), page)
+    set((state) => ({
+      pages: state.pages.some((item) => item.id === page.id)
+        ? state.pages.map((item) => (item.id === page.id ? page : item))
+        : [...state.pages, page]
+    }))
     return page
   },
 
@@ -73,10 +87,16 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
       starred: data.starred,
-      createdAt: Date.now()
+      createdAt: data.createdAt ?? Date.now(),
+      updatedAt: data.updatedAt
     }))
-    await persistence.pages.putBatch(pages)
-    set((state) => ({ pages: [...state.pages, ...pages] }))
+    const scope = getCurrentWorkspaceScope()
+    pages.forEach((page) => queuePagePut(scope, page))
+    set((state) => {
+      const pageMap = new Map(state.pages.map((page) => [page.id, page]))
+      pages.forEach((page) => pageMap.set(page.id, page))
+      return { pages: Array.from(pageMap.values()) }
+    })
     return pages
   },
 
@@ -85,7 +105,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     if (!page) return
 
     const updated = { ...page, ...changes, updatedAt: Date.now() }
-    await persistence.pages.put(updated)
+    queuePagePut(getCurrentWorkspaceScope(), updated)
     set((state) => ({
       pages: state.pages.map((p) => (p.id === id ? updated : p))
     }))
@@ -94,27 +114,30 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   updateMany: async (updates) => {
     if (updates.length === 0) return
     const pages = get().pages
+    const updatedAt = Date.now()
     const updatedPages = pages.map((p) => {
       const update = updates.find((u) => u.id === p.id)
-      return update ? { ...p, ...update.changes, updatedAt: Date.now() } : p
+      return update ? { ...p, ...update.changes, updatedAt } : p
     })
-    await Promise.all(
-      updates.map((u) => {
-        const page = updatedPages.find((p) => p.id === u.id)
-        return page ? persistence.pages.put(page) : Promise.resolve()
-      })
-    )
+    const updatedIds = new Set(updates.map((update) => update.id))
+    const scope = getCurrentWorkspaceScope()
+    updatedPages.forEach((page) => {
+      if (updatedIds.has(page.id)) {
+        queuePagePut(scope, page)
+      }
+    })
     set({ pages: updatedPages })
   },
 
   delete: async (id) => {
-    await persistence.pages.deleteWithMessages(id)
+    queuePageDelete(getCurrentWorkspaceScope(), id)
     set((state) => ({ pages: state.pages.filter((p) => p.id !== id) }))
   },
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    await persistence.pages.deleteWithMessagesBatch(ids)
+    const scope = getCurrentWorkspaceScope()
+    ids.forEach((id) => queuePageDelete(scope, id))
     const idSet = new Set(ids)
     set((state) => ({ pages: state.pages.filter((p) => !idSet.has(p.id)) }))
   },

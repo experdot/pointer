@@ -3,7 +3,17 @@
  * Account-level storage for workspace management
  */
 
-import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../../types/workspace'
+import type {
+  Workspace,
+  WorkspaceMetadata,
+  ValidateWorkspaceResult,
+  WorkspaceRepairIssue
+} from '../../types/workspace'
+
+export interface WorkspaceRepairResult {
+  repaired: boolean
+  issues: WorkspaceRepairIssue[]
+}
 
 /**
  * Workspace repository interface
@@ -35,4 +45,7 @@ export interface IWorkspaceRepository {
 
   /** Initialize a custom workspace in given directory */
   initCustomWorkspace(dirPath: string, name: string): Promise<Workspace>
+
+  /** Repair a partially initialized workspace owned by the current account */
+  repairWorkspacePath(dirPath: string): Promise<WorkspaceRepairResult>
 }

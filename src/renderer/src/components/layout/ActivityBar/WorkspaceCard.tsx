@@ -12,9 +12,12 @@ import { useWorkspaceStore } from '../../../stores/workspaceStore'
 import {
   switchWorkspace,
   openFolderAsWorkspace,
-  deleteWorkspace
+  deleteWorkspace,
+  repairWorkspacePath,
+  WorkspaceRepairRequiredError
 } from '../../../services/workspaceService'
 import type { WorkspaceMetadata } from '../../../types/workspace'
+import { useSwitchTransactionStore } from '../../../stores/switchTransactionStore'
 
 const { Text } = Typography
 
@@ -25,37 +28,57 @@ interface WorkspaceCardProps {
 export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Element {
   const { workspaces, currentWorkspaceId, currentWorkspace } = useWorkspaceStore()
   const [showWorkspaceList, setShowWorkspaceList] = useState(false)
-  const [switching, setSwitching] = useState(false)
+  const switching = useSwitchTransactionStore((state) => state.inProgress)
   const { message, modal } = App.useApp()
 
   const handleSwitchWorkspace = async (workspaceId: string): Promise<void> => {
     if (workspaceId === currentWorkspaceId || switching) return
-    setSwitching(true)
     try {
       await switchWorkspace(workspaceId)
       onClose()
     } catch (error) {
       message.error('切换工作区失败')
       console.error('Failed to switch workspace:', error)
-    } finally {
-      setSwitching(false)
     }
   }
 
   const handleOpenFolder = async (): Promise<void> => {
     if (switching) return
-    setSwitching(true)
     try {
       const result = await window.api.fs.selectDirectory({
         title: '选择工作区文件夹'
       })
 
       if (!result.success || !result.path) {
-        setSwitching(false)
         return
       }
 
-      await openFolderAsWorkspace(result.path)
+      try {
+        await openFolderAsWorkspace(result.path)
+      } catch (error) {
+        if (error instanceof WorkspaceRepairRequiredError) {
+          modal.confirm({
+            title: '工作区需要修复',
+            content: '检测到该工作区缺少部分内部目录或元数据。确认后会补齐缺失项，然后继续打开。',
+            okText: '修复并打开',
+            cancelText: '取消',
+            onOk: async () => {
+              try {
+                await repairWorkspacePath(error.dirPath)
+                await openFolderAsWorkspace(error.dirPath)
+                onClose()
+              } catch (repairError) {
+                const repairMessage =
+                  repairError instanceof Error ? repairError.message : '修复工作区失败'
+                message.error(repairMessage)
+                console.error('Failed to repair workspace:', repairError)
+              }
+            }
+          })
+          return
+        }
+        throw error
+      }
       onClose()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '打开文件夹失败'
@@ -65,8 +88,6 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         message.error(errorMessage)
       }
       console.error('Failed to open folder:', error)
-    } finally {
-      setSwitching(false)
     }
   }
 

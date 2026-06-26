@@ -7,6 +7,7 @@ import {
   analyzeTopicSegmentsWithOptions
 } from '../services/titleService'
 import type { ChatMessage, Topic } from '../types/type'
+import { getSwitchGeneration } from '../stores/switchTransactionStore'
 
 // 生成选项接口
 export interface GenerateOptions {
@@ -104,6 +105,7 @@ export function useChatTopics({
       if (!message) return
 
       try {
+        const generation = getSwitchGeneration()
         const result =
           options?.llmId || options?.extraRequirements || options?.modelConfigId
             ? await generateTopicTitleWithOptions({
@@ -114,7 +116,7 @@ export function useChatTopics({
               })
             : await generateTopicTitle(message.content)
 
-        if (result.success && result.title) {
+        if (generation === getSwitchGeneration() && result.success && result.title) {
           // 检查是否已存在以该消息为起始的 Topic
           const existingTopic = topics.find((t) => t.startMessageId === messageId)
           if (existingTopic) {
@@ -139,6 +141,7 @@ export function useChatTopics({
 
       setIsSegmenting(true)
       try {
+        const generation = getSwitchGeneration()
         const result =
           options?.llmId || options?.extraRequirements || options?.modelConfigId
             ? await analyzeTopicSegmentsWithOptions(currentPath, {
@@ -148,7 +151,7 @@ export function useChatTopics({
               })
             : await analyzeTopicSegments(currentPath)
 
-        if (result.success && result.segments.length > 0) {
+        if (generation === getSwitchGeneration() && result.success && result.segments.length > 0) {
           // 为每个分段点创建 Topic
           for (const segment of result.segments) {
             const message = currentPath[segment.index]

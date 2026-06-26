@@ -18,6 +18,8 @@ export type PageCreateDTO = {
   parentFolderId?: string
   order?: number
   starred?: boolean
+  createdAt?: number
+  updatedAt?: number
 }
 
 /**
@@ -47,6 +49,8 @@ export type FolderCreateDTO = {
   parentFolderId?: string
   order?: number
   expanded?: boolean
+  createdAt?: number
+  updatedAt?: number
 }
 
 /**

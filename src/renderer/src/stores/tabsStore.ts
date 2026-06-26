@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
+import { tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { getTabsQueue } from './persistenceQueue'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
 import type { Tab, TabHistoryEntry } from '../types/type'
 import type { ITabStore } from './interfaces/ui'
@@ -109,7 +111,10 @@ function tryNavigateToHistory(
 }
 
 const persist = (state: TabsState): void => {
-  persistence.tabs.put({
+  const scope = tryGetCurrentWorkspaceScope()
+  if (!scope) return
+
+  getTabsQueue(scope).enqueue('tabs', {
     tabs: state.tabs,
     activeTabId: state.activeTabId,
     history: state.history,
@@ -121,7 +126,13 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const data = await persistence.tabs.get()
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      set(initialState)
+      return
+    }
+
+    const data = await persistence.workspace(scope).tabs.get()
     if (data) {
       set({ ...data, initialized: true })
     } else {

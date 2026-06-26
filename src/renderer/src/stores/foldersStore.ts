@@ -6,6 +6,8 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { persistence } from '../persistence/registry'
+import { getCurrentWorkspaceScope, tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { queueFoldersSnapshot } from './persistenceQueue'
 import type { PageFolder } from '../types/type'
 import type { IFolderStore, FolderCreateDTO } from './interfaces/entities'
 
@@ -38,11 +40,21 @@ const initialState: FoldersState = {
   initialized: false
 }
 
+function persistFolders(folders: PageFolder[]): void {
+  queueFoldersSnapshot(getCurrentWorkspaceScope(), folders)
+}
+
 export const useFoldersStore = create<FoldersStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const folders = await persistence.folders.getAll()
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      set(initialState)
+      return
+    }
+
+    const folders = await persistence.workspace(scope).folders.getAll()
     set({ folders, initialized: true })
   },
 
@@ -51,6 +63,7 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
   getAll: () => get().folders,
 
   create: async (data) => {
+    const createdAt = data.createdAt ?? Date.now()
     const folder: PageFolder = {
       type: 'folder',
       id: data.id || uuidv4(),
@@ -58,10 +71,14 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
       expanded: data.expanded ?? true,
-      createdAt: Date.now()
+      createdAt,
+      updatedAt: data.updatedAt
     }
-    await persistence.folders.put(folder)
-    set((state) => ({ folders: [...state.folders, folder] }))
+    const nextFolders = get().folders.some((item) => item.id === folder.id)
+      ? get().folders.map((item) => (item.id === folder.id ? folder : item))
+      : [...get().folders, folder]
+    persistFolders(nextFolders)
+    set({ folders: nextFolders })
     return folder
   },
 
@@ -74,10 +91,14 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
       parentFolderId: data.parentFolderId,
       order: data.order ?? 0,
       expanded: data.expanded ?? true,
-      createdAt: Date.now()
+      createdAt: data.createdAt ?? Date.now(),
+      updatedAt: data.updatedAt
     }))
-    await Promise.all(folders.map((f) => persistence.folders.put(f)))
-    set((state) => ({ folders: [...state.folders, ...folders] }))
+    const folderMap = new Map(get().folders.map((folder) => [folder.id, folder]))
+    folders.forEach((folder) => folderMap.set(folder.id, folder))
+    const nextFolders = Array.from(folderMap.values())
+    persistFolders(nextFolders)
+    set({ folders: nextFolders })
     return folders
   },
 
@@ -86,38 +107,35 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
     if (!folder) return
 
     const updated = { ...folder, ...changes, updatedAt: Date.now() }
-    await persistence.folders.put(updated)
-    set((state) => ({
-      folders: state.folders.map((f) => (f.id === id ? updated : f))
-    }))
+    const nextFolders = get().folders.map((f) => (f.id === id ? updated : f))
+    persistFolders(nextFolders)
+    set({ folders: nextFolders })
   },
 
   updateMany: async (updates) => {
     if (updates.length === 0) return
     const folders = get().folders
+    const updatedAt = Date.now()
     const updatedFolders = folders.map((f) => {
       const update = updates.find((u) => u.id === f.id)
-      return update ? { ...f, ...update.changes, updatedAt: Date.now() } : f
+      return update ? { ...f, ...update.changes, updatedAt } : f
     })
-    await Promise.all(
-      updates.map((u) => {
-        const folder = updatedFolders.find((f) => f.id === u.id)
-        return folder ? persistence.folders.put(folder) : Promise.resolve()
-      })
-    )
+    persistFolders(updatedFolders)
     set({ folders: updatedFolders })
   },
 
   delete: async (id) => {
-    await persistence.folders.delete(id)
-    set((state) => ({ folders: state.folders.filter((f) => f.id !== id) }))
+    const nextFolders = get().folders.filter((f) => f.id !== id)
+    persistFolders(nextFolders)
+    set({ folders: nextFolders })
   },
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    await persistence.folders.deleteBatch(ids)
     const idSet = new Set(ids)
-    set((state) => ({ folders: state.folders.filter((f) => !idSet.has(f.id)) }))
+    const nextFolders = get().folders.filter((f) => !idSet.has(f.id))
+    persistFolders(nextFolders)
+    set({ folders: nextFolders })
   },
 
   reset: async () => {

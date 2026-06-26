@@ -20,6 +20,7 @@ import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
 import * as pagesService from '../../services/pagesService'
+import { getSwitchGeneration } from '../../stores/switchTransactionStore'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { ChatPage, PageFolder } from '../../types/type'
@@ -150,8 +151,9 @@ export function Explorer(): React.JSX.Element {
       const pageMessages = messagesCache[pageId]?.messages || []
       if (pageMessages.length === 0) return
 
+      const generation = getSwitchGeneration()
       const result = await generateSessionTitleWithOptions(pageMessages, options)
-      if (result.success && result.title) {
+      if (generation === getSwitchGeneration() && result.success && result.title) {
         await updatePage(pageId, { name: result.title })
       }
     },

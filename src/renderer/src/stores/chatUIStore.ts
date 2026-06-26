@@ -44,6 +44,7 @@ interface ChatUIStore {
     options: Partial<Pick<SearchState, 'matchCase' | 'useRegex' | 'matchWholeWord'>>
   ) => void
   clearSearch: (pageId: string) => void
+  reset: () => void
 }
 
 const defaultState: ChatUIState = {
@@ -193,7 +194,9 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
       })
       return { states: newStates }
     })
-  }
+  },
+
+  reset: () => set({ states: new Map() })
 }))
 
 export type { SearchState }

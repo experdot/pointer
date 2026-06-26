@@ -3,7 +3,16 @@
  */
 
 // Base interfaces
-export type { IRepository, ISingletonRepository, IKeyedRepository, IDatabaseManager } from './base'
+export type {
+  IRepository,
+  ISingletonRepository,
+  IKeyedRepository,
+  IDatabaseManager,
+  AccountScope,
+  WorkspaceScope,
+  PersistenceContext,
+  ContextCommitInput
+} from './base'
 
 // Account interfaces
 export type { IAccountRepository } from './accounts'
@@ -27,10 +36,10 @@ export type {
 } from './userData'
 
 // Workspace interfaces
-export type { IWorkspaceRepository } from './workspace'
+export type { IWorkspaceRepository, WorkspaceRepairResult } from './workspace'
 
 // Re-import for IPersistenceRegistry definition
-import type { IDatabaseManager } from './base'
+import type { IDatabaseManager, AccountScope, WorkspaceScope } from './base'
 import type { IAccountRepository } from './accounts'
 import type {
   IPageRepository,
@@ -43,6 +52,20 @@ import type {
 } from './userData'
 import type { IWorkspaceRepository } from './workspace'
 
+export interface IAccountScopedPersistence {
+  readonly workspaces: IWorkspaceRepository
+  readonly settings: ISettingsRepository
+  readonly layout: ILayoutRepository
+}
+
+export interface IWorkspaceScopedPersistence {
+  readonly pages: IPageRepository
+  readonly folders: IFolderRepository
+  readonly messages: IMessagesRepository
+  readonly tabs: ITabsRepository
+  readonly messageQueue: IMessageQueueRepository
+}
+
 /**
  * Persistence registry interface
  * Central access point for all repositories
@@ -53,6 +76,12 @@ export interface IPersistenceRegistry {
 
   /** Account repository (independent database) */
   readonly accounts: IAccountRepository
+
+  /** Explicit account-scoped repositories */
+  account(scope: AccountScope | string): IAccountScopedPersistence
+
+  /** Explicit workspace-scoped repositories */
+  workspace(scope: WorkspaceScope): IWorkspaceScopedPersistence
 
   /** Workspace repository (account-level) */
   readonly workspaces: IWorkspaceRepository

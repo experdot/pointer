@@ -1,6 +1,7 @@
 import type { AIService } from './aiService'
 
 type StreamingData = {
+  pageId: string
   messageId: string
   content: string
   reasoning?: string
@@ -15,8 +16,8 @@ class StreamingManager {
   private listeners = new Set<Listener>()
   private rafId: number | null = null
 
-  start(messageId: string, aiService?: AIService): void {
-    this.dataMap.set(messageId, { messageId, content: '', aiService })
+  start(pageId: string, messageId: string, aiService?: AIService): void {
+    this.dataMap.set(messageId, { pageId, messageId, content: '', aiService })
     this.notify()
   }
 
@@ -53,6 +54,17 @@ class StreamingManager {
       await data.aiService.stopStreaming()
     }
     return this.finish(messageId)
+  }
+
+  async stopAll(): Promise<StreamingData[]> {
+    const messageIds = Array.from(this.dataMap.keys())
+    const results = await Promise.all(messageIds.map((messageId) => this.stop(messageId)))
+    return results.filter((item): item is StreamingData => item !== null)
+  }
+
+  reset(): void {
+    this.dataMap.clear()
+    this.notify()
   }
 
   get(messageId: string): StreamingData | null {

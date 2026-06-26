@@ -5,7 +5,9 @@
 
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
+import { getCurrentAccountScope } from '../persistence/scope'
 import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../types/workspace'
+import type { WorkspaceRepairResult } from '../persistence/interfaces'
 import type { IWorkspaceStore } from './interfaces/workspaceStore'
 
 interface WorkspaceState {
@@ -32,6 +34,7 @@ interface WorkspaceActions {
   initDefaultWorkspace: () => Promise<Workspace>
   validateWorkspacePath: (dirPath: string) => Promise<ValidateWorkspaceResult>
   openCustomWorkspace: (dirPath: string, name: string) => Promise<Workspace>
+  repairWorkspacePath: (dirPath: string) => Promise<WorkspaceRepairResult>
 }
 
 type WorkspaceStore = WorkspaceState & WorkspaceActions
@@ -47,21 +50,22 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
+    const accountScope = getCurrentAccountScope()
     const [workspaces, currentWorkspaceId] = await Promise.all([
-      persistence.workspaces.getAll(),
-      persistence.workspaces.getCurrentWorkspaceId()
+      persistence.account(accountScope).workspaces.getAll(),
+      persistence.account(accountScope).workspaces.getCurrentWorkspaceId()
     ])
 
-    const currentWorkspacePath =
-      workspaces.find((workspace) => workspace.id === currentWorkspaceId)?.path ?? null
+    // Allow reading custom workspace metadata before resolving the current workspace.
     await persistence.database.syncWorkspaceAccess(
-      currentWorkspacePath,
+      persistence.database.getActiveContext().workspacePath,
       workspaces.map((workspace) => workspace.path)
     )
 
     let currentWorkspace: Workspace | null = null
     if (currentWorkspaceId) {
-      currentWorkspace = (await persistence.workspaces.getById(currentWorkspaceId)) || null
+      currentWorkspace =
+        (await persistence.account(accountScope).workspaces.getById(currentWorkspaceId)) || null
     }
 
     set({ workspaces, currentWorkspaceId, currentWorkspace, initialized: true })
@@ -72,17 +76,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   getById: async (id) => {
-    return persistence.workspaces.getById(id)
+    return persistence.account(getCurrentAccountScope()).workspaces.getById(id)
   },
 
   getAll: () => get().workspaces,
 
   update: async (id, changes) => {
-    const workspace = await persistence.workspaces.getById(id)
+    const workspace = await persistence.account(getCurrentAccountScope()).workspaces.getById(id)
     if (!workspace) return
 
     const updated: Workspace = { ...workspace, ...changes, updatedAt: Date.now() }
-    await persistence.workspaces.put(updated)
+    await persistence.account(getCurrentAccountScope()).workspaces.put(updated)
 
     set((state) => ({
       workspaces: state.workspaces.map((w) =>
@@ -95,7 +99,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   delete: async (id) => {
-    const workspace = await persistence.workspaces.getById(id)
+    const workspace = await persistence.account(getCurrentAccountScope()).workspaces.getById(id)
     if (!workspace) return
 
     // 不能删除默认工作区
@@ -103,7 +107,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       throw new Error('Cannot delete default workspace')
     }
 
-    await persistence.workspaces.delete(id)
+    await persistence.account(getCurrentAccountScope()).workspaces.delete(id)
 
     set((state) => ({
       workspaces: state.workspaces.filter((w) => w.id !== id),
@@ -113,14 +117,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   switchWorkspace: async (id) => {
-    const workspace = await persistence.workspaces.getById(id)
+    const workspace = await persistence.account(getCurrentAccountScope()).workspaces.getById(id)
     if (!workspace) {
       throw new Error(`Workspace not found: ${id}`)
     }
 
-    // 更新持久化层的当前工作区
-    await persistence.workspaces.setCurrentWorkspaceId(id)
-    await persistence.database.setWorkspace(workspace.path)
+    await persistence.account(getCurrentAccountScope()).workspaces.setCurrentWorkspaceId(id)
 
     set({
       currentWorkspaceId: id,
@@ -130,8 +132,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   setCurrentWorkspaceId: async (id) => {
     if (id === null) {
-      await persistence.workspaces.setCurrentWorkspaceId(null)
-      await persistence.database.syncWorkspaceAccess(null, [])
+      await persistence.account(getCurrentAccountScope()).workspaces.setCurrentWorkspaceId(null)
       set({ currentWorkspaceId: null, currentWorkspace: null })
       return
     }
@@ -140,7 +141,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   initDefaultWorkspace: async () => {
-    const workspace = await persistence.workspaces.initDefaultWorkspace()
+    const workspace = await persistence.account(getCurrentAccountScope()).workspaces.initDefaultWorkspace()
 
     set((state) => {
       const exists = state.workspaces.some((w) => w.id === workspace.id)
@@ -161,12 +162,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   validateWorkspacePath: async (dirPath) => {
-    return persistence.workspaces.validateWorkspacePath(dirPath)
+    return persistence.account(getCurrentAccountScope()).workspaces.validateWorkspacePath(dirPath)
   },
 
   openCustomWorkspace: async (dirPath, name) => {
     // 验证路径
-    const validation = await persistence.workspaces.validateWorkspacePath(dirPath)
+    const validation =
+      await persistence.account(getCurrentAccountScope()).workspaces.validateWorkspacePath(dirPath)
 
     if (!validation.valid) {
       throw new Error(validation.error || 'Invalid workspace path')
@@ -178,15 +180,21 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     // 如果已经是工作区，直接加载
     if (validation.isWorkspace && validation.workspaceId) {
-      const existing = await persistence.workspaces.getById(validation.workspaceId)
+      const existing =
+        await persistence.account(getCurrentAccountScope()).workspaces.getById(validation.workspaceId)
       if (existing) {
-        await get().switchWorkspace(existing.id)
+        await persistence.account(getCurrentAccountScope()).workspaces.setCurrentWorkspaceId(existing.id)
+        set({
+          currentWorkspaceId: existing.id,
+          currentWorkspace: existing
+        })
         return existing
       }
     }
 
     // 初始化新的自定义工作区
-    const workspace = await persistence.workspaces.initCustomWorkspace(dirPath, name)
+    const workspace =
+      await persistence.account(getCurrentAccountScope()).workspaces.initCustomWorkspace(dirPath, name)
 
     // 更新状态
     set((state) => {
@@ -201,10 +209,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
     })
 
-    // 切换到新工作区
-    await get().switchWorkspace(workspace.id)
-
     return workspace
+  },
+
+  repairWorkspacePath: async (dirPath) => {
+    return persistence.account(getCurrentAccountScope()).workspaces.repairWorkspacePath(dirPath)
   }
 }))
 
@@ -236,6 +245,7 @@ export function getWorkspaceStoreInterface(): IWorkspaceStore {
     setCurrentWorkspaceId: (id) => store.getState().setCurrentWorkspaceId(id),
     initDefaultWorkspace: () => store.getState().initDefaultWorkspace(),
     validateWorkspacePath: (dirPath) => store.getState().validateWorkspacePath(dirPath),
-    openCustomWorkspace: (dirPath, name) => store.getState().openCustomWorkspace(dirPath, name)
+    openCustomWorkspace: (dirPath, name) => store.getState().openCustomWorkspace(dirPath, name),
+    repairWorkspacePath: (dirPath) => store.getState().repairWorkspacePath(dirPath)
   }
 }

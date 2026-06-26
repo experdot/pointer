@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persistence } from '../persistence/registry'
+import { getCurrentAccountScope } from '../persistence/scope'
+import { getLayoutQueue } from './persistenceQueue'
 import type { ActivityPanel, LayoutRecord } from '../persistence/interfaces/userData'
 import type { ILayoutStore } from './interfaces/ui'
 
@@ -39,7 +41,8 @@ const initialState: LayoutState = {
 }
 
 const persist = (state: LayoutState): void => {
-  persistence.layout.put({
+  const scope = getCurrentAccountScope()
+  getLayoutQueue(scope).enqueue('layout', {
     sidebarWidth: state.sidebarWidth,
     sidebarVisible: state.sidebarVisible,
     activePanel: state.activePanel
@@ -50,7 +53,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const layout = await persistence.layout.get()
+    const layout = await persistence.account(getCurrentAccountScope()).layout.get()
     set({
       ...(layout ?? {}),
       initialized: true

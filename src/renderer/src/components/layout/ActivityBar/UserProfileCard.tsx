@@ -27,6 +27,7 @@ import {
   logout,
   updateAccount
 } from '../../../services/accountService'
+import { useSwitchTransactionStore } from '../../../stores/switchTransactionStore'
 
 // 默认头像图标列表
 const DEFAULT_AVATARS = [
@@ -68,48 +69,39 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const [newAccountName, setNewAccountName] = useState('')
   const [editName, setEditName] = useState('')
   const [editAvatar, setEditAvatar] = useState('')
-  const [switching, setSwitching] = useState(false)
   const [avatarHovered, setAvatarHovered] = useState(false)
+  const switching = useSwitchTransactionStore((state) => state.inProgress)
   const { message } = App.useApp()
 
   const handleSwitchAccount = async (accountId: string): Promise<void> => {
     if (accountId === currentAccountId || switching) return
-    setSwitching(true)
     try {
       await switchAccount(accountId)
       onClose()
     } catch {
       message.error('切换账户失败')
-    } finally {
-      setSwitching(false)
     }
   }
 
   const handleCreateAccount = async (): Promise<void> => {
     const name = newAccountName.trim()
     if (!name || switching) return
-    setSwitching(true)
     try {
       const account = await createAccount(name)
       await switchAccount(account.id)
       onClose()
     } catch {
       message.error('创建账户失败')
-    } finally {
-      setSwitching(false)
     }
   }
 
   const handleLogout = async (): Promise<void> => {
     if (switching) return
-    setSwitching(true)
     try {
       await logout()
       onClose()
     } catch {
       message.error('退出登录失败')
-    } finally {
-      setSwitching(false)
     }
   }
 
@@ -122,7 +114,6 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const handleSaveEdit = async (): Promise<void> => {
     const name = editName.trim()
     if (!name || !currentAccountId || switching) return
-    setSwitching(true)
     try {
       await updateAccount(currentAccountId, { name, avatar: editAvatar })
       setShowEditForm(false)
@@ -130,8 +121,6 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
       message.success('账户信息已更新')
     } catch {
       message.error('更新失败')
-    } finally {
-      setSwitching(false)
     }
   }
 

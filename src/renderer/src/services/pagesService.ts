@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { PageFolder } from '../types/type'
 import type { PageRecord } from '../persistence/interfaces/userData'
 import { stores } from '../stores/registry'
+import { useMessageQueueStore } from '../stores/messageQueueStore'
 
 /**
  * Generate a unique name by adding number suffix if needed
@@ -143,6 +144,7 @@ export async function deletePage(id: string): Promise<void> {
 
   await page.delete(id)
   message.evict(id)
+  await useMessageQueueStore.getState().removeRecord(id)
 
   // 关闭对应的标签页
   const existingTab = tab.tabs.find((t) => t.dataId === id)
@@ -160,6 +162,7 @@ export async function deletePages(ids: string[]): Promise<void> {
   // 清除消息缓存
   for (const id of ids) {
     message.evict(id)
+    await useMessageQueueStore.getState().removeRecord(id)
   }
 
   // 关闭对应的标签页
@@ -302,6 +305,7 @@ export async function deleteFolder(id: string): Promise<void> {
   // 清除消息缓存
   for (const pageId of pageIds) {
     message.evict(pageId)
+    await useMessageQueueStore.getState().removeRecord(pageId)
   }
 
   // 关闭对应的标签页
@@ -336,6 +340,7 @@ export async function clearFolder(id: string): Promise<void> {
   // 清除消息缓存
   for (const pageId of pageIds) {
     message.evict(pageId)
+    await useMessageQueueStore.getState().removeRecord(pageId)
   }
 
   // 关闭对应的标签页

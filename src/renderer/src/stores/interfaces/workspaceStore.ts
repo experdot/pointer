@@ -4,6 +4,7 @@
 
 import type { IInitializable, IResettable } from './base'
 import type { Workspace, WorkspaceMetadata, ValidateWorkspaceResult } from '../../types/workspace'
+import type { WorkspaceRepairResult } from '../../persistence/interfaces'
 
 /**
  * 工作区创建数据
@@ -82,6 +83,11 @@ export interface IWorkspaceStore extends IInitializable, IResettable {
    * 打开/创建自定义工作区
    */
   openCustomWorkspace(dirPath: string, name: string): Promise<Workspace>
+
+  /**
+   * 修复半初始化工作区
+   */
+  repairWorkspacePath(dirPath: string): Promise<WorkspaceRepairResult>
 
   // ==================== 内部方法 ====================
 

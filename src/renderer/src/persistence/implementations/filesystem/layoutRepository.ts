@@ -3,23 +3,23 @@
  * Account-level storage: AppData/accounts/{accountId}/layout.json
  */
 
-import type { ILayoutRepository, LayoutRecord } from '../../interfaces'
+import type { AccountScope, ILayoutRepository, LayoutRecord } from '../../interfaces'
 import { getLayoutFilePath, readJsonFile, writeJsonFile, deleteFile } from './core'
 
-export function createLayoutRepository(): ILayoutRepository {
+export function createLayoutRepository(scope: AccountScope): ILayoutRepository {
   return {
     async get(): Promise<LayoutRecord | undefined> {
-      const data = await readJsonFile<LayoutRecord>(getLayoutFilePath())
+      const data = await readJsonFile<LayoutRecord>(getLayoutFilePath(scope))
       return data ?? undefined
     },
 
     async put(layout: LayoutRecord): Promise<void> {
-      await writeJsonFile(getLayoutFilePath(), layout)
+      await writeJsonFile(getLayoutFilePath(scope), layout)
     },
 
     async clear(): Promise<void> {
       try {
-        await deleteFile(getLayoutFilePath())
+        await deleteFile(getLayoutFilePath(scope))
       } catch {
         // Ignore if file doesn't exist
       }
