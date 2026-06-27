@@ -9,6 +9,7 @@ import {
   DownloadOutlined
 } from '@ant-design/icons'
 import { Streamdown } from 'streamdown'
+import { DateTimeText } from '../../common/DateTimeText'
 import { useUpdateStore } from '../../../stores/updateStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 
@@ -145,15 +146,6 @@ export function AboutPanel(): React.JSX.Element {
     return formatBytes(bytesPerSecond) + '/s'
   }
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
   return (
     <Flex vertical gap={16} style={{ maxWidth: 640 }}>
       {/* 应用更新标题 */}
@@ -201,7 +193,9 @@ export function AboutPanel(): React.JSX.Element {
             )}
 
             {updateInfo.releaseDate && (
-              <Text type="secondary">发布日期: {formatDate(updateInfo.releaseDate)}</Text>
+              <Text type="secondary">
+                发布日期: <DateTimeText value={updateInfo.releaseDate} />
+              </Text>
             )}
 
             {updateInfo.releaseNotes && (

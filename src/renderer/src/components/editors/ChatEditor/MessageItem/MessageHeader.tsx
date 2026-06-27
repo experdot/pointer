@@ -1,10 +1,10 @@
 import React from 'react'
 import { Button, Tooltip } from 'antd'
 import { DownOutlined, UpOutlined } from '@ant-design/icons'
+import { DateTimeText } from '../../../common/DateTimeText'
 import { BranchNavigator } from '../BranchNavigator'
 import { ModelSelector } from '../ModelSelector'
 import { ModelConfigSelector } from '../ModelConfigSelector'
-import { formatTime } from './utils'
 import type { MessageHeaderProps } from './types'
 
 export const MessageHeader = React.memo(function MessageHeader({
@@ -22,7 +22,7 @@ export const MessageHeader = React.memo(function MessageHeader({
   return (
     <div className="message-item__header">
       <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
-      <span className="message-item__time">{formatTime(message.createdAt)}</span>
+      <DateTimeText value={message.createdAt} className="message-item__time" />
 
       {/* 折叠按钮 */}
       <Tooltip title={message.collapsed ? '展开' : '折叠'}>

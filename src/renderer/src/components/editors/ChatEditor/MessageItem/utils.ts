@@ -35,14 +35,6 @@ export function tableToMarkdown(table: HTMLTableElement): string {
   return lines.join('\n')
 }
 
-// 格式化时间
-export function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 // 获取选中文本
 export function getSelectedText(): string {
   return window.getSelection()?.toString() || ''

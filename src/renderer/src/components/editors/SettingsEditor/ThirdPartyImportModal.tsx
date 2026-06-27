@@ -24,6 +24,7 @@ import {
   CloseCircleOutlined
 } from '@ant-design/icons'
 import type { UploadFile, TableColumnsType } from 'antd'
+import { DateTimeText } from '../../common/DateTimeText'
 import { parseImportFile, getSupportedPlatforms } from '../../../services/importers'
 import { importConversations, getPlatformName } from '../../../services/thirdPartyImportService'
 import type {
@@ -228,7 +229,7 @@ export function ThirdPartyImportModal({
       title: '时间',
       dataIndex: 'createdAt',
       width: 120,
-      render: (time) => new Date(time).toLocaleDateString()
+      render: (time) => <DateTimeText value={time} style={{ whiteSpace: 'nowrap' }} />
     },
     {
       title: '消息数',

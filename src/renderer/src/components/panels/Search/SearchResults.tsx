@@ -7,6 +7,7 @@ import {
   RightOutlined,
   DownOutlined
 } from '@ant-design/icons'
+import { DateTimeText } from '../../common/DateTimeText'
 import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
 import type {
   GlobalSearchMatch,
@@ -121,18 +122,6 @@ function SearchResultPageGroup({
   // 计算该页面的总匹配数
   const totalMatches = group.messageGroups.reduce((sum, mg) => sum + mg.matches.length, 0)
 
-  // 格式化时间
-  const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const isToday = date.toDateString() === now.toDateString()
-
-    if (isToday) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    }
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-  }
-
   const handleLoadMoreMessages = useCallback(() => {
     setVisibleMessageCount((prev) => prev + PAGE_SIZE)
   }, [])
@@ -151,7 +140,7 @@ function SearchResultPageGroup({
           {group.pageTitle}
         </Text>
         {group.folderPath && <span className="search-result-group-path">{group.folderPath}</span>}
-        <span className="search-result-group-time">{formatTime(group.createdAt)}</span>
+        <DateTimeText value={group.createdAt} className="search-result-group-time" />
         <span className="search-result-group-count">{totalMatches}</span>
       </div>
 
@@ -210,18 +199,6 @@ function SearchResultMessageGroup({
 
   const roleIcon = messageGroup.role === 'user' ? <UserOutlined /> : <RobotOutlined />
 
-  // 格式化时间
-  const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const isToday = date.toDateString() === now.toDateString()
-
-    if (isToday) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    }
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-  }
-
   // 生成消息标题显示：优先使用 title，否则使用内容预览
   const displayTitle = messageGroup.title || messageGroup.contentPreview
 
@@ -245,7 +222,7 @@ function SearchResultMessageGroup({
         <Text className="search-result-message-title" ellipsis>
           {displayTitle}
         </Text>
-        <span className="search-result-message-time">{formatTime(messageGroup.createdAt)}</span>
+        <DateTimeText value={messageGroup.createdAt} className="search-result-message-time" />
         <span className="search-result-message-count">{messageGroup.matches.length}</span>
       </div>
 

@@ -22,6 +22,7 @@ import {
 } from '@ant-design/icons'
 import type { TreeDataNode, UploadFile } from 'antd'
 import type { ExportData } from './ExportModal'
+import { DateTimeText } from '../../common/DateTimeText'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
 import { useMessagesStore } from '../../../stores/messagesStore'
@@ -667,7 +668,11 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
         <Alert
           type="info"
           showIcon
-          message={`文件导出时间: ${new Date(importData.exportedAt).toLocaleString()}`}
+          message={
+            <>
+              文件导出时间: <DateTimeText value={importData.exportedAt} />
+            </>
+          }
         />
 
         <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k as TabKey)} items={tabItems} />
