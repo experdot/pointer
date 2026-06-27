@@ -32,3 +32,22 @@ body {
     background: rgba(0, 0, 0, 0.2);
   }
 }
+
+.app-standard-dropdown-menu .ant-dropdown-menu,
+.app-standard-dropdown-menu.ant-dropdown-menu,
+.app-standard-dropdown-menu .ant-dropdown-menu-submenu .ant-dropdown-menu,
+.app-standard-dropdown-menu.ant-dropdown-menu-submenu-popup .ant-dropdown-menu {
+  min-width: 200px;
+}
+
+.app-standard-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item-danger:hover
+  .ant-dropdown-menu-item-extra,
+.app-standard-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item-danger.ant-dropdown-menu-item-active
+  .ant-dropdown-menu-item-extra,
+.app-standard-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item-selected
+  .ant-dropdown-menu-item-extra {
+  color: inherit !important;
+}

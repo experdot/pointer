@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons'
 import { AIGeneratePopover } from '../../../common/AIGeneratePopover'
 import type { TopicHeaderProps, TopicHeaderRef } from './types'
+import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
 export const TopicHeader = React.memo(
   forwardRef<TopicHeaderRef, TopicHeaderProps>(function TopicHeader(
@@ -130,7 +131,7 @@ export const TopicHeader = React.memo(
               <span className="message-item__topic-count">({topicMessageCount})</span>
             )}
             <Dropdown
-              menu={{
+              {...getStandardDropdownProps({
                 items: [
                   {
                     key: 'rename',
@@ -147,7 +148,7 @@ export const TopicHeader = React.memo(
                     onClick: () => topicCallbacks.onDeleteTopic?.(topic.id)
                   }
                 ]
-              }}
+              })}
               trigger={['click']}
             >
               <Button

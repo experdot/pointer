@@ -21,6 +21,7 @@ import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
 import * as pagesService from '../../services/pagesService'
 import { getSwitchGeneration } from '../../stores/switchTransactionStore'
+import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { ChatPage, PageFolder } from '../../types/type'
@@ -328,7 +329,7 @@ export function Explorer(): React.JSX.Element {
           <Dropdown.Button
             type="text"
             icon={<EllipsisOutlined />}
-            menu={{ items: menuItems, onClick: onMenuClick }}
+            {...getStandardDropdownProps({ items: menuItems, onClick: onMenuClick })}
             onClick={handleCreatePage}
           >
             <PlusOutlined /> 新建对话

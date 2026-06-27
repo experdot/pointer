@@ -13,6 +13,10 @@ import {
 import { OutlineDropdown } from './OutlineDropdown'
 import type { ChatMessage, OutlineNode } from '../../../types/type'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
+import {
+  formatShortcutTooltip,
+  getStandardDropdownProps
+} from '../../../utils/shortcutPresentation'
 import './BranchPathBar.css'
 
 const getRoleIcon = (role: ChatMessage['role']): React.ReactNode => {
@@ -141,7 +145,7 @@ export function BranchPathBar({
           // 分支指示器（点击展开下拉）
           const branchIndicator = hasBranch && (
             <Dropdown
-              menu={{
+              {...getStandardDropdownProps({
                 items: siblings.map((s, idx) => ({
                   key: s.id,
                   icon: getRoleIcon(s.role),
@@ -149,7 +153,7 @@ export function BranchPathBar({
                   onClick: () => onSwitchBranch(s.id)
                 })),
                 selectedKeys: [message.id]
-              }}
+              })}
               trigger={['click']}
             >
               <span className="branch-path-bar__branch-indicator">
@@ -163,14 +167,14 @@ export function BranchPathBar({
             <>
               <RightOutlined className="branch-path-bar__separator" />
               <Dropdown
-                menu={{
+                {...getStandardDropdownProps({
                   items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
                     key: m.id,
                     icon: getRoleIcon(m.role),
                     label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
                     onClick: () => onNavigateToMessage(m.id)
                   }))
-                }}
+                })}
                 trigger={['click']}
               >
                 <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
@@ -191,10 +195,10 @@ export function BranchPathBar({
           )
         })}
       <div className="branch-path-bar__nav">
-        <Tooltip title="上一条">
+        <Tooltip title={formatShortcutTooltip('上一条', 'messagePrev')}>
           <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToPrev} />
         </Tooltip>
-        <Tooltip title="下一条">
+        <Tooltip title={formatShortcutTooltip('下一条', 'messageNext')}>
           <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToNext} />
         </Tooltip>
         <span className="branch-path-bar__nav-divider" />

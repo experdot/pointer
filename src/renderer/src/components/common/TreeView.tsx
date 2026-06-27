@@ -14,6 +14,10 @@ import {
 } from '@ant-design/icons'
 import { AIGeneratePopover, type GenerateOptions } from './AIGeneratePopover'
 import { useConfirmDialog } from './ConfirmDialog'
+import {
+  getShortcutLabel,
+  getStandardDropdownProps
+} from '../../utils/shortcutPresentation'
 import './TreeView.css'
 
 // ==================== 类型定义 ====================
@@ -135,7 +139,11 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
   )
 
   return (
-    <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']} onOpenChange={handleOpenChange}>
+    <Dropdown
+      {...getStandardDropdownProps({ items: menuItems })}
+      trigger={['contextMenu']}
+      onOpenChange={handleOpenChange}
+    >
       <span
         className="tree-view-title"
         onDoubleClick={() => onDoubleClick?.(id, treeNode.isFolder)}
@@ -157,7 +165,11 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
             />
           </Tooltip>
         )}
-        <Dropdown menu={{ items: menuItems }} trigger={['click']} onOpenChange={handleOpenChange}>
+        <Dropdown
+          {...getStandardDropdownProps({ items: menuItems })}
+          trigger={['click']}
+          onOpenChange={handleOpenChange}
+        >
           <Button
             type="text"
             size="small"
@@ -698,6 +710,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           key: 'rename',
           label: '重命名',
           icon: <EditOutlined />,
+          extra: getShortcutLabel('treeRename'),
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
             startRenameByKey(folder.id)
@@ -723,6 +736,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           key: 'delete',
           label: '删除',
           icon: <DeleteOutlined />,
+          extra: getShortcutLabel('treeDelete'),
           danger: true,
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
@@ -738,6 +752,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           key: 'rename',
           label: '重命名',
           icon: <EditOutlined />,
+          extra: getShortcutLabel('treeRename'),
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
             startRenameByKey(item.id)
@@ -749,6 +764,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           key: 'delete',
           label: '删除',
           icon: <DeleteOutlined />,
+          extra: getShortcutLabel('treeDelete'),
           danger: true,
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()

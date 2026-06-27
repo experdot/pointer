@@ -1,7 +1,14 @@
 import React from 'react'
-import { Tabs as AntTabs, Dropdown, Button } from 'antd'
+import { Tabs as AntTabs, Dropdown, Button, Tooltip } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
-import { PushpinFilled, LeftOutlined, RightOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+  PushpinFilled,
+  LeftOutlined,
+  RightOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  CloseOutlined
+} from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -17,6 +24,11 @@ import { usePagesStore } from '../../../stores/pagesStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 import * as pagesService from '../../../services/pagesService'
 import { getTabIcon } from '../../../utils/tabRegistry'
+import {
+  formatShortcutTooltip,
+  getStandardDropdownProps,
+  getShortcutLabel
+} from '../../../utils/shortcutPresentation'
 import './Tabs.css'
 
 interface DraggableTabProps {
@@ -103,6 +115,7 @@ export function Tabs(): React.JSX.Element {
       {
         key: 'close',
         label: '关闭',
+        extra: getShortcutLabel('tabClose'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           closeTab(tabId)
@@ -164,7 +177,10 @@ export function Tabs(): React.JSX.Element {
   const items: TabsProps['items'] = tabs.map((tab) => ({
     key: tab.id,
     label: (
-      <Dropdown menu={{ items: getContextMenuItems(tab.id) }} trigger={['contextMenu']}>
+      <Dropdown
+        {...getStandardDropdownProps({ items: getContextMenuItems(tab.id) })}
+        trigger={['contextMenu']}
+      >
         <span
           className={`tab-label ${tab.preview ? 'tab-preview' : ''}`}
           onDoubleClick={() => tab.preview && keepTab(tab.id)}
@@ -251,7 +267,10 @@ export function Tabs(): React.JSX.Element {
   return (
     <div className="tabs-wrapper">
       <Dropdown
-        menu={{ items: getHistoryMenuItems(), style: { maxHeight: 400, overflow: 'auto' } }}
+        {...getStandardDropdownProps({
+          items: getHistoryMenuItems(),
+          style: { maxHeight: 400, overflow: 'auto' }
+        })}
         trigger={['contextMenu']}
       >
         <div className="tabs-nav-buttons">
@@ -278,6 +297,20 @@ export function Tabs(): React.JSX.Element {
         activeKey={activeTabId || undefined}
         onChange={setActiveTab}
         onEdit={handleEdit}
+        addIcon={
+          <Tooltip title={formatShortcutTooltip('新建', 'tabNew')}>
+            <span>
+              <PlusOutlined />
+            </span>
+          </Tooltip>
+        }
+        removeIcon={
+          <Tooltip title={formatShortcutTooltip('关闭', 'tabClose')}>
+            <span>
+              <CloseOutlined />
+            </span>
+          </Tooltip>
+        }
         renderTabBar={renderTabBar}
       />
     </div>

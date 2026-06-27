@@ -2,10 +2,10 @@ import React from 'react'
 import { Dropdown } from 'antd'
 import { Streamdown } from 'streamdown'
 import type { MessageViewModeProps } from './types'
+import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
 const contextMenuProps = {
-  items: [] as NonNullable<MessageViewModeProps['contextMenuItems']>,
-  style: { minWidth: 180 }
+  items: [] as NonNullable<MessageViewModeProps['contextMenuItems']>
 }
 
 export const MessageViewMode = React.memo(function MessageViewMode({
@@ -18,14 +18,14 @@ export const MessageViewMode = React.memo(function MessageViewMode({
   onContextMenu,
   onExpandCollapsed
 }: MessageViewModeProps): React.JSX.Element {
-  const menu = {
+  const dropdownProps = getStandardDropdownProps({
     ...contextMenuProps,
     items: contextMenuItems
-  }
+  })
 
   if (collapsed) {
     return (
-      <Dropdown menu={menu} trigger={['contextMenu']}>
+      <Dropdown {...dropdownProps} trigger={['contextMenu']}>
         <div
           className="message-item__preview"
           onClick={onExpandCollapsed}
@@ -38,7 +38,7 @@ export const MessageViewMode = React.memo(function MessageViewMode({
   }
 
   return (
-    <Dropdown menu={menu} trigger={['contextMenu']}>
+    <Dropdown {...dropdownProps} trigger={['contextMenu']}>
       <div className="message-item__body" onContextMenu={onContextMenu}>
         <Streamdown
           isAnimating={isStreaming && isAssistant}

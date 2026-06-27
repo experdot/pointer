@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import { AIGeneratePopover } from '../../../common/AIGeneratePopover'
 import type { TitleRowProps, TitleRowRef } from './types'
+import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
 export const TitleRow = React.memo(
   forwardRef<TitleRowRef, TitleRowProps>(function TitleRow(
@@ -118,7 +119,7 @@ export const TitleRow = React.memo(
             <TagOutlined />
             <span className="message-item__title-text">{title}</span>
             <Dropdown
-              menu={{
+              {...getStandardDropdownProps({
                 items: [
                   {
                     key: 'rename',
@@ -135,7 +136,7 @@ export const TitleRow = React.memo(
                     onClick: () => titleCallbacks.onDeleteTitle?.(messageId)
                   }
                 ]
-              }}
+              })}
               trigger={['click']}
             >
               <Button

@@ -11,6 +11,7 @@ import {
 import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '../../types/type'
+import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import './ConfigTree.css'
 
 export interface ConfigTreeProps<T extends ConfigItemBase> {
@@ -175,7 +176,7 @@ export function ConfigTree<T extends ConfigItemBase>({
           <Dropdown.Button
             type="text"
             icon={<EllipsisOutlined />}
-            menu={{ items: menuItems, onClick: onMenuClick }}
+            {...getStandardDropdownProps({ items: menuItems, onClick: onMenuClick })}
             onClick={handleCreate}
           >
             <PlusOutlined /> {addItemText}

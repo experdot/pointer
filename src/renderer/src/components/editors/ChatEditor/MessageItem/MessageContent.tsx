@@ -18,6 +18,7 @@ import { MessageViewMode } from './MessageViewMode'
 import { useConfirmDialog } from '../../../common/ConfirmDialog'
 import { tableToMarkdown, getSelectedText } from './utils'
 import type { MessageContentProps, ContextMenuInfo } from './types'
+import { getShortcutLabel } from '../../../../utils/shortcutPresentation'
 
 export const MessageContent = React.memo(function MessageContent({
   message,
@@ -220,6 +221,7 @@ export const MessageContent = React.memo(function MessageContent({
         key: 'copy',
         label: '复制',
         icon: <CopyOutlined />,
+        extra: getShortcutLabel('messageCopy'),
         onClick: handleCopy
       },
       {

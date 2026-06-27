@@ -17,6 +17,7 @@ import {
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
 import type { PreviewMode } from '../../../../features/export/types'
+import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
 // Preview width presets
 type DeviceType = 'mobile' | 'tablet' | 'desktop' | 'auto'
@@ -211,7 +212,7 @@ export function PreviewPanel(): React.JSX.Element {
               }))}
             />
           )}
-          <Dropdown menu={{ items: exportMenuItems }} disabled={!canExport}>
+          <Dropdown {...getStandardDropdownProps({ items: exportMenuItems })} disabled={!canExport}>
             <Button type="primary" disabled={!canExport}>
               <DownloadOutlined /> 导出 <DownOutlined />
             </Button>
