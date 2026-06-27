@@ -215,6 +215,7 @@ export const MessageItem = React.memo(function MessageItem({
               displayContent={displayContent}
               isUser={isUser}
               isAssistant={isAssistant}
+              isLeaf={isLeaf}
               isStreaming={isStreaming}
               isEditing={isEditing}
               editContent={editContent}
@@ -228,6 +229,10 @@ export const MessageItem = React.memo(function MessageItem({
               onSaveEdit={handleSaveEdit}
               onEditAndResend={handleEditAndResend}
               onToggleCollapse={() => actionCallbacks.onToggleCollapse?.(message.id)}
+              onStartEdit={handleStartEdit}
+              onRetry={() => actionCallbacks.onRetry(message.id)}
+              onContinue={() => actionCallbacks.onContinue(message.id)}
+              onDelete={() => actionCallbacks.onDelete(message.id)}
               onStartTitleEdit={handleStartTitleEdit}
               onStartTopicEdit={handleStartTopicEdit}
               topicCallbacks={topicCallbacks}

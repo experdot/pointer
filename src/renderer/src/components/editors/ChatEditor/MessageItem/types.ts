@@ -142,6 +142,7 @@ export interface MessageContentProps {
   displayContent: string
   isUser: boolean
   isAssistant: boolean
+  isLeaf?: boolean
   isStreaming?: boolean
   isEditing: boolean
   editContent: string
@@ -155,6 +156,10 @@ export interface MessageContentProps {
   onSaveEdit: () => void
   onEditAndResend: () => void
   onToggleCollapse: () => void
+  onStartEdit: () => void
+  onRetry: () => void
+  onContinue: () => void
+  onDelete: () => void
   onStartTitleEdit: () => void
   onStartTopicEdit: () => void
   topicCallbacks: TopicCallbacks
