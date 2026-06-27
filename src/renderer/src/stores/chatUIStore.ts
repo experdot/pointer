@@ -8,6 +8,7 @@ interface SearchState {
   matchCase: boolean
   useRegex: boolean
   matchWholeWord: boolean
+  focusRequestKey: number
 }
 
 const defaultSearchState: SearchState = {
@@ -16,7 +17,8 @@ const defaultSearchState: SearchState = {
   currentIndex: 0,
   matchCase: false,
   useRegex: false,
-  matchWholeWord: false
+  matchWholeWord: false,
+  focusRequestKey: 0
 }
 
 interface ChatUIState {
@@ -43,6 +45,7 @@ interface ChatUIStore {
     pageId: string,
     options: Partial<Pick<SearchState, 'matchCase' | 'useRegex' | 'matchWholeWord'>>
   ) => void
+  requestSearchFocus: (pageId: string) => void
   clearSearch: (pageId: string) => void
   reset: () => void
 }
@@ -178,6 +181,21 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
           ...options,
           // 选项变化时重置 currentIndex
           currentIndex: 0
+        }
+      })
+      return { states: newStates }
+    })
+  },
+
+  requestSearchFocus: (pageId) => {
+    set((state) => {
+      const newStates = new Map(state.states)
+      const current = newStates.get(pageId) ?? { ...defaultState }
+      newStates.set(pageId, {
+        ...current,
+        search: {
+          ...current.search,
+          focusRequestKey: current.search.focusRequestKey + 1
         }
       })
       return { states: newStates }

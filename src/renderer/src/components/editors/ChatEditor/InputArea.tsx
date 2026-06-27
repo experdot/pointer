@@ -148,6 +148,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     textAreaRef.current?.focus()
   }, [])
 
+  const blurInput = useCallback(() => {
+    textAreaRef.current?.blur()
+  }, [])
+
   const handleSend = useCallback(async () => {
     const trimmed = content.trim()
     // 允许仅发送附件（无文本）
@@ -172,13 +176,19 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        blurInput()
+        return
+      }
+
       // Enter 发送，Shift+Enter 换行
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         handleSend()
       }
     },
-    [handleSend]
+    [blurInput, handleSend]
   )
 
   const handleStop = useCallback(async () => {

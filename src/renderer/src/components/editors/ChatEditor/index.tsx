@@ -9,6 +9,8 @@ import { generateSessionTitleWithOptions } from '../../../services/titleService'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useGlobalSearchHighlight } from '../../../hooks/useGlobalSearchHighlight'
+import { useChatShortcuts } from '../../../hooks/useChatShortcuts'
+import { useTabsStore } from '../../../stores/tabsStore'
 import { MessageList, MessageListRef } from './MessageList'
 import { InputArea, InputAreaRef } from './InputArea'
 import { Header } from './Header'
@@ -99,23 +101,18 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   // 搜索状态
   const searchState = useChatUIStore((state) => state.getState(pageId).search)
   const setSearchOpen = useChatUIStore((state) => state.setSearchOpen)
+  const setSearchQuery = useChatUIStore((state) => state.setSearchQuery)
+  const requestSearchFocus = useChatUIStore((state) => state.requestSearchFocus)
+  const isActiveTab = useTabsStore((state) =>
+    state.tabs.some(
+      (tab) => tab.type === 'chat' && tab.dataId === pageId && tab.id === state.activeTabId
+    )
+  )
 
   // 同步 messageContainerRef
   useEffect(() => {
     messageContainerRef.current = messageListRef.current?.getContainer() ?? null
   })
-
-  // 键盘事件监听（Ctrl+F 打开搜索）
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault()
-        setSearchOpen(pageId, true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [pageId, setSearchOpen])
 
   // 监听导航请求，执行滚动
   const pendingNavigation = useNavigationStore((s) => s.pendingNavigation)
@@ -180,6 +177,14 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     navigationService.requestScrollToNext(pageId)
   }, [pageId])
 
+  const handleScrollToFirst = useCallback(() => {
+    messageListRef.current?.scrollToFirst()
+  }, [])
+
+  const handleScrollToLast = useCallback(() => {
+    messageListRef.current?.scrollToLast()
+  }, [])
+
   const handleToggleCollapse = useCallback(
     (messageId: string) => {
       toggleMessageCollapsed(pageId, messageId)
@@ -213,6 +218,22 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   const handleCloseDrawer = useCallback(() => {
     setDrawerOpen(false)
   }, [])
+
+  useChatShortcuts({
+    enabled: isActiveTab,
+    navigationEnabled: isActiveTab && !isStreaming,
+    onOpenSearch: (selectedText) => {
+      if (selectedText) {
+        setSearchQuery(pageId, selectedText)
+      }
+      setSearchOpen(pageId, true)
+      requestSearchFocus(pageId)
+    },
+    onScrollToPrev: handleNavigateToPrev,
+    onScrollToNext: handleNavigateToNext,
+    onScrollToFirst: handleScrollToFirst,
+    onScrollToLast: handleScrollToLast
+  })
 
   if (!page) {
     return <div className="chat-editor chat-editor--empty">页面不存在</div>

@@ -125,6 +125,17 @@ export const MessageEditMode = React.memo(function MessageEditMode({
     [attachments, onAttachmentsChange]
   )
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onCancel()
+      }
+    },
+    [onCancel]
+  )
+
   return (
     <div
       className={`message-item__edit ${isUser && isEditDragOver ? 'message-item__edit--drag-over' : ''}`}
@@ -139,6 +150,7 @@ export const MessageEditMode = React.memo(function MessageEditMode({
       <TextArea
         value={content}
         onChange={(e) => onContentChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         onPaste={isUser ? handlePaste : undefined}
         autoSize={{ minRows: 2, maxRows: 10 }}
         autoFocus

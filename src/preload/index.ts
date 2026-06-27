@@ -10,6 +10,7 @@ import type {
   UpdateInfo,
   DownloadProgress
 } from './index.d'
+import type { ForwardedShortcutAction } from '../shared/shortcuts'
 
 // Custom APIs for renderer
 const api = {
@@ -239,6 +240,16 @@ const api = {
     },
     notifyFlushComplete: (): void => {
       ipcRenderer.send('persistence:flush-complete')
+    }
+  },
+  shortcuts: {
+    onAction: (callback: (action: ForwardedShortcutAction) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, action: ForwardedShortcutAction): void =>
+        callback(action)
+      ipcRenderer.on('shortcut:action', listener)
+      return () => {
+        ipcRenderer.removeListener('shortcut:action', listener)
+      }
     }
   }
 }

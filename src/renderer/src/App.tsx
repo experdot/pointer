@@ -9,6 +9,7 @@ import { initPersistence } from './persistence/initPersistence'
 import { UpdateNotification } from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { SwitchTransactionOverlay } from './components/common/SwitchTransactionOverlay'
+import { AppShortcuts } from './components/common/AppShortcuts'
 import { MainLayout } from './components/layout/MainLayout'
 import { useAccountStore } from './stores/accountStore'
 import { useSwitchTransactionStore } from './stores/switchTransactionStore'
@@ -45,6 +46,7 @@ function AppContent(): React.JSX.Element {
 
   return (
     <>
+      <AppShortcuts />
       <UpdateNotification />
       <MainLayout />
     </>

@@ -13,6 +13,8 @@ export function SwitchTransactionOverlay(): React.JSX.Element | null {
 
   return (
     <div
+      className="switch-transaction-overlay"
+      data-shortcut-blocking-overlay="true"
       style={{
         position: 'fixed',
         inset: 0,

@@ -33,6 +33,8 @@ interface TabsActions {
   openTab: (tab: Tab, preview?: boolean) => void
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
+  activateNextTab: () => void
+  activatePrevTab: () => void
   updateTabTitle: (tabId: string, title: string) => void
   reorderTabs: (fromIndex: number, toIndex: number) => void
   togglePinTab: (tabId: string) => void
@@ -217,6 +219,25 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     const newState = { activeTabId: tabId, ...historyUpdate }
     set(newState)
     persist({ ...state, ...newState })
+  },
+
+  activateNextTab: () => {
+    const { tabs, activeTabId, setActiveTab } = get()
+    if (tabs.length < 2) return
+
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % tabs.length : 0
+    setActiveTab(tabs[nextIndex].id)
+  },
+
+  activatePrevTab: () => {
+    const { tabs, activeTabId, setActiveTab } = get()
+    if (tabs.length < 2) return
+
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const prevIndex =
+      currentIndex >= 0 ? (currentIndex - 1 + tabs.length) % tabs.length : tabs.length - 1
+    setActiveTab(tabs[prevIndex].id)
   },
 
   updateTabTitle: (tabId, title) => {
@@ -411,6 +432,8 @@ export function getTabStoreInterface(): ITabStore {
     openTab: (tab, preview) => store.getState().openTab(tab, preview),
     closeTab: (tabId) => store.getState().closeTab(tabId),
     setActiveTab: (tabId) => store.getState().setActiveTab(tabId),
+    activateNextTab: () => store.getState().activateNextTab(),
+    activatePrevTab: () => store.getState().activatePrevTab(),
     updateTabTitle: (tabId, title) => store.getState().updateTabTitle(tabId, title),
     reorderTabs: (fromIndex, toIndex) => store.getState().reorderTabs(fromIndex, toIndex),
     togglePinTab: (tabId) => store.getState().togglePinTab(tabId),

@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { AIRequest, AIStreamCallbacks, LLMConfig } from '../shared/ai'
+import type { ForwardedShortcutAction } from '../shared/shortcuts'
 
 export type {
   AIRequest,
@@ -184,6 +185,9 @@ declare global {
       persistence: {
         onFlushRequest: (callback: () => void) => void
         notifyFlushComplete: () => void
+      }
+      shortcuts: {
+        onAction: (callback: (action: ForwardedShortcutAction) => void) => () => void
       }
     }
     electronWindow: {

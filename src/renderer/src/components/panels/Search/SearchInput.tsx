@@ -6,17 +6,24 @@ import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 
 export function SearchInput(): React.JSX.Element {
-  const { query, setQuery, options, setOptions, clearSearch, triggerSearch } =
+  const { query, setQuery, options, setOptions, clearSearch, triggerSearch, focusRequestKey } =
     useGlobalSearchStore()
   const activePanel = useLayoutStore((state) => state.activePanel)
   const inputRef = useRef<InputRef>(null)
 
-  // 当切换到搜索面板时自动聚焦
+  // 当切换到搜索面板或收到快捷键请求时自动聚焦并全选
   useEffect(() => {
-    if (activePanel === 'search') {
-      inputRef.current?.focus()
+    if (activePanel !== 'search') {
+      return undefined
     }
-  }, [activePanel])
+
+    const timer = setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [activePanel, focusRequestKey])
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

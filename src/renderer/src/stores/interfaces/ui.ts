@@ -72,6 +72,16 @@ export interface ITabStore extends IInitializable, IResettable {
   setActiveTab(tabId: string): void
 
   /**
+   * 激活下一个标签页
+   */
+  activateNextTab(): void
+
+  /**
+   * 激活上一个标签页
+   */
+  activatePrevTab(): void
+
+  /**
    * 更新标签页标题
    */
   updateTabTitle(tabId: string, title: string): void

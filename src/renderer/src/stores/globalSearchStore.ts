@@ -13,6 +13,8 @@ interface GlobalSearchState {
   highlightMatch: GlobalSearchMatch | null
   /** 搜索触发器（用于强制立即搜索） */
   searchTrigger: number
+  /** 输入框聚焦触发器（用于强制 focus + select） */
+  focusRequestKey: number
 }
 
 interface GlobalSearchActions {
@@ -30,6 +32,7 @@ interface GlobalSearchActions {
   setHighlightMatch: (match: GlobalSearchMatch | null) => void
   /** 触发立即搜索（绕过防抖） */
   triggerSearch: () => void
+  requestFocus: () => void
   reset: () => void
 }
 
@@ -52,7 +55,8 @@ const initialState: GlobalSearchState = {
   isSearching: false,
   selectedIndex: null,
   highlightMatch: null,
-  searchTrigger: 0
+  searchTrigger: 0,
+  focusRequestKey: 0
 }
 
 export const useGlobalSearchStore = create<GlobalSearchStore>((set) => ({
@@ -121,6 +125,8 @@ export const useGlobalSearchStore = create<GlobalSearchStore>((set) => ({
   setHighlightMatch: (highlightMatch) => set({ highlightMatch }),
 
   triggerSearch: () => set((state) => ({ searchTrigger: state.searchTrigger + 1 })),
+
+  requestFocus: () => set((state) => ({ focusRequestKey: state.focusRequestKey + 1 })),
 
   reset: () => set(initialState)
 }))

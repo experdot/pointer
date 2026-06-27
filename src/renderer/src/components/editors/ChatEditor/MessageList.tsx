@@ -34,6 +34,8 @@ export interface MessageListRef {
   scrollToMessage: (messageId: string, instant?: boolean) => void
   scrollToPrev: () => void
   scrollToNext: () => void
+  scrollToFirst: () => void
+  scrollToLast: () => void
   collapseAll: () => void
   expandAll: () => void
   getContainer: () => HTMLDivElement | null
@@ -331,6 +333,28 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         // 已经是最后一条，滚动到底部
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
         shouldAutoScroll.current = true
+      }
+    },
+    scrollToFirst: () => {
+      const firstMessageId = visibleMessages[0]?.id
+      const container = containerRef.current
+      if (!container || !firstMessageId) return
+
+      const messageEl = container.querySelector(`[data-message-id="${firstMessageId}"]`)
+      if (messageEl) {
+        messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        shouldAutoScroll.current = false
+      }
+    },
+    scrollToLast: () => {
+      const lastMessageId = visibleMessages[visibleMessages.length - 1]?.id
+      const container = containerRef.current
+      if (!container || !lastMessageId) return
+
+      const messageEl = container.querySelector(`[data-message-id="${lastMessageId}"]`)
+      if (messageEl) {
+        messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        shouldAutoScroll.current = false
       }
     },
     collapseAll: onCollapseAll,

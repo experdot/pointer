@@ -181,9 +181,9 @@ interface TreeViewEditInputProps {
   editingValue: string
   setEditingValue: (value: string) => void
   isFolder: boolean
-  onFinishRename: () => void
+  onSaveAndExit: () => void
+  onCancelAndExit: () => void
   onGenerateItemName?: (id: string, options: GenerateOptions) => Promise<void>
-  onClearEditing: () => void
 }
 
 function TreeViewEditInput({
@@ -191,63 +191,126 @@ function TreeViewEditInput({
   editingValue,
   setEditingValue,
   isFolder,
-  onFinishRename,
-  onGenerateItemName,
-  onClearEditing
+  onSaveAndExit,
+  onCancelAndExit,
+  onGenerateItemName
 }: TreeViewEditInputProps): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const exitModeRef = useRef<'idle' | 'save' | 'cancel'>('idle')
+
+  const handleSaveAndExit = useCallback(() => {
+    if (exitModeRef.current !== 'idle') {
+      return
+    }
+
+    exitModeRef.current = 'save'
+    onSaveAndExit()
+  }, [onSaveAndExit])
+
+  const handleCancelAndExit = useCallback(() => {
+    if (exitModeRef.current !== 'idle') {
+      return
+    }
+
+    exitModeRef.current = 'cancel'
+    onCancelAndExit()
+  }, [onCancelAndExit])
 
   const handleGenerate = async (options: GenerateOptions): Promise<void> => {
     if (onGenerateItemName) {
       await onGenerateItemName(id, options)
-      onClearEditing()
+      handleCancelAndExit()
     }
   }
 
-  return (
-    <Input
-      size="small"
-      value={editingValue}
-      onChange={(e) => setEditingValue(e.target.value)}
-      onBlur={(e) => {
-        // 如果点击的是 AI 按钮或 Popover 内容，不触发 blur 保存
-        if (
-          e.relatedTarget?.closest('.rename-input__ai-btn') ||
-          e.relatedTarget?.closest('.ai-generate-popover__content')
-        )
-          return
-        if (!popoverOpen) {
-          onFinishRename()
-        }
-      }}
-      onPressEnter={onFinishRename}
-      onClick={(e) => e.stopPropagation()}
-      autoFocus
-      suffix={
-        !isFolder && onGenerateItemName ? (
-          <AIGeneratePopover
-            open={popoverOpen}
-            onOpenChange={(open) => {
-              setPopoverOpen(open)
-              if (!open) onClearEditing()
-            }}
-            mode="session-title"
-            onGenerate={handleGenerate}
-            placement="bottomRight"
-          >
-            <Tooltip title="AI 生成">
-              <ThunderboltOutlined
-                className="rename-input__ai-btn"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPopoverOpen(true)
-                }}
-              />
-            </Tooltip>
-          </AIGeneratePopover>
-        ) : undefined
+  useEffect(() => {
+    const handlePointerDownOutside = (event: PointerEvent): void => {
+      const target = event.target
+      if (!(target instanceof HTMLElement)) {
+        return
       }
-    />
+
+      if (containerRef.current?.contains(target)) {
+        return
+      }
+
+      if (
+        target.closest('.rename-input__ai-btn') ||
+        target.closest('.ai-generate-popover__content')
+      ) {
+        return
+      }
+
+      if (!popoverOpen) {
+        handleSaveAndExit()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDownOutside, true)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutside, true)
+    }
+  }, [handleSaveAndExit, popoverOpen])
+
+  return (
+    <div ref={containerRef} onClick={(e) => e.stopPropagation()}>
+      <Input
+        size="small"
+        value={editingValue}
+        onChange={(e) => setEditingValue(e.target.value)}
+        onBlur={(e) => {
+          // 如果点击的是 AI 按钮或 Popover 内容，不触发 blur 保存
+          if (
+            e.relatedTarget?.closest('.rename-input__ai-btn') ||
+            e.relatedTarget?.closest('.ai-generate-popover__content')
+          )
+            return
+          if (!popoverOpen) {
+            handleSaveAndExit()
+          }
+        }}
+        onPressEnter={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleSaveAndExit()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            e.stopPropagation()
+            handleCancelAndExit()
+          }
+        }}
+        autoFocus
+        suffix={
+          !isFolder && onGenerateItemName ? (
+            <AIGeneratePopover
+              open={popoverOpen}
+              onOpenChange={(open) => {
+                setPopoverOpen(open)
+                if (!open) {
+                  handleCancelAndExit()
+                }
+              }}
+              mode="session-title"
+              onGenerate={handleGenerate}
+              placement="bottomRight"
+            >
+              <Tooltip title="AI 生成">
+                <ThunderboltOutlined
+                  className="rename-input__ai-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPopoverOpen(true)
+                  }}
+                />
+              </Tooltip>
+            </AIGeneratePopover>
+          ) : undefined
+        }
+      />
+    </div>
   )
 }
 
@@ -287,6 +350,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const { showDeleteConfirm } = useConfirmDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
+  const [activeTreeKey, setActiveTreeKey] = useState<string | null>(selectedId)
 
   // 虚拟滚动：监听容器高度变化
   const containerRef = useRef<HTMLDivElement>(null)
@@ -314,6 +378,12 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       resizeObserver.disconnect()
     }
   }, [])
+
+  useEffect(() => {
+    if (selectedId) {
+      setActiveTreeKey(selectedId)
+    }
+  }, [selectedId])
 
   // 展开父级文件夹并滚动到选中的节点
   useEffect(() => {
@@ -387,43 +457,113 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 事件处理 ====================
 
-  const handleStartRename = (id: string, currentName: string): void => {
+  const handleStartRename = useCallback((id: string, currentName: string): void => {
     setEditingId(id)
     setEditingValue(currentName)
-  }
+    setActiveTreeKey(id)
+  }, [])
 
-  const handleFinishRename = (isFolder: boolean): void => {
-    if (editingId && editingValue.trim()) {
-      if (isFolder) {
-        updateFolder(editingId, editingValue.trim())
-      } else {
-        updateItem(editingId, editingValue.trim())
+  const handleFinishRename = useCallback(
+    (isFolder: boolean): void => {
+      if (editingId && editingValue.trim()) {
+        if (isFolder) {
+          updateFolder(editingId, editingValue.trim())
+        } else {
+          updateItem(editingId, editingValue.trim())
+        }
       }
-    }
+      setEditingId(null)
+      setEditingValue('')
+    },
+    [editingId, editingValue, updateFolder, updateItem]
+  )
+
+  const handleCancelRename = useCallback((): void => {
     setEditingId(null)
     setEditingValue('')
-  }
+  }, [])
 
-  const handleDeleteItem = (item: TItem): void => {
-    showDeleteConfirm({
-      title: `删除 "${getItemName(item)}"`,
-      onOk: () => {
-        deleteItem(item.id)
-        if (selectedId === item.id) onSelect(null)
+  const startRenameByKey = useCallback(
+    (key: string | null): void => {
+      if (!key) {
+        return
       }
-    })
-  }
 
-  const handleDeleteFolder = (folder: TFolder): void => {
-    showDeleteConfirm({
-      title: `删除文件夹 "${getFolderName(folder)}"`,
-      content: '将同时删除文件夹内的所有项目',
-      onOk: () => {
-        deleteFolder(folder.id)
-        if (selectedId === folder.id) onSelect(null)
+      const folder = folders.find((candidate) => candidate.id === key)
+      if (folder) {
+        handleStartRename(folder.id, getFolderName(folder))
+        return
       }
-    })
-  }
+
+      const item = items.find((candidate) => candidate.id === key)
+      if (item) {
+        handleStartRename(item.id, getItemName(item))
+      }
+    },
+    [folders, items, getFolderName, getItemName, handleStartRename]
+  )
+
+  const focusTreeKeyboardTarget = useCallback((): void => {
+    const keyboardTarget = containerRef.current?.querySelector<HTMLInputElement>(
+      'input[aria-label="for screen reader"]'
+    )
+    keyboardTarget?.focus()
+  }, [])
+
+  const handleDeleteItem = useCallback(
+    (item: TItem): void => {
+      showDeleteConfirm({
+        title: `删除 "${getItemName(item)}"`,
+        onOk: () => {
+          if (activeTreeKey === item.id) {
+            setActiveTreeKey(null)
+          }
+
+          deleteItem(item.id)
+          if (selectedId === item.id) onSelect(null)
+        }
+      })
+    },
+    [activeTreeKey, deleteItem, getItemName, onSelect, selectedId, showDeleteConfirm]
+  )
+
+  const handleDeleteFolder = useCallback(
+    (folder: TFolder): void => {
+      showDeleteConfirm({
+        title: `删除文件夹 "${getFolderName(folder)}"`,
+        content: '将同时删除文件夹内的所有项目',
+        onOk: () => {
+          if (activeTreeKey === folder.id) {
+            setActiveTreeKey(null)
+          }
+
+          deleteFolder(folder.id)
+          if (selectedId === folder.id) onSelect(null)
+        }
+      })
+    },
+    [activeTreeKey, deleteFolder, getFolderName, onSelect, selectedId, showDeleteConfirm]
+  )
+
+  const deleteByKey = useCallback(
+    (key: string | null): void => {
+      if (!key) {
+        return
+      }
+
+      const folder = folders.find((candidate) => candidate.id === key)
+      if (folder) {
+        handleDeleteFolder(folder)
+        return
+      }
+
+      const item = items.find((candidate) => candidate.id === key)
+      if (item) {
+        handleDeleteItem(item)
+      }
+    },
+    [folders, handleDeleteFolder, handleDeleteItem, items]
+  )
 
   const handleClearFolder = (folder: TFolder): void => {
     showDeleteConfirm({
@@ -445,9 +585,40 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const handleSelect: TreeProps['onSelect'] = (_selectedKeys, info) => {
     const nodeData = info.node as unknown as TreeNodeData<TItem, TFolder>
     const key = info.node.key as string
+    setActiveTreeKey(key)
     onSelect(key)
     if (nodeData.isFolder) toggleFolderExpanded(key)
+    setTimeout(() => {
+      focusTreeKeyboardTarget()
+    }, 0)
   }
+
+  const handleTreeKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (editingId || checkable) {
+        return
+      }
+
+      const targetKey = activeTreeKey ?? selectedId
+      if (!targetKey) {
+        return
+      }
+
+      if (event.key === 'F2') {
+        event.preventDefault()
+        event.stopPropagation()
+        startRenameByKey(targetKey)
+        return
+      }
+
+      if (event.key === 'Delete') {
+        event.preventDefault()
+        event.stopPropagation()
+        deleteByKey(targetKey)
+      }
+    },
+    [activeTreeKey, checkable, deleteByKey, editingId, selectedId, startRenameByKey]
+  )
 
   // ==================== 拖拽处理 ====================
 
@@ -529,7 +700,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           icon: <EditOutlined />,
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
-            handleStartRename(folder.id, getFolderName(folder))
+            startRenameByKey(folder.id)
           }
         },
         ...customItems,
@@ -569,7 +740,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           icon: <EditOutlined />,
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
-            handleStartRename(item.id, getItemName(item))
+            startRenameByKey(item.id)
           }
         },
         ...customItems,
@@ -621,12 +792,9 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           editingValue={editingValue}
           setEditingValue={setEditingValue}
           isFolder={treeNode.isFolder}
-          onFinishRename={() => handleFinishRename(treeNode.isFolder)}
+          onSaveAndExit={() => handleFinishRename(treeNode.isFolder)}
+          onCancelAndExit={handleCancelRename}
           onGenerateItemName={onGenerateItemName}
-          onClearEditing={() => {
-            setEditingId(null)
-            setEditingValue('')
-          }}
         />
       )
     }
@@ -657,6 +825,8 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           treeData={treeData}
           selectedKeys={selectedId ? [selectedId] : []}
           expandedKeys={expandedKeys}
+          onActiveChange={(key) => setActiveTreeKey(key === null ? null : String(key))}
+          onKeyDown={handleTreeKeyDown}
           onSelect={handleSelect}
           onExpand={handleExpand}
           draggable={!checkable}

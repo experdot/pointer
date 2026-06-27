@@ -32,6 +32,11 @@
   background: transparent;
 }
 
+.tree-view-content .ant-tree-focused:not(:hover):not(.ant-tree-active-focused) {
+  outline: none;
+  outline-offset: 0;
+}
+
 .tree-view-content .ant-tree-treenode {
   width: 100%;
   padding: 0 8px;

@@ -31,14 +31,14 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
     pageId
   })
 
-  // 自动聚焦输入框
+  // 自动聚焦并选中输入框
   useEffect(() => {
     const timer = setTimeout(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
     }, 50)
     return () => clearTimeout(timer)
-  }, [])
+  }, [searchState.focusRequestKey])
 
   // 当 currentIndex 变化时滚动到对应位置
   useEffect(() => {
