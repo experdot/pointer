@@ -66,6 +66,7 @@ function prepareConversation(
         id: newId,
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
+        reasoning_content: m.reasoning_content,
         createdAt: m.createdAt,
         parentMessageId: m.parentMessageId,
         branchIndex: m.branchIndex

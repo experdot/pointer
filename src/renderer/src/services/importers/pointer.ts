@@ -9,8 +9,8 @@ import type { ParsedConversation, ParsedMessage } from './types'
 interface PointerMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: number
+  content?: string
+  timestamp?: number
   children?: string[]
   parentId?: string
   modelId?: string
@@ -26,7 +26,7 @@ interface PointerPage {
   createdAt: number
   updatedAt?: number
   order?: number
-  messages: PointerMessage[]
+  messages?: PointerMessage[]
   messageMap?: Record<string, PointerMessage>
   currentPath?: string[]
 }
@@ -34,6 +34,10 @@ interface PointerPage {
 interface PointerExport {
   type: 'chats-only'
   pages: PointerPage[]
+}
+
+function isBlankText(value: string | undefined): boolean {
+  return value === undefined || value.trim().length === 0
 }
 
 export class PointerImporter extends BaseImporter {
@@ -63,8 +67,46 @@ export class PointerImporter extends BaseImporter {
     }
 
     return exportData.pages
-      .filter((page) => page && typeof page === 'object' && page.messages)
+      .filter(
+        (page) =>
+          page && typeof page === 'object' && (Array.isArray(page.messages) || !!page.messageMap)
+      )
       .map((page) => this.parseConversation(page))
+  }
+
+  private buildMessageSource(page: PointerPage): PointerMessage[] {
+    const messages = Array.isArray(page.messages) ? page.messages : []
+
+    if (messages.length === 0) {
+      return page.messageMap ? Object.values(page.messageMap) : []
+    }
+
+    if (!page.messageMap) {
+      return messages
+    }
+
+    return messages.map((msg) => this.mergeMessage(msg, page.messageMap?.[msg.id]))
+  }
+
+  private mergeMessage(primary: PointerMessage, fallback?: PointerMessage): PointerMessage {
+    if (!fallback) {
+      return primary
+    }
+
+    return {
+      ...fallback,
+      ...primary,
+      content: isBlankText(primary.content)
+        ? (fallback.content ?? primary.content)
+        : primary.content,
+      reasoning_content: isBlankText(primary.reasoning_content)
+        ? (fallback.reasoning_content ?? primary.reasoning_content)
+        : primary.reasoning_content,
+      parentId: primary.parentId ?? fallback.parentId,
+      children: primary.children ?? fallback.children,
+      timestamp: primary.timestamp ?? fallback.timestamp,
+      modelId: primary.modelId ?? fallback.modelId
+    }
   }
 
   /**
@@ -75,7 +117,7 @@ export class PointerImporter extends BaseImporter {
 
     // 构建父子关系映射（从 children 转换为 parentMessageId）
     const parentMap = new Map<string, string>()
-    const messageSource = page.messageMap ? Object.values(page.messageMap) : page.messages
+    const messageSource = this.buildMessageSource(page)
 
     // 第一遍：构建 children -> parent 映射
     for (const msg of messageSource) {
@@ -106,8 +148,11 @@ export class PointerImporter extends BaseImporter {
     // 叶子消息从 currentPath 获取，或者找没有子消息的消息
     let leafMessageId: string | undefined
     if (page.currentPath && page.currentPath.length > 0) {
-      leafMessageId = page.currentPath[page.currentPath.length - 1]
-    } else {
+      const currentLeafId = page.currentPath[page.currentPath.length - 1]
+      leafMessageId = mapping[currentLeafId] ? currentLeafId : undefined
+    }
+
+    if (!leafMessageId) {
       leafMessageId = this.findLeafNode(mapping)
     }
 
@@ -115,7 +160,7 @@ export class PointerImporter extends BaseImporter {
       id: page.id || this.generateId(),
       title: page.title || 'Untitled',
       platform: 'custom',
-      createdAt: page.createdAt || Date.now(),
+      createdAt: page.createdAt ?? Date.now(),
       updatedAt: page.updatedAt,
       messages,
       leafMessageId
@@ -136,7 +181,8 @@ export class PointerImporter extends BaseImporter {
     return {
       id: msg.id,
       role: msg.role,
-      content: msg.content || '',
+      content: msg.content ?? '',
+      reasoning_content: msg.reasoning_content,
       createdAt: this.parseTimestamp(msg.timestamp),
       parentMessageId,
       model: msg.modelId

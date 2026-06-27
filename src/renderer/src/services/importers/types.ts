@@ -10,6 +10,7 @@ export interface ParsedMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  reasoning_content?: string
   createdAt: number
   parentMessageId?: string
   branchIndex?: number
