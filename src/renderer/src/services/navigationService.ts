@@ -11,6 +11,8 @@ export interface NavigationTarget {
   openPage?: boolean
   /** 滚动行为：true 为即时滚动，false 为平滑滚动 */
   instant?: boolean
+  /** 是否请求滚动到消息位置，默认 true */
+  requestScroll?: boolean
 }
 
 // 导航版本号，用于处理竞态条件
@@ -23,7 +25,7 @@ let navigationVersion = 0
  * 完整流程：打开页面 → (仅在需要时)切换分支 → 展开折叠的 Topic → 请求滚动
  */
 export async function navigateToMessage(target: NavigationTarget): Promise<void> {
-  const { pageId, messageId, openPage = false, instant = true } = target
+  const { pageId, messageId, openPage = false, instant = true, requestScroll = true } = target
 
   // Step 1: 打开页面（如果需要）
   if (openPage) {
@@ -47,12 +49,14 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
   await expandTopicsForMessage(pageId, messageId)
 
   // Step 6: 请求 UI 执行滚动
-  navigationVersion++
-  stores.navigation.requestNavigation({
-    version: navigationVersion,
-    target: { pageId, messageId, instant },
-    timestamp: Date.now()
-  })
+  if (requestScroll) {
+    navigationVersion++
+    stores.navigation.requestNavigation({
+      version: navigationVersion,
+      target: { pageId, messageId, instant },
+      timestamp: Date.now()
+    })
+  }
 }
 
 // ==================== Topic 展开逻辑 ====================

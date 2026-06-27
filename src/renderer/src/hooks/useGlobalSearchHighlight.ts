@@ -8,6 +8,8 @@ interface UseGlobalSearchHighlightOptions {
   pageId: string
 }
 
+const MAX_HIGHLIGHT_RETRY_COUNT = 20
+
 /**
  * 全局搜索高亮 Hook
  * 处理从全局搜索跳转后的文本高亮显示
@@ -44,13 +46,28 @@ export function useGlobalSearchHighlight({
       return
     }
 
-    // 延迟执行，确保 DOM 已渲染
+    // 按帧重试，消息一渲染出来就立即高亮并滚动
+    let retryCount = 0
+    let frameId = 0
+
     const applyHighlight = (): void => {
       const messageEl = container.querySelector(`[data-message-id="${highlightMatch.messageId}"]`)
-      if (!messageEl) return
+      if (!messageEl) {
+        if (retryCount < MAX_HIGHLIGHT_RETRY_COUNT) {
+          retryCount++
+          frameId = requestAnimationFrame(applyHighlight)
+        }
+        return
+      }
 
       const contentEl = messageEl.querySelector('.message-item__body')
-      if (!contentEl) return
+      if (!contentEl) {
+        if (retryCount < MAX_HIGHLIGHT_RETRY_COUNT) {
+          retryCount++
+          frameId = requestAnimationFrame(applyHighlight)
+        }
+        return
+      }
 
       // 获取消息内容
       const messageContent = messages.find((m) => m.id === highlightMatch.messageId)?.content ?? ''
@@ -81,13 +98,29 @@ export function useGlobalSearchHighlight({
       }
 
       // 找到匹配位置（基于原始内容位置在渲染后的 DOM 中查找）
-      // 由于 Markdown 渲染可能改变位置，我们搜索匹配文本
-      const idx = fullText.indexOf(matchText)
-      if (idx === -1) return
+      // 由于 Markdown 渲染可能改变位置，这里按“该消息中的第 N 个命中”定位
+      const idx = findNthMatchIndex(
+        fullText,
+        matchText,
+        highlightMatch.occurrenceIndexInMessage ?? 0
+      )
+      if (idx === -1) {
+        if (retryCount < MAX_HIGHLIGHT_RETRY_COUNT) {
+          retryCount++
+          frameId = requestAnimationFrame(applyHighlight)
+        }
+        return
+      }
 
       // 创建 Range
       const range = createRangeFromFullTextOffset(nodeOffsets, idx, idx + matchText.length)
-      if (!range) return
+      if (!range) {
+        if (retryCount < MAX_HIGHLIGHT_RETRY_COUNT) {
+          retryCount++
+          frameId = requestAnimationFrame(applyHighlight)
+        }
+        return
+      }
 
       rangeRef.current = range
 
@@ -95,16 +128,30 @@ export function useGlobalSearchHighlight({
       try {
         const highlight = new Highlight(range)
         CSS.highlights.set('global-search-highlight', highlight)
+
+        // 将目标命中滚动到容器可视区域中央，避免只停留在消息首个命中附近
+        const rect = range.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+        const targetScrollTop =
+          container.scrollTop +
+          rect.top -
+          containerRect.top -
+          containerRect.height / 2 +
+          rect.height / 2
+
+        container.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'instant'
+        })
       } catch (e) {
         console.warn('Failed to apply global search highlight:', e)
       }
     }
 
-    // 延迟执行以确保 DOM 渲染完成
-    const timerId = setTimeout(applyHighlight, 150)
+    frameId = requestAnimationFrame(applyHighlight)
 
     return () => {
-      clearTimeout(timerId)
+      cancelAnimationFrame(frameId)
     }
   }, [containerRef, highlightMatch, messages, pageId])
 
@@ -116,6 +163,23 @@ export function useGlobalSearchHighlight({
       }
     }
   }, [pageId])
+}
+
+function findNthMatchIndex(fullText: string, matchText: string, occurrenceIndex: number): number {
+  let currentIndex = 0
+  let searchStartIndex = 0
+
+  while (true) {
+    const idx = fullText.indexOf(matchText, searchStartIndex)
+    if (idx === -1) return -1
+
+    if (currentIndex === occurrenceIndex) {
+      return idx
+    }
+
+    currentIndex++
+    searchStartIndex = idx + 1
+  }
 }
 
 /**

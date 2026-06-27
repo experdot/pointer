@@ -9,7 +9,7 @@ import {
   PlusOutlined,
   EditOutlined,
   SmileOutlined,
-  RobotOutlined,
+  CompassOutlined,
   RocketOutlined,
   ThunderboltOutlined,
   StarOutlined,
@@ -33,7 +33,7 @@ import { useSwitchTransactionStore } from '../../../stores/switchTransactionStor
 const DEFAULT_AVATARS = [
   { icon: UserOutlined, key: 'user', color: '#1677ff' },
   { icon: SmileOutlined, key: 'smile', color: '#52c41a' },
-  { icon: RobotOutlined, key: 'robot', color: '#722ed1' },
+  { icon: CompassOutlined, key: 'compass', color: '#722ed1' },
   { icon: RocketOutlined, key: 'rocket', color: '#fa541c' },
   { icon: ThunderboltOutlined, key: 'thunder', color: '#faad14' },
   { icon: StarOutlined, key: 'star', color: '#eb2f96' },

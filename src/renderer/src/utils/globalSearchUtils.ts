@@ -125,6 +125,20 @@ function extractSnippet(
   return { snippet, matchStart, matchEnd }
 }
 
+function countOccurrencesBefore(content: string, matchText: string, currentOffset: number): number {
+  let count = 0
+  let searchIndex = 0
+
+  while (searchIndex < currentOffset) {
+    const idx = content.indexOf(matchText, searchIndex)
+    if (idx === -1 || idx >= currentOffset) break
+    count++
+    searchIndex = idx + 1
+  }
+
+  return count
+}
+
 /**
  * 在单个页面的消息中搜索，返回按消息分组的结果
  */
@@ -158,10 +172,11 @@ function searchInMessages(
     let match: RegExpExecArray | null
 
     while ((match = pattern.exec(content)) !== null && totalMatchCount < MAX_MATCHES_PER_PAGE) {
+      const matchText = match[0]
       const { snippet, matchStart, matchEnd } = extractSnippet(
         content,
         match.index,
-        match[0].length
+        matchText.length
       )
 
       matches.push({
@@ -172,7 +187,8 @@ function searchInMessages(
         matchStart,
         matchEnd,
         contentStart: match.index,
-        contentEnd: match.index + match[0].length,
+        contentEnd: match.index + matchText.length,
+        occurrenceIndexInMessage: countOccurrencesBefore(content, matchText, match.index),
         createdAt: message.createdAt
       })
 

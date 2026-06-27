@@ -10,6 +10,8 @@
 }
 
 .chat-editor__title {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--ant-color-text);
@@ -27,7 +29,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: 100%;
+  max-width: 300px;
   min-width: 0;
 }
 
@@ -49,7 +51,7 @@
 
 .chat-editor__title-input {
   flex: 1;
-  max-width: 400px;
+  max-width: 300px;
 }
 
 /* Rename Input AI Button */

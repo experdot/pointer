@@ -1,13 +1,13 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { Dropdown, Button, Tooltip, Progress } from 'antd'
 import {
-  UnorderedListOutlined,
   FolderOutlined,
   TagOutlined,
   UserOutlined,
   RobotOutlined,
   ThunderboltOutlined,
   ApartmentOutlined,
+  ProfileOutlined,
   RightOutlined,
   DownOutlined
 } from '@ant-design/icons'
@@ -259,7 +259,7 @@ export function OutlineDropdown({
         <Button
           type="text"
           size="small"
-          icon={<UnorderedListOutlined />}
+          icon={<ProfileOutlined />}
           className="branch-path-bar__outline-btn"
         />
       </Tooltip>

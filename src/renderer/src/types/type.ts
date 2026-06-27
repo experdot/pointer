@@ -205,6 +205,8 @@ export interface GlobalSearchMatch {
   /** 匹配在原始消息内容中的起止位置（用于高亮定位） */
   contentStart: number
   contentEnd: number
+  /** 该命中文本在当前消息中的出现序号（0-based） */
+  occurrenceIndexInMessage: number
   /** 消息创建时间 */
   createdAt: number
 }

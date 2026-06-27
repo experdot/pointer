@@ -130,7 +130,8 @@ export function useGlobalSearch(): UseGlobalSearchResult {
         pageId: match.pageId,
         messageId: match.messageId,
         openPage: true,
-        instant: true
+        instant: true,
+        requestScroll: false
       })
 
       // 设置高亮匹配，用于在 ChatEditor 中显示高亮

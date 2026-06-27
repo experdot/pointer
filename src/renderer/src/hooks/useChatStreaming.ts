@@ -8,6 +8,8 @@ import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../typ
 import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
 import type { ChatConfigs } from './useChatCore'
 
+const DEFAULT_SESSION_TITLE_PREVIEW_LENGTH = 30
+
 export interface UseChatStreamingOptions {
   pageId: string
   page: PageRecord | undefined
@@ -174,7 +176,9 @@ export function useChatStreaming({
       const currentPage = stores.page.getById(pageId)
       const isDefaultName = currentPage?.name && /^新对话(?: \(\d+\))?$/.test(currentPage.name)
       if (isFirstMessage && isDefaultName) {
-        const newTitle = content.slice(0, 10) + (content.length > 10 ? '...' : '')
+        const newTitle =
+          content.slice(0, DEFAULT_SESSION_TITLE_PREVIEW_LENGTH) +
+          (content.length > DEFAULT_SESSION_TITLE_PREVIEW_LENGTH ? '...' : '')
         await pagesService.updatePage(pageId, { name: newTitle })
       }
 
