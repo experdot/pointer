@@ -1,19 +1,19 @@
-import { ipcMain, app } from 'electron'
-import { writeFile, readFile, unlink, mkdir, rename, rm } from 'fs/promises'
-import * as path from 'path'
+import { ipcMain } from 'electron'
+import {
+  cleanupMessageAttachmentFiles,
+  cleanupPageAttachmentFiles,
+  cleanupTempAttachmentFiles,
+  deleteAttachmentFile,
+  moveAttachmentFile,
+  readAttachmentFile,
+  saveAttachmentFile
+} from './attachmentStorage'
 
 /**
  * 附件处理器
  * 管理文件附件的本地存储
  */
 class AttachmentHandler {
-  private attachmentsDir: string
-
-  constructor() {
-    // 附件存储目录：应用数据目录/attachments
-    this.attachmentsDir = path.join(app.getPath('userData'), 'attachments')
-  }
-
   /**
    * 保存附件到本地
    * @param fileId 文件ID
@@ -31,27 +31,13 @@ class AttachmentHandler {
     messageId?: string
   ): Promise<{ success: boolean; localPath?: string; error?: string }> {
     try {
-      // 确定存储路径
-      let targetDir: string
-      if (pageId && messageId) {
-        targetDir = path.join(this.attachmentsDir, pageId, messageId)
-      } else {
-        targetDir = path.join(this.attachmentsDir, 'temp')
-      }
-
-      // 创建目录
-      await mkdir(targetDir, { recursive: true })
-
-      // 提取文件扩展名
-      const ext = path.extname(fileName)
-      const filePath = path.join(targetDir, `${fileId}${ext}`)
-
-      // 写入文件
-      const buffer = Buffer.from(base64Content, 'base64')
-      await writeFile(filePath, buffer)
-
-      // 返回相对路径
-      const relativePath = path.relative(this.attachmentsDir, filePath)
+      const relativePath = await saveAttachmentFile({
+        fileId,
+        fileName,
+        base64Content,
+        pageId,
+        messageId
+      })
       return { success: true, localPath: relativePath }
     } catch (error) {
       console.error('保存附件失败:', error)
@@ -71,10 +57,8 @@ class AttachmentHandler {
     localPath: string
   ): Promise<{ success: boolean; content?: string; error?: string }> {
     try {
-      const fullPath = path.join(this.attachmentsDir, localPath)
-      const buffer = await readFile(fullPath)
-      const base64 = buffer.toString('base64')
-      return { success: true, content: base64 }
+      const content = await readAttachmentFile(localPath)
+      return { success: true, content }
     } catch (error) {
       console.error('读取附件失败:', error)
       return {
@@ -90,8 +74,7 @@ class AttachmentHandler {
    */
   async deleteAttachment(localPath: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const fullPath = path.join(this.attachmentsDir, localPath)
-      await unlink(fullPath)
+      await deleteAttachmentFile(localPath)
       return { success: true }
     } catch (error) {
       console.error('删除附件失败:', error)
@@ -118,17 +101,13 @@ class AttachmentHandler {
     messageId: string
   ): Promise<{ success: boolean; localPath?: string; error?: string }> {
     try {
-      const sourcePath = path.join(this.attachmentsDir, fromPath)
-
-      const targetDir = path.join(this.attachmentsDir, pageId, messageId)
-      await mkdir(targetDir, { recursive: true })
-
-      const ext = path.extname(fileName)
-      const targetPath = path.join(targetDir, `${fileId}${ext}`)
-
-      await rename(sourcePath, targetPath)
-
-      const relativePath = path.relative(this.attachmentsDir, targetPath)
+      const relativePath = await moveAttachmentFile({
+        fileId,
+        fileName,
+        fromPath,
+        pageId,
+        messageId
+      })
       return { success: true, localPath: relativePath }
     } catch (error) {
       console.error('移动附件失败:', error)
@@ -149,8 +128,7 @@ class AttachmentHandler {
     messageId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const targetDir = path.join(this.attachmentsDir, pageId, messageId)
-      await rm(targetDir, { recursive: true, force: true })
+      await cleanupMessageAttachmentFiles(pageId, messageId)
       return { success: true }
     } catch (error) {
       console.error('清理消息附件失败:', error)
@@ -167,8 +145,7 @@ class AttachmentHandler {
    */
   async cleanupPageAttachments(pageId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const targetDir = path.join(this.attachmentsDir, pageId)
-      await rm(targetDir, { recursive: true, force: true })
+      await cleanupPageAttachmentFiles(pageId)
       return { success: true }
     } catch (error) {
       console.error('清理页面附件失败:', error)
@@ -184,10 +161,7 @@ class AttachmentHandler {
    */
   async cleanupTempAttachments(): Promise<{ success: boolean; error?: string }> {
     try {
-      const tempDir = path.join(this.attachmentsDir, 'temp')
-      await rm(tempDir, { recursive: true, force: true })
-      // 重新创建temp目录
-      await mkdir(tempDir, { recursive: true })
+      await cleanupTempAttachmentFiles()
       return { success: true }
     } catch (error) {
       console.error('清理临时附件失败:', error)

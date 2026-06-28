@@ -1,180 +1,139 @@
-# Pointer 智能聊天助手
+# Pointer
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/experdot/pointer)
-![GitHub all releases](https://img.shields.io/github/downloads/experdot/pointer/total)
-![GitHub](https://img.shields.io/github/license/experdot/pointer)
+<p align="center">
+  <img src="./resources/icon.png" alt="Pointer Logo" width="128" height="128">
+</p>
 
-**中文版** | [English](README.md)
+<p align="center">
+  <strong>为深度思考者打造的安全 AI 聊天应用</strong>
+</p>
 
-基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。
+<p align="center">
+  <a href="https://github.com/experdot/pointer/releases"><img src="https://img.shields.io/github/v/release/experdot/pointer" alt="Release"></a>
+  <a href="https://github.com/experdot/pointer/releases"><img src="https://img.shields.io/github/downloads/experdot/pointer/total" alt="Downloads"></a>
+  <a href="https://github.com/experdot/pointer/blob/main/LICENSE"><img src="https://img.shields.io/github/license/experdot/pointer" alt="License"></a>
+</p>
 
-- 博客1：[AI 聊天应用的 10 条高级需求](https://www.cnblogs.com/experdot/p/18924253)
-- 博客2：[解决了AI聊天的 10 个痛点后，新的功能：交叉分析表](https://www.cnblogs.com/experdot/p/18974641)
+<p align="center">
+  <strong>中文</strong> | <a href="README.md">English</a>
+</p>
 
-> 示例：渐进式交互，生成小说设定
+## 简介
 
-![Example](./Screenshot-0.png)
+Pointer 是一款基于 Electron、React 19 和 TypeScript 构建的跨平台桌面 AI 聊天客户端。它可连接多种 AI 模型 API（OpenAI、Claude、DeepSeek 等），提供高级对话管理功能，专注于知识组织和深度思考工作流。
 
-## 主要特性
+## 功能特性
 
-### AI对话系统
+### 多模型支持
 
-- 支持多 AI 模型配置 (OpenAI GPT、Claude、DeepSeek等)
-- 流式对话响应，支持推理过程显示
-- 消息树形分支管理，支持对话版本控制
-- 聊天历史分层组织，标签页并行工作
-- 全局内容搜索，关键词高亮
-- 全局 AI 生成任务管理，支持任务监控和取消
-- 全局问答溯源机制，追踪页面间的生成关系
+- 配置多个 AI 服务商（OpenAI GPT、Anthropic Claude、DeepSeek 等）
+- 对话中无缝切换模型
+- 流式响应，实时显示推理过程
 
-### 独特功能
+### 对话分支管理
 
-- **AI 交叉分析表**: 自动生成结构化对比分析表格
-- **AI 对象管理器**: 可视化知识数据结构管理
-- **数据导入导出**: 支持主流AI平台数据迁移（OpenAI ChatGPT / Deepseek Chat）
+- 树状消息历史结构，支持版本控制
+- 创建并切换对话分支
+- 跨分支上下文继承
+- 便捷的历史记录导航
 
-### 知识管理
+### 知识组织
 
-- 文件夹层级组织
+- 基于文件夹的层级组织
 - 消息收藏和标记
+- 多标签页并行工作流
+- 全局搜索与关键词高亮
+
+### 数据管理
+
+- 导入 ChatGPT 和 DeepSeek 导出数据
+- 导出对话备份
+- 本地数据存储，注重隐私
 - 批量操作和拖拽排序
-- 数据备份和恢复
 
-#### 主界面
+## 安装
 
-![主界面](./Screenshot-1.png)
+### 下载
 
-#### 交叉分析表
+从 [Releases](https://github.com/experdot/pointer/releases) 页面下载适合您平台的最新版本：
 
-![交叉分析表](./Screenshot-2.png)
+- **Windows**：`.exe` 安装包
+- **macOS**：`.dmg` 安装包
+- **Linux**：`.AppImage` 或 `.deb` 安装包
 
-#### 对象管理器
+### 从源码构建
 
-![对象管理器](./Screenshot-3.png)
-
-## 快速开始
-
-### 环境要求
+环境要求：
 
 - Node.js 18+
-- Windows 10+, macOS 10.15+, 或 Linux
-
-### 安装运行
+- pnpm
 
 ```bash
+# 克隆仓库
+git clone https://github.com/experdot/pointer.git
+cd pointer
+
 # 安装依赖
 pnpm install
 
-# 开发模式
+# 开发模式运行
 pnpm dev
 
-# 构建应用
+# 为您的平台构建
 pnpm build:win    # Windows
 pnpm build:mac    # macOS
 pnpm build:linux  # Linux
 ```
 
-### 基本配置
+## 配置
 
-1. 启动应用后进入设置页面
-2. 配置AI模型参数：
-   - 配置名称
-   - API地址
-   - 访问密钥
-   - 模型标识符
-3. 选择默认模型并测试连接
+1. 启动应用
+2. 打开设置
+3. 添加新的 AI 模型配置：
+   - **名称**：配置的显示名称
+   - **API 地址**：API URL（如 `https://api.openai.com/v1`）
+   - **API 密钥**：您的访问令牌
+   - **模型**：模型标识符（如 `gpt-5.5`、`deepseek-v4-pro`）
+4. 设为默认并测试连接
 
-## 核心功能
+## 技术栈
 
-### 交叉分析表
+| 类别     | 技术                                           |
+| -------- | ---------------------------------------------- |
+| 前端     | React 19、TypeScript、Ant Design、Tailwind CSS |
+| 桌面端   | Electron 35、electron-vite                     |
+| 状态管理 | Zustand、Immer                                 |
+| 构建工具 | Vite、Electron Builder                         |
+| 编辑器   | Monaco Editor                                  |
+| 渲染     | Shiki（语法高亮）、Streamdown（流式 Markdown） |
 
-将任意主题转换为结构化对比分析表格，适用于：
-
-- 学术研究的文献对比
-- 商业决策的方案评估
-- 教学材料的知识点整理
-- 产品功能的竞品分析
-
-操作流程：
-
-1. 输入分析主题
-2. AI自动生成表格结构
-3. 填充交叉点数据
-4. 手动编辑和优化
-
-### 对象浏览器
-
-可视化管理复杂数据结构，支持：
-
-- 树状结构展示
-- AI自动生成节点
-- 手动编辑和组织
-- 结构化数据导出
-
-### 聊天分支管理
-
-- 消息树状结构
-- 分支间独立对话
-- 历史版本切换
-- 上下文继承
-
-## 技术架构
-
-### 核心技术
-
-- **前端**: React 19 + TypeScript + Ant Design
-- **后端**: Electron 主进程
-- **构建**: Vite + Electron Builder
-- **样式**: CSS Modules + SCSS
-
-### 项目结构
+## 项目结构
 
 ```
 src/
-├── main/          # Electron主进程
-├── renderer/      # 渲染进程
-│   ├── components/  # React组件
-│   ├── store/      # 状态管理
-│   ├── services/   # 业务逻辑
-│   └── utils/      # 工具函数
-└── preload/       # 预加载脚本
+├── main/              # Electron 主进程
+│   ├── aiHandler.ts     # AI API 请求处理
+│   ├── ipcHandlers.ts   # IPC 通信
+│   └── autoUpdater.ts   # 自动更新逻辑
+├── preload/           # 预加载脚本（上下文桥接）
+└── renderer/          # React 应用
+    └── src/
+        ├── components/    # UI 组件
+        ├── services/      # 业务逻辑
+        ├── stores/        # Zustand 状态管理
+        ├── hooks/         # 自定义 React Hooks
+        ├── features/      # 功能模块
+        └── utils/         # 工具函数
 ```
 
-### 关键依赖
+## 贡献
 
-- `react-markdown`: Markdown渲染
-- `mermaid`: 图表绘制
-- `katex`: 数学公式
-- `html2canvas`: 截图功能
-- `rehype-highlight`: 代码高亮
-
-## 使用场景
-
-**教育研究**: 课程设计、知识整理、文献分析  
-**商业分析**: 市场调研、竞品对比、战略规划  
-**内容创作**: 选题策划、素材组织、结构化写作  
-**个人学习**: 笔记整理、知识对比、复习资料
-
-## 开发贡献
-
-### 开发流程
-
-1. Fork项目并创建特性分支
-2. 遵循TypeScript和ESLint规范
-3. 提交代码并创建Pull Request
-
-### 代码规范
-
-- 使用函数式组件和Hooks
-- 遵循conventional commits格式
-- 保持代码类型安全
-
-### 重点改进方向
-
-- 缺陷修复
-- 生成提示词与上下文优化
-- 性能优化和用户体验改进
+1. Fork 本仓库
+2. 创建功能分支（`git checkout -b feature/amazing-feature`）
+3. 遵循代码规范（TypeScript、ESLint、Prettier）
+4. 使用 conventional commits 格式提交
+5. 提交 Pull Request
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+[MIT License](LICENSE)

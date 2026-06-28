@@ -1,0 +1,12 @@
+/* Branch Navigator */
+.branch-navigator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+}
+
+.branch-navigator__count {
+  min-width: 32px;
+  text-align: center;
+}

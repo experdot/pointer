@@ -61,7 +61,7 @@ export interface UpdateActions {
   // 复合操作
   resetUpdateState: () => void
   handleUpdateAvailable: (info: UpdateInfo) => void
-  handleUpdateNotAvailable: (info: any) => void
+  handleUpdateNotAvailable: (info: unknown) => void
   handleDownloadProgress: (progress: DownloadProgress) => void
   handleUpdateDownloaded: (info: UpdateInfo) => void
   handleUpdateError: (error: string) => void
@@ -84,7 +84,7 @@ const initialState: UpdateState = {
 }
 
 export const useUpdateStore = create<UpdateState & UpdateActions>()(
-  immer((set, get) => ({
+  immer((set) => ({
     ...initialState,
 
     // 基本状态管理
@@ -198,7 +198,7 @@ export const useUpdateStore = create<UpdateState & UpdateActions>()(
         state.notificationShown = true
       }),
 
-    handleUpdateNotAvailable: (info) =>
+    handleUpdateNotAvailable: () =>
       set((state) => {
         state.updateAvailable = false
         state.updateInfo = null

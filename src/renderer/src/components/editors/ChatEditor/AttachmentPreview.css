@@ -1,0 +1,80 @@
+/* Attachment Preview (待发送附件预览) */
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.attachment-preview__item {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.attachment-preview__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-preview__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ant-color-text-tertiary);
+}
+
+.attachment-preview__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ant-color-error);
+  font-weight: 500;
+}
+
+.attachment-preview__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.attachment-preview__item:hover .attachment-preview__remove {
+  opacity: 1;
+}
+
+.attachment-preview__name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

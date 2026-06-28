@@ -1,54 +1,87 @@
-import React from 'react'
-import { ConfigProvider, theme, App as AntdApp } from 'antd'
+import React, { useEffect, useState } from 'react'
+import { ConfigProvider, theme, App as AntdApp, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import Layout from './components/layout/Layout'
-import { ZustandAppProvider } from './stores/ZustandAppContext'
-import { useSettingsStore } from './stores/settingsStore'
 import './App.css'
-import UpdateNotification from './components/common/UpdateNotification'
+import { initializeTabTypes } from './utils/tabTypeRegistrations'
+import { initializeExportPlugins } from './features/export'
+import { initStores } from './stores/initStores'
+import { initPersistence } from './persistence/initPersistence'
+import { UpdateNotification } from './components/common/UpdateNotification'
+import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { SwitchTransactionOverlay } from './components/common/SwitchTransactionOverlay'
+import { AppShortcuts } from './components/common/AppShortcuts'
+import { MainLayout } from './components/layout/MainLayout'
+import { useAccountStore } from './stores/accountStore'
+import { useSwitchTransactionStore } from './stores/switchTransactionStore'
+import { initializeAccountSystem } from './services/accountService'
+
+// Initialize plugins and stores
+initializeTabTypes()
+initializeExportPlugins()
+initPersistence()
+initStores()
 
 function AppContent(): React.JSX.Element {
-  const { settings } = useSettingsStore()
+  const [loading, setLoading] = useState(true)
+  const initialized = useAccountStore((state) => state.initialized)
+  const switchInProgress = useSwitchTransactionStore((state) => state.inProgress)
 
-  // 根据字体大小设置获取基础字号
-  const getFontSize = () => {
-    switch (settings.fontSize) {
-      case 'small':
-        return 12
-      case 'large':
-        return 16
-      case 'medium':
-      default:
-        return 14
-    }
+  useEffect(() => {
+    initializeAccountSystem().finally(() => setLoading(false))
+  }, [])
+
+  if (loading || !initialized) {
+    return (
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <Spin size="large" />
+      </div>
+    )
+  }
+
+  if (switchInProgress) {
+    return <SwitchTransactionOverlay />
   }
 
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#1890ff',
-          fontSize: getFontSize()
-        }
-      }}
-    >
-      <AntdApp>
-        <UpdateNotification />
-        <ZustandAppProvider>
-          <Layout />
-        </ZustandAppProvider>
-      </AntdApp>
-    </ConfigProvider>
+    <>
+      <AppShortcuts />
+      <UpdateNotification />
+      <MainLayout />
+    </>
   )
 }
 
 function App(): React.JSX.Element {
   return (
-    <div className="container">
-      <AppContent />
-    </div>
+    <ErrorBoundary>
+      <ConfigProvider
+        locale={zhCN}
+        theme={{
+          cssVar: true,
+          algorithm: theme.defaultAlgorithm,
+          token: {
+            colorPrimary: '#1677ff',
+            borderRadius: 4,
+            fontSize: 14
+          },
+          components: {
+            Menu: {
+              itemHeight: 32,
+              itemMarginInline: 4
+            },
+            Tree: {
+              titleHeight: 32
+            }
+          }
+        }}
+      >
+        <AntdApp className="app-layout">
+          <AppContent />
+        </AntdApp>
+      </ConfigProvider>
+    </ErrorBoundary>
   )
 }
 

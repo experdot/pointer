@@ -1,0 +1,30 @@
+.model-selector.ant-select,
+.model-selector.ant-tree-select {
+  font-size: 12px;
+}
+
+.model-selector.ant-select .ant-select-selector,
+.model-selector.ant-tree-select .ant-select-selector {
+  font-size: 12px;
+  padding: 0 8px 0px 0 !important;
+}
+
+.model-selector.ant-select .ant-select-selection-item,
+.model-selector.ant-tree-select .ant-select-selection-item {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.model-selector__settings-link {
+  padding: 4px 12px 0px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-selector__settings-link:hover {
+  color: var(--ant-color-primary);
+}

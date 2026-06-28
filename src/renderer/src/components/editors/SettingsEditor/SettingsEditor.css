@@ -1,0 +1,35 @@
+.settings-editor {
+  height: 100%;
+  padding: 0 8px;
+  overflow: auto;
+}
+
+.settings-tabs {
+  height: 100%;
+}
+
+.settings-tabs .ant-tabs-tab .anticon {
+  margin-right: 6px;
+}
+
+.settings-tabs .ant-tabs-content {
+  height: 100%;
+}
+
+.settings-tabs .ant-tabs-tabpane {
+  height: 100%;
+}
+
+.settings-general-panel {
+  max-width: 400px;
+}
+
+.settings-config-panel {
+  height: 100%;
+}
+
+.settings-config-detail {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 500px;
+}

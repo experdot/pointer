@@ -1,373 +1,389 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { immer } from 'zustand/middleware/immer'
-import { Settings, LLMConfig, ModelConfig, PromptListConfig } from '../types/type'
-import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
-import { INITIAL_SETTINGS } from './helpers/constants'
-import { createAIService } from '../services/aiService'
+import { persistence } from '../persistence/registry'
+import { getCurrentAccountScope } from '../persistence/scope'
+import { getSettingsQueue } from './persistenceQueue'
+import type {
+  Settings,
+  ConfigTree,
+  ConfigFolder,
+  ConfigItemBase,
+  LLMConfig,
+  ModelConfig
+} from '../types/type'
+import type { ISettingsStore } from './interfaces/ui'
+import {
+  updateTreeItem,
+  updateTreeFolder,
+  removeTreeFolder,
+  clearTreeFolder,
+  removeTreeItem,
+  addTreeItem,
+  addTreeFolder,
+  batchUpdateTreeItems,
+  batchUpdateTreeFolders
+} from '../utils/treeUtils'
 
-export interface SettingsState {
+// 空树结构
+const emptyTree = <T extends ConfigItemBase>(): ConfigTree<T> => ({
+  items: [],
+  folders: []
+})
+
+// 初始设置
+const initialSettings: Settings = {
+  fontSize: 'medium',
+  llmConfigs: emptyTree<LLMConfig>(),
+  modelConfigs: emptyTree<ModelConfig>()
+}
+
+interface SettingsState {
   settings: Settings
+  initialized: boolean
 }
 
-export interface SettingsActions {
-  // 设置管理
-  updateSettings: (updates: Partial<Settings>) => void
-  resetSettings: () => void
+interface SettingsActions {
+  // 初始化
+  init: () => Promise<void>
 
-  // LLM配置管理
+  // 基础设置
+  setFontSize: (fontSize: Settings['fontSize']) => void
+  setDefaultLLMId: (id: string | undefined) => void
+  setDefaultModelConfigId: (id: string | undefined) => void
+  setAutoCheckUpdate: (enabled: boolean) => void
+
+  // LLM 配置
   addLLMConfig: (config: LLMConfig) => void
-  updateLLMConfig: (id: string, updates: Partial<LLMConfig>) => void
-  deleteLLMConfig: (id: string) => void
-  setDefaultLLM: (id: string) => void
-  getLLMConfig: (id: string) => LLMConfig | undefined
-  getDefaultLLMConfig: () => LLMConfig | undefined
+  updateLLMConfig: (id: string, changes: Partial<LLMConfig>) => void
+  removeLLMConfig: (id: string) => void
+  addLLMConfigFolder: (folder: ConfigFolder) => void
+  updateLLMConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
+  removeLLMConfigFolder: (id: string) => void
+  clearLLMConfigFolder: (id: string) => void
+  batchUpdateLLMConfigs: (updates: Array<{ id: string; changes: Partial<LLMConfig> }>) => void
+  batchUpdateLLMConfigFolders: (
+    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
+  ) => void
 
-  // ModelConfig管理
+  // Model 配置
   addModelConfig: (config: ModelConfig) => void
-  updateModelConfig: (id: string, updates: Partial<ModelConfig>) => void
-  deleteModelConfig: (id: string) => void
-  setDefaultModelConfig: (id: string) => void
-  getModelConfig: (id: string) => ModelConfig | undefined
-  getDefaultModelConfig: () => ModelConfig | undefined
-  getModelConfigForLLM: (llmId: string) => ModelConfig | undefined
+  updateModelConfig: (id: string, changes: Partial<ModelConfig>) => void
+  removeModelConfig: (id: string) => void
+  addModelConfigFolder: (folder: ConfigFolder) => void
+  updateModelConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
+  removeModelConfigFolder: (id: string) => void
+  clearModelConfigFolder: (id: string) => void
+  batchUpdateModelConfigs: (updates: Array<{ id: string; changes: Partial<ModelConfig> }>) => void
+  batchUpdateModelConfigFolders: (
+    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
+  ) => void
 
-  // 外观设置
-  setFontSize: (size: 'small' | 'medium' | 'large') => void
-
-  // 提示词列表管理
-  addPromptList: (config: PromptListConfig) => void
-  updatePromptList: (id: string, updates: Partial<PromptListConfig>) => void
-  deletePromptList: (id: string) => void
-  getPromptList: (id: string) => PromptListConfig | undefined
-
-  // 工具方法
-  exportSettings: () => Settings
-  importSettings: (settings: Settings) => void
-  validateLLMConfig: (config: Partial<LLMConfig>) => boolean
-  validateModelConfig: (config: Partial<ModelConfig>) => boolean
-  createAIServiceForLLM: (llmId: string) => any | null
+  // 重置
+  reset: () => Promise<void>
 }
 
-const initialState: SettingsState = {
-  settings: INITIAL_SETTINGS
+type SettingsStore = SettingsState & SettingsActions
+
+// 持久化辅助函数
+const persist = (settings: Settings): void => {
+  const scope = getCurrentAccountScope()
+  getSettingsQueue(scope).enqueue('settings', settings)
 }
 
-export const useSettingsStore = create<SettingsState & SettingsActions>()(
-  persist(
-    immer((set, get) => ({
-      ...initialState,
+export const useSettingsStore = create<SettingsStore>((set) => ({
+  settings: initialSettings,
+  initialized: false,
 
-      // 设置管理
-      updateSettings: (updates) => {
-        try {
-          set((state) => {
-            // 如果payload包含所有必需的设置字段，则完全替换；否则合并
-            const isCompleteSettings =
-              updates.llmConfigs !== undefined && updates.fontSize !== undefined
+  init: async () => {
+    const settings = await persistence.account(getCurrentAccountScope()).settings.get()
+    set({
+      settings: settings ? { ...initialSettings, ...settings } : initialSettings,
+      initialized: true
+    })
+  },
 
-            if (isCompleteSettings) {
-              state.settings = { ...updates } as Settings
-            } else {
-              state.settings = { ...state.settings, ...updates }
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'updateSettings', error)
-        }
-      },
+  // 基础设置
+  setFontSize: (fontSize) => {
+    set((state) => {
+      const settings = { ...state.settings, fontSize }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      resetSettings: () => {
-        set((state) => {
-          state.settings = INITIAL_SETTINGS
-        })
-      },
+  setDefaultLLMId: (id) => {
+    set((state) => {
+      const settings = { ...state.settings, defaultLLMId: id }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      // LLM配置管理
-      addLLMConfig: (config) => {
-        try {
-          set((state) => {
-            // 如果是第一个配置，自动设为默认
-            if (state.settings.llmConfigs.length === 0) {
-              state.settings.defaultLLMId = config.id
-            }
+  setDefaultModelConfigId: (id) => {
+    set((state) => {
+      const settings = { ...state.settings, defaultModelConfigId: id }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-            state.settings.llmConfigs.push(config)
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'addLLMConfig', error)
-        }
-      },
+  setAutoCheckUpdate: (enabled) => {
+    set((state) => {
+      const settings = { ...state.settings, autoCheckUpdate: enabled }
+      persist(settings)
+      return { settings }
+    })
+  },
 
-      updateLLMConfig: (id, updates) => {
-        try {
-          set((state) => {
-            const configIndex = state.settings.llmConfigs.findIndex((c) => c.id === id)
-            if (configIndex !== -1) {
-              const updatedConfig = { ...state.settings.llmConfigs[configIndex], ...updates }
-              state.settings.llmConfigs[configIndex] = updatedConfig
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'updateLLMConfig', error)
-        }
-      },
-
-      deleteLLMConfig: (id) => {
-        try {
-          set((state) => {
-            state.settings.llmConfigs = state.settings.llmConfigs.filter((c) => c.id !== id)
-
-            // 如果删除的是默认配置，选择新的默认配置
-            if (state.settings.defaultLLMId === id) {
-              if (state.settings.llmConfigs.length > 0) {
-                state.settings.defaultLLMId = state.settings.llmConfigs[0].id
-              } else {
-                state.settings.defaultLLMId = undefined
-              }
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'deleteLLMConfig', error)
-        }
-      },
-
-      setDefaultLLM: (id) => {
-        try {
-          set((state) => {
-            state.settings.defaultLLMId = id
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'setDefaultLLM', error)
-        }
-      },
-
-      getLLMConfig: (id) => {
-        return get().settings.llmConfigs.find((c) => c.id === id)
-      },
-
-      getDefaultLLMConfig: () => {
-        const { settings } = get()
-        if (settings.defaultLLMId) {
-          return settings.llmConfigs.find((c) => c.id === settings.defaultLLMId)
-        }
-        return settings.llmConfigs[0]
-      },
-
-      // 外观设置
-      setFontSize: (size) => {
-        try {
-          set((state) => {
-            state.settings.fontSize = size
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'setFontSize', error)
-        }
-      },
-
-      // 提示词列表管理
-      addPromptList: (config) => {
-        try {
-          set((state) => {
-            if (!state.settings.promptLists) {
-              state.settings.promptLists = []
-            }
-            state.settings.promptLists.push(config)
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'addPromptList', error)
-        }
-      },
-
-      updatePromptList: (id, updates) => {
-        try {
-          set((state) => {
-            if (state.settings.promptLists) {
-              const configIndex = state.settings.promptLists.findIndex((c) => c.id === id)
-              if (configIndex !== -1) {
-                state.settings.promptLists[configIndex] = {
-                  ...state.settings.promptLists[configIndex],
-                  ...updates
-                }
-              }
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'updatePromptList', error)
-        }
-      },
-
-      deletePromptList: (id) => {
-        try {
-          set((state) => {
-            if (state.settings.promptLists) {
-              state.settings.promptLists = state.settings.promptLists.filter((c) => c.id !== id)
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'deletePromptList', error)
-        }
-      },
-
-      getPromptList: (id) => {
-        return get().settings.promptLists?.find((config) => config.id === id)
-      },
-
-      // ModelConfig管理
-      addModelConfig: (config) => {
-        try {
-          set((state) => {
-            // 如果是第一个配置，自动设为默认
-            if (state.settings.modelConfigs.length === 0) {
-              state.settings.defaultModelConfigId = config.id
-            }
-
-            state.settings.modelConfigs.push(config)
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'addModelConfig', error)
-        }
-      },
-
-      updateModelConfig: (id, updates) => {
-        try {
-          set((state) => {
-            const configIndex = state.settings.modelConfigs.findIndex((c) => c.id === id)
-            if (configIndex !== -1) {
-              const updatedConfig = { ...state.settings.modelConfigs[configIndex], ...updates }
-              state.settings.modelConfigs[configIndex] = updatedConfig
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'updateModelConfig', error)
-        }
-      },
-
-      deleteModelConfig: (id) => {
-        try {
-          set((state) => {
-            state.settings.modelConfigs = state.settings.modelConfigs.filter((c) => c.id !== id)
-
-            // 如果删除的是默认配置，选择新的默认配置
-            if (state.settings.defaultModelConfigId === id) {
-              if (state.settings.modelConfigs.length > 0) {
-                state.settings.defaultModelConfigId = state.settings.modelConfigs[0].id
-              } else {
-                state.settings.defaultModelConfigId = undefined
-              }
-            }
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'deleteModelConfig', error)
-        }
-      },
-
-      setDefaultModelConfig: (id) => {
-        try {
-          set((state) => {
-            state.settings.defaultModelConfigId = id
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'setDefaultModelConfig', error)
-        }
-      },
-
-      getModelConfig: (id) => {
-        return get().settings.modelConfigs.find((c) => c.id === id)
-      },
-
-      getDefaultModelConfig: () => {
-        const { settings } = get()
-        if (settings.defaultModelConfigId) {
-          return settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId)
-        }
-        return settings.modelConfigs[0]
-      },
-
-      getModelConfigForLLM: (llmId) => {
-        const { settings } = get()
-        const llmConfig = settings.llmConfigs.find((c) => c.id === llmId)
-
-        if (llmConfig?.modelConfigId) {
-          // LLM配置有关联的ModelConfig
-          return settings.modelConfigs.find((c) => c.id === llmConfig.modelConfigId)
-        }
-
-        // 没有关联，使用默认的ModelConfig
-        if (settings.defaultModelConfigId) {
-          return settings.modelConfigs.find((c) => c.id === settings.defaultModelConfigId)
-        }
-
-        // 返回第一个ModelConfig
-        return settings.modelConfigs[0]
-      },
-
-      // 工具方法
-      exportSettings: () => {
-        return get().settings
-      },
-
-      importSettings: (settings) => {
-        try {
-          set((state) => {
-            state.settings = settings
-          })
-        } catch (error) {
-          handleStoreError('settingsStore', 'importSettings', error)
-        }
-      },
-
-      validateLLMConfig: (config) => {
-        try {
-          return !!(config.name && config.apiHost && config.apiKey && config.modelName)
-        } catch (error) {
-          handleStoreError('settingsStore', 'validateLLMConfig', error)
-          return false
-        }
-      },
-
-      validateModelConfig: (config) => {
-        try {
-          return !!(
-            config.name &&
-            config.systemPrompt &&
-            typeof config.topP === 'number' &&
-            config.topP >= 0 &&
-            config.topP <= 1 &&
-            typeof config.temperature === 'number' &&
-            config.temperature >= 0 &&
-            config.temperature <= 2
-          )
-        } catch (error) {
-          handleStoreError('settingsStore', 'validateModelConfig', error)
-          return false
-        }
-      },
-
-      createAIServiceForLLM: (llmId) => {
-        try {
-          const { settings } = get()
-          const llmConfig = settings.llmConfigs.find((c) => c.id === llmId)
-
-          if (!llmConfig) {
-            return null
-          }
-
-          const modelConfig = get().getModelConfigForLLM(llmId)
-
-          if (!modelConfig) {
-            return null
-          }
-
-          return createAIService(llmConfig, modelConfig)
-        } catch (error) {
-          handleStoreError('settingsStore', 'createAIServiceForLLM', error)
-          return null
-        }
+  // LLM 配置
+  addLLMConfig: (config) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: addTreeItem(state.settings.llmConfigs, config)
       }
-    })),
-    createPersistConfig('settings-store', 1, (state) => ({
-      settings: state.settings
-    }))
-  )
-)
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  updateLLMConfig: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: updateTreeItem(state.settings.llmConfigs, id, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  removeLLMConfig: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: removeTreeItem(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  addLLMConfigFolder: (folder) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: addTreeFolder(state.settings.llmConfigs, folder)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  updateLLMConfigFolder: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: updateTreeFolder(
+          state.settings.llmConfigs,
+          id,
+          updates
+        ) as ConfigTree<LLMConfig>
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  removeLLMConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: removeTreeFolder(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  clearLLMConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: clearTreeFolder(state.settings.llmConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  batchUpdateLLMConfigs: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: batchUpdateTreeItems(state.settings.llmConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  batchUpdateLLMConfigFolders: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        llmConfigs: batchUpdateTreeFolders(state.settings.llmConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  // Model 配置
+  addModelConfig: (config) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: addTreeItem(state.settings.modelConfigs, config)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  updateModelConfig: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: updateTreeItem(state.settings.modelConfigs, id, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  removeModelConfig: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: removeTreeItem(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  addModelConfigFolder: (folder) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: addTreeFolder(state.settings.modelConfigs, folder)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  updateModelConfigFolder: (id, updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: updateTreeFolder(
+          state.settings.modelConfigs,
+          id,
+          updates
+        ) as ConfigTree<ModelConfig>
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  removeModelConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: removeTreeFolder(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  clearModelConfigFolder: (id) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: clearTreeFolder(state.settings.modelConfigs, id)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  batchUpdateModelConfigs: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: batchUpdateTreeItems(state.settings.modelConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  batchUpdateModelConfigFolders: (updates) => {
+    set((state) => {
+      const settings = {
+        ...state.settings,
+        modelConfigs: batchUpdateTreeFolders(state.settings.modelConfigs, updates)
+      }
+      persist(settings)
+      return { settings }
+    })
+  },
+
+  reset: async () => {
+    // Only reset memory state, don't clear persistence data
+    set({ settings: initialSettings, initialized: false })
+  }
+}))
+
+/**
+ * 获取设置 Store 的接口实现
+ */
+export function getSettingsStoreInterface(): ISettingsStore {
+  const store = useSettingsStore
+  return {
+    get initialized() {
+      return store.getState().initialized
+    },
+    get settings() {
+      return store.getState().settings
+    },
+    init: () => store.getState().init(),
+    reset: () => store.getState().reset(),
+    setFontSize: (size) => store.getState().setFontSize(size),
+    setDefaultLLMId: (id) => store.getState().setDefaultLLMId(id),
+    setDefaultModelConfigId: (id) => store.getState().setDefaultModelConfigId(id),
+    setAutoCheckUpdate: (enabled) => store.getState().setAutoCheckUpdate(enabled),
+    addLLMConfig: (config) => store.getState().addLLMConfig(config),
+    updateLLMConfig: (id, changes) => store.getState().updateLLMConfig(id, changes),
+    removeLLMConfig: (id) => store.getState().removeLLMConfig(id),
+    addLLMConfigFolder: (folder) => store.getState().addLLMConfigFolder(folder),
+    updateLLMConfigFolder: (id, changes) => store.getState().updateLLMConfigFolder(id, changes),
+    removeLLMConfigFolder: (id) => store.getState().removeLLMConfigFolder(id),
+    clearLLMConfigFolder: (id) => store.getState().clearLLMConfigFolder(id),
+    addModelConfig: (config) => store.getState().addModelConfig(config),
+    updateModelConfig: (id, changes) => store.getState().updateModelConfig(id, changes),
+    removeModelConfig: (id) => store.getState().removeModelConfig(id),
+    addModelConfigFolder: (folder) => store.getState().addModelConfigFolder(folder),
+    updateModelConfigFolder: (id, changes) => store.getState().updateModelConfigFolder(id, changes),
+    removeModelConfigFolder: (id) => store.getState().removeModelConfigFolder(id),
+    clearModelConfigFolder: (id) => store.getState().clearModelConfigFolder(id),
+    batchUpdateLLMConfigs: (updates) => store.getState().batchUpdateLLMConfigs(updates),
+    batchUpdateLLMConfigFolders: (updates) => store.getState().batchUpdateLLMConfigFolders(updates),
+    batchUpdateModelConfigs: (updates) => store.getState().batchUpdateModelConfigs(updates),
+    batchUpdateModelConfigFolders: (updates) =>
+      store.getState().batchUpdateModelConfigFolders(updates)
+  }
+}

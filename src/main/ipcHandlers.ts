@@ -1,7 +1,53 @@
 import { ipcMain, BrowserWindow, dialog, app } from 'electron'
 import { writeFile, readFile } from 'fs/promises'
+import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
 import { autoUpdater } from './autoUpdater'
+
+// Map to track pending flush completions per window
+const pendingFlushResolves = new Map<number, () => void>()
+const FLUSH_TIMEOUT_MS = 5000
+
+/**
+ * Request the renderer process to flush its data
+ * Returns a promise that resolves when flush is complete or timeout occurs
+ */
+export function requestRendererFlush(window: BrowserWindow): Promise<void> {
+  return new Promise((resolve) => {
+    const windowId = window.id
+
+    // Set up timeout protection
+    const timeoutId = setTimeout(() => {
+      console.warn(`[Main] Flush timeout for window ${windowId}`)
+      pendingFlushResolves.delete(windowId)
+      resolve()
+    }, FLUSH_TIMEOUT_MS)
+
+    // Store resolve function
+    pendingFlushResolves.set(windowId, () => {
+      clearTimeout(timeoutId)
+      pendingFlushResolves.delete(windowId)
+      resolve()
+    })
+
+    // Send flush request to renderer
+    window.webContents.send('persistence:flush-request')
+  })
+}
+
+/**
+ * 验证文件路径是否在允许的目录内
+ * @param filePath 要验证的文件路径
+ * @param allowedDirs 允许的目录列表
+ * @returns 如果路径安全返回 true，否则返回 false
+ */
+function isPathAllowed(filePath: string, allowedDirs: string[]): boolean {
+  const resolvedPath = path.resolve(filePath)
+  return allowedDirs.some((dir) => {
+    const resolvedDir = path.resolve(dir)
+    return resolvedPath.startsWith(resolvedDir + path.sep) || resolvedPath === resolvedDir
+  })
+}
 
 export function setupIpcHandlers(): void {
   // 更新相关的IPC处理程序
@@ -83,7 +129,7 @@ export function setupIpcHandlers(): void {
   })
 
   // Handle save file
-  ipcMain.handle('save-file', async (event, { content, defaultPath, filters }) => {
+  ipcMain.handle('save-file', async (_event, { content, defaultPath, filters }) => {
     try {
       const result = await dialog.showSaveDialog({
         title: '保存文件',
@@ -111,9 +157,21 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  // Handle read file
-  ipcMain.handle('read-file', async (event, filePath: string) => {
+  // Handle read file - 仅允许读取 userData 目录下的文件
+  ipcMain.handle('read-file', async (_event, filePath: string) => {
     try {
+      // 安全验证：仅允许读取 userData 目录下的文件
+      const userDataPath = app.getPath('userData')
+      const allowedDirs = [userDataPath]
+
+      if (!isPathAllowed(filePath, allowedDirs)) {
+        console.error('Unauthorized file access attempt:', filePath)
+        return {
+          success: false,
+          error: '访问被拒绝：只允许读取应用数据目录下的文件'
+        }
+      }
+
       const buffer = await readFile(filePath)
       const base64 = buffer.toString('base64')
       return { success: true, content: base64 }
@@ -127,7 +185,7 @@ export function setupIpcHandlers(): void {
   ipcMain.handle(
     'select-files',
     async (
-      event,
+      _event,
       options?: {
         multiple?: boolean
         filters?: Array<{ name: string; extensions: string[] }>
@@ -173,4 +231,22 @@ export function setupIpcHandlers(): void {
       }
     }
   )
+
+  // Handle flush complete notification from renderer
+  ipcMain.on('persistence:flush-complete', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      const resolve = pendingFlushResolves.get(window.id)
+      if (resolve) {
+        console.log(`[Main] Flush complete for window ${window.id}`)
+        resolve()
+      }
+    }
+  })
+
+  // Get window ID for renderer
+  ipcMain.handle('get-window-id', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window?.id
+  })
 }

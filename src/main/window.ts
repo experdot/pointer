@@ -3,6 +3,29 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import windowStateKeeper from 'electron-window-state'
 import icon from '../../resources/icon.png?asset'
+import type { ForwardedShortcutAction } from '../shared/shortcuts'
+
+function resolveForwardedShortcutAction(input: Electron.Input): ForwardedShortcutAction | null {
+  if (input.type !== 'keyDown' || input.alt) {
+    return null
+  }
+
+  const key = input.key.toLowerCase()
+  const isMac = process.platform === 'darwin'
+  const hasCloseModifier = isMac ? input.meta : input.control
+  // Cmd+Tab is reserved by macOS for app switching, so tab cycling stays on Ctrl+Tab.
+  const hasTabModifier = input.control
+
+  if (hasCloseModifier && key === 'w') {
+    return 'close-tab'
+  }
+
+  if (hasTabModifier && key === 'tab') {
+    return input.shift ? 'prev-tab' : 'next-tab'
+  }
+
+  return null
+}
 
 export function createWindow(): void {
   const mainWindowState = windowStateKeeper({
@@ -50,6 +73,16 @@ export function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const action = resolveForwardedShortcutAction(input)
+    if (!action) {
+      return
+    }
+
+    event.preventDefault()
+    mainWindow.webContents.send('shortcut:action', action)
   })
 
   // HMR for renderer base on electron-vite cli.

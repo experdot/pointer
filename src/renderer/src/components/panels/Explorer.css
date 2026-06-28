@@ -1,0 +1,121 @@
+.explorer {
+  height: 100%;
+}
+
+.explorer-toolbar {
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border);
+  height: 48px;
+}
+
+.explorer-tree {
+  flex: 1;
+  min-height: 0; /* 允许 flex 子元素收缩 */
+}
+
+/* 虚拟滚动模式下的滚动条样式 */
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.explorer-tree:hover .rc-virtual-list-holder::-webkit-scrollbar-thumb {
+  background: var(--ant-color-text-quaternary);
+}
+
+.explorer-tree .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover {
+  background: var(--ant-color-text-tertiary);
+}
+
+.explorer-tree .ant-tree {
+  background: transparent;
+}
+
+.explorer-tree .ant-tree-treenode {
+  width: 100%;
+  padding: 0 8px;
+  border-radius: 0;
+}
+
+.explorer-tree .ant-tree-treenode:hover {
+  background-color: var(--ant-tree-node-hover-bg);
+}
+
+.explorer-tree .ant-tree-treenode-selected {
+  background-color: var(--ant-color-primary-bg);
+}
+
+.explorer-tree .ant-tree-node-selected {
+  background-color: transparent !important;
+}
+
+.explorer-tree
+  .ant-tree
+  .ant-tree-treenode:not(.ant-tree-treenode-disabled)
+  .ant-tree-node-content-wrapper:hover {
+  background-color: transparent;
+}
+
+/* 减少展开按钮和内容之间的间距 */
+.explorer-tree .ant-tree-switcher {
+  margin-right: 1px;
+}
+
+.explorer-tree .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  padding: 0 4px;
+}
+
+.explorer-tree .ant-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.explorer-tree-title {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.explorer-tree-title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-tree-title-more {
+  flex-shrink: 0;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.explorer-tree-title:hover .explorer-tree-title-more,
+.explorer-tree-title-more:hover {
+  opacity: 0.6;
+}
+
+.explorer-tree-title-more:hover {
+  opacity: 1;
+}
+
+/* 隐藏拖拽图标 */
+.explorer-tree .ant-tree-draggable-icon {
+  display: none;
+}

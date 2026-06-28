@@ -1,0 +1,78 @@
+/* Branch Path Bar */
+.branch-path-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-quaternary);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.branch-path-bar__item {
+  cursor: pointer;
+}
+
+.branch-path-bar__item:hover {
+  color: var(--ant-color-primary);
+}
+
+.branch-path-bar__branch-indicator {
+  cursor: pointer;
+}
+
+.branch-path-bar__branch-indicator:hover {
+  color: var(--ant-color-primary);
+}
+
+.branch-path-bar__separator {
+  font-size: 10px;
+  color: var(--ant-color-text-quaternary);
+}
+
+.branch-path-bar__ellipsis {
+  color: var(--ant-color-text-quaternary);
+}
+
+.branch-path-bar__ellipsis--clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  color: var(--ant-color-text-tertiary);
+}
+
+.branch-path-bar__ellipsis--clickable:hover {
+  color: var(--ant-color-primary);
+}
+
+.branch-path-bar__ellipsis-count {
+  font-size: 10px;
+}
+
+.branch-path-bar__nav {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  padding-left: 12px;
+}
+
+.branch-path-bar__nav-btn {
+  cursor: pointer;
+  color: var(--ant-color-text-secondary);
+}
+
+.branch-path-bar__nav-btn:hover {
+  color: var(--ant-color-primary);
+}
+
+.branch-path-bar__nav-divider {
+  width: 1px;
+  height: 14px;
+  background-color: var(--ant-color-border);
+  margin: 0 4px;
+}

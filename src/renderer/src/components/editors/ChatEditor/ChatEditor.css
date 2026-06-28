@@ -1,0 +1,14 @@
+/* ChatEditor Base Styles */
+.chat-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ant-color-bg-container);
+}
+
+.chat-editor--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ant-color-text-secondary);
+}

@@ -6,8 +6,11 @@ import type {
   AIStreamCallbacks,
   LLMConfig,
   TestConnectionResult,
-  GetModelsResult
+  GetModelsResult,
+  UpdateInfo,
+  DownloadProgress
 } from './index.d'
+import type { ForwardedShortcutAction } from '../shared/shortcuts'
 
 // Custom APIs for renderer
 const api = {
@@ -21,7 +24,7 @@ const api = {
         const eventChannel = `ai-stream-${request.requestId}`
 
         // 监听流数据
-        const handleStreamData = (_: any, data: AIStreamChunk) => {
+        const handleStreamData = (_: Electron.IpcRendererEvent, data: AIStreamChunk): void => {
           switch (data.type) {
             case 'chunk':
               if (data.content) {
@@ -35,12 +38,13 @@ const api = {
                 callbacks.onReasoning?.(data.reasoning_content)
               }
               break
-            case 'complete':
+            case 'complete': {
               ipcRenderer.removeListener(eventChannel, handleStreamData)
               const finalReasoning = data.reasoning_content || fullReasoning || undefined
               callbacks.onComplete?.(fullResponse || data.content || '', finalReasoning)
               resolve(request.requestId)
               break
+            }
             case 'error':
               ipcRenderer.removeListener(eventChannel, handleStreamData)
               callbacks.onError?.(data.error || 'Unknown error')
@@ -86,16 +90,16 @@ const api = {
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
     quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-    onUpdateAvailable: (callback: (info: any) => void) => {
+    onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-available', (_, info) => callback(info))
     },
-    onUpdateNotAvailable: (callback: (info: any) => void) => {
+    onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-not-available', (_, info) => callback(info))
     },
-    onDownloadProgress: (callback: (progress: any) => void) => {
+    onDownloadProgress: (callback: (progress: DownloadProgress) => void) => {
       ipcRenderer.on('download-progress', (_, progress) => callback(progress))
     },
-    onUpdateDownloaded: (callback: (info: any) => void) => {
+    onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
       ipcRenderer.on('update-downloaded', (_, info) => callback(info))
     },
     onUpdateError: (callback: (error: string) => void) => {
@@ -138,6 +142,115 @@ const api = {
     cleanupPage: (pageId: string) => ipcRenderer.invoke('attachment:cleanup-page', pageId),
 
     cleanupTemp: () => ipcRenderer.invoke('attachment:cleanup-temp')
+  },
+
+  // 文件系统 API
+  fs: {
+    getAppDataPath: (): Promise<string> => ipcRenderer.invoke('fs:get-app-data-path'),
+
+    syncWorkspaceAccess: (context: {
+      currentWorkspacePath: string | null
+      approvedWorkspacePaths: string[]
+    }) => ipcRenderer.invoke('fs:sync-workspace-access', context),
+
+    approveWorkspacePath: (workspacePath: string): Promise<void> =>
+      ipcRenderer.invoke('fs:approve-workspace-path', workspacePath),
+
+    selectDirectory: (options?: { title?: string; defaultPath?: string }) =>
+      ipcRenderer.invoke('fs:select-directory', options),
+
+    readText: (
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; content?: string; error?: string }> =>
+      ipcRenderer.invoke('fs:read-text', filePath, options),
+
+    writeText: (
+      filePath: string,
+      content: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-text', filePath, content, options),
+
+    readJson: <T = unknown>(
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; data?: T; error?: string }> =>
+      ipcRenderer.invoke('fs:read-json', filePath, options),
+
+    writeJson: (
+      filePath: string,
+      data: unknown,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-json', filePath, data, options),
+
+    delete: (
+      targetPath: string,
+      options?: { allowCustomPath?: boolean; recursive?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:delete', targetPath, options),
+
+    ensureDir: (
+      dirPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:ensure-dir', dirPath, options),
+
+    exists: (
+      targetPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; exists?: boolean; isDirectory?: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:exists', targetPath, options),
+
+    listDir: (
+      dirPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{
+      success: boolean
+      entries?: Array<{ name: string; isDirectory: boolean }>
+      error?: string
+    }> => ipcRenderer.invoke('fs:list-dir', dirPath, options),
+
+    copyFile: (
+      sourcePath: string,
+      destPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:copy-file', sourcePath, destPath, options),
+
+    readBinary: (
+      filePath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; content?: string; error?: string }> =>
+      ipcRenderer.invoke('fs:read-binary', filePath, options),
+
+    writeBinary: (
+      filePath: string,
+      base64Content: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:write-binary', filePath, base64Content, options)
+  },
+
+  // Persistence flush API
+  persistence: {
+    onFlushRequest: (callback: () => void): void => {
+      ipcRenderer.on('persistence:flush-request', () => callback())
+    },
+    notifyFlushComplete: (): void => {
+      ipcRenderer.send('persistence:flush-complete')
+    }
+  },
+  shortcuts: {
+    onAction: (callback: (action: ForwardedShortcutAction) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, action: ForwardedShortcutAction): void =>
+        callback(action)
+      ipcRenderer.on('shortcut:action', listener)
+      return () => {
+        ipcRenderer.removeListener('shortcut:action', listener)
+      }
+    }
   }
 }
 

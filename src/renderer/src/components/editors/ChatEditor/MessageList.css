@@ -1,0 +1,32 @@
+/* Message List */
+.chat-editor__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  gap: 12px;
+}
+
+.chat-editor__messages--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ant-color-text-secondary);
+}
+
+/* Search Highlight */
+/* Editor 内搜索高亮（黄色系） */
+::highlight(search-highlight) {
+  background-color: rgba(255, 255, 0, 0.4);
+  color: inherit;
+}
+
+::highlight(search-current) {
+  background-color: rgba(255, 165, 0, 0.8);
+  color: black;
+}
+
+/* 全局搜索高亮（青色/蓝绿色，与 editor 搜索区分） */
+::highlight(global-search-highlight) {
+  background-color: rgba(0, 200, 200, 0.5);
+  color: inherit;
+}

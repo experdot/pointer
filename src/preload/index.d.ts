@@ -1,42 +1,18 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type { AIRequest, AIStreamCallbacks, LLMConfig } from '../shared/ai'
+import type { ForwardedShortcutAction } from '../shared/shortcuts'
 
-export interface LLMConfig {
-  apiHost: string
-  apiKey: string
-  modelName: string
-}
+export type {
+  AIRequest,
+  AIStreamChunk,
+  AIStreamCallbacks,
+  LLMConfig,
+  ModelConfig
+} from '../shared/ai'
 
-export interface ModelConfig {
-  systemPrompt: string
-  topP: number
-  temperature: number
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-}
-
-export interface AIRequest {
-  requestId: string
-  llmConfig: LLMConfig
-  modelConfig: ModelConfig
-  messages: ChatMessage[]
-}
-
-export interface AIStreamChunk {
-  requestId: string
-  type: 'chunk' | 'complete' | 'error' | 'reasoning_content'
-  content?: string
-  reasoning_content?: string
-  error?: string
-}
-
-export interface AIStreamCallbacks {
-  onChunk: (chunk: string) => void
-  onReasoning?: (reasoning: string) => void
-  onComplete?: (fullResponse: string, reasoning?: string) => void
-  onError?: (error: string) => void
+export interface WorkspaceAccessContext {
+  currentWorkspacePath: string | null
+  approvedWorkspacePaths: string[]
 }
 
 export interface TestConnectionResult {
@@ -48,6 +24,26 @@ export interface GetModelsResult {
   success: boolean
   models?: string[]
   error?: string
+}
+
+export interface UpdateInfo {
+  version: string
+  releaseDate?: string
+  releaseName?: string
+  releaseNotes?: string
+}
+
+export interface UpdateCheckResult {
+  updateInfo: UpdateInfo
+  cancellationToken?: unknown
+}
+
+export interface DownloadProgress {
+  total: number
+  delta: number
+  transferred: number
+  percent: number
+  bytesPerSecond: number
 }
 
 declare global {
@@ -83,14 +79,14 @@ declare global {
         error?: string
       }>
       updater: {
-        checkForUpdates: () => Promise<any>
-        downloadUpdate: () => Promise<any>
+        checkForUpdates: () => Promise<UpdateCheckResult | null>
+        downloadUpdate: () => Promise<string[]>
         quitAndInstall: () => Promise<void>
         getAppVersion: () => Promise<string>
-        onUpdateAvailable: (callback: (info: any) => void) => void
-        onUpdateNotAvailable: (callback: (info: any) => void) => void
-        onDownloadProgress: (callback: (progress: any) => void) => void
-        onUpdateDownloaded: (callback: (info: any) => void) => void
+        onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void
+        onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => void
+        onDownloadProgress: (callback: (progress: DownloadProgress) => void) => void
+        onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void
         onUpdateError: (callback: (error: string) => void) => void
         removeAllUpdateListeners: () => void
       }
@@ -118,12 +114,88 @@ declare global {
         cleanupPage: (pageId: string) => Promise<{ success: boolean; error?: string }>
         cleanupTemp: () => Promise<{ success: boolean; error?: string }>
       }
+      fs: {
+        getAppDataPath: () => Promise<string>
+        syncWorkspaceAccess: (context: WorkspaceAccessContext) => Promise<void>
+        approveWorkspacePath: (workspacePath: string) => Promise<void>
+        selectDirectory: (options?: { title?: string; defaultPath?: string }) => Promise<{
+          success: boolean
+          cancelled?: boolean
+          path?: string
+          error?: string
+        }>
+        readText: (
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; content?: string; error?: string }>
+        writeText: (
+          filePath: string,
+          content: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        readJson: <T = unknown>(
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; data?: T; error?: string }>
+        writeJson: (
+          filePath: string,
+          data: unknown,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        delete: (
+          targetPath: string,
+          options?: { allowCustomPath?: boolean; recursive?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        ensureDir: (
+          dirPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        exists: (
+          targetPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{
+          success: boolean
+          exists?: boolean
+          isDirectory?: boolean
+          error?: string
+        }>
+        listDir: (
+          dirPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{
+          success: boolean
+          entries?: Array<{ name: string; isDirectory: boolean }>
+          error?: string
+        }>
+        copyFile: (
+          sourcePath: string,
+          destPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+        readBinary: (
+          filePath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; content?: string; error?: string }>
+        writeBinary: (
+          filePath: string,
+          base64Content: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
+      }
+      persistence: {
+        onFlushRequest: (callback: () => void) => void
+        notifyFlushComplete: () => void
+      }
+      shortcuts: {
+        onAction: (callback: (action: ForwardedShortcutAction) => void) => () => void
+      }
     }
     electronWindow: {
       minimize: () => Promise<void>
       maximize: () => Promise<void>
       close: () => Promise<void>
       isMaximized: () => Promise<boolean>
+      getPlatform: () => Promise<string>
     }
   }
 }

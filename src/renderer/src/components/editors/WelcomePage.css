@@ -1,0 +1,16 @@
+.welcome-page {
+  height: 100%;
+  padding: 40px;
+}
+
+.welcome-title {
+  margin-bottom: 8px !important;
+}
+
+.welcome-subtitle {
+  margin-bottom: 32px;
+}
+
+.welcome-actions {
+  margin-top: 16px;
+}

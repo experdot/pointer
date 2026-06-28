@@ -1,0 +1,32 @@
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--ant-color-bg-container);
+  overflow: hidden;
+}
+
+.editor-tabs {
+  height: 42px;
+  background: var(--ant-color-bg-layout);
+  border-bottom: 1px solid var(--ant-color-border);
+  display: flex;
+  align-items: flex-end;
+}
+
+.editor-tabs .ant-tabs {
+  width: 100%;
+}
+
+.editor-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-pane {
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  overflow: auto;
+}

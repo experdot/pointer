@@ -1,184 +1,145 @@
-# Pointer AI Chat Assistant
+# Pointer
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/experdot/pointer)
-![GitHub all releases](https://img.shields.io/github/downloads/experdot/pointer/total)
-![GitHub](https://img.shields.io/github/license/experdot/pointer)
+<p align="center">
+  <img src="./resources/icon.png" alt="Pointer Logo" width="128" height="128">
+</p>
 
-[中文版](README.zh-CN.md) | **English**
+<p align="center">
+  <strong>A secure AI chat application crafted for deep thinkers</strong>
+</p>
 
-An AI chat application built with Electron + React + TypeScript, supporting **multi-model conversations**, **intelligent crosstab data analysis**, and **knowledge organization management**.
+<p align="center">
+  <a href="https://github.com/experdot/pointer/releases"><img src="https://img.shields.io/github/v/release/experdot/pointer" alt="Release"></a>
+  <a href="https://github.com/experdot/pointer/releases"><img src="https://img.shields.io/github/downloads/experdot/pointer/total" alt="Downloads"></a>
+  <a href="https://github.com/experdot/pointer/blob/main/LICENSE"><img src="https://img.shields.io/github/license/experdot/pointer" alt="License"></a>
+</p>
 
-基于 Electron + React + TypeScript 开发的AI聊天应用，支持**多模型对话**、**交叉数据分析**和**知识组织管理**。
+<p align="center">
+  <a href="README.zh-CN.md">中文</a> | <strong>English</strong>
+</p>
 
-- 博客1：[AI 聊天应用的 10 条高级需求](https://www.cnblogs.com/experdot/p/18924253)
-- 博客2：[解决了AI聊天的 10 个痛点后，新的功能：交叉分析表](https://www.cnblogs.com/experdot/p/18974641)
+## Overview
 
-[查看中文 README 介绍](README.zh-CN.md) 
+Pointer is a cross-platform desktop AI chat client built with Electron, React 19, and TypeScript. It connects to various AI model APIs (OpenAI, Claude, DeepSeek, etc.) and provides advanced conversation management with a focus on knowledge organization and deep thinking workflows.
 
-> 示例：渐进式交互，生成小说设定
+## Features
 
-![Example](./Screenshot-0.png)
+### Multi-Model Support
 
-## Key Features
+- Configure multiple AI providers (OpenAI GPT, Anthropic Claude, DeepSeek, etc.)
+- Switch between models seamlessly during conversations
+- Streaming responses with real-time reasoning process display
 
-### AI Conversation System
+### Conversation Branch Management
 
-- Support for multiple AI models (OpenAI GPT, Claude, DeepSeek, etc.)
-- Streaming conversation responses with reasoning process display
-- Message tree branch management with conversation version control
-- Hierarchical chat history organization with parallel tab workflow
-- Global content search with keyword highlighting
-- Global AI generation task management with task monitoring and cancellation
-- Global Q&A traceability mechanism to track generation relationships across pages
+- Tree-structured message history with version control
+- Create and switch between conversation branches
+- Maintain context inheritance across branches
+- Navigate conversation history with ease
 
-### Unique Features
+### Knowledge Organization
 
-- **AI Crosstab Analysis**: Automatically generate structured comparison analysis tables
-- **AI Object Manager**: Visual knowledge data structure management
-- **Data Import/Export**: Support for mainstream AI platform data migration (OpenAI ChatGPT / Deepseek Chat)
-
-### Knowledge Management
-
-- Folder hierarchical organization
+- Folder-based hierarchical organization
 - Message bookmarking and tagging
+- Parallel tab workflow for multiple conversations
+- Global search with keyword highlighting
+
+### Data Management
+
+- Import data from ChatGPT and DeepSeek exports
+- Export conversations for backup
+- Local data storage with privacy focus
 - Batch operations and drag-and-drop sorting
-- Data backup and recovery
 
-#### Main Interface
+### Task Monitoring
 
-![Main Interface](./Screenshot-1.png)
+- Global AI generation task management
+- Real-time task status and cancellation
+- Cross-page Q&A traceability
 
-#### Crosstab Analysis
+## Installation
 
-![Crosstab Analysis](./Screenshot-2.png)
+### Download
 
-#### Object Manager
+Download the latest release for your platform from the [Releases](https://github.com/experdot/pointer/releases) page:
 
-![Object Manager](./Screenshot-3.png)
+- **Windows**: `.exe` installer
+- **macOS**: `.dmg` installer
+- **Linux**: `.AppImage` or `.deb` package
 
-## Quick Start
+### Build from Source
 
-### Requirements
+Requirements:
 
 - Node.js 18+
-- Windows 10+, macOS 10.15+, or Linux
-
-### Installation & Setup
+- pnpm
 
 ```bash
+# Clone the repository
+git clone https://github.com/experdot/pointer.git
+cd pointer
+
 # Install dependencies
 pnpm install
 
-# Development mode
+# Run in development mode
 pnpm dev
 
-# Build application
+# Build for your platform
 pnpm build:win    # Windows
 pnpm build:mac    # macOS
 pnpm build:linux  # Linux
 ```
 
-### Basic Configuration
+## Configuration
 
-1. Launch the application and go to settings
-2. Configure AI model parameters:
-   - Configuration name
-   - API endpoint
-   - Access key
-   - Model identifier
-3. Select default model and test connection
+1. Launch the application
+2. Open Settings
+3. Add a new AI model configuration:
+   - **Name**: Display name for the configuration
+   - **API Endpoint**: The API URL (e.g., `https://api.openai.com/v1`)
+   - **API Key**: Your access token
+   - **Model**: Model identifier (e.g., `gpt-4o`, `claude-3-5-sonnet`)
+4. Set as default and test the connection
 
-## Core Features
+## Tech Stack
 
-### Crosstab Analysis
+| Category  | Technologies                                                 |
+| --------- | ------------------------------------------------------------ |
+| Frontend  | React 19, TypeScript, Ant Design, Tailwind CSS               |
+| Desktop   | Electron 35, electron-vite                                   |
+| State     | Zustand, Immer                                               |
+| Build     | Vite, Electron Builder                                       |
+| Editor    | Monaco Editor                                                |
+| Rendering | Shiki (syntax highlighting), Streamdown (streaming markdown) |
 
-Convert any topic into structured comparison analysis tables, suitable for:
-
-- Academic research literature comparison
-- Business decision solution evaluation
-- Educational material knowledge organization
-- Product feature competitive analysis
-
-Workflow:
-
-1. Input analysis topic
-2. AI automatically generates table structure
-3. Fill intersection data
-4. Manual editing and optimization
-
-### Object Browser
-
-Visualize complex data structures with support for:
-
-- Tree structure display
-- AI automatic node generation
-- Manual editing and organization
-- Structured data export
-
-### Chat Branch Management
-
-- Message tree structure
-- Independent conversations between branches
-- Historical version switching
-- Context inheritance
-
-## Technical Architecture
-
-### Core Technologies
-
-- **Frontend**: React 19 + TypeScript + Ant Design
-- **Backend**: Electron main process
-- **Build**: Vite + Electron Builder
-- **Styling**: CSS Modules + SCSS
-
-### Project Structure
+## Project Structure
 
 ```
 src/
-├── main/          # Electron main process
-├── renderer/      # Renderer process
-│   ├── components/  # React components
-│   ├── store/      # State management
-│   ├── services/   # Business logic
-│   └── utils/      # Utility functions
-└── preload/       # Preload scripts
+├── main/              # Electron main process
+│   ├── aiHandler.ts     # AI API request handling
+│   ├── ipcHandlers.ts   # IPC communication
+│   └── autoUpdater.ts   # Auto-update logic
+├── preload/           # Preload scripts (context bridge)
+└── renderer/          # React application
+    └── src/
+        ├── components/    # UI components
+        ├── services/      # Business logic
+        ├── stores/        # Zustand state management
+        ├── hooks/         # Custom React hooks
+        ├── features/      # Feature modules
+        └── utils/         # Utility functions
 ```
 
-### Key Dependencies
+## Contributing
 
-- `react-markdown`: Markdown rendering
-- `mermaid`: Chart drawing
-- `katex`: Mathematical formulas
-- `html2canvas`: Screenshot functionality
-- `rehype-highlight`: Code highlighting
-
-## Use Cases
-
-**Education & Research**: Course design, knowledge organization, literature analysis  
-**Business Analysis**: Market research, competitive comparison, strategic planning  
-**Content Creation**: Topic planning, material organization, structured writing  
-**Personal Learning**: Note organization, knowledge comparison, review materials
-
-## Development & Contribution
-
-### Development Workflow
-
-1. Fork the project and create a feature branch
-2. Follow TypeScript and ESLint standards
-3. Submit code and create Pull Request
-
-### Code Standards
-
-- Use functional components and Hooks
-- Follow conventional commits format
-- Maintain type safety
-
-### Key Improvement Areas
-
-- Bug fixes
-- Generation prompt and context optimization
-- Performance optimization and user experience improvement
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Follow the coding standards (TypeScript, ESLint, Prettier)
+4. Commit using conventional commits format
+5. Open a Pull Request
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) file for details 
+[MIT License](LICENSE)

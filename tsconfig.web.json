@@ -3,7 +3,6 @@
   "include": [
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
-    "src/renderer/src/**/*.tsx",
     "src/preload/*.d.ts",
   ],
   "compilerOptions": {
@@ -15,16 +14,7 @@
         "src/renderer/src/*"
       ]
     },
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "isolatedModules": false,
-    "strict": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictPropertyInitialization": false,
-    "noImplicitAny": false,
-    "noImplicitReturns": false,
-    "noImplicitThis": false,
+    "strict": true,
     "skipLibCheck": true
   }
 }

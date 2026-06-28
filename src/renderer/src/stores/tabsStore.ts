@@ -1,324 +1,452 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { immer } from 'zustand/middleware/immer'
-import { createPersistConfig, handleStoreError } from './persistence/storeConfig'
-import { usePagesStore } from './pagesStore'
-import { ChatMessage } from '../types/type'
+import { persistence } from '../persistence/registry'
+import { tryGetCurrentWorkspaceScope } from '../persistence/scope'
+import { getTabsQueue } from './persistenceQueue'
+import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
+import type { Tab, TabHistoryEntry } from '../types/type'
+import type { ITabStore } from './interfaces/ui'
 
-// 构建到指定消息的路径
-function buildPathToMessage(messages: ChatMessage[], targetMessageId: string): string[] {
-  const messageMap = new Map<string, ChatMessage>()
-  messages.forEach((msg) => messageMap.set(msg.id, msg))
+export type { Tab, TabHistoryEntry } from '../types/type'
 
-  const targetMessage = messageMap.get(targetMessageId)
-  if (!targetMessage) return []
-
-  // 构建从根到目标消息的路径
-  const path: string[] = []
-  let currentMsg: ChatMessage | undefined = targetMessage
-
-  while (currentMsg) {
-    path.unshift(currentMsg.id)
-    if (currentMsg.parentId) {
-      currentMsg = messageMap.get(currentMsg.parentId)
-    } else {
-      break
-    }
-  }
-
-  // 如果目标消息有子节点，继续延伸到第一个子节点
-  let lastNode = targetMessage
-  while (lastNode.children && lastNode.children.length > 0) {
-    const firstChildId = lastNode.children[0]
-    const firstChild = messageMap.get(firstChildId)
-    if (firstChild) {
-      path.push(firstChildId)
-      lastNode = firstChild
-    } else {
-      break
-    }
-  }
-
-  return path
+const WELCOME_TAB: Tab = {
+  id: 'welcome',
+  type: 'welcome',
+  title: '欢迎',
+  closable: true
 }
 
-export interface TabsState {
-  openTabs: string[] // 所有打开的 tab ID
-  activeTabId: string | null // 当前激活的 tab ID
-  pinnedTabs: Record<string, boolean> // 所有 tab 的 pinned 状态（统一管理）
+const WELCOME_HISTORY_ENTRY: TabHistoryEntry = {
+  tabId: WELCOME_TAB.id,
+  type: WELCOME_TAB.type
 }
 
-export interface TabsActions {
-  // 标签页基本操作
-  openTab: (chatId: string, messageId?: string) => void
-  closeTab: (chatId: string) => void
-  closeOtherTabs: (chatId: string) => void
-  closeTabsToRight: (chatId: string) => void
+interface TabsState {
+  tabs: Tab[]
+  activeTabId: string | null
+  history: TabHistoryEntry[]
+  historyIndex: number
+  initialized: boolean
+}
+
+interface TabsActions {
+  init: () => Promise<void>
+  openTab: (tab: Tab, preview?: boolean) => void
+  closeTab: (tabId: string) => void
+  setActiveTab: (tabId: string) => void
+  activateNextTab: () => void
+  activatePrevTab: () => void
+  updateTabTitle: (tabId: string, title: string) => void
+  reorderTabs: (fromIndex: number, toIndex: number) => void
+  togglePinTab: (tabId: string) => void
+  closeOtherTabs: (tabId: string) => void
+  closeRightTabs: (tabId: string) => void
   closeAllTabs: () => void
-  setActiveTab: (chatId: string) => void
-
-  // 标签页固定（统一逻辑，不区分普通页面或收藏页）
-  pinTab: (chatId: string) => void
-  unpinTab: (chatId: string) => void
-  isTabPinned: (chatId: string) => boolean
-
-  // 标签页重排序
-  reorderTabs: (newOrder: string[]) => void
-
-  // 工具方法
-  isTabOpen: (chatId: string) => boolean
-  getTabIndex: (chatId: string) => number
-  getNextActiveTab: (closedTabId: string) => string | null
-  clearAllTabs: () => void
+  cleanupInvalidTabs: () => void
+  goBack: () => void
+  goForward: () => void
+  canGoBack: () => boolean
+  canGoForward: () => boolean
+  clearHistory: () => void
+  navigateToHistoryIndex: (index: number) => void
+  keepTab: (tabId: string) => void
+  reset: () => Promise<void>
 }
+
+type TabsStore = TabsState & TabsActions
 
 const initialState: TabsState = {
-  openTabs: [],
-  activeTabId: null,
-  pinnedTabs: {}
+  tabs: [WELCOME_TAB],
+  activeTabId: WELCOME_TAB.id,
+  history: [WELCOME_HISTORY_ENTRY],
+  historyIndex: 0,
+  initialized: false
 }
 
-export const useTabsStore = create<TabsState & TabsActions>()(
-  persist(
-    immer((set, get) => ({
-      ...initialState,
+let isNavigating = false
 
-      // 获取 tab 的 pinned 状态
-      isTabPinned: (chatId: string) => {
-        return get().pinnedTabs[chatId] || false
-      },
+function toHistoryEntry(tab: Tab): TabHistoryEntry {
+  return { tabId: tab.id, type: tab.type, dataId: tab.dataId }
+}
 
-      // 打开标签页
-      openTab: (chatId, messageId?) => {
-        try {
-          const { openTabs, pinnedTabs } = get()
+function computeNewHistory(
+  history: TabHistoryEntry[],
+  historyIndex: number,
+  tab: Tab
+): { history: TabHistoryEntry[]; historyIndex: number } {
+  if (isNavigating) {
+    return { history, historyIndex }
+  }
+  if (history[historyIndex]?.tabId === tab.id) {
+    return { history, historyIndex }
+  }
+  const newHistory = [...history.slice(0, historyIndex + 1), toHistoryEntry(tab)]
+  return { history: newHistory, historyIndex: newHistory.length - 1 }
+}
 
-          // 如果标签页已经打开，只需激活它
-          if (openTabs.includes(chatId)) {
-            set((state) => {
-              state.activeTabId = chatId
-            })
+function tryNavigateToHistory(
+  history: TabHistoryEntry[],
+  startIndex: number,
+  direction: 1 | -1,
+  tabs: Tab[],
+  openTab: (tab: Tab, preview?: boolean) => void
+): { targetIndex: number; targetTabId: string } | null {
+  for (let i = startIndex; direction === -1 ? i >= 0 : i < history.length; i += direction) {
+    const entry = history[i]
 
-            // 如果提供了 messageId，更新页面的当前路径（仅对普通页面有效）
-            if (messageId && !chatId.startsWith('favorite-')) {
-              const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
-              const page = findPageById(chatId)
-              if (page && page.type === 'regular' && page.messages) {
-                const path = buildPathToMessage(page.messages, messageId)
-                if (path.length > 0) {
-                  updatePageCurrentPath(chatId, path, messageId)
-                }
-              }
-            }
-            return
-          }
+    if (tabs.some((t) => t.id === entry.tabId)) {
+      return { targetIndex: i, targetTabId: entry.tabId }
+    }
 
-          // 新打开标签页
-          set((state) => {
-            const isPinned = pinnedTabs[chatId] || false
-
-            if (isPinned) {
-              // 固定标签页插入到所有固定标签页的末尾
-              const pinnedTabIds = state.openTabs.filter((id) => state.pinnedTabs[id])
-              const unpinnedTabIds = state.openTabs.filter((id) => !state.pinnedTabs[id])
-              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
-            } else {
-              // 普通标签页添加到末尾
-              state.openTabs.push(chatId)
-            }
-
-            state.activeTabId = chatId
-          })
-
-          // 如果提供了 messageId，更新页面的当前路径（仅对普通页面有效）
-          if (messageId && !chatId.startsWith('favorite-')) {
-            const { findPageById, updatePageCurrentPath } = usePagesStore.getState()
-            const page = findPageById(chatId)
-            if (page && page.type === 'regular' && page.messages) {
-              const path = buildPathToMessage(page.messages, messageId)
-              if (path.length > 0) {
-                updatePageCurrentPath(chatId, path, messageId)
-              }
-            }
-          }
-        } catch (error) {
-          handleStoreError('tabsStore', 'openTab', error)
-        }
-      },
-
-      // 关闭标签页
-      closeTab: (chatId) => {
-        try {
-          set((state) => {
-            const newOpenTabs = state.openTabs.filter((id) => id !== chatId)
-
-            let newActiveTabId = state.activeTabId
-            if (state.activeTabId === chatId) {
-              if (newOpenTabs.length > 0) {
-                const closedIndex = state.openTabs.indexOf(chatId)
-                newActiveTabId = newOpenTabs[Math.min(closedIndex, newOpenTabs.length - 1)]
-              } else {
-                newActiveTabId = null
-              }
-            }
-
-            state.openTabs = newOpenTabs
-            state.activeTabId = newActiveTabId
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'closeTab', error)
-        }
-      },
-
-      // 关闭其他标签页
-      closeOtherTabs: (chatId) => {
-        try {
-          set((state) => {
-            state.openTabs = [chatId]
-            state.activeTabId = chatId
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'closeOtherTabs', error)
-        }
-      },
-
-      // 关闭右侧标签页
-      closeTabsToRight: (chatId) => {
-        try {
-          set((state) => {
-            const currentIndex = state.openTabs.indexOf(chatId)
-            if (currentIndex === -1) return
-
-            const newOpenTabs = state.openTabs.slice(0, currentIndex + 1)
-            let newActiveTabId = state.activeTabId
-
-            if (state.activeTabId && !newOpenTabs.includes(state.activeTabId)) {
-              newActiveTabId = chatId
-            }
-
-            state.openTabs = newOpenTabs
-            state.activeTabId = newActiveTabId
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'closeTabsToRight', error)
-        }
-      },
-
-      // 关闭所有标签页
-      closeAllTabs: () => {
-        try {
-          set((state) => {
-            state.openTabs = []
-            state.activeTabId = null
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'closeAllTabs', error)
-        }
-      },
-
-      // 设置激活的标签页
-      setActiveTab: (chatId) => {
-        try {
-          set((state) => {
-            state.activeTabId = chatId
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'setActiveTab', error)
-        }
-      },
-
-      // 固定标签页
-      pinTab: (chatId) => {
-        try {
-          set((state) => {
-            // 设置 pinned 状态
-            state.pinnedTabs[chatId] = true
-
-            // 重新排序标签页
-            if (state.openTabs.includes(chatId)) {
-              const filteredTabs = state.openTabs.filter((id) => id !== chatId)
-              const pinnedTabIds = filteredTabs.filter((id) => state.pinnedTabs[id])
-              const unpinnedTabIds = filteredTabs.filter((id) => !state.pinnedTabs[id])
-              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
-            }
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'pinTab', error)
-        }
-      },
-
-      // 取消固定标签页
-      unpinTab: (chatId) => {
-        try {
-          set((state) => {
-            // 取消 pinned 状态
-            state.pinnedTabs[chatId] = false
-
-            // 重新排序标签页
-            if (state.openTabs.includes(chatId)) {
-              const filteredTabs = state.openTabs.filter((id) => id !== chatId)
-              const pinnedTabIds = filteredTabs.filter((id) => state.pinnedTabs[id])
-              const unpinnedTabIds = filteredTabs.filter((id) => !state.pinnedTabs[id])
-              state.openTabs = [...pinnedTabIds, chatId, ...unpinnedTabIds]
-            }
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'unpinTab', error)
-        }
-      },
-
-      // 重新排序标签页
-      reorderTabs: (newOrder) => {
-        try {
-          set((state) => {
-            // 验证新顺序是否有效
-            const validOrder = newOrder.filter((id) => state.openTabs.includes(id))
-
-            // 如果有遗漏的标签页，添加到末尾
-            const missingTabs = state.openTabs.filter((id) => !validOrder.includes(id))
-            const reorderedTabs = [...validOrder, ...missingTabs]
-
-            // 重新分离固定标签页和普通标签页，确保固定标签页在前
-            const pinnedTabIds = reorderedTabs.filter((id) => state.pinnedTabs[id])
-            const unpinnedTabIds = reorderedTabs.filter((id) => !state.pinnedTabs[id])
-
-            state.openTabs = [...pinnedTabIds, ...unpinnedTabIds]
-          })
-        } catch (error) {
-          handleStoreError('tabsStore', 'reorderTabs', error)
-        }
-      },
-
-      // 工具方法
-      isTabOpen: (chatId) => {
-        return get().openTabs.includes(chatId)
-      },
-
-      getTabIndex: (chatId) => {
-        return get().openTabs.indexOf(chatId)
-      },
-
-      getNextActiveTab: (closedTabId) => {
-        const { openTabs } = get()
-        const newOpenTabs = openTabs.filter((id) => id !== closedTabId)
-
-        if (newOpenTabs.length === 0) return null
-
-        const closedIndex = openTabs.indexOf(closedTabId)
-        return newOpenTabs[Math.min(closedIndex, newOpenTabs.length - 1)]
-      },
-
-      clearAllTabs: () => {
-        set((state) => {
-          state.openTabs = []
-          state.activeTabId = null
-        })
+    const restoredTab = tryRestoreTab(entry.type, entry.dataId)
+    if (restoredTab) {
+      isNavigating = true
+      try {
+        openTab({ ...restoredTab, preview: true }, true)
+      } finally {
+        isNavigating = false
       }
-    })),
-    createPersistConfig('tabs-store', 2, (state) => ({
-      openTabs: state.openTabs,
-      activeTabId: state.activeTabId,
-      pinnedTabs: state.pinnedTabs
-    }))
-  )
-)
+      return { targetIndex: i, targetTabId: restoredTab.id }
+    }
+  }
+
+  return null
+}
+
+const persist = (state: TabsState): void => {
+  const scope = tryGetCurrentWorkspaceScope()
+  if (!scope) return
+
+  getTabsQueue(scope).enqueue('tabs', {
+    tabs: state.tabs,
+    activeTabId: state.activeTabId,
+    history: state.history,
+    historyIndex: state.historyIndex
+  })
+}
+
+export const useTabsStore = create<TabsStore>((set, get) => ({
+  ...initialState,
+
+  init: async () => {
+    const scope = tryGetCurrentWorkspaceScope()
+    if (!scope) {
+      set(initialState)
+      return
+    }
+
+    const data = await persistence.workspace(scope).tabs.get()
+    if (data) {
+      set({ ...data, initialized: true })
+    } else {
+      set({ initialized: true })
+    }
+  },
+
+  openTab: (tab, preview = false) => {
+    const state = get()
+    const { tabs, history, historyIndex } = state
+    const existingTab = tabs.find((t) => t.id === tab.id)
+    const historyUpdate = computeNewHistory(history, historyIndex, tab)
+
+    let newState: Partial<TabsState>
+
+    if (preview) {
+      const existingPreview = tabs.find((t) => t.preview)
+      const newTab = { ...tab, preview: true }
+
+      if (existingTab) {
+        newState = { activeTabId: tab.id, ...historyUpdate }
+      } else if (existingPreview) {
+        newState = {
+          tabs: tabs.map((t) => (t.preview ? newTab : t)),
+          activeTabId: tab.id,
+          ...historyUpdate
+        }
+      } else {
+        newState = {
+          tabs: [...tabs, newTab],
+          activeTabId: tab.id,
+          ...historyUpdate
+        }
+      }
+    } else {
+      if (existingTab) {
+        const newTabs = existingTab.preview
+          ? tabs.map((t) => (t.id === tab.id ? { ...t, preview: false } : t))
+          : tabs
+        newState = { tabs: newTabs, activeTabId: tab.id, ...historyUpdate }
+      } else {
+        newState = {
+          tabs: [...tabs, { ...tab, preview: false }],
+          activeTabId: tab.id,
+          ...historyUpdate
+        }
+      }
+    }
+
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  closeTab: (tabId) => {
+    const state = get()
+    const { tabs, activeTabId } = state
+    const index = tabs.findIndex((t) => t.id === tabId)
+    if (index === -1) return
+
+    const newTabs = tabs.filter((t) => t.id !== tabId)
+    let newActiveTabId = activeTabId
+
+    if (activeTabId === tabId) {
+      if (newTabs.length > 0) {
+        newActiveTabId = newTabs[Math.min(index, newTabs.length - 1)].id
+      } else {
+        newActiveTabId = null
+      }
+    }
+
+    const newState = { tabs: newTabs, activeTabId: newActiveTabId }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  setActiveTab: (tabId) => {
+    const state = get()
+    const { tabs, history, historyIndex } = state
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab) return
+    const historyUpdate = computeNewHistory(history, historyIndex, tab)
+    const newState = { activeTabId: tabId, ...historyUpdate }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  activateNextTab: () => {
+    const { tabs, activeTabId, setActiveTab } = get()
+    if (tabs.length < 2) return
+
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % tabs.length : 0
+    setActiveTab(tabs[nextIndex].id)
+  },
+
+  activatePrevTab: () => {
+    const { tabs, activeTabId, setActiveTab } = get()
+    if (tabs.length < 2) return
+
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const prevIndex =
+      currentIndex >= 0 ? (currentIndex - 1 + tabs.length) % tabs.length : tabs.length - 1
+    setActiveTab(tabs[prevIndex].id)
+  },
+
+  updateTabTitle: (tabId, title) => {
+    const state = get()
+    const newTabs = state.tabs.map((t) => (t.id === tabId ? { ...t, title } : t))
+    set({ tabs: newTabs })
+    persist({ ...state, tabs: newTabs })
+  },
+
+  reorderTabs: (fromIndex, toIndex) => {
+    const state = get()
+    const { tabs } = state
+    const removed = tabs[fromIndex]
+    if (!removed) return
+
+    const pinnedCount = tabs.filter((t) => t.pinned).length
+
+    if (removed.pinned && toIndex >= pinnedCount) return
+    if (!removed.pinned && toIndex < pinnedCount) return
+
+    const newTabs = [...tabs]
+    newTabs.splice(fromIndex, 1)
+    newTabs.splice(toIndex, 0, removed)
+    set({ tabs: newTabs })
+    persist({ ...state, tabs: newTabs })
+  },
+
+  togglePinTab: (tabId) => {
+    const state = get()
+    const tabs = state.tabs.map((t) =>
+      t.id === tabId ? { ...t, pinned: !t.pinned, preview: t.pinned ? t.preview : false } : t
+    )
+    const pinnedTabs = tabs.filter((t) => t.pinned)
+    const unpinnedTabs = tabs.filter((t) => !t.pinned)
+    const newTabs = [...pinnedTabs, ...unpinnedTabs]
+    set({ tabs: newTabs })
+    persist({ ...state, tabs: newTabs })
+  },
+
+  closeOtherTabs: (tabId) => {
+    const state = get()
+    const newTabs = state.tabs.filter((t) => t.id === tabId || t.pinned)
+    const newState = { tabs: newTabs, activeTabId: tabId }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  closeRightTabs: (tabId) => {
+    const state = get()
+    const index = state.tabs.findIndex((t) => t.id === tabId)
+    if (index === -1) return
+    const newTabs = state.tabs.filter((t, i) => i <= index || t.pinned)
+    const newActiveTabId = newTabs.some((t) => t.id === state.activeTabId)
+      ? state.activeTabId
+      : tabId
+    const newState = { tabs: newTabs, activeTabId: newActiveTabId }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  closeAllTabs: () => {
+    const state = get()
+    const pinnedTabs = state.tabs.filter((t) => t.pinned)
+    const newState = { tabs: pinnedTabs, activeTabId: pinnedTabs[0]?.id || null }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  cleanupInvalidTabs: () => {
+    const state = get()
+    const newTabs = filterValidTabs(state.tabs)
+    const newActiveTabId = newTabs.some((t) => t.id === state.activeTabId)
+      ? state.activeTabId
+      : newTabs[0]?.id || null
+    const newState = { tabs: newTabs, activeTabId: newActiveTabId }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  goBack: () => {
+    const state = get()
+    const { history, historyIndex, tabs, openTab } = state
+    if (historyIndex <= 0) return
+
+    const result = tryNavigateToHistory(history, historyIndex - 1, -1, tabs, openTab)
+    if (result) {
+      isNavigating = true
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
+    }
+  },
+
+  goForward: () => {
+    const state = get()
+    const { history, historyIndex, tabs, openTab } = state
+    if (historyIndex >= history.length - 1) return
+
+    const result = tryNavigateToHistory(history, historyIndex + 1, 1, tabs, openTab)
+    if (result) {
+      isNavigating = true
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
+    }
+  },
+
+  canGoBack: () => {
+    const { historyIndex } = get()
+    return historyIndex > 0
+  },
+
+  canGoForward: () => {
+    const { history, historyIndex } = get()
+    return historyIndex < history.length - 1
+  },
+
+  clearHistory: () => {
+    const state = get()
+    const { tabs, activeTabId } = state
+    const activeTab = tabs.find((t) => t.id === activeTabId)
+    const newState = {
+      history: activeTab ? [toHistoryEntry(activeTab)] : [],
+      historyIndex: 0
+    }
+    set(newState)
+    persist({ ...state, ...newState })
+  },
+
+  navigateToHistoryIndex: (index) => {
+    const state = get()
+    const { history, tabs, openTab } = state
+    if (index < 0 || index >= history.length) return
+
+    const result = tryNavigateToHistory(history, index, 1, tabs, openTab)
+    if (result) {
+      isNavigating = true
+      try {
+        const newState = { activeTabId: result.targetTabId, historyIndex: result.targetIndex }
+        set(newState)
+        persist({ ...get(), ...newState })
+      } finally {
+        isNavigating = false
+      }
+    }
+  },
+
+  keepTab: (tabId) => {
+    const state = get()
+    const newTabs = state.tabs.map((t) => (t.id === tabId ? { ...t, preview: false } : t))
+    set({ tabs: newTabs })
+    persist({ ...state, tabs: newTabs })
+  },
+
+  reset: async () => {
+    // Only reset memory state, don't clear persistence data
+    set(initialState)
+  }
+}))
+
+/**
+ * 获取标签页 Store 的接口实现
+ */
+export function getTabStoreInterface(): ITabStore {
+  const store = useTabsStore
+  return {
+    get initialized() {
+      return store.getState().initialized
+    },
+    get tabs() {
+      return store.getState().tabs
+    },
+    get activeTabId() {
+      return store.getState().activeTabId
+    },
+    get history() {
+      return store.getState().history
+    },
+    get historyIndex() {
+      return store.getState().historyIndex
+    },
+    init: () => store.getState().init(),
+    reset: () => store.getState().reset(),
+    openTab: (tab, preview) => store.getState().openTab(tab, preview),
+    closeTab: (tabId) => store.getState().closeTab(tabId),
+    setActiveTab: (tabId) => store.getState().setActiveTab(tabId),
+    activateNextTab: () => store.getState().activateNextTab(),
+    activatePrevTab: () => store.getState().activatePrevTab(),
+    updateTabTitle: (tabId, title) => store.getState().updateTabTitle(tabId, title),
+    reorderTabs: (fromIndex, toIndex) => store.getState().reorderTabs(fromIndex, toIndex),
+    togglePinTab: (tabId) => store.getState().togglePinTab(tabId),
+    closeOtherTabs: (tabId) => store.getState().closeOtherTabs(tabId),
+    closeRightTabs: (tabId) => store.getState().closeRightTabs(tabId),
+    closeAllTabs: () => store.getState().closeAllTabs(),
+    cleanupInvalidTabs: () => store.getState().cleanupInvalidTabs(),
+    goBack: () => store.getState().goBack(),
+    goForward: () => store.getState().goForward(),
+    canGoBack: () => store.getState().canGoBack(),
+    canGoForward: () => store.getState().canGoForward(),
+    clearHistory: () => store.getState().clearHistory(),
+    navigateToHistoryIndex: (index) => store.getState().navigateToHistoryIndex(index),
+    keepTab: (tabId) => store.getState().keepTab(tabId)
+  }
+}
