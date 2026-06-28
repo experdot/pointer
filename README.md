@@ -26,9 +26,8 @@ Pointer is a cross-platform desktop AI chat client built with Electron, React 19
 
 ### Multi-Model Support
 
-- Configure multiple AI providers (OpenAI GPT, Anthropic Claude, DeepSeek, etc.)
+- Configure multiple llm configurations (OpenAI GPT, DeepSeek, etc.)
 - Switch between models seamlessly during conversations
-- Streaming responses with real-time reasoning process display
 
 ### Conversation Branch Management
 
@@ -50,12 +49,6 @@ Pointer is a cross-platform desktop AI chat client built with Electron, React 19
 - Export conversations for backup
 - Local data storage with privacy focus
 - Batch operations and drag-and-drop sorting
-
-### Task Monitoring
-
-- Global AI generation task management
-- Real-time task status and cancellation
-- Cross-page Q&A traceability
 
 ## Installation
 
