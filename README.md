@@ -97,14 +97,14 @@ pnpm build:linux  # Linux
 
 ## Tech Stack
 
-| Category  | Technologies                                                 |
-| --------- | ------------------------------------------------------------ |
-| Frontend  | React 19, TypeScript, Ant Design, Tailwind CSS               |
-| Desktop   | Electron 35, electron-vite                                   |
-| State     | Zustand, Immer                                               |
-| Build     | Vite, Electron Builder                                       |
-| Editor    | Monaco Editor                                                |
-| Rendering | Shiki (syntax highlighting), Streamdown (streaming markdown) |
+| Category  | Technologies                                                     |
+| --------- | ---------------------------------------------------------------- |
+| Frontend  | React 19, TypeScript, Ant Design                                 |
+| Desktop   | Electron 35, electron-vite                                       |
+| State     | Zustand, Immer                                                   |
+| Build     | Vite, Electron Builder                                           |
+| Editor    | Monaco Editor                                                    |
+| Rendering | react-markdown (streaming markdown), Shiki (syntax highlighting) |
 
 ## Project Structure
 

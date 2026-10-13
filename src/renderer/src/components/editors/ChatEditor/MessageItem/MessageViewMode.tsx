@@ -1,6 +1,6 @@
 import React from 'react'
 import { Dropdown } from 'antd'
-import { Streamdown } from 'streamdown'
+import { Markdown } from '../../../common/markdown/Markdown'
 import type { MessageViewModeProps } from './types'
 import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
@@ -10,7 +10,6 @@ const contextMenuProps = {
 
 export const MessageViewMode = React.memo(function MessageViewMode({
   displayContent,
-  isAssistant,
   isStreaming,
   collapsed,
   collapsedPreview,
@@ -40,12 +39,7 @@ export const MessageViewMode = React.memo(function MessageViewMode({
   return (
     <Dropdown {...dropdownProps} trigger={['contextMenu']}>
       <div className="message-item__body" onContextMenu={onContextMenu}>
-        <Streamdown
-          isAnimating={isStreaming && isAssistant}
-          mode={isStreaming ? 'streaming' : 'static'}
-        >
-          {displayContent}
-        </Streamdown>
+        <Markdown content={displayContent} loading={isStreaming && !displayContent} />
       </div>
     </Dropdown>
   )

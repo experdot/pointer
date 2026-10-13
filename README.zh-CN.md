@@ -98,14 +98,14 @@ pnpm build:linux  # Linux
 
 ## 技术栈
 
-| 类别     | 技术                                           |
-| -------- | ---------------------------------------------- |
-| 前端     | React 19、TypeScript、Ant Design、Tailwind CSS |
-| 桌面端   | Electron 35、electron-vite                     |
-| 状态管理 | Zustand、Immer                                 |
-| 构建工具 | Vite、Electron Builder                         |
-| 编辑器   | Monaco Editor                                  |
-| 渲染     | Shiki（语法高亮）、Streamdown（流式 Markdown） |
+| 类别     | 技术                                               |
+| -------- | -------------------------------------------------- |
+| 前端     | React 19、TypeScript、Ant Design                   |
+| 桌面端   | Electron 35、electron-vite                         |
+| 状态管理 | Zustand、Immer                                     |
+| 构建工具 | Vite、Electron Builder                             |
+| 编辑器   | Monaco Editor                                      |
+| 渲染     | react-markdown（流式 Markdown）、Shiki（语法高亮） |
 
 ## 项目结构
 

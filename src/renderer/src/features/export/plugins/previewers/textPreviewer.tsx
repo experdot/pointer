@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { Streamdown } from 'streamdown'
+import { Markdown } from '../../../../components/common/markdown/Markdown'
 import type { PreviewerPlugin, PreviewerProps } from '../../types'
 
 /**
  * Text Previewer Component
  *
  * Enhanced text previewer:
- * - Markdown format: renders with Streamdown
+ * - Markdown format: renders with Markdown
  * - TXT format: displays as plain text
  */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -16,7 +16,7 @@ const TextPreviewerComponent: FC<PreviewerProps> = ({ result, options }) => {
   // Determine format from extension
   const format = result.extension
 
-  // Markdown format: use Streamdown for rendering
+  // Markdown format: use Markdown for rendering
   if (format === 'md' || format === 'markdown') {
     return (
       <div
@@ -27,7 +27,7 @@ const TextPreviewerComponent: FC<PreviewerProps> = ({ result, options }) => {
           background: 'var(--ant-color-bg-container)'
         }}
       >
-        <Streamdown mode="static">{content}</Streamdown>
+        <Markdown content={content} />
       </div>
     )
   }
@@ -62,7 +62,7 @@ const TextPreviewerComponent: FC<PreviewerProps> = ({ result, options }) => {
  * Text Previewer Plugin
  *
  * Supports markdown and txt formats.
- * Markdown is rendered with Streamdown, TXT is displayed as plain text.
+ * Markdown is rendered with react-markdown, TXT is displayed as plain text.
  */
 export const textPreviewerPlugin: PreviewerPlugin = {
   id: 'text-previewer',

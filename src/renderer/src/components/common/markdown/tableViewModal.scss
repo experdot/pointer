@@ -1,0 +1,238 @@
+/* 表格全屏查看Modal */
+.table-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.table-modal-content {
+  background: #ffffff;
+  border-radius: 8px;
+  max-width: 95vw;
+  max-height: 95vh;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.table-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  background: #f9fafb;
+}
+
+.table-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.table-modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  user-select: none;
+
+  &:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+}
+
+.table-modal-body {
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-view-mode-switch-container {
+  display: flex;
+  justify-content: center;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.table-view-mode-switch {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff;
+
+  .mode-switch-btn {
+    padding: 6px 16px;
+    font-size: 14px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    border-right: 1px solid #d1d5db;
+
+    &:last-child {
+      border-right: none;
+    }
+
+    &:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    &.active {
+      background: #3b82f6;
+      color: #ffffff;
+      font-weight: 500;
+
+      &:hover {
+        background: #2563eb;
+      }
+    }
+  }
+}
+
+.table-view-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  > div {
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  table {
+    width: auto;
+    min-width: 300px;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin: 0 auto;
+
+    th,
+    td {
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      text-align: left;
+      color: #1f2937;
+    }
+
+    th {
+      background-color: #f3f4f6;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:nth-child(2n) {
+      background-color: #f9fafb;
+    }
+  }
+
+  .table-text-view {
+    width: 100%;
+    max-width: 800px;
+    text-align: left;
+    color: #1f2937;
+    line-height: 1.8;
+
+    ol {
+      padding-left: 0;
+      list-style-position: inside;
+
+      li {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+
+        p {
+          margin: 4px 0;
+          padding-left: 20px;
+
+          strong {
+            color: #1f2937;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+  }
+}
+
+.table-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  background: #f9fafb;
+}
+
+.table-modal-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  transition: all 0.2s ease;
+  outline: none;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+  }
+
+  &:active {
+    background: #e5e7eb;
+  }
+
+  &.table-modal-button-primary {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+
+    &:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    &:active {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+  }
+}

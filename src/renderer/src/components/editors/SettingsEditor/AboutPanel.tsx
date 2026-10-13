@@ -8,7 +8,7 @@ import {
   InfoCircleOutlined,
   DownloadOutlined
 } from '@ant-design/icons'
-import { Streamdown } from 'streamdown'
+import { Markdown } from '../../common/markdown/Markdown'
 import { DateTimeText } from '../../common/DateTimeText'
 import { useUpdateStore } from '../../../stores/updateStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
@@ -202,7 +202,7 @@ export function AboutPanel(): React.JSX.Element {
               <div>
                 <Text strong>更新说明:</Text>
                 <div style={{ marginTop: 8 }}>
-                  <Streamdown mode="static">{updateInfo.releaseNotes}</Streamdown>
+                  <Markdown content={updateInfo.releaseNotes} />
                 </div>
               </div>
             )}
