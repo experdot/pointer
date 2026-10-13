@@ -25,6 +25,7 @@ import './TreeView.css'
 interface TreeNodeData<TItem, TFolder> extends TreeDataNode {
   isFolder: boolean
   data: TItem | TFolder
+  titleExtra?: React.ReactNode
 }
 
 interface FolderLike {
@@ -50,6 +51,7 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
   // 渲染配置
   itemIcon: React.ReactNode
   getItemName: (item: TItem) => string
+  getItemTitleExtra?: (item: TItem) => React.ReactNode
   getFolderName?: (folder: TFolder) => string
   isItem: (item: TItem | TFolder) => item is TItem
 
@@ -64,6 +66,7 @@ export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLik
 
   // 可选配置
   onDoubleClick?: (id: string, isFolder: boolean) => void
+  getItemLeadingMenuItems?: (item: TItem) => MenuProps['items']
   getItemMenuItems?: (item: TItem) => MenuProps['items']
   getFolderMenuItems?: (folder: TFolder) => MenuProps['items']
   onGenerateItemName?: (id: string, options: GenerateOptions) => Promise<void>
@@ -131,11 +134,11 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (open && !menuItems) {
+      if (open) {
         setMenuItems(getContextMenuItems(treeNode))
       }
     },
-    [getContextMenuItems, treeNode, menuItems]
+    [getContextMenuItems, treeNode]
   )
 
   return (
@@ -148,6 +151,7 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
         className="tree-view-title"
         onDoubleClick={() => onDoubleClick?.(id, treeNode.isFolder)}
       >
+        {treeNode.titleExtra}
         <span className={`tree-view-title-text ${isHighlighted ? 'is-highlighted' : ''}`}>
           {title}
         </span>
@@ -335,6 +339,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   onSelect,
   itemIcon,
   getItemName,
+  getItemTitleExtra,
   getFolderName = (f) => f.name,
   isItem,
   batchUpdateItemsOrder,
@@ -345,6 +350,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   clearFolder,
   toggleFolderExpanded,
   onDoubleClick,
+  getItemLeadingMenuItems,
   getItemMenuItems,
   getFolderMenuItems,
   onGenerateItemName,
@@ -459,13 +465,14 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       isFolder: false,
       data: item,
       icon: itemIcon,
+      titleExtra: getItemTitleExtra?.(item),
       isLeaf: true
     })
 
     return rootItems.map((item) =>
       isItem(item) ? buildItemNode(item) : buildFolderNode(item as TFolder)
     )
-  }, [folders, items, rootItems, isItem, itemIcon, getItemName, getFolderName])
+  }, [folders, items, rootItems, isItem, itemIcon, getItemName, getItemTitleExtra, getFolderName])
 
   // ==================== 事件处理 ====================
 
@@ -746,8 +753,10 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       ]
     } else {
       const item = node.data as TItem
+      const leadingItems = getItemLeadingMenuItems?.(item) || []
       const customItems = getItemMenuItems?.(item) || []
       return [
+        ...leadingItems,
         {
           key: 'rename',
           label: '重命名',
@@ -783,6 +792,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     // 只依赖外部传入的 props，不依赖内部函数
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      getItemLeadingMenuItems,
       getItemMenuItems,
       getFolderMenuItems,
       getItemName,

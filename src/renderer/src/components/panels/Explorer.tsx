@@ -8,7 +8,9 @@ import {
   CheckSquareOutlined,
   EllipsisOutlined,
   DragOutlined,
-  SearchOutlined
+  SearchOutlined,
+  StarFilled,
+  StarOutlined
 } from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
@@ -45,7 +47,8 @@ export function Explorer(): React.JSX.Element {
     clearFolder,
     updateFolder,
     toggleFolderExpanded,
-    openPage
+    openPage,
+    toggleStarPage
   } = usePages()
 
   const { tabs, activeTabId } = useTabsStore()
@@ -161,6 +164,23 @@ export function Explorer(): React.JSX.Element {
     [messagesCache, updatePage]
   )
 
+  // 右键菜单 - 星标（置顶，后接分割线）
+  const getItemLeadingMenuItems = useCallback(
+    (page: ChatPage): MenuProps['items'] => [
+      {
+        key: 'star',
+        label: page.starred ? '取消星标' : '标记为星标',
+        icon: page.starred ? <StarFilled /> : <StarOutlined />,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation()
+          toggleStarPage(page.id)
+        }
+      },
+      { type: 'divider' }
+    ],
+    [toggleStarPage]
+  )
+
   // 右键菜单 - 移动至...
   const getItemMenuItems = useCallback(
     (page: ChatPage): MenuProps['items'] => [
@@ -176,6 +196,13 @@ export function Explorer(): React.JSX.Element {
       }
     ],
     [folders.length]
+  )
+
+  // 已星标的会话在标题前显示星标图标
+  const getItemTitleExtra = useCallback(
+    (page: ChatPage): React.ReactNode =>
+      page.starred ? <StarFilled className="explorer-tree-item-star" /> : null,
+    []
   )
 
   const getFolderMenuItems = useCallback(
@@ -343,6 +370,7 @@ export function Explorer(): React.JSX.Element {
         onSelect={handleSelect}
         itemIcon={<MessageOutlined />}
         getItemName={(page) => page.name}
+        getItemTitleExtra={getItemTitleExtra}
         isItem={(item): item is ChatPage => isPage(item as ChatPage | PageFolder)}
         batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
         updateItem={(id, name) => updatePage(id, { name })}
@@ -357,6 +385,7 @@ export function Explorer(): React.JSX.Element {
         onCreateSubFolder={handleCreateSubFolder}
         createItemLabel="新建对话"
         createFolderLabel="新建文件夹"
+        getItemLeadingMenuItems={getItemLeadingMenuItems}
         getItemMenuItems={getItemMenuItems}
         getFolderMenuItems={getFolderMenuItems}
         emptyText={isEmpty ? '暂无对话' : undefined}

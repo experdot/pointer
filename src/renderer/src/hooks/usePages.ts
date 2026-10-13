@@ -33,6 +33,7 @@ export function usePages(): {
   clearFolder: typeof pagesService.clearFolder
   toggleFolderExpanded: typeof pagesService.toggleFolderExpanded
   openPage: typeof pagesService.openPage
+  toggleStarPage: typeof pagesService.toggleStarPage
 } {
   // 使用选择器只订阅需要的状态，避免不必要的重渲染
   const pages = usePagesStore((state) => state.pages)
@@ -213,6 +214,7 @@ export function usePages(): {
     deleteFolders: pagesService.deleteFolders,
     clearFolder: pagesService.clearFolder,
     toggleFolderExpanded: pagesService.toggleFolderExpanded,
-    openPage: pagesService.openPage
+    openPage: pagesService.openPage,
+    toggleStarPage: pagesService.toggleStarPage
   }
 }

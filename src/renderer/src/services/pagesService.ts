@@ -138,6 +138,14 @@ export async function updatePage(id: string, updates: Partial<PageRecord>): Prom
   }
 }
 
+// 切换页面星标状态
+export async function toggleStarPage(id: string): Promise<void> {
+  const page = stores.page.getById(id)
+  if (!page) return
+
+  await updatePage(id, { starred: !page.starred })
+}
+
 // 删除页面
 export async function deletePage(id: string): Promise<void> {
   const { page, message, tab } = stores

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Input, Tooltip, type InputRef } from 'antd'
-import { EditOutlined, ThunderboltOutlined } from '@ant-design/icons'
-import { updatePage } from '../../../services/pagesService'
+import { EditOutlined, StarFilled, StarOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { toggleStarPage, updatePage } from '../../../services/pagesService'
 import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
 import type { ChatPage } from '../../../types/type'
 import './Header.css'
@@ -49,6 +49,10 @@ export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
     setEditValue(page.name)
     setIsEditing(false)
   }, [page.name])
+
+  const handleToggleStar = useCallback(() => {
+    toggleStarPage(page.id)
+  }, [page.id])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -125,6 +129,14 @@ export function Header({ page, onGenerate }: HeaderProps): React.JSX.Element {
       ) : (
         <div className="chat-editor__title-wrapper">
           <span className="chat-editor__title">{page.name}</span>
+          <Tooltip title={page.starred ? '取消星标' : '添加星标'}>
+            <span
+              className={`chat-editor__title-star ${page.starred ? 'is-starred' : ''}`}
+              onClick={handleToggleStar}
+            >
+              {page.starred ? <StarFilled /> : <StarOutlined />}
+            </span>
+          </Tooltip>
           <EditOutlined className="chat-editor__title-edit" onClick={handleEdit} />
         </div>
       )}

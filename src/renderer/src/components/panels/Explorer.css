@@ -66,9 +66,23 @@
   background-color: transparent;
 }
 
-/* 减少展开按钮和内容之间的间距 */
+/*
+ * 展开/折叠按钮的占位盒默认也是 titleHeight（32px），10px 箭头居中后
+ * 左右各留 11px，显得过宽。收窄到 22px（10px 箭头 + 两侧各 6px）。
+ */
 .explorer-tree .ant-tree-switcher {
-  margin-right: 1px;
+  width: 22px;
+}
+
+/*
+ * 箭头 hover 时的高亮块是 antd 用 :before 画的 titleHeight × titleHeight
+ * （32×32）方块，比收窄后的占位盒还大。改为 22×22 并垂直居中。
+ */
+.explorer-tree .ant-tree-switcher::before {
+  width: 22px;
+  height: 22px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .explorer-tree .ant-tree-node-content-wrapper {
@@ -118,4 +132,22 @@
 /* 隐藏拖拽图标 */
 .explorer-tree .ant-tree-draggable-icon {
   display: none;
+}
+
+/* 会话星标图标（字号继承树节点，与左侧图标一致） */
+.explorer-tree-item-star {
+  color: #faad14;
+  font-size: inherit;
+  margin-right: 6px;
+  flex-shrink: 0;
+  margin-top: 2px; /* 调整图标垂直位置，使其与文本对齐 */
+}
+
+/*
+ * antd 的图标占位盒默认等于 titleHeight（32px），14px 图标居中后
+ * 左右各留 9px，导致图标与文本间距过大。
+ * 收窄到 26px（14px 图标 + 两侧各 6px），高度保持 32px 以维持行高。
+ */
+.explorer-tree .ant-tree-node-content-wrapper .ant-tree-iconEle {
+  width: 26px;
 }

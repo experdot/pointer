@@ -40,12 +40,37 @@
   transition: opacity 0.2s;
 }
 
-.chat-editor__title:hover + .chat-editor__title-edit,
+.chat-editor__title-wrapper:hover .chat-editor__title-edit,
 .chat-editor__title-edit:hover {
   opacity: 1;
 }
 
 .chat-editor__title-edit:hover {
+  color: var(--ant-color-primary);
+}
+
+.chat-editor__title-star {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ant-color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
+}
+
+.chat-editor__title-wrapper:hover .chat-editor__title-star,
+.chat-editor__title-star:hover,
+.chat-editor__title-star.is-starred {
+  opacity: 1;
+}
+
+.chat-editor__title-star.is-starred {
+  color: #faad14;
+}
+
+.chat-editor__title-star:not(.is-starred):hover {
   color: var(--ant-color-primary);
 }
 
