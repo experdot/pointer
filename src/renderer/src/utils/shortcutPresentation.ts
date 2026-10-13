@@ -5,14 +5,23 @@ export type ShortcutLabelId =
   | 'treeDelete'
   | 'tabNew'
   | 'tabClose'
+  | 'toggleSidebar'
+  | 'globalSearch'
+  | 'tabNext'
+  | 'tabPrev'
+  | 'editorNext'
+  | 'editorPrev'
   | 'tabHistoryBack'
   | 'tabHistoryForward'
+  | 'chatFind'
   | 'findMatchCase'
   | 'findRegex'
   | 'findWholeWord'
   | 'messageCopy'
   | 'messagePrev'
   | 'messageNext'
+  | 'messageFirst'
+  | 'messageLast'
 
 type DisplayPlatform = 'darwin' | 'linux' | 'windows'
 
@@ -88,6 +97,18 @@ export function getShortcutLabel(id: ShortcutLabelId): string {
       return `${modifier}+N`
     case 'tabClose':
       return `${modifier}+W`
+    case 'toggleSidebar':
+      return `${modifier}+B`
+    case 'globalSearch':
+      return `${modifier}+Shift+F`
+    case 'tabNext':
+      return 'Ctrl+Tab'
+    case 'tabPrev':
+      return 'Ctrl+Shift+Tab'
+    case 'editorNext':
+      return isMac ? 'Cmd+Alt+→' : 'Ctrl+PageDown'
+    case 'editorPrev':
+      return isMac ? 'Cmd+Alt+←' : 'Ctrl+PageUp'
     case 'tabHistoryBack':
       // 与 VS Code 一致：Win 用 Alt+←，macOS 用 Ctrl+-，Linux 用 Ctrl+Alt+-
       if (isMac) return 'Ctrl+-'
@@ -103,12 +124,18 @@ export function getShortcutLabel(id: ShortcutLabelId): string {
       return isMac ? 'Cmd+Alt+R' : 'Alt+R'
     case 'findWholeWord':
       return isMac ? 'Cmd+Alt+W' : 'Alt+W'
+    case 'chatFind':
+      return `${modifier}+F`
     case 'messageCopy':
       return `${modifier}+C`
     case 'messagePrev':
       return 'Shift+Space'
     case 'messageNext':
       return 'Space'
+    case 'messageFirst':
+      return 'Home'
+    case 'messageLast':
+      return 'End'
   }
 }
 

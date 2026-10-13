@@ -6,12 +6,14 @@ import {
   RobotOutlined,
   SettingOutlined,
   InfoCircleOutlined,
-  DatabaseOutlined
+  DatabaseOutlined,
+  KeyOutlined
 } from '@ant-design/icons'
 import { GeneralPanel } from './GeneralPanel'
 import { LLMConfigPanel } from './LLMConfigPanel'
 import { ModelConfigPanel } from './ModelConfigPanel'
 import { DataPanel } from './DataPanel'
+import { ShortcutsPanel } from './ShortcutsPanel'
 import { AboutPanel } from './AboutPanel'
 import { consumePendingSettingsTab } from '../../../services/settingsService'
 import './SettingsEditor.css'
@@ -61,6 +63,15 @@ export function SettingsEditor(): React.JSX.Element {
         </span>
       ),
       children: <DataPanel />
+    },
+    {
+      key: 'shortcuts',
+      label: (
+        <span>
+          <KeyOutlined /> 快捷键
+        </span>
+      ),
+      children: <ShortcutsPanel />
     },
     {
       key: 'about',

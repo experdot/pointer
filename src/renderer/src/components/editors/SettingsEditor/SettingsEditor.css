@@ -1,11 +1,17 @@
 .settings-editor {
   height: 100%;
   padding: 0 8px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .settings-tabs {
   height: 100%;
+}
+
+/* Tab 头固定，仅内容区域滚动 */
+.settings-tabs .ant-tabs-content-holder {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .settings-tabs .ant-tabs-tab .anticon {
@@ -20,6 +26,11 @@
   height: 100%;
 }
 
+/* 内容底部留白，避免滚动到底时紧贴边缘 */
+.settings-tabs .ant-tabs-tabpane > * {
+  padding-bottom: 24px;
+}
+
 .settings-general-panel {
   max-width: 400px;
 }
@@ -32,4 +43,56 @@
   flex: 1;
   overflow-y: auto;
   max-width: 500px;
+}
+
+/* 快捷键面板 */
+.settings-shortcuts-panel {
+  max-width: 560px;
+}
+
+.settings-shortcuts-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.settings-shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.settings-shortcuts-row + .settings-shortcuts-row {
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.settings-shortcuts-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.settings-shortcuts-key {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 18px;
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-tertiary);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 4px;
+  white-space: nowrap;
 }
