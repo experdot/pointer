@@ -13,15 +13,13 @@ const COMPACT_MODE_THRESHOLD = 768
 const panelTitles: Record<string, string> = {
   explorer: '资源管理器',
   search: '搜索',
-  favorites: '收藏',
-  tasks: '任务'
+  favorites: '收藏'
 }
 
 const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
   explorer: Explorer,
   search: Search,
-  favorites: null,
-  tasks: null
+  favorites: null
 }
 
 export function Sidebar(): React.JSX.Element {

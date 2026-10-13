@@ -43,7 +43,7 @@ export interface MessagesRecord {
 /**
  * Activity panel type
  */
-export type ActivityPanel = 'explorer' | 'search' | 'favorites' | 'tasks'
+export type ActivityPanel = 'explorer' | 'search' | 'favorites'
 
 /**
  * Layout record

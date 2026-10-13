@@ -4,7 +4,6 @@ import {
   MessageOutlined,
   SearchOutlined,
   StarOutlined,
-  UnorderedListOutlined,
   SettingOutlined,
   FolderOutlined
 } from '@ant-design/icons'
@@ -24,8 +23,7 @@ interface ActivityItem {
 const activities: ActivityItem[] = [
   { key: 'explorer', icon: <MessageOutlined />, title: '资源管理器' },
   { key: 'search', icon: <SearchOutlined />, title: '搜索' },
-  { key: 'favorites', icon: <StarOutlined />, title: '收藏' },
-  { key: 'tasks', icon: <UnorderedListOutlined />, title: '任务' }
+  { key: 'favorites', icon: <StarOutlined />, title: '收藏' }
 ]
 
 export function ActivityBar(): React.JSX.Element {

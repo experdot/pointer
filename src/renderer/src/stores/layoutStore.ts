@@ -40,6 +40,8 @@ const initialState: LayoutState = {
   isCompactMode: window.innerWidth < COMPACT_MODE_THRESHOLD
 }
 
+const validActivePanels: ActivityPanel[] = ['explorer', 'search', 'favorites']
+
 const persist = (state: LayoutState): void => {
   const scope = getCurrentAccountScope()
   getLayoutQueue(scope).enqueue('layout', {
@@ -54,8 +56,13 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
 
   init: async () => {
     const layout = await persistence.account(getCurrentAccountScope()).layout.get()
+    const activePanel =
+      layout && validActivePanels.includes(layout.activePanel)
+        ? layout.activePanel
+        : initialState.activePanel
     set({
       ...(layout ?? {}),
+      activePanel,
       initialized: true
     })
   },
