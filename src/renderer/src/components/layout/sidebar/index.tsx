@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react'
-import { Typography, Drawer } from 'antd'
+import { Typography, Drawer, Empty } from 'antd'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { Explorer } from '../../panels/Explorer'
 import { Search } from '../../panels/Search'
@@ -16,10 +16,19 @@ const panelTitles: Record<string, string> = {
   favorites: '收藏'
 }
 
+// 收藏功能暂未实现
+function FavoritesPlaceholder(): React.JSX.Element {
+  return (
+    <div className="sidebar-unsupported">
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该功能暂不支持" />
+    </div>
+  )
+}
+
 const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
   explorer: Explorer,
   search: Search,
-  favorites: null
+  favorites: FavoritesPlaceholder
 }
 
 export function Sidebar(): React.JSX.Element {
