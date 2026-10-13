@@ -52,6 +52,12 @@
   margin-right: -4px;
 }
 
+/* 新建标签页的加号图标视觉重心偏上，向下微调 4px */
+.tabs-container .ant-tabs-nav-add .anticon {
+  position: relative;
+  top: 4px;
+}
+
 .tab-label {
   display: flex;
   align-items: center;
