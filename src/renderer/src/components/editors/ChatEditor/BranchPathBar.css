@@ -13,6 +13,12 @@
   white-space: nowrap;
 }
 
+/* 消息下拉列表（分支/被省略消息）：限制最大高度，与会话访问历史导航一致 */
+.branch-path-bar__message-dropdown.ant-dropdown-menu {
+  max-height: 400px;
+  overflow: auto;
+}
+
 /* 左侧路径区域：占据剩余空间，过长时自身横向滚动，不影响右侧按钮 */
 .branch-path-bar__path {
   display: flex;

@@ -146,15 +146,16 @@ export function BranchPathBar({
             // 分支指示器（点击展开下拉）
             const branchIndicator = hasBranch && (
               <Dropdown
-                {...getStandardDropdownProps({
-                  items: siblings.map((s, idx) => ({
-                    key: s.id,
-                    icon: getRoleIcon(s.role),
-                    label: `${index + 1}:${idx + 1} ${getPreview(s)}`,
-                    onClick: () => onSwitchBranch(s.id)
-                  })),
-                  selectedKeys: [message.id]
-                })}
+              {...getStandardDropdownProps({
+                items: siblings.map((s, idx) => ({
+                  key: s.id,
+                  icon: getRoleIcon(s.role),
+                  label: `${index + 1}:${idx + 1} ${getPreview(s)}`,
+                  onClick: () => onSwitchBranch(s.id)
+                })),
+                selectedKeys: [message.id],
+                rootClassName: 'branch-path-bar__message-dropdown'
+              })}
                 trigger={['click']}
               >
                 <span className="branch-path-bar__branch-indicator">
@@ -168,14 +169,15 @@ export function BranchPathBar({
               <>
                 <RightOutlined className="branch-path-bar__separator" />
                 <Dropdown
-                  {...getStandardDropdownProps({
-                    items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
-                      key: m.id,
-                      icon: getRoleIcon(m.role),
-                      label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
-                      onClick: () => onNavigateToMessage(m.id)
-                    }))
-                  })}
+                {...getStandardDropdownProps({
+                  items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
+                    key: m.id,
+                    icon: getRoleIcon(m.role),
+                    label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
+                    onClick: () => onNavigateToMessage(m.id)
+                  })),
+                  rootClassName: 'branch-path-bar__message-dropdown'
+                })}
                   trigger={['click']}
                 >
                   <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
