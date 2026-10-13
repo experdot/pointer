@@ -9,8 +9,37 @@
   color: var(--ant-color-text-secondary);
   background: var(--ant-color-fill-quaternary);
   border-bottom: 1px solid var(--ant-color-border-secondary);
-  overflow-x: auto;
+  overflow: hidden;
   white-space: nowrap;
+}
+
+/* 左侧路径区域：占据剩余空间，过长时自身横向滚动，不影响右侧按钮 */
+.branch-path-bar__path {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 细滚动条，避免占用过多高度 */
+.branch-path-bar__path::-webkit-scrollbar {
+  height: 4px;
+}
+
+.branch-path-bar__path::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.branch-path-bar__path::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.branch-path-bar__path:hover::-webkit-scrollbar-thumb {
+  background: var(--ant-color-text-quaternary);
 }
 
 .branch-path-bar__item {
@@ -55,7 +84,7 @@
 }
 
 .branch-path-bar__nav {
-  margin-left: auto;
+  flex-shrink: 0;
   display: flex;
   gap: 12px;
   padding-left: 12px;

@@ -109,92 +109,95 @@ export function BranchPathBar({
 
   return (
     <div className="branch-path-bar">
-      {/* 大纲按钮 */}
-      <OutlineDropdown
-        outline={outline ?? []}
-        onNavigateToMessage={onNavigateToMessage}
-        onBatchGenerateTitles={onBatchGenerateTitles}
-        onSmartSegment={onSmartSegment}
-        batchProgress={batchProgress}
-        isSegmenting={isSegmenting}
-        untitledCount={untitledCount}
-      />
+      <div className="branch-path-bar__path">
+        {/* 大纲按钮 */}
+        <OutlineDropdown
+          outline={outline ?? []}
+          onNavigateToMessage={onNavigateToMessage}
+          onBatchGenerateTitles={onBatchGenerateTitles}
+          onSmartSegment={onSmartSegment}
+          batchProgress={batchProgress}
+          isSegmenting={isSegmenting}
+          untitledCount={untitledCount}
+        />
 
-      {/* 分支路径 */}
-      {showBranchPath &&
-        keyNodes.map((node, i) => {
-          const { message, index, siblings, siblingIndex } = node
-          const prevIndex = i > 0 ? keyNodes[i - 1].index : -1
-          const skippedCount = index - prevIndex - 1
-          const showEllipsis = skippedCount > 0
+        {/* 分支路径 */}
+        {showBranchPath &&
+          keyNodes.map((node, i) => {
+            const { message, index, siblings, siblingIndex } = node
+            const prevIndex = i > 0 ? keyNodes[i - 1].index : -1
+            const skippedCount = index - prevIndex - 1
+            const showEllipsis = skippedCount > 0
 
-          const hasBranch = siblings.length > 1
+            const hasBranch = siblings.length > 1
 
-          // 层级标签（点击跳转）
-          const levelLabel = (
-            <Tooltip title={getPreview(message, 50)} placement="bottom">
-              <span
-                className="branch-path-bar__item"
-                onClick={() => onNavigateToMessage(message.id)}
-              >
-                {getRoleIcon(message.role)} {index + 1}
-              </span>
-            </Tooltip>
-          )
+            // 层级标签（点击跳转）
+            const levelLabel = (
+              <Tooltip title={getPreview(message, 50)} placement="bottom">
+                <span
+                  className="branch-path-bar__item"
+                  onClick={() => onNavigateToMessage(message.id)}
+                >
+                  {getRoleIcon(message.role)} {index + 1}
+                </span>
+              </Tooltip>
+            )
 
-          // 分支指示器（点击展开下拉）
-          const branchIndicator = hasBranch && (
-            <Dropdown
-              {...getStandardDropdownProps({
-                items: siblings.map((s, idx) => ({
-                  key: s.id,
-                  icon: getRoleIcon(s.role),
-                  label: `${index + 1}:${idx + 1} ${getPreview(s)}`,
-                  onClick: () => onSwitchBranch(s.id)
-                })),
-                selectedKeys: [message.id]
-              })}
-              trigger={['click']}
-            >
-              <span className="branch-path-bar__branch-indicator">
-                ({siblingIndex + 1}/{siblings.length})
-              </span>
-            </Dropdown>
-          )
-
-          // 省略号下拉菜单
-          const ellipsisDropdown = showEllipsis && (
-            <>
-              <RightOutlined className="branch-path-bar__separator" />
+            // 分支指示器（点击展开下拉）
+            const branchIndicator = hasBranch && (
               <Dropdown
                 {...getStandardDropdownProps({
-                  items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
-                    key: m.id,
-                    icon: getRoleIcon(m.role),
-                    label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
-                    onClick: () => onNavigateToMessage(m.id)
-                  }))
+                  items: siblings.map((s, idx) => ({
+                    key: s.id,
+                    icon: getRoleIcon(s.role),
+                    label: `${index + 1}:${idx + 1} ${getPreview(s)}`,
+                    onClick: () => onSwitchBranch(s.id)
+                  })),
+                  selectedKeys: [message.id]
                 })}
                 trigger={['click']}
               >
-                <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
-                  <EllipsisOutlined />
-                  <span className="branch-path-bar__ellipsis-count">{skippedCount}</span>
+                <span className="branch-path-bar__branch-indicator">
+                  ({siblingIndex + 1}/{siblings.length})
                 </span>
               </Dropdown>
-            </>
-          )
+            )
 
-          return (
-            <React.Fragment key={message.id}>
-              {ellipsisDropdown}
-              {i > 0 && <RightOutlined className="branch-path-bar__separator" />}
-              {levelLabel}
-              {branchIndicator}
-            </React.Fragment>
-          )
-        })}
+            // 省略号下拉菜单
+            const ellipsisDropdown = showEllipsis && (
+              <>
+                <RightOutlined className="branch-path-bar__separator" />
+                <Dropdown
+                  {...getStandardDropdownProps({
+                    items: getSkippedMessages(prevIndex, index).map((m, idx) => ({
+                      key: m.id,
+                      icon: getRoleIcon(m.role),
+                      label: `${prevIndex + 2 + idx}. ${getPreview(m)}`,
+                      onClick: () => onNavigateToMessage(m.id)
+                    }))
+                  })}
+                  trigger={['click']}
+                >
+                  <span className="branch-path-bar__ellipsis branch-path-bar__ellipsis--clickable">
+                    <EllipsisOutlined />
+                    <span className="branch-path-bar__ellipsis-count">{skippedCount}</span>
+                  </span>
+                </Dropdown>
+              </>
+            )
+
+            return (
+              <React.Fragment key={message.id}>
+                {ellipsisDropdown}
+                {i > 0 && <RightOutlined className="branch-path-bar__separator" />}
+                {levelLabel}
+                {branchIndicator}
+              </React.Fragment>
+            )
+          })}
+      </div>
       <div className="branch-path-bar__nav">
+        <span className="branch-path-bar__nav-divider" />
         <Tooltip title={formatShortcutTooltip('上一条', 'messagePrev')}>
           <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToPrev} />
         </Tooltip>
