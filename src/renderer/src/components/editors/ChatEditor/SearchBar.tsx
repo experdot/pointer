@@ -6,12 +6,21 @@ import type { ChatMessage } from '../../../types/type'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useSearchHighlight } from '../../../hooks/useSearchHighlight'
 import { isValidRegex } from '../../../utils/searchUtils'
+import { getShortcutLabel, isMacPlatform } from '../../../utils/shortcutPresentation'
 import './SearchBar.css'
 
 interface SearchBarProps {
   pageId: string
   messages: ChatMessage[]
   containerRef: React.RefObject<HTMLElement | null>
+}
+
+/** 查找开关快捷键：Windows/Linux Alt+字母，macOS Cmd+Alt+字母（与 VS Code 一致） */
+function matchesFindToggle(event: React.KeyboardEvent, key: string): boolean {
+  const hasFindModifier = isMacPlatform()
+    ? event.metaKey && event.altKey
+    : event.altKey && !event.ctrlKey && !event.metaKey
+  return hasFindModifier && event.key.toLowerCase() === key
 }
 
 export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): React.JSX.Element {
@@ -74,6 +83,19 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
     [pageId, setSearchQuery]
   )
 
+  // 切换选项
+  const toggleMatchCase = useCallback(() => {
+    setSearchOptions(pageId, { matchCase: !searchState.matchCase })
+  }, [pageId, searchState.matchCase, setSearchOptions])
+
+  const toggleUseRegex = useCallback(() => {
+    setSearchOptions(pageId, { useRegex: !searchState.useRegex })
+  }, [pageId, searchState.useRegex, setSearchOptions])
+
+  const toggleMatchWholeWord = useCallback(() => {
+    setSearchOptions(pageId, { matchWholeWord: !searchState.matchWholeWord })
+  }, [pageId, searchState.matchWholeWord, setSearchOptions])
+
   // 处理键盘事件
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -87,23 +109,19 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
       } else if (e.key === 'Escape') {
         e.preventDefault()
         handleClose()
+      } else if (matchesFindToggle(e, 'c')) {
+        e.preventDefault()
+        toggleMatchCase()
+      } else if (matchesFindToggle(e, 'r')) {
+        e.preventDefault()
+        toggleUseRegex()
+      } else if (matchesFindToggle(e, 'w')) {
+        e.preventDefault()
+        toggleMatchWholeWord()
       }
     },
-    [goToNext, goToPrev, handleClose]
+    [goToNext, goToPrev, handleClose, toggleMatchCase, toggleMatchWholeWord, toggleUseRegex]
   )
-
-  // 切换选项
-  const toggleMatchCase = useCallback(() => {
-    setSearchOptions(pageId, { matchCase: !searchState.matchCase })
-  }, [pageId, searchState.matchCase, setSearchOptions])
-
-  const toggleUseRegex = useCallback(() => {
-    setSearchOptions(pageId, { useRegex: !searchState.useRegex })
-  }, [pageId, searchState.useRegex, setSearchOptions])
-
-  const toggleMatchWholeWord = useCallback(() => {
-    setSearchOptions(pageId, { matchWholeWord: !searchState.matchWholeWord })
-  }, [pageId, searchState.matchWholeWord, setSearchOptions])
 
   // 检查正则表达式是否有效
   const isRegexValid =
@@ -126,7 +144,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
         status={!isRegexValid ? 'error' : undefined}
         suffix={
           <div className="search-bar__options">
-            <Tooltip title="区分大小写 (Alt+C)">
+            <Tooltip title={`区分大小写 (${getShortcutLabel('findMatchCase')})`}>
               <Button
                 type={searchState.matchCase ? 'primary' : 'text'}
                 size="small"
@@ -136,7 +154,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
               </Button>
             </Tooltip>
 
-            <Tooltip title="使用正则表达式 (Alt+R)">
+            <Tooltip title={`使用正则表达式 (${getShortcutLabel('findRegex')})`}>
               <Button
                 type={searchState.useRegex ? 'primary' : 'text'}
                 size="small"
@@ -146,7 +164,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
               </Button>
             </Tooltip>
 
-            <Tooltip title="全词匹配 (Alt+W)">
+            <Tooltip title={`全词匹配 (${getShortcutLabel('findWholeWord')})`}>
               <Button
                 type={searchState.matchWholeWord ? 'primary' : 'text'}
                 size="small"

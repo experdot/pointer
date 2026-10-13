@@ -7,11 +7,14 @@ export type ShortcutLabelId =
   | 'tabClose'
   | 'tabHistoryBack'
   | 'tabHistoryForward'
+  | 'findMatchCase'
+  | 'findRegex'
+  | 'findWholeWord'
   | 'messageCopy'
   | 'messagePrev'
   | 'messageNext'
 
-type DisplayPlatform = 'darwin' | 'default'
+type DisplayPlatform = 'darwin' | 'linux' | 'windows'
 
 const STANDARD_MENU_MIN_WIDTH = 180
 const STANDARD_DROPDOWN_CLASS_NAME = 'app-standard-dropdown-menu'
@@ -29,7 +32,7 @@ function resolveDisplayPlatform(): DisplayPlatform {
   }
 
   if (typeof navigator === 'undefined') {
-    cachedDisplayPlatform = 'default'
+    cachedDisplayPlatform = 'windows'
     return cachedDisplayPlatform
   }
 
@@ -45,32 +48,61 @@ function resolveDisplayPlatform(): DisplayPlatform {
     .join(' ')
     .toLowerCase()
 
-  cachedDisplayPlatform = platformHint.includes('mac') ? 'darwin' : 'default'
+  if (platformHint.includes('mac')) {
+    cachedDisplayPlatform = 'darwin'
+  } else if (platformHint.includes('linux')) {
+    cachedDisplayPlatform = 'linux'
+  } else {
+    cachedDisplayPlatform = 'windows'
+  }
   return cachedDisplayPlatform
+}
+
+export function getDisplayPlatform(): DisplayPlatform {
+  return resolveDisplayPlatform()
 }
 
 export function isMacPlatform(): boolean {
   return resolveDisplayPlatform() === 'darwin'
 }
 
+export function isLinuxPlatform(): boolean {
+  return resolveDisplayPlatform() === 'linux'
+}
+
+export function isWindowsPlatform(): boolean {
+  return resolveDisplayPlatform() === 'windows'
+}
+
 export function getShortcutLabel(id: ShortcutLabelId): string {
-  const isMac = resolveDisplayPlatform() === 'darwin'
+  const platform = resolveDisplayPlatform()
+  const isMac = platform === 'darwin'
   const modifier = isMac ? 'Cmd' : 'Ctrl'
-  const altModifier = isMac ? 'Option' : 'Alt'
 
   switch (id) {
     case 'treeRename':
-      return 'F2'
+      return isMac ? 'Enter' : 'F2'
     case 'treeDelete':
-      return 'Del'
+      return isMac ? 'Cmd+⌫' : 'Del'
     case 'tabNew':
       return `${modifier}+N`
     case 'tabClose':
       return `${modifier}+W`
     case 'tabHistoryBack':
-      return `${altModifier}+←`
+      // 与 VS Code 一致：Win 用 Alt+←，macOS 用 Ctrl+-，Linux 用 Ctrl+Alt+-
+      if (isMac) return 'Ctrl+-'
+      if (platform === 'linux') return 'Ctrl+Alt+-'
+      return 'Alt+←'
     case 'tabHistoryForward':
-      return `${altModifier}+→`
+      if (isMac) return 'Ctrl+Shift+-'
+      if (platform === 'linux') return 'Ctrl+Shift+-'
+      return 'Alt+→'
+    case 'findMatchCase':
+      return isMac ? 'Cmd+Alt+C' : 'Alt+C'
+    case 'findRegex':
+      return isMac ? 'Cmd+Alt+R' : 'Alt+R'
+    case 'findWholeWord':
+      return isMac ? 'Cmd+Alt+W' : 'Alt+W'
     case 'messageCopy':
       return `${modifier}+C`
     case 'messagePrev':

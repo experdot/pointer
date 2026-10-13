@@ -16,9 +16,12 @@ import { AIGeneratePopover, type GenerateOptions } from './AIGeneratePopover'
 import { useConfirmDialog } from './ConfirmDialog'
 import {
   getShortcutLabel,
-  getStandardDropdownProps
+  getStandardDropdownProps,
+  isMacPlatform
 } from '../../utils/shortcutPresentation'
 import './TreeView.css'
+
+const IS_MAC = isMacPlatform()
 
 // ==================== 类型定义 ====================
 
@@ -623,14 +626,16 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         return
       }
 
-      if (event.key === 'F2') {
+      // 与 VS Code 一致：重命名 Windows/Linux 为 F2，macOS 为 Enter
+      if (event.key === 'F2' || (IS_MAC && event.key === 'Enter')) {
         event.preventDefault()
         event.stopPropagation()
         startRenameByKey(targetKey)
         return
       }
 
-      if (event.key === 'Delete') {
+      // 与 VS Code 一致：删除 Windows/Linux 为 Delete，macOS 为 Cmd+Backspace（Delete 也保留）
+      if (event.key === 'Delete' || (IS_MAC && event.metaKey && event.key === 'Backspace')) {
         event.preventDefault()
         event.stopPropagation()
         deleteByKey(targetKey)
