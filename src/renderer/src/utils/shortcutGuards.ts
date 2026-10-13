@@ -64,3 +64,17 @@ export function shouldIgnoreChatReadingShortcuts(event?: KeyboardEvent | null): 
     shouldIgnoreAppShortcuts(event) || Boolean(contextElement?.closest(CHAT_INTERACTIVE_SELECTOR))
   )
 }
+
+const TEXT_EDITING_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable="true"]',
+  '[contenteditable=""]'
+].join(', ')
+
+/** 事件目标是否处于文本编辑状态（输入框、文本域等） */
+export function isTextEditingTarget(event?: KeyboardEvent | null): boolean {
+  const contextElement = getContextElement(event)
+  return Boolean(contextElement?.closest(TEXT_EDITING_SELECTOR))
+}

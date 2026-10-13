@@ -274,20 +274,24 @@ export function Tabs(): React.JSX.Element {
         trigger={['contextMenu']}
       >
         <div className="tabs-nav-buttons">
-          <Button
-            type="text"
-            size="small"
-            icon={<LeftOutlined />}
-            disabled={!canGoBack()}
-            onClick={goBack}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<RightOutlined />}
-            disabled={!canGoForward()}
-            onClick={goForward}
-          />
+          <Tooltip title={formatShortcutTooltip('后退', 'tabHistoryBack')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<LeftOutlined />}
+              disabled={!canGoBack()}
+              onClick={goBack}
+            />
+          </Tooltip>
+          <Tooltip title={formatShortcutTooltip('前进', 'tabHistoryForward')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<RightOutlined />}
+              disabled={!canGoForward()}
+              onClick={goForward}
+            />
+          </Tooltip>
         </div>
       </Dropdown>
       <AntTabs

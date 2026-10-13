@@ -11,6 +11,8 @@ export type AppShortcutAction =
   | 'new-chat'
   | 'toggle-sidebar'
   | 'global-search'
+  | 'history-back'
+  | 'history-forward'
 
 function closeActiveTab(): void {
   const { tabs, activeTabId, closeTab } = useTabsStore.getState()
@@ -40,6 +42,12 @@ export async function dispatchAppShortcutAction(
       break
     case 'prev-tab':
       useTabsStore.getState().activatePrevTab()
+      break
+    case 'history-back':
+      useTabsStore.getState().goBack()
+      break
+    case 'history-forward':
+      useTabsStore.getState().goForward()
       break
     case 'new-chat': {
       const page = await pagesService.createPage()

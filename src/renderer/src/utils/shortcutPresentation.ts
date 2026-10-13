@@ -5,6 +5,8 @@ export type ShortcutLabelId =
   | 'treeDelete'
   | 'tabNew'
   | 'tabClose'
+  | 'tabHistoryBack'
+  | 'tabHistoryForward'
   | 'messageCopy'
   | 'messagePrev'
   | 'messageNext'
@@ -47,8 +49,14 @@ function resolveDisplayPlatform(): DisplayPlatform {
   return cachedDisplayPlatform
 }
 
+export function isMacPlatform(): boolean {
+  return resolveDisplayPlatform() === 'darwin'
+}
+
 export function getShortcutLabel(id: ShortcutLabelId): string {
-  const modifier = resolveDisplayPlatform() === 'darwin' ? 'Cmd' : 'Ctrl'
+  const isMac = resolveDisplayPlatform() === 'darwin'
+  const modifier = isMac ? 'Cmd' : 'Ctrl'
+  const altModifier = isMac ? 'Option' : 'Alt'
 
   switch (id) {
     case 'treeRename':
@@ -59,6 +67,10 @@ export function getShortcutLabel(id: ShortcutLabelId): string {
       return `${modifier}+N`
     case 'tabClose':
       return `${modifier}+W`
+    case 'tabHistoryBack':
+      return `${altModifier}+←`
+    case 'tabHistoryForward':
+      return `${altModifier}+→`
     case 'messageCopy':
       return `${modifier}+C`
     case 'messagePrev':

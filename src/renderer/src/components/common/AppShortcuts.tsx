@@ -4,12 +4,29 @@ import {
   dispatchAppShortcutAction,
   dispatchForwardedShortcutAction
 } from '../../services/shortcutService'
-import { isMonacoFocused, shouldIgnoreAppShortcuts } from '../../utils/shortcutGuards'
+import {
+  isMonacoFocused,
+  isTextEditingTarget,
+  shouldIgnoreAppShortcuts
+} from '../../utils/shortcutGuards'
+import { isMacPlatform } from '../../utils/shortcutPresentation'
 
 const appShortcutOptions = {
   enableOnFormTags: true as const,
   enableOnContentEditable: true,
   preventDefault: (event: KeyboardEvent) => !isMonacoFocused(event)
+}
+
+// macOS 上 Option+←/→ 是文本内的按词移动，编辑文本时不拦截，交给系统处理
+const historyShortcutOptions = {
+  enableOnFormTags: true as const,
+  enableOnContentEditable: true,
+  preventDefault: (event: KeyboardEvent) =>
+    !isMonacoFocused(event) && !(isMacPlatform() && isTextEditingTarget(event))
+}
+
+function shouldIgnoreHistoryShortcut(event: KeyboardEvent): boolean {
+  return shouldIgnoreAppShortcuts(event) || (isMacPlatform() && isTextEditingTarget(event))
 }
 
 export function AppShortcuts(): null {
@@ -49,6 +66,32 @@ export function AppShortcuts(): null {
       void dispatchAppShortcutAction('global-search', event)
     },
     appShortcutOptions,
+    []
+  )
+
+  useHotkeys(
+    'alt+arrowleft',
+    (event) => {
+      if (shouldIgnoreHistoryShortcut(event)) {
+        return
+      }
+
+      void dispatchAppShortcutAction('history-back', event)
+    },
+    historyShortcutOptions,
+    []
+  )
+
+  useHotkeys(
+    'alt+arrowright',
+    (event) => {
+      if (shouldIgnoreHistoryShortcut(event)) {
+        return
+      }
+
+      void dispatchAppShortcutAction('history-forward', event)
+    },
+    historyShortcutOptions,
     []
   )
 
