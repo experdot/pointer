@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app } from 'electron'
+import { ipcMain, dialog, app, shell } from 'electron'
 import { readFile, writeFile, unlink, mkdir, readdir, stat, rm, rename } from 'fs/promises'
 import * as path from 'path'
 import {
@@ -74,6 +74,44 @@ export function setupFileSystemHandlers(): void {
   ipcMain.handle('fs:approve-workspace-path', (_event, workspacePath: string) => {
     approveWorkspacePath(workspacePath)
   })
+
+  // 在系统文件管理器中打开目录
+  ipcMain.handle(
+    'fs:open-in-file-manager',
+    async (
+      _event,
+      targetPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const validation = validatePath(targetPath, options?.allowCustomPath)
+        if (!validation.valid) {
+          return { success: false, error: validation.error }
+        }
+
+        const targetStat = await stat(targetPath)
+        if (!targetStat.isDirectory()) {
+          return { success: false, error: '目标路径不是文件夹' }
+        }
+
+        const openError = await shell.openPath(path.resolve(targetPath))
+        if (openError) {
+          return { success: false, error: openError }
+        }
+
+        return { success: true }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return { success: false, error: '文件夹不存在或已被移动' }
+        }
+        console.error('Open in file manager error:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '未知错误'
+        }
+      }
+    }
+  )
 
   // 选择目录
   ipcMain.handle(

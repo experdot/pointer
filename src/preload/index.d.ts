@@ -124,6 +124,10 @@ declare global {
           path?: string
           error?: string
         }>
+        openInFileManager: (
+          targetPath: string,
+          options?: { allowCustomPath?: boolean }
+        ) => Promise<{ success: boolean; error?: string }>
         readText: (
           filePath: string,
           options?: { allowCustomPath?: boolean }

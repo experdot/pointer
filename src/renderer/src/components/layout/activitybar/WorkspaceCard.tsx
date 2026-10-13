@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Flex, Typography, Button, Divider, List, App } from 'antd'
+import { Flex, Typography, Button, Divider, List, App, Tooltip } from 'antd'
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -88,6 +88,27 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         message.error(errorMessage)
       }
       console.error('Failed to open folder:', error)
+    }
+  }
+
+  const handleOpenInFileManager = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation()
+    const workspacePath = currentWorkspace?.path
+    if (!workspacePath) {
+      message.warning('当前没有可打开的工作区')
+      return
+    }
+
+    try {
+      const result = await window.api.fs.openInFileManager(workspacePath, {
+        allowCustomPath: true
+      })
+      if (!result.success) {
+        message.error(result.error || '打开文件夹失败')
+      }
+    } catch (error) {
+      message.error('打开文件夹失败')
+      console.error('Failed to open workspace in file manager:', error)
     }
   }
 
@@ -190,7 +211,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         ) : (
           <FolderOpenOutlined style={{ fontSize: 24, color: '#1677ff' }} />
         )}
-        <Flex vertical style={{ overflow: 'hidden' }}>
+        <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
           <Text strong ellipsis>
             {currentWorkspace?.name || '未选择工作区'}
           </Text>
@@ -200,6 +221,16 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             </Text>
           )}
         </Flex>
+        <Tooltip title="在文件资源管理器中打开">
+          <Button
+            type="text"
+            size="small"
+            icon={<FolderOpenOutlined />}
+            onClick={handleOpenInFileManager}
+            disabled={!currentWorkspace}
+            style={{ flexShrink: 0 }}
+          />
+        </Tooltip>
       </Flex>
       <Divider style={{ margin: '8px 0' }} />
       <Button

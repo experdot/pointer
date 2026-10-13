@@ -159,6 +159,12 @@ const api = {
     selectDirectory: (options?: { title?: string; defaultPath?: string }) =>
       ipcRenderer.invoke('fs:select-directory', options),
 
+    openInFileManager: (
+      targetPath: string,
+      options?: { allowCustomPath?: boolean }
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:open-in-file-manager', targetPath, options),
+
     readText: (
       filePath: string,
       options?: { allowCustomPath?: boolean }
