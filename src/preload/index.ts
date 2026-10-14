@@ -6,7 +6,6 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 import {
   RUNTIME_CHANNELS,
   type RuntimeCommandName,
@@ -79,7 +78,6 @@ const shortcuts = {
 
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('runtime', runtime)
     contextBridge.exposeInMainWorld('electronWindow', electronWindow)
     contextBridge.exposeInMainWorld('shortcuts', shortcuts)
@@ -87,8 +85,6 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
   // @ts-ignore (define in dts)
   window.runtime = runtime
   // @ts-ignore (define in dts)

@@ -1,8 +1,8 @@
 import React from 'react'
 import { Flex } from 'antd'
-import { TitleBar } from '../titlebar'
-import { ActivityBar } from '../activitybar'
-import { Sidebar } from '../sidebar'
+import { TitleBar } from '../TitleBar'
+import { ActivityBar } from '../ActivityBar'
+import { Sidebar } from '../Sidebar'
 import { EditorArea } from '../EditorArea'
 import './MainLayout.css'
 

@@ -15,13 +15,13 @@ export function TitleBar(): React.JSX.Element {
   }, [])
 
   const handleMinimize = (): void => {
-    window.electron?.ipcRenderer.invoke('window-minimize')
+    window.electronWindow?.minimize()
   }
   const handleMaximize = (): void => {
-    window.electron?.ipcRenderer.invoke('window-maximize')
+    window.electronWindow?.maximize()
   }
   const handleClose = (): void => {
-    window.electron?.ipcRenderer.invoke('window-close')
+    window.electronWindow?.close()
   }
 
   return (
