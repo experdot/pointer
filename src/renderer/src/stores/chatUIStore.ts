@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FileAttachment } from '../types/type'
+import type { AttachmentRef } from '@renderer/types/shared'
 
 interface SearchState {
   isOpen: boolean
@@ -24,7 +24,7 @@ const defaultSearchState: SearchState = {
 interface ChatUIState {
   scrollTop: number
   inputContent: string
-  pendingAttachments: FileAttachment[]
+  pendingAttachments: AttachmentRef[]
   search: SearchState
 }
 
@@ -33,7 +33,7 @@ interface ChatUIStore {
   getState: (pageId: string) => ChatUIState
   setScrollTop: (pageId: string, scrollTop: number) => void
   setInputContent: (pageId: string, content: string) => void
-  addPendingAttachment: (pageId: string, attachment: FileAttachment) => void
+  addPendingAttachment: (pageId: string, attachment: AttachmentRef) => void
   removePendingAttachment: (pageId: string, attachmentId: string) => void
   clearPendingAttachments: (pageId: string) => void
   clearState: (pageId: string) => void

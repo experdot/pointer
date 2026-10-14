@@ -14,10 +14,11 @@ import {
   openFolderAsWorkspace,
   deleteWorkspace,
   repairWorkspacePath,
-  WorkspaceRepairRequiredError
+  pickWorkspaceDirectory,
+  validateWorkspacePath,
+  openWorkspaceInFileManager
 } from '../../../services/workspaceService'
-import type { WorkspaceMetadata } from '../../../types/workspace'
-import { useSwitchTransactionStore } from '../../../stores/switchTransactionStore'
+import type { WorkspaceSummary } from '@renderer/types/shared'
 
 const { Text } = Typography
 
@@ -28,35 +29,34 @@ interface WorkspaceCardProps {
 export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Element {
   const { workspaces, currentWorkspaceId, currentWorkspace } = useWorkspaceStore()
   const [showWorkspaceList, setShowWorkspaceList] = useState(false)
-  const switching = useSwitchTransactionStore((state) => state.inProgress)
+  const [switching, setSwitching] = useState(false)
   const { message, modal } = App.useApp()
 
   const handleSwitchWorkspace = async (workspaceId: string): Promise<void> => {
     if (workspaceId === currentWorkspaceId || switching) return
+    setSwitching(true)
     try {
       await switchWorkspace(workspaceId)
       onClose()
     } catch (error) {
       message.error('切换工作区失败')
       console.error('Failed to switch workspace:', error)
+    } finally {
+      setSwitching(false)
     }
   }
 
   const handleOpenFolder = async (): Promise<void> => {
     if (switching) return
     try {
-      const result = await window.api.fs.selectDirectory({
-        title: '选择工作区文件夹'
-      })
-
-      if (!result.success || !result.path) {
-        return
-      }
+      const selectedPath = await pickWorkspaceDirectory('选择工作区文件夹')
+      if (!selectedPath) return
 
       try {
-        await openFolderAsWorkspace(result.path)
+        await openFolderAsWorkspace(selectedPath)
       } catch (error) {
-        if (error instanceof WorkspaceRepairRequiredError) {
+        const validation = await validateWorkspacePath(selectedPath).catch(() => null)
+        if (validation?.repairable) {
           modal.confirm({
             title: '工作区需要修复',
             content: '检测到该工作区缺少部分内部目录或元数据。确认后会补齐缺失项，然后继续打开。',
@@ -64,8 +64,8 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             cancelText: '取消',
             onOk: async () => {
               try {
-                await repairWorkspacePath(error.dirPath)
-                await openFolderAsWorkspace(error.dirPath)
+                await repairWorkspacePath(selectedPath)
+                await openFolderAsWorkspace(selectedPath)
                 onClose()
               } catch (repairError) {
                 const repairMessage =
@@ -100,12 +100,8 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
     }
 
     try {
-      const result = await window.api.fs.openInFileManager(workspacePath, {
-        allowCustomPath: true
-      })
-      if (!result.success) {
-        message.error(result.error || '打开文件夹失败')
-      }
+      void workspacePath
+      await openWorkspaceInFileManager()
     } catch (error) {
       message.error('打开文件夹失败')
       console.error('Failed to open workspace in file manager:', error)
@@ -113,7 +109,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
   }
 
   const handleDeleteWorkspace = async (
-    workspace: WorkspaceMetadata,
+    workspace: WorkspaceSummary,
     e: React.MouseEvent
   ): Promise<void> => {
     e.stopPropagation()

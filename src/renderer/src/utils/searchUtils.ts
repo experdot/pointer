@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../types/type'
+import type { ChatMessage } from '@renderer/types/shared'
 
 export interface SearchMatch {
   messageId: string

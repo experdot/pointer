@@ -9,11 +9,7 @@ import {
 } from '@ant-design/icons'
 import { DateTimeText } from '../../common/DateTimeText'
 import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
-import type {
-  GlobalSearchMatch,
-  GlobalSearchMessageGroup,
-  GlobalSearchResultGroup
-} from '../../../types/type'
+import type { SearchMatch, SearchMessageGroup, SearchPageGroup } from '@renderer/types/shared'
 
 const { Text } = Typography
 
@@ -21,9 +17,9 @@ const { Text } = Typography
 const PAGE_SIZE = 20
 
 interface SearchResultsProps {
-  results: GlobalSearchResultGroup[]
+  results: SearchPageGroup[]
   onItemClick: (
-    match: GlobalSearchMatch,
+    match: SearchMatch,
     pageIndex: number,
     messageIndex: number,
     matchIndex: number
@@ -96,13 +92,13 @@ function LoadMoreButton({ current, total, onLoadMore }: LoadMoreButtonProps): Re
 }
 
 interface SearchResultPageGroupProps {
-  group: GlobalSearchResultGroup
+  group: SearchPageGroup
   pageIndex: number
   selectedIndex: [number, number, number] | null
   onGroupClick: (pageId: string) => void
   onMessageClick: (pageId: string, messageId: string) => void
   onItemClick: (
-    match: GlobalSearchMatch,
+    match: SearchMatch,
     pageIndex: number,
     messageIndex: number,
     matchIndex: number
@@ -172,14 +168,14 @@ function SearchResultPageGroup({
 }
 
 interface SearchResultMessageGroupProps {
-  messageGroup: GlobalSearchMessageGroup
+  messageGroup: SearchMessageGroup
   pageId: string
   pageIndex: number
   messageIndex: number
   selectedIndex: [number, number, number] | null
   onMessageClick: (pageId: string, messageId: string) => void
   onItemClick: (
-    match: GlobalSearchMatch,
+    match: SearchMatch,
     pageIndex: number,
     messageIndex: number,
     matchIndex: number
@@ -255,7 +251,7 @@ function SearchResultMessageGroup({
 }
 
 interface SearchResultItemProps {
-  match: GlobalSearchMatch
+  match: SearchMatch
   isSelected: boolean
   onClick: () => void
 }

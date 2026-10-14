@@ -2,13 +2,13 @@ import React, { useState, useMemo } from 'react'
 import { Modal, Tree } from 'antd'
 import type { TreeProps } from 'antd'
 import { FolderOutlined, HomeOutlined } from '@ant-design/icons'
-import type { PageFolder } from '../../types/type'
+import type { Folder } from '@renderer/types/shared'
 
 interface MoveToFolderModalProps {
   open: boolean
   onClose: () => void
   onConfirm: (targetFolderId: string | undefined) => void
-  folders: PageFolder[]
+  folders: Folder[]
   /** 要排除的文件夹 ID 列表（包括要移动的文件夹及其子文件夹） */
   excludeFolderIds?: string[]
   /** 当前所在的文件夹 ID */

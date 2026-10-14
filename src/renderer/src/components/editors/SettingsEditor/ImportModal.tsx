@@ -29,17 +29,36 @@ import { useMessagesStore } from '../../../stores/messagesStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import type { PageRecord, MessagesRecord } from '../../../persistence/interfaces/userData'
+import type { PageRecord, MessagesRecord } from '@renderer/types/shared'
 import type {
-  PageFolder,
+  Folder,
   ConfigFolder,
   ConfigItemBase,
   ConfigTree,
   LLMConfig,
   ModelConfig
-} from '../../../types/type'
+} from '@renderer/types/shared'
 
 const { Text } = Typography
+
+/** 文件夹层级深度，用于保证父级先创建 */
+function folderDepth(
+  folder: { id: string; parentFolderId?: string },
+  all: ReadonlyArray<{ id: string; parentFolderId?: string }>
+): number {
+  let depth = 0
+  let current: string | undefined = folder.parentFolderId
+  const visited = new Set<string>([folder.id])
+
+  while (current) {
+    if (visited.has(current)) break
+    visited.add(current)
+    depth += 1
+    current = all.find((item) => item.id === current)?.parentFolderId
+  }
+
+  return depth
+}
 const { Dragger } = Upload
 
 interface ImportModalProps {
@@ -53,7 +72,7 @@ type ConflictStrategy = 'generate-new' | 'skip' | 'overwrite'
 // 构建页面树（带冲突检测）
 function buildPagesTree(
   pages: PageRecord[],
-  folders: PageFolder[],
+  folders: Folder[],
   existingPageIds: Set<string>,
   existingFolderIds: Set<string>
 ): TreeDataNode[] {
@@ -321,7 +340,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           )
           setCheckedModel(getAllKeys(tree))
         }
-        setIncludeUI(!!data.data.tabs || !!data.data.layout)
+        setIncludeUI(Boolean(data.data.viewState))
       }, 0)
 
       return false
@@ -399,12 +418,19 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     try {
       const folderIdMap = new Map<string, string>()
       const pageIdMap = new Map<string, string>()
+      /** 每个父文件夹下最后创建的页面，用于按顺序串联插入 */
+      const lastPageByParent = new Map<string, string>()
 
       // 导入文件夹
       if (stats.folderIds.length > 0 && importData.data.folders) {
-        const foldersToImport = importData.data.folders.filter((f) =>
-          stats.folderIds.includes(f.id)
-        )
+        const foldersToImport = importData.data.folders
+          .filter((f) => stats.folderIds.includes(f.id))
+          // 父文件夹必须先建，否则子文件夹的 parentFolderId 无法重映射
+          .sort(
+            (a, b) =>
+              folderDepth(a, importData.data.folders ?? []) -
+              folderDepth(b, importData.data.folders ?? [])
+          )
 
         for (const folder of foldersToImport) {
           if (conflictStrategy === 'skip' && existingFolderIds.has(folder.id)) {
@@ -424,7 +450,14 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
       // 导入页面和消息
       if (stats.pageIds.length > 0 && importData.data.pages) {
-        const pagesToImport = importData.data.pages.filter((p) => stats.pageIds.includes(p.id))
+        const pagesToImport = importData.data.pages
+          .filter((p) => stats.pageIds.includes(p.id))
+          // 按（所属文件夹, 顺序）创建，保证同级顺序与备份一致
+          .sort(
+            (a, b) =>
+              (a.parentFolderId ?? '').localeCompare(b.parentFolderId ?? '') ||
+              (a.order ?? 0) - (b.order ?? 0)
+          )
 
         for (const page of pagesToImport) {
           if (conflictStrategy === 'skip' && existingPageIds.has(page.id)) {
@@ -438,7 +471,16 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             resolved.parentFolderId = folderIdMap.get(resolved.parentFolderId)
           }
 
-          await usePagesStore.getState().create(resolved)
+          // 用"上一个已创建的兄弟"作为参照，保证导入后同级顺序与备份一致
+          // （内核在无参照时会把新节点插到最前面）
+          const previousSibling = lastPageByParent.get(resolved.parentFolderId ?? '')
+          const created = await usePagesStore.getState().create({
+            name: resolved.name,
+            parentFolderId: resolved.parentFolderId,
+            afterNodeId: previousSibling,
+            starred: page.starred
+          })
+          lastPageByParent.set(resolved.parentFolderId ?? '', created.id)
 
           // 导入消息
           const messagesRecord = importData.data.messages?.find((m) => m.pageId === page.id)
@@ -447,7 +489,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
               ...messagesRecord,
               pageId: resolved.id
             }
-            await useMessagesStore.getState().update(resolved.id, () => newRecord)
+            await useMessagesStore.getState().replaceConversation(resolved.id, newRecord)
           }
         }
       }
@@ -515,22 +557,17 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       }
 
       // 导入界面状态
-      if (includeUI) {
-        if (importData.data.tabs) {
-          const tabsState = useTabsStore.getState()
-          // 合并标签页
-          importData.data.tabs.tabs.forEach((tab) => {
-            if (!tabsState.tabs.find((t) => t.id === tab.id)) {
-              tabsState.openTab(tab)
-            }
-          })
+      if (includeUI && importData.data.viewState) {
+        const state = importData.data.viewState
+        for (const tab of state.tabs) {
+          if (!useTabsStore.getState().tabs.some((existing) => existing.id === tab.id)) {
+            useTabsStore.getState().openTab(tab)
+          }
         }
-        if (importData.data.layout) {
-          const layoutState = useLayoutStore.getState()
-          layoutState.setSidebarWidth(importData.data.layout.sidebarWidth)
-          layoutState.setSidebarVisible(importData.data.layout.sidebarVisible)
-          layoutState.setActivePanel(importData.data.layout.activePanel)
-        }
+        const layoutState = useLayoutStore.getState()
+        layoutState.setSidebarWidth(state.layout.sidebarWidth)
+        layoutState.setSidebarVisible(state.layout.sidebarVisible)
+        layoutState.setActivePanel(state.layout.activePanel)
       }
 
       message.success('导入成功')
@@ -632,13 +669,11 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           <Checkbox
             checked={includeUI}
             onChange={(e) => setIncludeUI(e.target.checked)}
-            disabled={!importData.data.tabs && !importData.data.layout}
+            disabled={!importData.data.viewState}
           >
             导入标签页和布局设置
           </Checkbox>
-          {!importData.data.tabs && !importData.data.layout && (
-            <Text type="secondary">备份文件中不包含界面状态数据</Text>
-          )}
+          {!importData.data.viewState && <Text type="secondary">备份文件中不包含界面状态数据</Text>}
         </Flex>
       )
     }

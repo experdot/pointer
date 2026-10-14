@@ -3,11 +3,11 @@ import { Input, Tooltip, type InputRef } from 'antd'
 import { EditOutlined, StarFilled, StarOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { toggleStarPage, updatePage } from '../../../services/pagesService'
 import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
-import type { ChatPage } from '../../../types/type'
+import type { Page } from '@renderer/types/shared'
 import './Header.css'
 
 interface HeaderProps {
-  page: ChatPage
+  page: Page
   onGenerate?: (options: GenerateOptions) => Promise<void>
 }
 

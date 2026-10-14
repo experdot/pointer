@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import type { FileAttachment } from '../../../types/type'
+import type { AttachmentRef } from '@renderer/types/shared'
 import { getAttachmentDataUrl } from '../../../hooks/useAttachment'
 import { ImagePreviewModal } from '../../common/ImagePreviewModal'
 import './MessageAttachments.css'
 
 interface MessageAttachmentsProps {
-  attachments: FileAttachment[]
+  attachments: AttachmentRef[]
 }
 
 export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachments }) => {
@@ -15,7 +15,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachme
     name: string
   }>({ visible: false, src: '', name: '' })
 
-  const handleImageClick = useCallback(async (attachment: FileAttachment) => {
+  const handleImageClick = useCallback(async (attachment: AttachmentRef) => {
     try {
       const dataUrl = await getAttachmentDataUrl(attachment)
       setPreviewImage({
@@ -35,7 +35,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachme
   if (!attachments || attachments.length === 0) return null
 
   // 只显示图片附件
-  const imageAttachments = attachments.filter((a) => a.type.startsWith('image/'))
+  const imageAttachments = attachments.filter((a) => a.mimeType.startsWith('image/'))
   if (imageAttachments.length === 0) return null
 
   return (
@@ -61,7 +61,7 @@ export const MessageAttachments: React.FC<MessageAttachmentsProps> = ({ attachme
 }
 
 const AttachmentThumbnail: React.FC<{
-  attachment: FileAttachment
+  attachment: AttachmentRef
   onClick: () => void
 }> = ({ attachment, onClick }) => {
   const [thumbnail, setThumbnail] = useState<string | null>(null)

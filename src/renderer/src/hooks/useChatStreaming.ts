@@ -1,30 +1,30 @@
-import { useCallback } from 'react'
-import { createAIService } from '../services/aiService'
-import * as messagesService from '../services/messagesService'
+/**
+ * 对话执行 Hook
+ *
+ * 只负责发起命令与维护请求句柄；流式内容与最终结果由内核事件写入镜像。
+ */
+
+import { useCallback, useRef } from 'react'
+import type { AttachmentRef, ChatMessage, Conversation } from '@shared/domain'
+import { command } from '../runtime/client'
+import { useMessagesStore } from '../stores/messagesStore'
+import { usePagesStore } from '../stores/pagesStore'
 import * as pagesService from '../services/pagesService'
-import { streamingManager } from '../services/streamingManager'
-import { stores } from '../stores/registry'
-import type { ChatMessage, LLMConfig, ModelConfig, FileAttachment } from '../types/type'
-import type { PageRecord, MessagesRecord } from '../persistence/interfaces/userData'
-import type { ChatConfigs } from './useChatCore'
 
 const DEFAULT_SESSION_TITLE_PREVIEW_LENGTH = 30
 
-export interface UseChatStreamingOptions {
-  pageId: string
-  page: PageRecord | undefined
-  messages: ChatMessage[]
-  currentPath: ChatMessage[]
-  record: MessagesRecord | undefined
-  getConfigs: () => ChatConfigs | null
-  getConfigsWithOverride: (llmId?: string, modelConfigId?: string) => ChatConfigs | null
-}
-
 export interface SendMessageOptions {
   parentId?: string
-  attachments?: FileAttachment[]
-  /** 是否创建新分支（使用 parentId 而非 leafMessageId） */
+  attachments?: AttachmentRef[]
   createBranch?: boolean
+  llmId?: string
+  modelConfigId?: string
+}
+
+export interface UseChatStreamingOptions {
+  pageId: string
+  record: Conversation | undefined
+  messages: ChatMessage[]
 }
 
 export interface UseChatStreamingResult {
@@ -36,214 +36,76 @@ export interface UseChatStreamingResult {
 
 export function useChatStreaming({
   pageId,
-  page,
-  messages,
-  currentPath,
   record,
-  getConfigs,
-  getConfigsWithOverride
+  messages
 }: UseChatStreamingOptions): UseChatStreamingResult {
-  const startStreaming = useCallback(
-    async (
-      parentMessageId: string,
-      pathMessages: ChatMessage[],
-      llmConfig: LLMConfig,
-      modelConfig: ModelConfig | undefined
-    ) => {
-      // 1. 创建空的 assistant 消息
-      const assistantMessage = await messagesService.addMessage(pageId, {
-        role: 'assistant',
-        content: '',
+  /** pageId -> 当前请求 id */
+  const requests = useRef(new Map<string, string>())
+
+  const sendMessage = useCallback(
+    async (content: string, options?: SendMessageOptions) => {
+      const parentMessageId = options?.createBranch ? options.parentId : record?.leafMessageId
+      const isFirstMessage = messages.length === 0
+
+      const currentPage = usePagesStore.getState().getById(pageId)
+      const isDefaultName = currentPage ? /^新对话(?: \(\d+\))?$/.test(currentPage.name) : false
+      if (isFirstMessage && isDefaultName && content.trim()) {
+        const title =
+          content.slice(0, DEFAULT_SESSION_TITLE_PREVIEW_LENGTH) +
+          (content.length > DEFAULT_SESSION_TITLE_PREVIEW_LENGTH ? '...' : '')
+        await pagesService.updatePage(pageId, { name: title })
+      }
+
+      const handle = await command('chat.send', {
+        pageId,
+        content,
+        attachments: options?.attachments,
         parentMessageId,
-        branchIndex: messagesService.getNextBranchIndex(
-          messagesService.getMessages(pageId),
-          parentMessageId
-        ),
-        modelId: llmConfig.id,
-        modelConfigId: modelConfig?.id
+        llmId: options?.llmId,
+        modelConfigId: options?.modelConfigId
       })
 
-      // 2. 开始 streaming
-      const aiService = createAIService(llmConfig, modelConfig)
-      streamingManager.start(pageId, assistantMessage.id, aiService)
+      requests.current.set(pageId, handle.requestId)
+      // 生成标记只打在本次请求的助手消息上
+      useMessagesStore.getState().setStreaming(handle.messageId, true)
+    },
+    [pageId, record?.leafMessageId, messages.length]
+  )
 
-      try {
-        await aiService.sendMessage(pathMessages, {
-          onChunk: (chunk) => {
-            const current = streamingManager.get(assistantMessage.id)
-            streamingManager.update(
-              assistantMessage.id,
-              (current?.content ?? '') + chunk,
-              current?.reasoning
-            )
-          },
-          onReasoning: (reasoning) => {
-            const current = streamingManager.get(assistantMessage.id)
-            streamingManager.update(
-              assistantMessage.id,
-              current?.content ?? '',
-              (current?.reasoning ?? '') + reasoning
-            )
-          },
-          onComplete: async () => {
-            const result = streamingManager.finish(assistantMessage.id)
-            if (result) {
-              await messagesService.updateMessage(pageId, assistantMessage.id, {
-                content: result.content,
-                reasoning_content: result.reasoning
-              })
-            }
-          },
-          onError: async (error) => {
-            console.error('AI error:', error)
-            const result = streamingManager.finish(assistantMessage.id)
-            const errorContent = result?.content
-              ? `${result.content}\n\n---\n\n**错误:** ${error.message}`
-              : `**错误:** ${error.message}`
-            await messagesService.updateMessage(pageId, assistantMessage.id, {
-              content: errorContent,
-              reasoning_content: result?.reasoning,
-              hasError: true
-            })
-          }
-        })
-      } catch (error) {
-        console.error('Streaming error:', error)
-        const result = streamingManager.finish(assistantMessage.id)
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        const errorContent = result?.content
-          ? `${result.content}\n\n---\n\n**错误:** ${errorMessage}`
-          : `**错误:** ${errorMessage}`
-        await messagesService.updateMessage(pageId, assistantMessage.id, {
-          content: errorContent,
-          reasoning_content: result?.reasoning,
-          hasError: true
-        })
-      }
+  const stopStreaming = useCallback(async () => {
+    const requestId = requests.current.get(pageId)
+    requests.current.delete(pageId)
+    // 同时带上页面：即使这一轮生成由内核（消息队列）发起，也能停下
+    await command('chat.stop', { requestId, pageId })
+  }, [pageId])
+
+  const retryMessage = useCallback(
+    async (messageId: string, llmId?: string, modelConfigId?: string) => {
+      const handle = await command('chat.regenerate', {
+        pageId,
+        messageId,
+        llmId,
+        modelConfigId
+      })
+      requests.current.set(pageId, handle.requestId)
+      useMessagesStore.getState().setStreaming(handle.messageId, true)
     },
     [pageId]
   )
 
-  const sendMessage = useCallback(
-    async (content: string, options?: SendMessageOptions) => {
-      if (!page || !record) return
-
-      const configs = getConfigs()
-      if (!configs) {
-        console.error('No LLM or Model config found')
-        return
-      }
-
-      // createBranch=true 时使用 parentId（创建新分支），否则追加到当前分支末尾
-      const parentId = options?.createBranch ? options.parentId : record.leafMessageId
-      const isFirstMessage = messages.length === 0
-      const attachments = options?.attachments
-
-      // 添加用户消息（先使用临时路径）
-      const userMessage = await messagesService.addMessage(pageId, {
-        role: 'user',
-        content,
-        attachments,
-        parentMessageId: parentId,
-        branchIndex: messagesService.getNextBranchIndex(messages, parentId)
-      })
-
-      // 如果有附件，移动到正式目录并更新消息
-      if (attachments && attachments.length > 0) {
-        const movedAttachments = await Promise.all(
-          attachments.map(async (attachment) => {
-            const result = await window.api.attachment.move({
-              fileId: attachment.id,
-              fileName: attachment.name,
-              fromPath: attachment.localPath,
-              pageId,
-              messageId: userMessage.id
-            })
-            if (result.success && result.localPath) {
-              return { ...attachment, localPath: result.localPath }
-            }
-            return attachment
-          })
-        )
-        // 更新消息中的附件路径
-        await messagesService.updateMessage(pageId, userMessage.id, {
-          attachments: movedAttachments
-        })
-      }
-
-      // 第一条消息且标题是默认名称时，自动重命名
-      // 获取最新的页面状态，避免使用过时的 page 对象
-      const currentPage = stores.page.getById(pageId)
-      const isDefaultName = currentPage?.name && /^新对话(?: \(\d+\))?$/.test(currentPage.name)
-      if (isFirstMessage && isDefaultName) {
-        const newTitle =
-          content.slice(0, DEFAULT_SESSION_TITLE_PREVIEW_LENGTH) +
-          (content.length > DEFAULT_SESSION_TITLE_PREVIEW_LENGTH ? '...' : '')
-        await pagesService.updatePage(pageId, { name: newTitle })
-      }
-
-      // 获取最新的消息路径
-      const pathMessages = messagesService.getCurrentPath(pageId)
-
-      await startStreaming(userMessage.id, pathMessages, configs.llmConfig, configs.modelConfig)
-    },
-    [page, pageId, record, messages, getConfigs, startStreaming]
-  )
-
-  const stopStreaming = useCallback(async () => {
-    const streamingMsg = currentPath.find((msg) => streamingManager.isStreaming(msg.id))
-    if (!streamingMsg) return
-
-    const result = await streamingManager.stop(streamingMsg.id)
-
-    if (result?.content) {
-      await messagesService.updateMessage(pageId, streamingMsg.id, {
-        content: result.content,
-        reasoning_content: result.reasoning
-      })
-    } else {
-      await messagesService.deleteMessage(pageId, streamingMsg.id)
-    }
-  }, [pageId, currentPath])
-
-  const retryMessage = useCallback(
-    async (messageId: string, llmId?: string, modelConfigId?: string) => {
-      const message = messages.find((m) => m.id === messageId)
-      if (!message || message.role !== 'assistant') return
-
-      const userMessage = messages.find((m) => m.id === message.parentMessageId)
-      if (!userMessage) return
-
-      const configs = getConfigsWithOverride(
-        llmId ?? message.modelId,
-        modelConfigId ?? message.modelConfigId
-      )
-      if (!configs) return
-
-      const pathToUser = messagesService.getMessagePath(messages, userMessage.id)
-      await startStreaming(userMessage.id, pathToUser, configs.llmConfig, configs.modelConfig)
-    },
-    [messages, getConfigsWithOverride, startStreaming]
-  )
-
   const continueMessage = useCallback(
     async (messageId: string) => {
-      const message = messages.find((m) => m.id === messageId)
-      if (!message || message.role !== 'user') return
-
-      const configs = getConfigs()
-      if (!configs) return
-
-      const pathToUser = messagesService.getMessagePath(messages, message.id)
-      await startStreaming(message.id, pathToUser, configs.llmConfig, configs.modelConfig)
+      const handle = await command('chat.continue', { pageId, messageId })
+      requests.current.set(pageId, handle.requestId)
+      useMessagesStore.getState().setStreaming(handle.messageId, true)
     },
-    [messages, getConfigs, startStreaming]
+    [pageId]
   )
 
-  return {
-    sendMessage,
-    stopStreaming,
-    retryMessage,
-    continueMessage
-  }
+  return { sendMessage, stopStreaming, retryMessage, continueMessage }
+}
+
+/** 判断某条消息是否正在生成 */
+export function useMessageStreaming(messageId: string): boolean {
+  return useMessagesStore((state) => Boolean(state.streaming[messageId]))
 }

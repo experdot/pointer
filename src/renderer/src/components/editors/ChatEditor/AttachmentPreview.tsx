@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
-import type { FileAttachment } from '../../../types/type'
+import type { AttachmentRef } from '@renderer/types/shared'
 import { getAttachmentDataUrl } from '../../../hooks/useAttachment'
 import './AttachmentPreview.css'
 
 interface AttachmentPreviewProps {
-  attachments: FileAttachment[]
+  attachments: AttachmentRef[]
   onRemove: (attachmentId: string) => void
 }
 
@@ -26,7 +26,7 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment
 }
 
 const AttachmentPreviewItem: React.FC<{
-  attachment: FileAttachment
+  attachment: AttachmentRef
   onRemove: () => void
 }> = ({ attachment, onRemove }) => {
   const [thumbnail, setThumbnail] = useState<string | null>(null)

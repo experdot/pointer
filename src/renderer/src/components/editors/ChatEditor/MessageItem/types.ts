@@ -1,5 +1,5 @@
 import type { MenuProps } from 'antd'
-import type { ChatMessage, FileAttachment, Topic } from '../../../../types/type'
+import type { ChatMessage, AttachmentRef, Topic } from '@renderer/types/shared'
 import type { GenerateOptions } from '../../../common/AIGeneratePopover'
 
 // 右键菜单上下文信息
@@ -30,8 +30,8 @@ export interface MessageActionCallbacks {
   onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
-  onEdit: (messageId: string, content: string, attachments?: FileAttachment[]) => void
-  onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
+  onEdit: (messageId: string, content: string, attachments?: AttachmentRef[]) => void
+  onEditAndResend: (messageId: string, content: string, attachments?: AttachmentRef[]) => void
   onSwitchBranch: (messageId: string) => void
   onQuote?: (text: string) => void
   onToggleCollapse?: (messageId: string) => void
@@ -47,12 +47,12 @@ export interface ExportCallbacks {
 
 // MessageItem 主组件 Props
 export interface MessageItemProps {
+  /** 所属页面，用于附件导入等写操作 */
+  pageId: string
   message: ChatMessage
   isLast?: boolean
   isLeaf?: boolean
   isStreaming?: boolean
-  streamingContent?: string
-  streamingReasoning?: string
   branchIndex: number
   branchCount: number
   siblings: ChatMessage[]
@@ -114,11 +114,12 @@ export interface ReasoningContentProps {
 
 // MessageEditMode Props
 export interface MessageEditModeProps {
+  pageId: string
   content: string
-  attachments: FileAttachment[]
+  attachments: AttachmentRef[]
   isUser: boolean
   onContentChange: (content: string) => void
-  onAttachmentsChange: (attachments: FileAttachment[]) => void
+  onAttachmentsChange: (attachments: AttachmentRef[]) => void
   onCancel: () => void
   onSave: () => void
   onSaveAndResend?: () => void
@@ -138,6 +139,7 @@ export interface MessageViewModeProps {
 
 // MessageContent Props
 export interface MessageContentProps {
+  pageId: string
   message: ChatMessage
   displayContent: string
   isUser: boolean
@@ -146,12 +148,12 @@ export interface MessageContentProps {
   isStreaming?: boolean
   isEditing: boolean
   editContent: string
-  editAttachments: FileAttachment[]
+  editAttachments: AttachmentRef[]
   collapsed: boolean
   collapsedPreview: string
   topic?: Topic
   onEditContentChange: (content: string) => void
-  onEditAttachmentsChange: (attachments: FileAttachment[]) => void
+  onEditAttachmentsChange: (attachments: AttachmentRef[]) => void
   onCancelEdit: () => void
   onSaveEdit: () => void
   onEditAndResend: () => void

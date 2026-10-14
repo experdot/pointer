@@ -16,17 +16,20 @@ import { DataPanel } from './DataPanel'
 import { ShortcutsPanel } from './ShortcutsPanel'
 import { AboutPanel } from './AboutPanel'
 import { consumePendingSettingsTab } from '../../../services/settingsService'
+import { useSettingsUIStore } from '../../../stores/settingsUIStore'
 import './SettingsEditor.css'
 
 export function SettingsEditor(): React.JSX.Element {
   const [activeKey, setActiveKey] = useState('general')
 
+  const pendingTab = useSettingsUIStore((state) => state.pendingTab)
+
+  // 挂载时与之后的每次请求都要生效（页签已打开时不会重新挂载）
   useEffect(() => {
-    const pendingTab = consumePendingSettingsTab()
-    if (pendingTab) {
-      setActiveKey(pendingTab)
-    }
-  }, [])
+    if (!pendingTab) return
+    setActiveKey(pendingTab)
+    consumePendingSettingsTab()
+  }, [pendingTab])
   const items: TabsProps['items'] = [
     {
       key: 'general',

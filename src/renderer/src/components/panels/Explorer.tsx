@@ -13,6 +13,7 @@ import {
   StarOutlined
 } from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
+import type { TreeNodeView } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useMessagesStore } from '../../stores/messagesStore'
 import { useLayoutStore } from '../../stores/layoutStore'
@@ -21,13 +22,13 @@ import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitleWithOptions } from '../../services/titleService'
+import { currentGeneration } from '../../runtime/generation'
 import * as pagesService from '../../services/pagesService'
-import { getSwitchGeneration } from '../../stores/switchTransactionStore'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
-import type { ChatPage, PageFolder } from '../../types/type'
-import { isPage } from '../../types/type'
+import type { Page, Folder } from '@renderer/types/shared'
+import { resolveCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
 
 export function Explorer(): React.JSX.Element {
@@ -63,11 +64,12 @@ export function Explorer(): React.JSX.Element {
   const [moveTarget, setMoveTarget] = useState<{
     type: 'page' | 'folder'
     id: string
+    name: string
     parentFolderId?: string
   } | null>(null)
   const [moveConflict, setMoveConflict] = useState<MoveConflictInfo | null>(null)
   const [pendingDragOperation, setPendingDragOperation] = useState<{
-    items: (ChatPage | PageFolder)[]
+    items: (Page | Folder)[]
     parentFolderId: string | undefined
     conflictNames: string[]
   } | null>(null)
@@ -97,22 +99,22 @@ export function Explorer(): React.JSX.Element {
   }
 
   const handleCreatePage = async (): Promise<void> => {
-    const page = await createPage(undefined, selectedKey ?? undefined)
+    const page = await createPage(resolveCreationTarget(selectedKey, folders, pages))
     openPage(page.id)
   }
 
   const handleCreateFolder = async (): Promise<void> => {
-    const folder = await createFolder(undefined, selectedKey ?? undefined)
+    const folder = await createFolder(resolveCreationTarget(selectedKey, folders, pages))
     setSelectedKey(folder.id)
   }
 
   const handleCreatePageInFolder = async (folderId: string): Promise<void> => {
-    const page = await createPage(undefined, undefined, folderId)
+    const page = await createPage({ parentFolderId: folderId })
     openPage(page.id)
   }
 
   const handleCreateSubFolder = async (parentFolderId: string): Promise<void> => {
-    const folder = await createFolder(undefined, undefined, parentFolderId)
+    const folder = await createFolder({ parentFolderId })
     setSelectedKey(folder.id)
   }
 
@@ -155,18 +157,18 @@ export function Explorer(): React.JSX.Element {
       const pageMessages = messagesCache[pageId]?.messages || []
       if (pageMessages.length === 0) return
 
-      const generation = getSwitchGeneration()
-      const result = await generateSessionTitleWithOptions(pageMessages, options)
-      if (generation === getSwitchGeneration() && result.success && result.title) {
-        await updatePage(pageId, { name: result.title })
-      }
+      const generation = currentGeneration()
+      void pageMessages
+      const result = await generateSessionTitleWithOptions(pageId, options)
+      void result
+      void generation
     },
-    [messagesCache, updatePage]
+    [messagesCache]
   )
 
   // 右键菜单 - 星标（置顶，后接分割线）
   const getItemLeadingMenuItems = useCallback(
-    (page: ChatPage): MenuProps['items'] => [
+    (page: Page): MenuProps['items'] => [
       {
         key: 'star',
         label: page.starred ? '取消星标' : '标记为星标',
@@ -183,7 +185,7 @@ export function Explorer(): React.JSX.Element {
 
   // 右键菜单 - 移动至...
   const getItemMenuItems = useCallback(
-    (page: ChatPage): MenuProps['items'] => [
+    (page: Page): MenuProps['items'] => [
       {
         key: 'move',
         label: '移动至...',
@@ -191,7 +193,12 @@ export function Explorer(): React.JSX.Element {
         disabled: folders.length === 0,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
-          setMoveTarget({ type: 'page', id: page.id, parentFolderId: page.parentFolderId })
+          setMoveTarget({
+            type: 'page',
+            id: page.id,
+            name: page.name,
+            parentFolderId: page.parentFolderId
+          })
         }
       }
     ],
@@ -200,13 +207,13 @@ export function Explorer(): React.JSX.Element {
 
   // 已星标的会话在标题前显示星标图标
   const getItemTitleExtra = useCallback(
-    (page: ChatPage): React.ReactNode =>
+    (page: Page): React.ReactNode =>
       page.starred ? <StarFilled className="explorer-tree-item-star" /> : null,
     []
   )
 
   const getFolderMenuItems = useCallback(
-    (folder: PageFolder): MenuProps['items'] => [
+    (folder: Folder): MenuProps['items'] => [
       {
         key: 'move',
         label: '移动至...',
@@ -214,7 +221,12 @@ export function Explorer(): React.JSX.Element {
         disabled: folders.length === 0,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
-          setMoveTarget({ type: 'folder', id: folder.id, parentFolderId: folder.parentFolderId })
+          setMoveTarget({
+            type: 'folder',
+            id: folder.id,
+            name: folder.name,
+            parentFolderId: folder.parentFolderId
+          })
         }
       },
       { type: 'divider' },
@@ -236,26 +248,22 @@ export function Explorer(): React.JSX.Element {
     async (targetFolderId: string | undefined): Promise<void> => {
       if (!moveTarget) return
 
-      // 检查是否有重名冲突
-      let conflictName: string | null = null
-      if (moveTarget.type === 'page') {
-        conflictName = pagesService.checkPageNameConflict(moveTarget.id, targetFolderId)
-      } else {
-        conflictName = pagesService.checkFolderNameConflict(moveTarget.id, targetFolderId)
-      }
+      // 与迁移前一致：目标文件夹已有同名节点时先弹冲突对话框
+      const conflict =
+        moveTarget.type === 'page'
+          ? pagesService.checkPageNameConflict(moveTarget.name, targetFolderId, moveTarget.id)
+          : pagesService.checkFolderNameConflict(moveTarget.name, targetFolderId, moveTarget.id)
 
-      if (conflictName) {
-        // 有冲突，显示冲突对话框
+      if (conflict) {
         setMoveConflict({
           type: moveTarget.type,
           id: moveTarget.id,
-          name: conflictName,
+          name: moveTarget.name,
           targetFolderId
         })
         return
       }
 
-      // 无冲突，直接移动
       if (moveTarget.type === 'page') {
         await pagesService.movePage(moveTarget.id, targetFolderId)
       } else {
@@ -270,9 +278,9 @@ export function Explorer(): React.JSX.Element {
     if (!moveConflict) return
 
     if (moveConflict.type === 'page') {
-      await pagesService.movePage(moveConflict.id, moveConflict.targetFolderId, true)
+      await pagesService.movePage(moveConflict.id, moveConflict.targetFolderId)
     } else {
-      await pagesService.moveFolder(moveConflict.id, moveConflict.targetFolderId, true)
+      await pagesService.moveFolder(moveConflict.id, moveConflict.targetFolderId)
     }
 
     setMoveConflict(null)
@@ -287,14 +295,15 @@ export function Explorer(): React.JSX.Element {
 
   // 包装 batchUpdateItemsOrder，检查拖拽冲突
   const handleBatchUpdateItemsOrder = useCallback(
-    (items: (ChatPage | PageFolder)[], parentFolderId?: string) => {
-      const { hasConflict, conflictNames } = checkBatchMoveConflicts(items, parentFolderId)
+    (items: (Page | Folder)[], parentFolderId?: string) => {
+      const nodes = items as TreeNodeView[]
+      const { hasConflict, conflictNames } = checkBatchMoveConflicts(nodes, parentFolderId)
 
       if (hasConflict) {
         // 有冲突，保存待处理操作，显示冲突对话框
         setPendingDragOperation({ items, parentFolderId, conflictNames })
         setMoveConflict({
-          type: items[0]?.type === 'item' ? 'page' : 'folder',
+          type: items[0]?.kind === 'page' ? 'page' : 'folder',
           id: items[0]?.id ?? '',
           name: conflictNames[0] ?? '',
           targetFolderId: parentFolderId
@@ -303,7 +312,7 @@ export function Explorer(): React.JSX.Element {
       }
 
       // 无冲突，直接执行
-      batchUpdateItemsOrder(items, parentFolderId)
+      void batchUpdateItemsOrder(nodes, parentFolderId)
     },
     [checkBatchMoveConflicts, batchUpdateItemsOrder]
   )
@@ -311,8 +320,8 @@ export function Explorer(): React.JSX.Element {
   // 处理拖拽冲突的自动重命名
   const handleDragConflictAutoRename = useCallback((): void => {
     if (pendingDragOperation) {
-      batchUpdateItemsOrderWithRename(
-        pendingDragOperation.items,
+      void batchUpdateItemsOrderWithRename(
+        pendingDragOperation.items as TreeNodeView[],
         pendingDragOperation.parentFolderId
       )
     }
@@ -363,7 +372,7 @@ export function Explorer(): React.JSX.Element {
           </Dropdown.Button>
         )}
       </Flex>
-      <TreeView<ChatPage, PageFolder>
+      <TreeView<Page, Folder>
         items={pages}
         folders={folders}
         selectedId={selectedKey}
@@ -371,7 +380,7 @@ export function Explorer(): React.JSX.Element {
         itemIcon={<MessageOutlined />}
         getItemName={(page) => page.name}
         getItemTitleExtra={getItemTitleExtra}
-        isItem={(item): item is ChatPage => isPage(item as ChatPage | PageFolder)}
+        isItem={(item): item is Page => (item as Page | Folder).kind === 'page'}
         batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
         updateItem={(id, name) => updatePage(id, { name })}
         deleteItem={deletePage}

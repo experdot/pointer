@@ -3,7 +3,8 @@ import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App } fro
 import { RobotOutlined } from '@ant-design/icons'
 import { useSettings, useModelConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
-import type { ModelConfig, ConfigFolder } from '../../../types/type'
+import { useDraftField } from '../../../hooks/useDraftField'
+import type { ModelConfig, ConfigFolder } from '@renderer/types/shared'
 
 const { TextArea } = Input
 
@@ -28,7 +29,15 @@ export function ModelConfigPanel(): React.JSX.Element {
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
-  const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => item.type !== 'folder'
+  const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => item.kind === 'item'
+
+  // 文本字段用本地草稿，避免中文输入法组词期间被内核回推覆盖
+  const nameField = useDraftField(selectedConfig?.name ?? '', (next) =>
+    selectedConfig ? updateConfig(selectedConfig.id, { name: next }) : undefined
+  )
+  const promptField = useDraftField(selectedConfig?.systemPrompt ?? '', (next) =>
+    selectedConfig ? updateConfig(selectedConfig.id, { systemPrompt: next }) : undefined
+  )
 
   const handleCopyAsText = (config: ModelConfig): void => {
     const text = `名称: ${config.name}
@@ -52,7 +61,7 @@ Top P: ${config.topP}`
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={(inFolderId) =>
           createConfig(
-            { type: 'item', name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 },
+            { name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 },
             undefined,
             inFolderId
           )
@@ -75,14 +84,22 @@ Top P: ${config.topP}`
           <Form layout="vertical" key={selectedConfig.id}>
             <Form.Item label="名称">
               <Input
-                value={selectedConfig.name}
-                onChange={(e) => updateConfig(selectedConfig.id, { name: e.target.value })}
+                value={nameField.value}
+                onChange={(e) => nameField.setValue(e.target.value)}
+                onFocus={nameField.handlers.onFocus}
+                onBlur={nameField.handlers.onBlur}
+                onCompositionStart={nameField.handlers.onCompositionStart}
+                onCompositionEnd={nameField.handlers.onCompositionEnd}
               />
             </Form.Item>
             <Form.Item label="系统提示词">
               <TextArea
-                value={selectedConfig.systemPrompt}
-                onChange={(e) => updateConfig(selectedConfig.id, { systemPrompt: e.target.value })}
+                value={promptField.value}
+                onChange={(e) => promptField.setValue(e.target.value)}
+                onFocus={promptField.handlers.onFocus}
+                onBlur={promptField.handlers.onBlur}
+                onCompositionStart={promptField.handlers.onCompositionStart}
+                onCompositionEnd={promptField.handlers.onCompositionEnd}
                 rows={4}
               />
             </Form.Item>

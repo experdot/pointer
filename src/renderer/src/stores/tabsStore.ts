@@ -1,12 +1,9 @@
 import { create } from 'zustand'
-import { persistence } from '../persistence/registry'
-import { tryGetCurrentWorkspaceScope } from '../persistence/scope'
-import { getTabsQueue } from './persistenceQueue'
+import type { Tab, TabHistoryEntry } from '@shared/contracts'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
-import type { Tab, TabHistoryEntry } from '../types/type'
-import type { ITabStore } from './interfaces/ui'
+import { useViewStateStore } from './viewStateStore'
 
-export type { Tab, TabHistoryEntry } from '../types/type'
+export type { Tab, TabHistoryEntry }
 
 const WELCOME_TAB: Tab = {
   id: 'welcome',
@@ -30,6 +27,15 @@ interface TabsState {
 
 interface TabsActions {
   init: () => Promise<void>
+  /** 页面改名后同步页签标题（一次写入） */
+  syncPageTitles: (names: ReadonlyMap<string, string>) => void
+  /** 由内核镜像写入持久化状态（工作区切换时调用） */
+  applyPersistedState: (state: {
+    tabs: Tab[]
+    activeTabId: string | null
+    history: TabHistoryEntry[]
+    historyIndex: number
+  }) => void
   openTab: (tab: Tab, preview?: boolean) => void
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
@@ -113,10 +119,7 @@ function tryNavigateToHistory(
 }
 
 const persist = (state: TabsState): void => {
-  const scope = tryGetCurrentWorkspaceScope()
-  if (!scope) return
-
-  getTabsQueue(scope).enqueue('tabs', {
+  useViewStateStore.getState().patch({
     tabs: state.tabs,
     activeTabId: state.activeTabId,
     history: state.history,
@@ -128,18 +131,44 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) {
-      set(initialState)
-      return
-    }
+    const viewState = useViewStateStore.getState().viewState
+    get().applyPersistedState({
+      tabs: viewState.tabs,
+      activeTabId: viewState.activeTabId,
+      history: viewState.history,
+      historyIndex: viewState.historyIndex
+    })
+  },
 
-    const data = await persistence.workspace(scope).tabs.get()
-    if (data) {
-      set({ ...data, initialized: true })
-    } else {
-      set({ initialized: true })
-    }
+  syncPageTitles: (names) => {
+    const state = get()
+    let changed = false
+
+    const tabs = state.tabs.map((tab) => {
+      if (tab.type !== 'chat' || !tab.dataId) return tab
+      const name = names.get(tab.dataId)
+      if (!name || name === tab.title) return tab
+      changed = true
+      return { ...tab, title: name }
+    })
+
+    if (!changed) return
+    set({ tabs })
+    persist({ ...state, tabs })
+  },
+
+  applyPersistedState: (state) => {
+    const tabs = state.tabs.length > 0 ? state.tabs : [WELCOME_TAB]
+    const activeTabId = tabs.some((tab) => tab.id === state.activeTabId)
+      ? state.activeTabId
+      : tabs[0].id
+    set({
+      tabs,
+      activeTabId,
+      history: state.history.length > 0 ? state.history : [WELCOME_HISTORY_ENTRY],
+      historyIndex: state.history.length > 0 ? state.historyIndex : 0,
+      initialized: true
+    })
   },
 
   openTab: (tab, preview = false) => {
@@ -405,48 +434,3 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
     set(initialState)
   }
 }))
-
-/**
- * 获取标签页 Store 的接口实现
- */
-export function getTabStoreInterface(): ITabStore {
-  const store = useTabsStore
-  return {
-    get initialized() {
-      return store.getState().initialized
-    },
-    get tabs() {
-      return store.getState().tabs
-    },
-    get activeTabId() {
-      return store.getState().activeTabId
-    },
-    get history() {
-      return store.getState().history
-    },
-    get historyIndex() {
-      return store.getState().historyIndex
-    },
-    init: () => store.getState().init(),
-    reset: () => store.getState().reset(),
-    openTab: (tab, preview) => store.getState().openTab(tab, preview),
-    closeTab: (tabId) => store.getState().closeTab(tabId),
-    setActiveTab: (tabId) => store.getState().setActiveTab(tabId),
-    activateNextTab: () => store.getState().activateNextTab(),
-    activatePrevTab: () => store.getState().activatePrevTab(),
-    updateTabTitle: (tabId, title) => store.getState().updateTabTitle(tabId, title),
-    reorderTabs: (fromIndex, toIndex) => store.getState().reorderTabs(fromIndex, toIndex),
-    togglePinTab: (tabId) => store.getState().togglePinTab(tabId),
-    closeOtherTabs: (tabId) => store.getState().closeOtherTabs(tabId),
-    closeRightTabs: (tabId) => store.getState().closeRightTabs(tabId),
-    closeAllTabs: () => store.getState().closeAllTabs(),
-    cleanupInvalidTabs: () => store.getState().cleanupInvalidTabs(),
-    goBack: () => store.getState().goBack(),
-    goForward: () => store.getState().goForward(),
-    canGoBack: () => store.getState().canGoBack(),
-    canGoForward: () => store.getState().canGoForward(),
-    clearHistory: () => store.getState().clearHistory(),
-    navigateToHistoryIndex: (index) => store.getState().navigateToHistoryIndex(index),
-    keepTab: (tabId) => store.getState().keepTab(tabId)
-  }
-}

@@ -12,6 +12,9 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:kernel": "esbuild scripts/kernel-smoke.ts --bundle --platform=node --format=cjs --external:electron --outfile=out/kernel-smoke.cjs && electron out/kernel-smoke.cjs",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
@@ -74,7 +77,8 @@
     "react-dom": "^19.1.0",
     "sass-embedded": "^1.89.2",
     "typescript": "^5.8.3",
-    "vite": "^6.2.6"
+    "vite": "^6.2.6",
+    "vitest": "^5.0.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

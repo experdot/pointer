@@ -1,5 +1,5 @@
 import type { ReactNode, FC } from 'react'
-import type { ChatMessage, Topic } from '../../types/type'
+import type { ChatMessage, Topic } from '@renderer/types/shared'
 
 // ==================== Source Types ====================
 

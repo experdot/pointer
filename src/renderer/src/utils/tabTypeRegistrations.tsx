@@ -1,7 +1,7 @@
 import { HomeOutlined, MessageOutlined, SettingOutlined, ExportOutlined } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
 import { registerTabType } from './tabRegistry'
-import type { Tab } from '../types/type'
+import type { Tab } from '@renderer/types/shared'
 import { usePagesStore } from '../stores/pagesStore'
 import { WelcomePage } from '../components/editors/WelcomePage'
 import { SettingsEditor } from '../components/editors/SettingsEditor'

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import type { Tab } from '../types/type'
+import type { Tab } from '@renderer/types/shared'
 
 // 重新导出 Tab 类型
-export type { Tab } from '../types/type'
+export type { Tab } from '@renderer/types/shared'
 
 // Tab 类型配置
 export interface TabTypeConfig {

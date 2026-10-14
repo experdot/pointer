@@ -1,202 +1,78 @@
+/**
+ * 消息队列 Store（镜像 + 命令）
+ */
+
 import { create } from 'zustand'
-import { v4 as uuidv4 } from 'uuid'
-import { persistence } from '../persistence/registry'
-import { getCurrentWorkspaceScope, tryGetCurrentWorkspaceScope } from '../persistence/scope'
-import { getMessageQueueMutationQueue, queueMessageQueueDelete } from './persistenceQueue'
-import type { QueueItem, MessageQueueRecord } from '../persistence/interfaces/userData'
+import type { MessageQueue } from '@shared/domain'
+import { emptyQueue } from '@shared/domain'
+import { command } from '../runtime/client'
 
 interface MessageQueueState {
-  // 按 pageId 缓存队列
-  cache: Record<string, MessageQueueRecord>
-  // 是否已初始化（加载完成）
+  cache: Record<string, MessageQueue>
   initialized: boolean
 }
 
 interface MessageQueueActions {
-  // 初始化：加载所有队列
-  init: () => Promise<void>
-  // 获取指定页面的队列
-  getQueue: (pageId: string) => MessageQueueRecord
-  // 添加消息到队列
-  addItem: (pageId: string, content: string) => Promise<string>
-  // 移除队列项
-  removeItem: (pageId: string, itemId: string) => Promise<void>
-  // 更新队列项内容
+  setQueue: (queue: MessageQueue) => void
+  getQueue: (pageId: string) => MessageQueue
+  evict: (pageId: string) => void
+  evictAll: () => void
+  addItem: (pageId: string, content: string) => Promise<void>
   updateItem: (pageId: string, itemId: string, content: string) => Promise<void>
-  // 清空队列
+  removeItem: (pageId: string, itemId: string) => Promise<void>
   clearQueue: (pageId: string) => Promise<void>
-  // 取出队列第一项（FIFO）
-  shiftItem: (pageId: string) => Promise<QueueItem | undefined>
-  // 暂停队列
   pause: (pageId: string) => Promise<void>
-  // 恢复队列
   resume: (pageId: string) => Promise<void>
-  // 删除页面关联的队列记录
-  removeRecord: (pageId: string) => Promise<void>
-  // 重置 store
   reset: () => void
 }
 
 type MessageQueueStore = MessageQueueState & MessageQueueActions
 
-const initialState: MessageQueueState = {
-  cache: {},
-  initialized: false
-}
-
-const emptyRecord = (pageId: string): MessageQueueRecord => ({
-  pageId,
-  items: [],
-  paused: false
-})
-
-function persistRecord(record: MessageQueueRecord): void {
-  const scope = getCurrentWorkspaceScope()
-  getMessageQueueMutationQueue(scope).enqueue(record.pageId, {
-    type: 'put',
-    value: record
-  })
-}
-
 export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
-  ...initialState,
+  cache: {},
+  initialized: false,
 
-  init: async () => {
-    if (get().initialized) return
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) {
-      set(initialState)
-      return
-    }
+  setQueue: (queue) =>
+    set((state) => ({
+      cache: { ...state.cache, [queue.pageId]: queue },
+      initialized: true
+    })),
 
-    const records = await persistence.workspace(scope).messageQueue.getAll()
-    const cache: Record<string, MessageQueueRecord> = {}
-    for (const record of records) {
-      cache[record.pageId] = record
-    }
-    set({ cache, initialized: true })
-  },
+  getQueue: (pageId) => get().cache[pageId] ?? emptyQueue(pageId),
 
-  getQueue: (pageId) => {
-    return get().cache[pageId] ?? emptyRecord(pageId)
-  },
+  evict: (pageId) =>
+    set((state) => {
+      if (!(pageId in state.cache)) return state
+      const next = { ...state.cache }
+      delete next[pageId]
+      return { cache: next }
+    }),
+
+  evictAll: () => set({ cache: {} }),
 
   addItem: async (pageId, content) => {
-    const current = get().cache[pageId] ?? emptyRecord(pageId)
-    const newItem: QueueItem = {
-      id: uuidv4(),
-      content,
-      order: current.items.length,
-      createdAt: Date.now()
-    }
-    const updated: MessageQueueRecord = {
-      ...current,
-      pageId,
-      items: [...current.items, newItem]
-    }
-    persistRecord(updated)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-    return newItem.id
-  },
-
-  removeItem: async (pageId, itemId) => {
-    const current = get().cache[pageId]
-    if (!current) return
-    const updated: MessageQueueRecord = {
-      ...current,
-      items: current.items
-        .filter((item) => item.id !== itemId)
-        .map((item, index) => ({ ...item, order: index }))
-    }
-    persistRecord(updated)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
+    await command('queue.add', { pageId, content })
   },
 
   updateItem: async (pageId, itemId, content) => {
-    const current = get().cache[pageId]
-    if (!current) return
-    const updated: MessageQueueRecord = {
-      ...current,
-      items: current.items.map((item) => (item.id === itemId ? { ...item, content } : item))
-    }
-    persistRecord(updated)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
+    await command('queue.update', { pageId, itemId, content })
+  },
+
+  removeItem: async (pageId, itemId) => {
+    await command('queue.remove', { pageId, itemId })
   },
 
   clearQueue: async (pageId) => {
-    const current = get().cache[pageId]
-    if (!current) return
-    const updated: MessageQueueRecord = {
-      ...current,
-      items: []
-    }
-    persistRecord(updated)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-  },
-
-  shiftItem: async (pageId) => {
-    const current = get().cache[pageId]
-    if (!current || current.items.length === 0) return undefined
-    const [first, ...rest] = current.items
-    const updated: MessageQueueRecord = {
-      ...current,
-      items: rest.map((item, index) => ({ ...item, order: index }))
-    }
-    persistRecord(updated)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-    return first
+    await command('queue.clear', { pageId })
   },
 
   pause: async (pageId) => {
-    const current = get().cache[pageId] ?? emptyRecord(pageId)
-    const updated: MessageQueueRecord = {
-      ...current,
-      pageId,
-      paused: true
-    }
-    // 先同步更新内存状态，确保 UI 立即响应
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-    persistRecord(updated)
+    await command('queue.setPaused', { pageId, paused: true })
   },
 
   resume: async (pageId) => {
-    const current = get().cache[pageId] ?? emptyRecord(pageId)
-    const updated: MessageQueueRecord = {
-      ...current,
-      pageId,
-      paused: false
-    }
-    // 先同步更新内存状态，确保 UI 立即响应
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-    persistRecord(updated)
+    await command('queue.setPaused', { pageId, paused: false })
   },
 
-  removeRecord: async (pageId) => {
-    const scope = tryGetCurrentWorkspaceScope()
-    if (scope) {
-      queueMessageQueueDelete(scope, pageId)
-    }
-
-    set((state) => {
-      const { [pageId]: _removed, ...rest } = state.cache
-      void _removed
-      return { cache: rest }
-    })
-  },
-
-  reset: () => set(initialState)
+  reset: () => set({ cache: {}, initialized: false })
 }))

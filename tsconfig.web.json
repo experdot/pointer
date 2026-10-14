@@ -3,6 +3,7 @@
   "include": [
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
+    "src/shared/**/*",
     "src/preload/*.d.ts",
   ],
   "compilerOptions": {
@@ -12,6 +13,9 @@
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@shared/*": [
+        "src/shared/*"
       ]
     },
     "strict": true,

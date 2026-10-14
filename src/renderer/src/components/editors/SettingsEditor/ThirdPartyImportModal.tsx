@@ -25,13 +25,15 @@ import {
 } from '@ant-design/icons'
 import type { UploadFile, TableColumnsType } from 'antd'
 import { DateTimeText } from '../../common/DateTimeText'
-import { parseImportFile, getSupportedPlatforms } from '../../../services/importers'
-import { importConversations, getPlatformName } from '../../../services/thirdPartyImportService'
-import type {
-  ParsedConversation,
-  ConversationImporter,
-  ImportResult
-} from '../../../services/importers/types'
+import {
+  importConversations,
+  getPlatformName,
+  getSupportedPlatforms
+} from '../../../services/thirdPartyImportService'
+import type { ImportedConversation, ImportFormat } from '@renderer/types/shared'
+import { detectFormat, parseImport } from '@renderer/types/shared'
+
+type ImportResult = Awaited<ReturnType<typeof importConversations>>
 
 const { Text, Title } = Typography
 const { Dragger } = Upload
@@ -73,13 +75,17 @@ export function ThirdPartyImportModal({
 
   // 状态
   const [step, setStep] = useState<Step>('upload')
-  const [importer, setImporter] = useState<ConversationImporter | null>(null)
-  const [conversations, setConversations] = useState<ParsedConversation[]>([])
+  const [importer, setImporter] = useState<ImportFormat | null>(null)
+  const [conversations, setConversations] = useState<ImportedConversation[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [timePreset, setTimePreset] = useState('all')
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [result, setResult] = useState<ImportResult | null>(null)
+  const [pendingPayload, setPendingPayload] = useState<{
+    text: string
+    format: ImportFormat
+  } | null>(null)
 
   // 过滤后的对话列表
   const filteredConversations = useMemo(() => {
@@ -107,16 +113,23 @@ export function ThirdPartyImportModal({
       const text = await (file as unknown as File).text()
       const data = JSON.parse(text)
 
-      const result = parseImportFile(data)
-      if (!result) {
+      const format = detectFormat(data)
+      if (!format) {
         message.error('无法识别文件格式，请确保上传正确的导出文件')
         return false
       }
 
-      setImporter(result.importer)
-      setConversations(result.conversations)
+      const parsed = parseImport(data, format)
+      if (parsed.conversations.length === 0) {
+        message.error('文件中没有可导入的对话')
+        return false
+      }
+
+      setImporter(format)
+      setConversations(parsed.conversations)
       // 默认全选
-      setSelectedIds(new Set(result.conversations.map((c) => c.id)))
+      setSelectedIds(new Set(parsed.conversations.map((c) => c.id)))
+      setPendingPayload({ text, format })
       setStep('select')
 
       return false
@@ -162,15 +175,15 @@ export function ThirdPartyImportModal({
     setProgress({ current: 0, total: selectedIds.size })
 
     try {
+      if (!pendingPayload) {
+        message.error('请先上传导出文件')
+        return
+      }
+
+      setProgress({ current: 1, total: 1 })
       const result = await importConversations(
-        conversations,
-        {
-          conflictStrategy: 'generate-new',
-          selectedIds
-        },
-        (current, total) => {
-          setProgress({ current, total })
-        }
+        [{ name: 'import.json', content: pendingPayload.text }],
+        { platform: pendingPayload.format, ids: [...selectedIds] }
       )
 
       setResult(result)
@@ -195,7 +208,7 @@ export function ThirdPartyImportModal({
   }
 
   // 表格列定义
-  const columns: TableColumnsType<ParsedConversation> = [
+  const columns: TableColumnsType<ImportedConversation> = [
     {
       title: (
         <Checkbox
@@ -270,7 +283,7 @@ export function ThirdPartyImportModal({
         message={
           <Space>
             <Text>检测到平台:</Text>
-            <Tag color="blue">{importer?.name}</Tag>
+            <Tag color="blue">{importer ? getPlatformName(importer) : ''}</Tag>
             <Text type="secondary">共 {conversations.length} 个对话</Text>
           </Space>
         }
@@ -420,7 +433,7 @@ export function ThirdPartyImportModal({
 
   return (
     <Modal
-      title={`导入第三方数据${importer ? ` - ${getPlatformName(importer.platform)}` : ''}`}
+      title={`导入第三方数据${importer ? ` - ${getPlatformName(importer)}` : ''}`}
       open={open}
       onCancel={step === 'importing' ? undefined : handleClose}
       closable={step !== 'importing'}

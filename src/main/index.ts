@@ -1,92 +1,52 @@
+/**
+ * 主进程入口
+ *
+ * 只做四件事：创建窗口、装配内核、接线 IPC、退出时释放内核。
+ * 业务逻辑全部位于 src/main/runtime。
+ */
+
 import { app, BrowserWindow } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { setupAIHandlers } from './aiHandler'
 import { setupAutoUpdater } from './autoUpdater'
-import { setupIpcHandlers, requestRendererFlush } from './ipcHandlers'
-import { setupAttachmentHandlers } from './attachmentHandler'
-import { setupFileSystemHandlers } from './fsHandlers'
+import { setupWindowIpc } from './ipc/windowIpc'
+import { setupRuntimeIpc } from './ipc/runtimeIpc'
+import { RuntimeCore } from './runtime'
+import { createRuntimeHost } from './runtimeHost'
 import { createWindow } from './window'
 
-// Track if we're in the process of quitting
-let isQuitting = false
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // Set app user model id for windows
   electronApp.setAppUserModelId('com.experdot.pointer')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Initialize AI handler
-  setupAIHandlers()
+  setupWindowIpc()
 
-  // Setup auto updater
-  setupAutoUpdater()
+  const runtime = new RuntimeCore({
+    appDataPath: app.getPath('userData'),
+    host: createRuntimeHost()
+  })
 
-  // Setup IPC handlers
-  setupIpcHandlers()
+  const updater = setupAutoUpdater((status) => runtime.setUpdateStatus(status))
+  runtime.setUpdater(updater)
 
-  // Setup file system handlers
-  setupFileSystemHandlers()
-
-  // Setup attachment handlers
-  setupAttachmentHandlers()
+  setupRuntimeIpc(runtime)
+  await runtime.init()
 
   createWindow()
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+
+  app.on('before-quit', () => {
+    runtime.dispose()
   })
 })
 
-// Handle before-quit event to ensure data is saved
-app.on('before-quit', async (event) => {
-  if (isQuitting) return
-
-  const windows = BrowserWindow.getAllWindows()
-  if (windows.length === 0) return
-
-  // Prevent default quit behavior
-  event.preventDefault()
-  isQuitting = true
-
-  console.log('[Main] Before quit: requesting renderer flush...')
-
-  try {
-    // Request all windows to flush their data
-    await Promise.all(
-      windows.map((window) =>
-        requestRendererFlush(window).catch((err) => {
-          console.error('[Main] Flush request failed for window:', err)
-        })
-      )
-    )
-    console.log('[Main] All windows flushed successfully')
-  } catch (err) {
-    console.error('[Main] Error during flush:', err)
-  }
-
-  // Now quit the app
-  app.quit()
-})
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

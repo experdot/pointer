@@ -7,7 +7,7 @@ import type {
   MessagesSourceData,
   MessageSelectionMode
 } from '../../../../features/export/types'
-import type { ChatMessage, Topic } from '../../../../types/type'
+import type { ChatMessage, Topic } from '@renderer/types/shared'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 interface MessageGroup {

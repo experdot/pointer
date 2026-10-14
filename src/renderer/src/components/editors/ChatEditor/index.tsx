@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { App } from 'antd'
 import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
-import { streamingManager } from '../../../services/streamingManager'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
 import * as navigationService from '../../../services/navigationService'
-import { updatePage } from '../../../services/pagesService'
 import { generateSessionTitleWithOptions } from '../../../services/titleService'
+import { useMessagesStore } from '../../../stores/messagesStore'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useGlobalSearchHighlight } from '../../../hooks/useGlobalSearchHighlight'
@@ -17,7 +17,6 @@ import { Header } from './Header'
 import { BranchPathBar } from './BranchPathBar'
 import { MessageQueueDrawer } from './MessageQueueDrawer'
 import { SearchBar } from './SearchBar'
-import { getSwitchGeneration } from '../../../stores/switchTransactionStore'
 import './ChatEditor.css'
 
 interface ChatEditorProps {
@@ -25,6 +24,7 @@ interface ChatEditorProps {
 }
 
 export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
+  const { message: notify } = App.useApp()
   const {
     page,
     messages,
@@ -61,17 +61,12 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     smartSegmentationWithOptions
   } = useChat({ pageId })
 
-  // 订阅 streamingManager 以获取 isStreaming 状态
-  const [streamingVersion, forceUpdate] = useState(0)
-  useEffect(() => {
-    return streamingManager.subscribe(() => forceUpdate((n) => n + 1))
-  }, [])
-
-  // 检查当前对话是否有 streaming 消息
-  const isStreaming = useMemo(() => {
-    return currentPath.some((msg) => streamingManager.isStreaming(msg.id))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- streamingVersion 用于触发重新计算
-  }, [currentPath, streamingVersion])
+  // 流式状态来自内核镜像
+  const streamingMap = useMessagesStore((state) => state.streaming)
+  const isStreaming = useMemo(
+    () => currentPath.some((message) => Boolean(streamingMap[message.id])),
+    [currentPath, streamingMap]
+  )
 
   // 消息队列
   const {
@@ -122,13 +117,13 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   // 处理绝对导航请求
   useEffect(() => {
-    if (!pendingNavigation || pendingNavigation.target.pageId !== pageId) {
+    if (!pendingNavigation || pendingNavigation.pageId !== pageId) {
       return
     }
-    const { version, target } = pendingNavigation
+    const { version, messageId, instant } = pendingNavigation
     // 延迟执行，确保 Topic 展开后 DOM 已更新
     const timer = setTimeout(() => {
-      messageListRef.current?.scrollToMessage(target.messageId, target.instant)
+      messageListRef.current?.scrollToMessage(messageId, instant)
       clearNavigation(version)
     }, 50)
     return () => clearTimeout(timer)
@@ -193,11 +188,9 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   )
 
   const handleCollapseAll = useCallback(() => {
-    const nonStreamingIds = currentPath
-      .filter((m) => !streamingManager.isStreaming(m.id))
-      .map((m) => m.id)
+    const nonStreamingIds = currentPath.filter((m) => !streamingMap[m.id]).map((m) => m.id)
     setMessagesCollapsed(pageId, nonStreamingIds, true)
-  }, [pageId, currentPath])
+  }, [pageId, currentPath, streamingMap])
 
   const handleExpandAll = useCallback(() => {
     const ids = currentPath.map((m) => m.id)
@@ -244,10 +237,10 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       <Header
         page={page}
         onGenerate={async (options) => {
-          const generation = getSwitchGeneration()
-          const result = await generateSessionTitleWithOptions(currentPath, options)
-          if (generation === getSwitchGeneration() && result.success && result.title) {
-            await updatePage(page.id, { name: result.title })
+          const result = await generateSessionTitleWithOptions(page.id, options)
+          if (!result.success) {
+            console.error('生成会话标题失败：', result.error)
+            notify.error(`生成会话标题失败：${result.error ?? '未知原因'}`)
           }
         }}
       />

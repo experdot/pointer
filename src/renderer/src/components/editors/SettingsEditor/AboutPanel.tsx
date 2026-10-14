@@ -12,6 +12,7 @@ import { Markdown } from '../../common/markdown/Markdown'
 import { DateTimeText } from '../../common/DateTimeText'
 import { useUpdateStore } from '../../../stores/updateStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
+import { command, query } from '../../../runtime/client'
 
 const { Text, Paragraph, Link } = Typography
 
@@ -37,7 +38,7 @@ export function AboutPanel(): React.JSX.Element {
   useEffect(() => {
     const getCurrentVersion = async (): Promise<void> => {
       try {
-        const version = await window.api.updater.getAppVersion()
+        const version = await query('app.version', undefined)
         updateStore.setCurrentVersion(version)
       } catch (err) {
         console.error('Failed to get app version:', err)
@@ -45,42 +46,6 @@ export function AboutPanel(): React.JSX.Element {
     }
     getCurrentVersion()
   }, [updateStore])
-
-  // 设置更新事件监听器
-  useEffect(() => {
-    window.api.updater.onUpdateAvailable((info) => {
-      console.log('Update available:', info)
-      updateStore.handleUpdateAvailable(info)
-      message.success('发现新版本！')
-    })
-
-    window.api.updater.onUpdateNotAvailable((info) => {
-      console.log('Update not available:', info)
-      updateStore.handleUpdateNotAvailable(info)
-      message.info('当前已是最新版本')
-    })
-
-    window.api.updater.onDownloadProgress((progress) => {
-      console.log('Download progress:', progress)
-      updateStore.handleDownloadProgress(progress)
-    })
-
-    window.api.updater.onUpdateDownloaded((info) => {
-      console.log('Update downloaded:', info)
-      updateStore.handleUpdateDownloaded(info)
-      message.success('更新下载完成！')
-    })
-
-    window.api.updater.onUpdateError((errorMessage) => {
-      console.error('Update error:', errorMessage)
-      updateStore.handleUpdateError(errorMessage)
-      message.error(`更新失败: ${errorMessage}`)
-    })
-
-    return () => {
-      window.api.updater.removeAllUpdateListeners()
-    }
-  }, [message, updateStore])
 
   const handleCheckForUpdates = async (): Promise<void> => {
     try {
@@ -92,8 +57,18 @@ export function AboutPanel(): React.JSX.Element {
         setTimeout(() => reject(new Error('检查更新超时')), 30000)
       })
 
-      const updatePromise = window.api.updater.checkForUpdates()
-      await Promise.race([updatePromise, timeoutPromise])
+      const updatePromise = command('app.checkUpdate', undefined)
+      const result = (await Promise.race([updatePromise, timeoutPromise])) as {
+        available: boolean
+        version?: string
+      }
+
+      updateStore.setCheckingForUpdates(false)
+      if (!result.available) {
+        message.info('当前已是最新版本')
+      } else {
+        message.success(`发现新版本 ${result.version ?? ''}`)
+      }
     } catch (err) {
       console.error('Check for updates failed:', err)
       const errorMessage = err instanceof Error ? err.message : '检查更新失败'
@@ -107,7 +82,7 @@ export function AboutPanel(): React.JSX.Element {
     try {
       updateStore.setDownloading(true)
       updateStore.setError(null)
-      await window.api.updater.downloadUpdate()
+      await command('app.downloadUpdate', undefined)
     } catch (err) {
       console.error('Download update failed:', err)
       updateStore.setError(err instanceof Error ? err.message : '下载更新失败')
@@ -125,7 +100,7 @@ export function AboutPanel(): React.JSX.Element {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await window.api.updater.quitAndInstall()
+          await command('app.quitAndInstall', undefined)
         } catch (err) {
           console.error('Install update failed:', err)
           message.error('安装更新失败')

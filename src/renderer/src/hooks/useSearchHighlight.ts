@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
-import type { ChatMessage } from '../types/type'
+import type { ChatMessage } from '@renderer/types/shared'
 import type { SearchState } from '../stores/chatUIStore'
 import { findAllMatches, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
 import { expandTopicsForMessage } from '../services/navigationService'

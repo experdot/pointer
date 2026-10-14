@@ -7,7 +7,7 @@ import type {
   LLMConfig,
   ModelConfig,
   Settings
-} from '../types/type'
+} from '@renderer/types/shared'
 import * as settingsService from '../services/settingsService'
 
 // 通用树操作返回类型

@@ -21,6 +21,7 @@ import type { MessageContentProps, ContextMenuInfo } from './types'
 import { getShortcutLabel } from '../../../../utils/shortcutPresentation'
 
 export const MessageContent = React.memo(function MessageContent({
+  pageId,
   message,
   displayContent,
   isUser,
@@ -75,7 +76,10 @@ export const MessageContent = React.memo(function MessageContent({
         label: '导出代码块',
         icon: <ExportOutlined />,
         onClick: () => {
-          exportCallbacks.onExportCode?.(contextMenuInfo.content!, contextMenuInfo.language || 'text')
+          exportCallbacks.onExportCode?.(
+            contextMenuInfo.content!,
+            contextMenuInfo.language || 'text'
+          )
         }
       }
     }
@@ -284,6 +288,7 @@ export const MessageContent = React.memo(function MessageContent({
   if (isEditing) {
     return (
       <MessageEditMode
+        pageId={pageId}
         content={editContent}
         attachments={editAttachments}
         isUser={isUser}

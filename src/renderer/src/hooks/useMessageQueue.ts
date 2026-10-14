@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
-import type { QueueItem } from '../persistence/interfaces/userData'
-import type { FileAttachment } from '../types/type'
+import type { QueueItem } from '@renderer/types/shared'
+import type { AttachmentRef } from '@renderer/types/shared'
 
 interface UseMessageQueueOptions {
   pageId: string
   isStreaming: boolean
-  onSendMessage: (content: string, options?: { attachments?: FileAttachment[] }) => Promise<void>
+  onSendMessage: (content: string, options?: { attachments?: AttachmentRef[] }) => Promise<void>
 }
 
 interface UseMessageQueueResult {
@@ -26,7 +26,7 @@ interface UseMessageQueueResult {
   resumeQueue: () => Promise<void>
 
   // 发送逻辑（InputArea 调用）
-  handleSend: (content: string, attachments?: FileAttachment[]) => Promise<void>
+  handleSend: (content: string, attachments?: AttachmentRef[]) => Promise<void>
   // 停止并暂停队列
   handleStop: () => Promise<void>
 }
@@ -36,7 +36,7 @@ export function useMessageQueue({
   isStreaming,
   onSendMessage
 }: UseMessageQueueOptions): UseMessageQueueResult {
-  const { getQueue, addItem, removeItem, updateItem, clearQueue, shiftItem, pause, resume, init } =
+  const { getQueue, addItem, removeItem, updateItem, clearQueue, pause, resume } =
     useMessageQueueStore()
 
   const queue = getQueue(pageId)
@@ -44,40 +44,7 @@ export function useMessageQueue({
   const count = items.length
   const isPaused = queue.paused
 
-  // 初始化 store
-  useEffect(() => {
-    init()
-  }, [init])
-
-  // 追踪上一次的 isStreaming 状态
-  const prevStreamingRef = useRef(isStreaming)
-  // 是否正在处理队列（防止重复触发）
-  const processingRef = useRef(false)
-
-  // 监听 streaming 结束，自动处理队列
-  useEffect(() => {
-    const wasStreaming = prevStreamingRef.current
-    prevStreamingRef.current = isStreaming
-
-    // streaming 从 true 变为 false 时
-    if (wasStreaming && !isStreaming && !processingRef.current) {
-      // 直接从 store 获取最新状态，避免闭包问题
-      const currentQueue = useMessageQueueStore.getState().getQueue(pageId)
-      // 如果未暂停且队列有内容，自动处理下一条
-      if (!currentQueue.paused && currentQueue.items.length > 0) {
-        processingRef.current = true
-        shiftItem(pageId).then((item) => {
-          if (item) {
-            onSendMessage(item.content).finally(() => {
-              processingRef.current = false
-            })
-          } else {
-            processingRef.current = false
-          }
-        })
-      }
-    }
-  }, [isStreaming, pageId, shiftItem, onSendMessage])
+  // 队列的出队与发送由内核负责：会话空闲时自动发送下一条
 
   const enqueue = useCallback(
     async (content: string) => {
@@ -110,24 +77,11 @@ export function useMessageQueue({
 
   const resumeQueue = useCallback(async () => {
     await resume(pageId)
-    // 恢复后立即处理队列
-    const currentQueue = getQueue(pageId)
-    if (currentQueue.items.length > 0 && !processingRef.current) {
-      processingRef.current = true
-      const item = await shiftItem(pageId)
-      if (item) {
-        onSendMessage(item.content).finally(() => {
-          processingRef.current = false
-        })
-      } else {
-        processingRef.current = false
-      }
-    }
-  }, [pageId, resume, getQueue, shiftItem, onSendMessage])
+  }, [pageId, resume])
 
   // 发送逻辑：streaming 时入队，否则直接发送
   const handleSend = useCallback(
-    async (content: string, attachments?: FileAttachment[]) => {
+    async (content: string, attachments?: AttachmentRef[]) => {
       if (isStreaming) {
         // AI 正在输出，消息入队（队列目前不支持附件，仅文本）
         await enqueue(content)

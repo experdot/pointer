@@ -3,7 +3,7 @@ import { TreeSelect, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { openSettings } from '../../../services/settingsService'
-import type { LLMConfig, ConfigFolder } from '../../../types/type'
+import type { LLMConfig, ConfigFolder } from '@renderer/types/shared'
 import './ModelSelector.css'
 
 interface ModelSelectorProps {

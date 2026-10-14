@@ -1,16 +1,16 @@
 import { create } from 'zustand'
-import type { GlobalSearchOptions, GlobalSearchResultGroup, GlobalSearchMatch } from '../types/type'
+import type { SearchOptions, SearchPageGroup, SearchMatch } from '@renderer/types/shared'
 
 interface GlobalSearchState {
   query: string
-  options: GlobalSearchOptions
-  results: GlobalSearchResultGroup[]
+  options: SearchOptions
+  results: SearchPageGroup[]
   totalCount: number
   isSearching: boolean
   /** 当前选中的结果索引 [pageIndex, messageIndex, matchIndex] */
   selectedIndex: [number, number, number] | null
   /** 当前高亮的匹配项（用于在 ChatEditor 中显示高亮） */
-  highlightMatch: GlobalSearchMatch | null
+  highlightMatch: SearchMatch | null
   /** 搜索触发器（用于强制立即搜索） */
   searchTrigger: number
   /** 输入框聚焦触发器（用于强制 focus + select） */
@@ -19,8 +19,8 @@ interface GlobalSearchState {
 
 interface GlobalSearchActions {
   setQuery: (query: string) => void
-  setOptions: (options: Partial<GlobalSearchOptions>) => void
-  setResults: (results: GlobalSearchResultGroup[], totalCount: number) => void
+  setOptions: (options: Partial<SearchOptions>) => void
+  setResults: (results: SearchPageGroup[], totalCount: number) => void
   setSearching: (isSearching: boolean) => void
   setSelectedIndex: (index: [number, number, number] | null) => void
   toggleGroupExpanded: (pageId: string) => void
@@ -29,7 +29,7 @@ interface GlobalSearchActions {
   collapseAll: () => void
   clearSearch: () => void
   /** 设置当前高亮的匹配项 */
-  setHighlightMatch: (match: GlobalSearchMatch | null) => void
+  setHighlightMatch: (match: SearchMatch | null) => void
   /** 触发立即搜索（绕过防抖） */
   triggerSearch: () => void
   requestFocus: () => void
@@ -38,7 +38,7 @@ interface GlobalSearchActions {
 
 type GlobalSearchStore = GlobalSearchState & GlobalSearchActions
 
-const defaultOptions: GlobalSearchOptions = {
+const defaultOptions: SearchOptions = {
   matchCase: false,
   useRegex: false,
   matchWholeWord: false,

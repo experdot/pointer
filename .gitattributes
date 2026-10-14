@@ -1,0 +1,8 @@
+# Normalize line endings to LF in the repository and in the working tree,
+# so `prettier --check` (endOfLine: lf) behaves the same on every platform.
+* text=auto eol=lf
+
+# Binary assets must never be touched by the eol filter
+*.png binary
+*.ico binary
+*.icns binary

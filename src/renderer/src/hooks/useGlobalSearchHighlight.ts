@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useGlobalSearchStore } from '../stores/globalSearchStore'
-import type { ChatMessage } from '../types/type'
+import type { ChatMessage } from '@renderer/types/shared'
 
 interface UseGlobalSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>

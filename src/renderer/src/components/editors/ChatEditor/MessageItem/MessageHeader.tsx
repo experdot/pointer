@@ -38,7 +38,7 @@ export const MessageHeader = React.memo(function MessageHeader({
       {/* 模型选择器 - assistant 消息 */}
       {isAssistant && (
         <ModelSelector
-          value={message.modelId}
+          value={message.llmId}
           onChange={(llmId) => onRetry(message.id, llmId)}
           disabled={isStreaming}
         />
