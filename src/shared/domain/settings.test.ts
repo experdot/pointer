@@ -11,6 +11,7 @@ function llm(id: string, patch: Partial<LLMConfig> = {}): LLMConfig {
     order: 0,
     createdAt: 1,
     baseUrl: 'https://api.example.com/v1',
+    apiKey: 'sk-test',
     modelName: 'gpt-x',
     ...patch
   }

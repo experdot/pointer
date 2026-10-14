@@ -64,6 +64,27 @@ export function buildPrompt(template: string, content: string, maxLength?: numbe
   return template.replace('{content}', truncateForPrompt(content, maxLength))
 }
 
+/**
+ * 把"额外要求"插入标题/话题提示词
+ *
+ * 与迁移前一致：插在输出锚点（"标题：" / "话题名称："）之前。
+ */
+export function applyExtraRequirements(prompt: string, extraRequirements?: string): string {
+  const extra = extraRequirements?.trim()
+  if (!extra) return prompt
+  return prompt.replace(/(标题|话题名称)：$/, `\n额外要求：${extra}\n\n$1：`)
+}
+
+/** 智能分段的额外要求：作为第 5 条注意项追加（与迁移前一致） */
+export function applySegmentationRequirements(prompt: string, extraRequirements?: string): string {
+  const extra = extraRequirements?.trim()
+  if (!extra) return prompt
+  return prompt.replace(
+    '4. 直接输出JSON数组，不要有任何其他内容',
+    `4. 直接输出JSON数组，不要有任何其他内容\n5. 额外要求：${extra}`
+  )
+}
+
 /** 清理模型返回的标题文本 */
 export function normalizeTitle(raw: string, maxLength = 40): string {
   const firstLine = raw

@@ -180,6 +180,7 @@ async function run(): Promise<void> {
               order: 0,
               createdAt: Date.now(),
               baseUrl: 'http://127.0.0.1:1/v1',
+              apiKey: 'sk-smoke',
               modelName: 'test'
             }
           ],
@@ -189,9 +190,9 @@ async function run(): Promise<void> {
       }
     })
     const stored = (await runtime.query('settings.get', undefined)) as {
-      llmConfigs: { items: Array<{ id: string; hasApiKey?: boolean }> }
+      llmConfigs: { items: Array<{ id: string; apiKey?: string }> }
     }
-    check('设置写回并带密钥标记', stored.llmConfigs.items[0]?.hasApiKey === false)
+    check('设置写回并保存明文 API Key', stored.llmConfigs.items[0]?.apiKey === 'sk-smoke')
 
     // 回归：半填状态（还没填 baseUrl/modelName）的配置必须能保存，
     // 否则"新建配置 → 刷新后消失"
@@ -210,6 +211,7 @@ async function run(): Promise<void> {
               kind: 'item',
               name: '未填完的配置',
               baseUrl: '',
+              apiKey: '',
               modelName: '',
               order: 1,
               createdAt: Date.now()

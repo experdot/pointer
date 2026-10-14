@@ -22,7 +22,6 @@ export interface LLMConfigInput {
   name: string
   baseUrl: string
   modelName: string
-  /** 仅用于写入内核密钥存储，不会保存在设置文档中 */
   apiKey?: string
 }
 
@@ -85,6 +84,7 @@ export function createLLMConfig(
     kind: 'item',
     name: data.name,
     baseUrl: data.baseUrl,
+    apiKey: data.apiKey ?? '',
     modelName: data.modelName,
     parentFolderId: position.parentFolderId,
     order: position.order,
@@ -92,9 +92,6 @@ export function createLLMConfig(
   }
 
   store.addLLMConfig(config)
-  if (data.apiKey?.trim()) {
-    void store.setApiKey(id, data.apiKey.trim())
-  }
   return config
 }
 
@@ -106,7 +103,6 @@ export function deleteLLMConfig(id: string): void {
   const store = useSettingsStore.getState()
   store.removeLLMConfig(id)
   if (store.settings.defaultLLMId === id) store.setDefaultLLMId(undefined)
-  void store.deleteApiKey(id)
 }
 
 export function copyLLMConfig(config: LLMConfig): LLMConfig {
@@ -114,6 +110,7 @@ export function copyLLMConfig(config: LLMConfig): LLMConfig {
     {
       name: `${config.name} 副本`,
       baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
       modelName: config.modelName
     },
     config.id

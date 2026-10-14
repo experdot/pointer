@@ -97,17 +97,21 @@ export function useChatTopics({
 
         // 尚无 Topic：先由内核基于消息内容生成名称，再创建
         const { command } = await import('../runtime/client')
-        const { TOPIC_TITLE_PROMPT, buildPrompt, normalizeTitle } = await import('@shared/domain')
+        const { TOPIC_TITLE_PROMPT, applyExtraRequirements, buildPrompt, normalizeTitle } =
+          await import('@shared/domain')
         const targetMessage = currentPath.find((item) => item.id === messageId)
         if (!targetMessage) return
 
         const { content } = await command('ai.generateText', {
-          prompt: buildPrompt(TOPIC_TITLE_PROMPT, targetMessage.content),
+          prompt: applyExtraRequirements(
+            buildPrompt(TOPIC_TITLE_PROMPT, targetMessage.content),
+            options.extraRequirements
+          ),
           llmId: options.llmId,
           modelConfigId: options.modelConfigId
         })
 
-        const name = normalizeTitle(content)
+        const name = normalizeTitle(content, 15)
         if (generation !== currentGeneration()) return
         if (!name) {
           message.error('生成话题名称失败：模型未返回有效内容')

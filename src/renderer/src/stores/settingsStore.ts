@@ -66,9 +66,6 @@ interface SettingsActions {
     updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
   ) => void
 
-  setApiKey: (llmId: string, apiKey: string) => Promise<void>
-  deleteApiKey: (llmId: string) => Promise<void>
-
   /** 立即把待写入的设置提交给内核（切换账户/工作区前、窗口关闭前调用） */
   flush: () => void
   reset: () => void
@@ -172,14 +169,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
       mutateModelTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
     batchUpdateModelConfigFolders: (updates) =>
       mutateModelTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
-
-    setApiKey: async (llmId, apiKey) => {
-      await command('secrets.setApiKey', { llmId, apiKey })
-    },
-
-    deleteApiKey: async (llmId) => {
-      await command('secrets.deleteApiKey', { llmId })
-    },
 
     flush,
 

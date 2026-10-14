@@ -4,7 +4,6 @@ import { ApiOutlined } from '@ant-design/icons'
 import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
 import { query } from '../../../runtime/client'
-import { useSettingsStore } from '../../../stores/settingsStore'
 import { useDraftField } from '../../../hooks/useDraftField'
 import type { LLMConfig, ConfigFolder } from '@renderer/types/shared'
 
@@ -88,7 +87,7 @@ export function LLMConfigPanel(): React.JSX.Element {
   const handleCopyAsText = (config: LLMConfig): void => {
     const text = `名称: ${config.name}
 API Base URL: ${config.baseUrl}
-API Key: ${config.hasApiKey ? '(已配置)' : '(未配置)'}
+API Key: ${config.apiKey}
 模型名称: ${config.modelName}`
     navigator.clipboard.writeText(text)
     message.success('已复制到剪贴板')
@@ -146,14 +145,8 @@ API Key: ${config.hasApiKey ? '(已配置)' : '(未配置)'}
             </Form.Item>
             <Form.Item label="API Key">
               <Input.Password
-                placeholder={selectedConfig.hasApiKey ? '已配置，输入以覆盖' : '尚未配置'}
-                onBlur={async (event) => {
-                  const value = event.target.value.trim()
-                  if (!value) return
-                  await useSettingsStore.getState().setApiKey(selectedConfig.id, value)
-                  event.target.value = ''
-                  message.success('密钥已加密保存')
-                }}
+                value={selectedConfig.apiKey}
+                onChange={(e) => updateConfig(selectedConfig.id, { apiKey: e.target.value })}
               />
             </Form.Item>
             <Form.Item label="模型名称">

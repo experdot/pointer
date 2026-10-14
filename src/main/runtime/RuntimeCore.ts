@@ -476,23 +476,12 @@ export class RuntimeCore {
         return undefined
       }
 
-      // 设置与密钥
+      // 设置
       case 'settings.replace': {
         const settings = await this.requireSettings().replace(
           (payload as { settings: Settings }).settings
         )
         this.emit('settings.changed', settings)
-        return undefined
-      }
-      case 'secrets.setApiKey': {
-        const input = payload as { llmId: string; apiKey: string }
-        await this.requireSettings().setApiKey(input.llmId, input.apiKey)
-        this.emit('settings.changed', this.requireSettings().get())
-        return undefined
-      }
-      case 'secrets.deleteApiKey': {
-        await this.requireSettings().deleteApiKey(readString(payload, 'llmId'))
-        this.emit('settings.changed', this.requireSettings().get())
         return undefined
       }
 
@@ -724,6 +713,7 @@ export class RuntimeCore {
       target: TitleTarget
       llmId?: string
       modelConfigId?: string
+      extraRequirements?: string
     }
 
     switch (input.target.kind) {
@@ -732,20 +722,23 @@ export class RuntimeCore {
           pageId: input.pageId,
           messageId: input.target.messageId,
           llmId: input.llmId,
-          modelConfigId: input.modelConfigId
+          modelConfigId: input.modelConfigId,
+          extraRequirements: input.extraRequirements
         })
       case 'topic':
         return this.chat.generateTopicTitle({
           pageId: input.pageId,
           topicId: input.target.topicId,
           llmId: input.llmId,
-          modelConfigId: input.modelConfigId
+          modelConfigId: input.modelConfigId,
+          extraRequirements: input.extraRequirements
         })
       case 'session':
         return this.chat.generateSessionTitle({
           pageId: input.pageId,
           llmId: input.llmId,
-          modelConfigId: input.modelConfigId
+          modelConfigId: input.modelConfigId,
+          extraRequirements: input.extraRequirements
         })
     }
   }
@@ -850,7 +843,7 @@ export class RuntimeCore {
       throw new RuntimeError('ai.no-llm-config', '未找到指定的 LLM 配置')
     }
 
-    const apiKey = settings.getApiKey(llm.id)
+    const apiKey = llm.apiKey
     if (!apiKey) {
       throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
     }

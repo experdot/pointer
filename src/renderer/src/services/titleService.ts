@@ -6,13 +6,20 @@
 
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage } from '@shared/domain'
-import { TOPIC_SEGMENTATION_PROMPT, buildPrompt, parseTopicSegments } from '@shared/domain'
+import {
+  TOPIC_SEGMENTATION_PROMPT,
+  applySegmentationRequirements,
+  buildPrompt,
+  parseTopicSegments,
+  truncateForPrompt
+} from '@shared/domain'
 import { command } from '../runtime/client'
 import * as messagesService from './messagesService'
 
 export interface GenerateOptions {
   llmId?: string
   modelConfigId?: string
+  extraRequirements?: string
 }
 
 export interface TitleGenerationResult {
@@ -34,7 +41,8 @@ async function generateTitleFor(
       pageId,
       target,
       llmId: options.llmId,
-      modelConfigId: options.modelConfigId
+      modelConfigId: options.modelConfigId,
+      extraRequirements: options.extraRequirements
     })
     return { title, success: true }
   } catch (error) {
@@ -121,15 +129,18 @@ export async function analyzeTopicSegments(
   }
 
   const transcript = currentPath
-    .map(
-      (message, index) =>
-        `${index}. ${message.role === 'user' ? '用户' : '助手'}：${message.content}`
-    )
+    .map((message, index) => {
+      const role = message.role === 'user' ? '用户' : '助手'
+      return `${index}. ${role}：${truncateForPrompt(message.content, 150)}`
+    })
     .join('\n\n')
 
   try {
     const { content } = await command('ai.generateText', {
-      prompt: buildPrompt(TOPIC_SEGMENTATION_PROMPT, transcript, 4000),
+      prompt: applySegmentationRequirements(
+        buildPrompt(TOPIC_SEGMENTATION_PROMPT, transcript, 4000),
+        options.extraRequirements
+      ),
       llmId: options.llmId,
       modelConfigId: options.modelConfigId
     })

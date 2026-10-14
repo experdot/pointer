@@ -1,8 +1,7 @@
 /**
  * 账户级设置领域模型
  *
- * 注意：API Key 不在此模型中。密钥由内核层用 safeStorage 保管，
- * 这里只记录 hasApiKey 供界面展示。
+ * API Key 以明文随 LLM 配置保存在 settings.json 中（保持与迁移前一致的简单机制）。
  */
 
 import type { Diagnostic } from './common'
@@ -11,8 +10,8 @@ import { emptyConfigTree } from './configTree'
 
 export interface LLMConfig extends ConfigItemBase {
   baseUrl: string
+  apiKey: string
   modelName: string
-  hasApiKey?: boolean
 }
 
 export interface ModelConfig extends ConfigItemBase {

@@ -196,7 +196,13 @@ export interface RuntimeCommandMap {
   /** 中止生成：优先按 requestId，其次按页面中止该页面正在进行的请求 */
   'chat.stop': { payload: { requestId?: string; pageId?: string }; result: void }
   'chat.generateTitle': {
-    payload: { pageId: string; target: TitleTarget; llmId?: string; modelConfigId?: string }
+    payload: {
+      pageId: string
+      target: TitleTarget
+      llmId?: string
+      modelConfigId?: string
+      extraRequirements?: string
+    }
     result: string
   }
   'ai.generateText': {
@@ -213,8 +219,6 @@ export interface RuntimeCommandMap {
 
   // 设置与密钥
   'settings.replace': { payload: { settings: Settings }; result: void }
-  'secrets.setApiKey': { payload: { llmId: string; apiKey: string }; result: void }
-  'secrets.deleteApiKey': { payload: { llmId: string }; result: void }
 
   // 展示层状态
   'viewState.replace': { payload: { viewState: ViewState }; result: void }

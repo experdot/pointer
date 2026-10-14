@@ -11,7 +11,7 @@
  *     accounts/<accountId>/
  *       workspaces.json            该账户的工作区列表
  *       settings.json              账户级设置
- *       secrets.json               加密后的 API Key
+ *       secrets.json               历史版本的加密 API Key（仅供一次性迁移读取）
  *     workspaces/<accountId>/default/   默认工作区
  *
  *   <workspace>/

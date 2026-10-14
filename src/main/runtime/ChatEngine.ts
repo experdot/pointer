@@ -34,8 +34,10 @@ import {
   MESSAGE_TITLE_PROMPT,
   SESSION_TITLE_PROMPT,
   TOPIC_TITLE_PROMPT,
+  applyExtraRequirements,
   buildPrompt,
-  normalizeTitle
+  normalizeTitle,
+  truncateForPrompt
 } from '../../shared/domain'
 
 export interface ChatEngineDeps {
@@ -223,7 +225,14 @@ export class ChatEngine {
     modelConfigId?: string
     at: number
   }): Promise<ChatRequestHandle> {
-    const config = this.resolveConfig(input.llmId, input.modelConfigId)
+    let config: ResolvedConfig
+    try {
+      config = this.resolveConfig(input.llmId, input.modelConfigId)
+    } catch (error) {
+      // 启动前失败（缺少 LLM 配置 / API Key）：先落一条带原因的错误消息，再抛给界面提示
+      await this.persistConfigFailure(input, error)
+      throw error
+    }
 
     const appended = appendMessage(
       input.conversation,
@@ -275,6 +284,45 @@ export class ChatEngine {
     return { requestId, messageId: assistant.id }
   }
 
+  /**
+   * 启动前失败：与迁移前一致，把失败原因写入一条助手消息，
+   * 保证用户在会话里能看到原因（异常仍向上抛，供界面 toast）。
+   */
+  private async persistConfigFailure(
+    input: { pageId: string; parentMessageId?: string; conversation: Conversation; at: number },
+    error: unknown
+  ): Promise<void> {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[runtime] 生成失败：', message)
+
+    const workspace = this.deps.workspace()
+    if (!workspace) return
+
+    try {
+      const appended = appendMessage(
+        input.conversation,
+        {
+          id: randomUUID(),
+          role: 'assistant',
+          content: `**错误:** ${message}`,
+          parentMessageId: input.parentMessageId,
+          hasError: true
+        },
+        input.at
+      )
+      await workspace.writeConversation(appended.conversation)
+      this.emit('conversation.message', { pageId: input.pageId, message: appended.message })
+      this.emit('chat.failed', {
+        requestId: randomUUID(),
+        pageId: input.pageId,
+        messageId: appended.message.id,
+        error: message
+      })
+    } catch (writeError) {
+      console.error('[runtime] 写入错误消息失败：', writeError)
+    }
+  }
+
   private async runStream(input: {
     requestId: string
     pageId: string
@@ -285,9 +333,21 @@ export class ChatEngine {
   }): Promise<void> {
     const { requestId, pageId, assistant, signal } = input
 
+    /** 收尾：广播终态事件、释放请求并检查队列（不写盘） */
+    const finish = (event: RuntimeEvent): void => {
+      this.emit(event.type, event.payload as never)
+      const request = this.active.get(requestId)
+      request?.markFinished()
+      this.active.delete(requestId)
+      void this.drain(pageId)
+    }
+
     const finalize = async (patch: Partial<ChatMessage>, event: RuntimeEvent): Promise<void> => {
       const workspace = this.deps.workspace()
-      if (!workspace) return
+      if (!workspace) {
+        finish(event)
+        return
+      }
 
       try {
         const current = await workspace.readConversation(pageId)
@@ -314,11 +374,7 @@ export class ChatEngine {
         console.error('[runtime] 保存助手消息失败：', error)
       }
 
-      this.emit(event.type, event.payload as never)
-      const request = this.active.get(requestId)
-      request?.markFinished()
-      this.active.delete(requestId)
-      void this.drain(pageId)
+      finish(event)
     }
 
     try {
@@ -343,10 +399,16 @@ export class ChatEngine {
       const reasoning = assistant.reasoning ?? streamed.reasoning
 
       if (signal.aborted) {
-        await finalize(
-          { content, reasoning },
-          { type: 'chat.aborted', payload: { requestId, pageId, messageId: assistant.id } }
-        )
+        const event: RuntimeEvent = {
+          type: 'chat.aborted',
+          payload: { requestId, pageId, messageId: assistant.id }
+        }
+        if (!content) {
+          // 与迁移前一致：没有任何正文输出就被停止的占位消息直接移除，不落盘
+          finish(event)
+          return
+        }
+        await finalize({ content, reasoning }, event)
         return
       }
 
@@ -356,16 +418,26 @@ export class ChatEngine {
       )
     } catch (error) {
       if (isAbortError(error) || signal.aborted) {
-        await finalize(
-          { content: assistant.content, reasoning: assistant.reasoning },
-          { type: 'chat.aborted', payload: { requestId, pageId, messageId: assistant.id } }
-        )
+        const event: RuntimeEvent = {
+          type: 'chat.aborted',
+          payload: { requestId, pageId, messageId: assistant.id }
+        }
+        if (!assistant.content) {
+          finish(event)
+          return
+        }
+        await finalize({ content: assistant.content, reasoning: assistant.reasoning }, event)
         return
       }
 
       const message = error instanceof Error ? error.message : String(error)
+      console.error('[runtime] 生成失败：', message)
+      // 与迁移前一致：把失败原因并入消息内容，用户可直接看到
+      const errorContent = assistant.content
+        ? `${assistant.content}\n\n---\n\n**错误:** ${message}`
+        : `**错误:** ${message}`
       await finalize(
-        { content: assistant.content, reasoning: assistant.reasoning, hasError: true },
+        { content: errorContent, reasoning: assistant.reasoning, hasError: true },
         {
           type: 'chat.failed',
           payload: { requestId, pageId, messageId: assistant.id, error: message }
@@ -421,7 +493,7 @@ export class ChatEngine {
       throw new RuntimeError('ai.no-llm-config', '未找到可用的 LLM 配置')
     }
 
-    const apiKey = settingsStore.getApiKey(llm.id)
+    const apiKey = llm.apiKey
     if (!apiKey) {
       throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
     }
@@ -467,6 +539,7 @@ export class ChatEngine {
     messageId: string
     llmId?: string
     modelConfigId?: string
+    extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.readConversation(input.pageId)
@@ -476,11 +549,14 @@ export class ChatEngine {
     }
 
     const { content } = await this.generateText({
-      prompt: buildPrompt(MESSAGE_TITLE_PROMPT, message.content),
+      prompt: applyExtraRequirements(
+        buildPrompt(MESSAGE_TITLE_PROMPT, message.content),
+        input.extraRequirements
+      ),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const title = normalizeTitle(content)
+    const title = normalizeTitle(content, 15)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
     const next = updateMessage(conversation, message.id, { title }, Date.now())
@@ -494,6 +570,7 @@ export class ChatEngine {
     topicId: string
     llmId?: string
     modelConfigId?: string
+    extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.readConversation(input.pageId)
@@ -515,11 +592,14 @@ export class ChatEngine {
       .join('\n\n')
 
     const { content: generated } = await this.generateText({
-      prompt: buildPrompt(TOPIC_TITLE_PROMPT, content),
+      prompt: applyExtraRequirements(
+        buildPrompt(TOPIC_TITLE_PROMPT, content),
+        input.extraRequirements
+      ),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const name = normalizeTitle(generated)
+    const name = normalizeTitle(generated, 15)
     if (!name) throw new RuntimeError('chat.title-empty', '模型未返回有效话题名称')
 
     const next = updateTopic(conversation, topic.id, { name }, Date.now())
@@ -532,21 +612,28 @@ export class ChatEngine {
     pageId: string
     llmId?: string
     modelConfigId?: string
+    extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.readConversation(input.pageId)
     const path = currentPath(conversation)
     const content = path
       .slice(0, 10)
-      .map((message) => `${message.role === 'user' ? '用户' : '助手'}：${message.content}`)
-      .join('\n\n')
+      .map(
+        (message) =>
+          `${message.role === 'user' ? '用户' : '助手'}：${truncateForPrompt(message.content, 200)}`
+      )
+      .join('\n')
 
     const { content: generated } = await this.generateText({
-      prompt: buildPrompt(SESSION_TITLE_PROMPT, content),
+      prompt: applyExtraRequirements(
+        buildPrompt(SESSION_TITLE_PROMPT, content, 1500),
+        input.extraRequirements
+      ),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const title = normalizeTitle(generated, 30)
+    const title = normalizeTitle(generated, 20)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
     await workspace.updatePage(input.pageId, { name: title }, Date.now())
