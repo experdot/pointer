@@ -141,7 +141,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   initDefaultWorkspace: async () => {
-    const workspace = await persistence.account(getCurrentAccountScope()).workspaces.initDefaultWorkspace()
+    const workspace = await persistence
+      .account(getCurrentAccountScope())
+      .workspaces.initDefaultWorkspace()
 
     set((state) => {
       const exists = state.workspaces.some((w) => w.id === workspace.id)
@@ -167,8 +169,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   openCustomWorkspace: async (dirPath, name) => {
     // 验证路径
-    const validation =
-      await persistence.account(getCurrentAccountScope()).workspaces.validateWorkspacePath(dirPath)
+    const validation = await persistence
+      .account(getCurrentAccountScope())
+      .workspaces.validateWorkspacePath(dirPath)
 
     if (!validation.valid) {
       throw new Error(validation.error || 'Invalid workspace path')
@@ -180,10 +183,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     // 如果已经是工作区，直接加载
     if (validation.isWorkspace && validation.workspaceId) {
-      const existing =
-        await persistence.account(getCurrentAccountScope()).workspaces.getById(validation.workspaceId)
+      const existing = await persistence
+        .account(getCurrentAccountScope())
+        .workspaces.getById(validation.workspaceId)
       if (existing) {
-        await persistence.account(getCurrentAccountScope()).workspaces.setCurrentWorkspaceId(existing.id)
+        await persistence
+          .account(getCurrentAccountScope())
+          .workspaces.setCurrentWorkspaceId(existing.id)
         set({
           currentWorkspaceId: existing.id,
           currentWorkspace: existing
@@ -193,8 +199,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     // 初始化新的自定义工作区
-    const workspace =
-      await persistence.account(getCurrentAccountScope()).workspaces.initCustomWorkspace(dirPath, name)
+    const workspace = await persistence
+      .account(getCurrentAccountScope())
+      .workspaces.initCustomWorkspace(dirPath, name)
 
     // 更新状态
     set((state) => {

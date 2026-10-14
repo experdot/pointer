@@ -6,7 +6,10 @@ import { useChatUIStore } from '../stores/chatUIStore'
 import { useGlobalSearchStore } from '../stores/globalSearchStore'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
 import { useNavigationStore } from '../stores/navigationStore'
-import { useSwitchTransactionStore, type SwitchTransactionKind } from '../stores/switchTransactionStore'
+import {
+  useSwitchTransactionStore,
+  type SwitchTransactionKind
+} from '../stores/switchTransactionStore'
 import type { WorkspaceScope } from '../persistence/interfaces'
 import { invalidatePageCache } from '../persistence/implementations/filesystem/pagesRepository'
 import * as messagesService from './messagesService'

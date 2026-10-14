@@ -75,7 +75,10 @@ export const MessageContent = React.memo(function MessageContent({
         label: '导出代码块',
         icon: <ExportOutlined />,
         onClick: () => {
-          exportCallbacks.onExportCode?.(contextMenuInfo.content!, contextMenuInfo.language || 'text')
+          exportCallbacks.onExportCode?.(
+            contextMenuInfo.content!,
+            contextMenuInfo.language || 'text'
+          )
         }
       }
     }

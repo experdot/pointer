@@ -19,7 +19,10 @@ export function createMessageQueueRepository(scope: WorkspaceScope): IMessageQue
   return {
     async get(pageId: string): Promise<MessageQueueRecord | undefined> {
       const options = getWorkspaceFileOptions(scope)
-      const data = await readJsonFile<MessageQueueRecord>(getMessageQueueFilePath(pageId, scope), options)
+      const data = await readJsonFile<MessageQueueRecord>(
+        getMessageQueueFilePath(pageId, scope),
+        options
+      )
       return data ?? undefined
     },
 

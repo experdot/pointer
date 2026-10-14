@@ -176,7 +176,7 @@ export function createPersistenceQueue<TKey extends string, TData>(
   }
 }
 
-const DEFAULT_QUEUE_OPTIONS: QueueOptions<unknown> = {
+const DEFAULT_QUEUE_OPTIONS = {
   debounceMs: 300,
   maxDelayMs: 2000,
   maxRetries: 3,
@@ -214,17 +214,17 @@ function registerFlushListener(): void {
   flushListenerRegistered = true
 }
 
-function getOrCreateQueue<TData>(
+function getOrCreateQueue<TKey extends string, TData>(
   queueId: string,
-  factory: () => PersistenceQueue<string, TData>
-): PersistenceQueue<string, TData> {
+  factory: () => PersistenceQueue<TKey, TData>
+): PersistenceQueue<TKey, TData> {
   registerFlushListener()
 
   if (!queues.has(queueId)) {
-    queues.set(queueId, factory() as PersistenceQueue<string, unknown>)
+    queues.set(queueId, factory() as unknown as PersistenceQueue<string, unknown>)
   }
 
-  return queues.get(queueId)! as PersistenceQueue<string, TData>
+  return queues.get(queueId) as unknown as PersistenceQueue<TKey, TData>
 }
 
 function accountQueueId(accountId: string, entity: string): string {
@@ -242,7 +242,10 @@ async function flushQueue<TKey extends string, TData>(
   await queue.waitForWrites()
 }
 
-function mergePageFileMutation(current: PageFileMutation, next: PageFileMutation): PageFileMutation {
+function mergePageFileMutation(
+  current: PageFileMutation,
+  next: PageFileMutation
+): PageFileMutation {
   if (current.deletePage || next.deletePage) {
     return { deletePage: true }
   }
@@ -340,7 +343,11 @@ export function queuePageDelete(scope: WorkspaceScope, pageId: string): void {
   getPageFileQueue(scope).enqueue(pageId, { deletePage: true })
 }
 
-export function queueMessagesPut(scope: WorkspaceScope, pageId: string, record: MessagesRecord): void {
+export function queueMessagesPut(
+  scope: WorkspaceScope,
+  pageId: string,
+  record: MessagesRecord
+): void {
   getPageFileQueue(scope).enqueue(pageId, { messages: record })
 }
 

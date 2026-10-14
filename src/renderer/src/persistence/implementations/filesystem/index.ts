@@ -189,7 +189,10 @@ class FileSystemPersistenceRegistry implements IPersistenceRegistry {
 
     const tracked = this.createTrackedRepositories(resolved)
     this.accountRepos.set(resolved.accountId, tracked.account)
-    this.workspaceRepos.set(workspaceKey({ accountId: resolved.accountId, workspacePath: '__invalid__' }), tracked.invalidWorkspace)
+    this.workspaceRepos.set(
+      workspaceKey({ accountId: resolved.accountId, workspacePath: '__invalid__' }),
+      tracked.invalidWorkspace
+    )
     return tracked.account
   }
 
@@ -261,7 +264,8 @@ class FileSystemPersistenceRegistry implements IPersistenceRegistry {
     account: IAccountScopedPersistence
     invalidWorkspace: IWorkspaceScopedPersistence
   } {
-    const registerAccount = (promise: Promise<unknown>) => this.accountTracker.track(scope.accountId, promise)
+    const registerAccount = (promise: Promise<unknown>): void =>
+      this.accountTracker.track(scope.accountId, promise)
 
     const account: IAccountScopedPersistence = {
       workspaces: trackMethods(createWorkspaceRepository(scope), registerAccount),
@@ -270,18 +274,33 @@ class FileSystemPersistenceRegistry implements IPersistenceRegistry {
     }
 
     const invalidWorkspace: IWorkspaceScopedPersistence = {
-      pages: trackMethods(createPageRepository({ ...scope, workspacePath: '__invalid__' }), registerAccount),
-      folders: trackMethods(createFolderRepository({ ...scope, workspacePath: '__invalid__' }), registerAccount),
-      messages: trackMethods(createMessagesRepository({ ...scope, workspacePath: '__invalid__' }), registerAccount),
-      tabs: trackMethods(createTabsRepository({ ...scope, workspacePath: '__invalid__' }), registerAccount),
-      messageQueue: trackMethods(createMessageQueueRepository({ ...scope, workspacePath: '__invalid__' }), registerAccount)
+      pages: trackMethods(
+        createPageRepository({ ...scope, workspacePath: '__invalid__' }),
+        registerAccount
+      ),
+      folders: trackMethods(
+        createFolderRepository({ ...scope, workspacePath: '__invalid__' }),
+        registerAccount
+      ),
+      messages: trackMethods(
+        createMessagesRepository({ ...scope, workspacePath: '__invalid__' }),
+        registerAccount
+      ),
+      tabs: trackMethods(
+        createTabsRepository({ ...scope, workspacePath: '__invalid__' }),
+        registerAccount
+      ),
+      messageQueue: trackMethods(
+        createMessageQueueRepository({ ...scope, workspacePath: '__invalid__' }),
+        registerAccount
+      )
     }
 
     return { account, invalidWorkspace }
   }
 
   private createWorkspaceScoped(scope: WorkspaceScope): IWorkspaceScopedPersistence {
-    const register = (promise: Promise<unknown>) => {
+    const register = (promise: Promise<unknown>): void => {
       this.accountTracker.track(scope.accountId, promise)
       this.workspaceTracker.track(workspaceKey(scope), promise)
     }

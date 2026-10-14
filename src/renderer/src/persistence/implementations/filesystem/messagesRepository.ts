@@ -5,11 +5,7 @@
  */
 
 import type { IMessagesRepository, MessagesRecord, WorkspaceScope } from '../../interfaces'
-import {
-  getWorkspaceFileOptions,
-  writeTextFile,
-  ensureDirectory
-} from './core'
+import { getWorkspaceFileOptions, writeTextFile, ensureDirectory } from './core'
 import { serializePageToMarkdown, type PageFile } from './markdown'
 import { findPageFile, scanAllPages } from './pagesRepository'
 import { withWriteLock } from './writeLock'

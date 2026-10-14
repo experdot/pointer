@@ -32,7 +32,10 @@ function resetWorkspaceStores(): void {
 
 function getApprovedWorkspacePaths(extraApprovedPaths: string[] = []): string[] {
   return Array.from(
-    new Set([...stores.workspace.workspaces.map((workspace) => workspace.path), ...extraApprovedPaths])
+    new Set([
+      ...stores.workspace.workspaces.map((workspace) => workspace.path),
+      ...extraApprovedPaths
+    ])
   )
 }
 
@@ -89,7 +92,10 @@ export async function initializeWorkspaceSystem(): Promise<void> {
   }
 
   if (workspace.currentWorkspace) {
-    await commitWorkspaceContext(workspace.currentWorkspace.accountId, workspace.currentWorkspace.path)
+    await commitWorkspaceContext(
+      workspace.currentWorkspace.accountId,
+      workspace.currentWorkspace.path
+    )
   } else {
     const accountId = persistence.database.getActiveContext().accountId
     if (!accountId) {

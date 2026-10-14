@@ -137,7 +137,9 @@ function getWorkspaceCache(scope: WorkspaceScope): Map<string, string> {
   return cache
 }
 
-async function scanAllPages(scope: WorkspaceScope): Promise<Map<string, { file: PageFile; path: string }>> {
+async function scanAllPages(
+  scope: WorkspaceScope
+): Promise<Map<string, { file: PageFile; path: string }>> {
   const options = getWorkspaceFileOptions(scope)
   const pagesDir = getPagesDirectoryPath(scope)
   const results = new Map<string, { file: PageFile; path: string }>()
@@ -240,7 +242,13 @@ export function createPageRepository(scope: WorkspaceScope): IPageRepository {
         // Build target path based on page name and folder
         // Uses unique path generation to handle filename conflicts
         const folderPath = await buildFolderPath(page.parentFolderId)
-        const targetPath = await generateUniqueFilePath(page.name, folderPath, page.id, scope, options)
+        const targetPath = await generateUniqueFilePath(
+          page.name,
+          folderPath,
+          page.id,
+          scope,
+          options
+        )
 
         // Prepare file content
         const file: PageFile = {

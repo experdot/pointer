@@ -36,7 +36,7 @@ let currentAccountId: string | null = null
 let currentWorkspacePath: string | null = null
 
 function resolveAccountId(scope?: AccountScope | string | null): string {
-  const accountId = typeof scope === 'string' ? scope : scope?.accountId ?? currentAccountId
+  const accountId = typeof scope === 'string' ? scope : (scope?.accountId ?? currentAccountId)
   if (!accountId) {
     throw new Error('No account ID specified and no current account set')
   }
@@ -45,7 +45,7 @@ function resolveAccountId(scope?: AccountScope | string | null): string {
 
 function resolveWorkspacePath(scope?: WorkspaceScope | string | null): string {
   const workspacePath =
-    typeof scope === 'string' ? scope : scope?.workspacePath ?? currentWorkspacePath
+    typeof scope === 'string' ? scope : (scope?.workspacePath ?? currentWorkspacePath)
   if (!workspacePath) {
     throw new Error('No workspace path specified and no current workspace set')
   }
@@ -173,13 +173,15 @@ export function isDefaultWorkspace(
   scope?: AccountScope | WorkspaceScope | string
 ): boolean {
   const accountPath =
-    scope || currentAccountId ? getAccountPath(typeof scope === 'object' ? scope.accountId : scope) : null
+    scope || currentAccountId
+      ? getAccountPath(typeof scope === 'object' ? scope.accountId : scope)
+      : null
   return !!accountPath && wsPath.startsWith(accountPath)
 }
 
-export function getWorkspaceFileOptions(
-  scope?: WorkspaceScope | string
-): { allowCustomPath?: boolean } {
+export function getWorkspaceFileOptions(scope?: WorkspaceScope | string): {
+  allowCustomPath?: boolean
+} {
   const workspacePath = resolveWorkspacePath(scope)
   return isCustomWorkspacePath(workspacePath, scope) ? { allowCustomPath: true } : {}
 }
