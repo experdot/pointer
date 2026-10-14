@@ -2,13 +2,17 @@ import React, { useState, useCallback } from 'react'
 import { Button, Tooltip, Input } from 'antd'
 import { CloseOutlined, CheckOutlined, SendOutlined, PictureOutlined } from '@ant-design/icons'
 import { AttachmentPreview } from '../AttachmentPreview'
-import { selectAndSaveAttachments } from '../../../../hooks/useAttachment'
-import { fileToBase64, generateFileId, filterImageFiles } from './utils'
+import {
+  importAttachmentsFromFiles,
+  selectAndSaveAttachments
+} from '../../../../hooks/useAttachment'
+import { filterImageFiles } from './utils'
 import type { MessageEditModeProps } from './types'
 
 const { TextArea } = Input
 
 export const MessageEditMode = React.memo(function MessageEditMode({
+  pageId,
   content,
   attachments,
   isUser,
@@ -28,11 +32,11 @@ export const MessageEditMode = React.memo(function MessageEditMode({
   )
 
   const handleAddAttachments = useCallback(async (): Promise<void> => {
-    const newAttachments = await selectAndSaveAttachments()
+    const newAttachments = await selectAndSaveAttachments(pageId)
     if (newAttachments.length > 0) {
       onAttachmentsChange([...attachments, ...newAttachments])
     }
-  }, [attachments, onAttachmentsChange])
+  }, [attachments, onAttachmentsChange, pageId])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -57,30 +61,10 @@ export const MessageEditMode = React.memo(function MessageEditMode({
       const files = filterImageFiles(e.dataTransfer.files)
       if (files.length === 0) return
 
-      const newAttachments = [...attachments]
-      for (const file of files) {
-        const base64 = await fileToBase64(file)
-        const fileId = generateFileId()
-        const result = await window.api.attachment.save({
-          fileId,
-          fileName: file.name,
-          base64Content: base64
-        })
-
-        if (result.success && result.localPath) {
-          newAttachments.push({
-            id: fileId,
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            localPath: result.localPath,
-            createdAt: Date.now()
-          })
-        }
-      }
-      onAttachmentsChange(newAttachments)
+      const imported = await importAttachmentsFromFiles(pageId, files)
+      if (imported.length > 0) onAttachmentsChange([...attachments, ...imported])
     },
-    [attachments, onAttachmentsChange]
+    [attachments, onAttachmentsChange, pageId]
   )
 
   const handlePaste = useCallback(
@@ -99,30 +83,10 @@ export const MessageEditMode = React.memo(function MessageEditMode({
 
       e.preventDefault()
 
-      const newAttachments = [...attachments]
-      for (const file of imageFiles) {
-        const base64 = await fileToBase64(file)
-        const fileId = generateFileId()
-        const result = await window.api.attachment.save({
-          fileId,
-          fileName: file.name,
-          base64Content: base64
-        })
-
-        if (result.success && result.localPath) {
-          newAttachments.push({
-            id: fileId,
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            localPath: result.localPath,
-            createdAt: Date.now()
-          })
-        }
-      }
-      onAttachmentsChange(newAttachments)
+      const imported = await importAttachmentsFromFiles(pageId, imageFiles)
+      if (imported.length > 0) onAttachmentsChange([...attachments, ...imported])
     },
-    [attachments, onAttachmentsChange]
+    [attachments, onAttachmentsChange, pageId]
   )
 
   const handleKeyDown = useCallback(

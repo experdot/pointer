@@ -3,7 +3,7 @@ import type { SourcePlugin, MessagesSourceData, ExtractedContent, ExportOptions 
 import { MessagesSourceSelector } from '../../../../components/editors/ExportEditor/sources/MessagesSource'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import { useSettingsStore } from '../../../../stores/settingsStore'
-import type { LLMConfig, ModelConfig, Topic } from '../../../../types/type'
+import type { LLMConfig, ModelConfig, Topic } from '@renderer/types/shared'
 
 /**
  * Messages Source Plugin
@@ -93,13 +93,13 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
  * Get messages in the current branch (from root to leaf)
  */
 function getCurrentBranchMessages(
-  messages: import('../../../../types/type').ChatMessage[],
+  messages: import('@renderer/types/shared').ChatMessage[],
   leafMessageId?: string
-): import('../../../../types/type').ChatMessage[] {
+): import('@renderer/types/shared').ChatMessage[] {
   if (!leafMessageId) return []
 
   const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const path: import('../../../../types/type').ChatMessage[] = []
+  const path: import('@renderer/types/shared').ChatMessage[] = []
 
   let currentId: string | undefined = leafMessageId
   while (currentId) {
@@ -119,10 +119,10 @@ function getCurrentBranchMessages(
  * Get messages within a topic range
  */
 function getTopicMessages(
-  messages: import('../../../../types/type').ChatMessage[],
+  messages: import('@renderer/types/shared').ChatMessage[],
   startMessageId: string,
   endMessageId?: string
-): import('../../../../types/type').ChatMessage[] {
+): import('@renderer/types/shared').ChatMessage[] {
   const messageMap = new Map(messages.map((m) => [m.id, m]))
 
   // Build path from root to start message
@@ -135,7 +135,7 @@ function getTopicMessages(
   }
 
   // Collect all messages from start to end (or descendants)
-  const result: import('../../../../types/type').ChatMessage[] = []
+  const result: import('@renderer/types/shared').ChatMessage[] = []
   const visited = new Set<string>()
 
   function collectDescendants(id: string): void {
@@ -166,9 +166,9 @@ function getTopicMessages(
  * Sort messages by tree order (parent before children)
  */
 function sortMessagesByTreeOrder(
-  filteredMessages: import('../../../../types/type').ChatMessage[],
-  allMessages: import('../../../../types/type').ChatMessage[]
-): import('../../../../types/type').ChatMessage[] {
+  filteredMessages: import('@renderer/types/shared').ChatMessage[],
+  allMessages: import('@renderer/types/shared').ChatMessage[]
+): import('@renderer/types/shared').ChatMessage[] {
   // Build order map from all messages
   const orderMap = new Map<string, number>()
   let order = 0
@@ -203,7 +203,7 @@ function sortMessagesByTreeOrder(
  * Generate markdown content from messages
  */
 function generateMessagesMarkdown(
-  messages: import('../../../../types/type').ChatMessage[],
+  messages: import('@renderer/types/shared').ChatMessage[],
   options: ExportOptions,
   llmConfigs: LLMConfig[],
   modelConfigs: ModelConfig[],
@@ -259,8 +259,8 @@ function generateMessagesMarkdown(
     }
 
     // Add model name if enabled
-    if (metadata?.showModelName && message.modelId) {
-      const modelName = modelNameMap.get(message.modelId) || message.modelId
+    if (metadata?.showModelName && message.llmId) {
+      const modelName = modelNameMap.get(message.llmId) || message.llmId
       header += ` \`${modelName}\``
     }
 
@@ -280,11 +280,11 @@ function generateMessagesMarkdown(
     }
 
     // Add reasoning content if enabled
-    if (metadata?.showReasoningContent && message.reasoning_content) {
+    if (metadata?.showReasoningContent && message.reasoning) {
       lines.push('<details>')
       lines.push('<summary>思考过程</summary>')
       lines.push('')
-      lines.push(message.reasoning_content)
+      lines.push(message.reasoning)
       lines.push('')
       lines.push('</details>')
       lines.push('')
@@ -304,13 +304,13 @@ function generateMessagesMarkdown(
  * Get messages directly within a topic (excluding messages that belong to sub-topics)
  */
 function getDirectTopicMessages(
-  messages: import('../../../../types/type').ChatMessage[],
+  messages: import('@renderer/types/shared').ChatMessage[],
   startMessageId: string,
   endMessageId: string | undefined,
   allTopicStartIds: Set<string>
-): import('../../../../types/type').ChatMessage[] {
+): import('@renderer/types/shared').ChatMessage[] {
   const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const result: import('../../../../types/type').ChatMessage[] = []
+  const result: import('@renderer/types/shared').ChatMessage[] = []
   const visited = new Set<string>()
 
   function collect(id: string): void {

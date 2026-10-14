@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Drawer, Button, Input, List, Popconfirm, Typography, Empty } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ClearOutlined } from '@ant-design/icons'
-import type { QueueItem } from '../../../persistence/interfaces/userData'
+import type { QueueItem } from '@renderer/types/shared'
 import './MessageQueueDrawer.css'
 
 const { TextArea } = Input

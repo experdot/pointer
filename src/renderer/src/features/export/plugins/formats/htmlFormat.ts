@@ -147,8 +147,8 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
       const date = new Date(message.createdAt)
       msgHtml += ` <span style="font-weight: normal; color: #666; font-size: 0.9em;">${date.toLocaleString()}</span>`
     }
-    if (metadata?.showModelName && message.modelId) {
-      const modelName = modelNameMap.get(message.modelId) || message.modelId
+    if (metadata?.showModelName && message.llmId) {
+      const modelName = modelNameMap.get(message.llmId) || message.llmId
       msgHtml += ` <span style="font-weight: normal; color: #888; font-size: 0.9em;">(${escapeHtml(modelName)})</span>`
     }
     msgHtml += '</div>'
@@ -159,10 +159,10 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
     }
 
     // Reasoning
-    if (metadata?.showReasoningContent && message.reasoning_content) {
+    if (metadata?.showReasoningContent && message.reasoning) {
       msgHtml += `<details style="margin-bottom: 8px; background: #fff; padding: 8px; border-radius: 4px;">
         <summary style="cursor: pointer; font-weight: 500;">Reasoning</summary>
-        <div style="margin-top: 8px; white-space: pre-wrap;">${escapeHtml(message.reasoning_content)}</div>
+        <div style="margin-top: 8px; white-space: pre-wrap;">${escapeHtml(message.reasoning)}</div>
       </details>`
     }
 

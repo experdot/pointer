@@ -1,216 +1,275 @@
 /**
- * 消息 Store
- * 管理消息缓存和 Topic
+ * 会话 Store
+ *
+ * cache 中保存每个页面的会话镜像；流式内容通过 chat.delta 事件追加。
  */
 
 import { create } from 'zustand'
-import { persistence } from '../persistence/registry'
-import { tryGetCurrentWorkspaceScope } from '../persistence/scope'
-import { queueMessagesDelete, queueMessagesPut } from './persistenceQueue'
-import type { MessagesRecord } from '../persistence/interfaces/userData'
-import type { ChatMessage, Topic } from '../types/type'
-import type { IMessageStore } from './interfaces/entities'
+import { v4 as uuidv4 } from 'uuid'
+import type { ChatMessage, Conversation, MessageDraft, Topic } from '@shared/domain'
+import { emptyConversation } from '@shared/domain'
+import { command, query } from '../runtime/client'
 
 interface MessagesState {
-  // 按 pageId 缓存消息
-  cache: Record<string, MessagesRecord>
+  cache: Record<string, Conversation>
+  /** messageId -> 是否正在生成 */
+  streaming: Record<string, boolean>
 }
 
+type MessagePatch = Partial<
+  Pick<
+    ChatMessage,
+    | 'content'
+    | 'reasoning'
+    | 'title'
+    | 'starred'
+    | 'collapsed'
+    | 'attachments'
+    | 'hasError'
+    | 'llmId'
+    | 'modelConfigId'
+  >
+>
+
 interface MessagesActions {
-  // 加载页面消息到缓存
-  load: (pageId: string) => Promise<MessagesRecord>
-  // 获取缓存的消息（不触发加载）
-  get: (pageId: string) => MessagesRecord | undefined
-  // 检查是否已缓存
+  load: (pageId: string) => Promise<Conversation>
+  get: (pageId: string) => Conversation | undefined
   has: (pageId: string) => boolean
-  // 更新消息并持久化
-  update: (pageId: string, updater: (record: MessagesRecord) => MessagesRecord) => Promise<void>
-  // 添加消息
-  addMessage: (pageId: string, message: ChatMessage) => Promise<void>
-  // 更新单条消息
-  updateMessage: (pageId: string, messageId: string, updates: Partial<ChatMessage>) => Promise<void>
-  // 删除消息
-  deleteMessages: (pageId: string, messageIds: Set<string>) => Promise<void>
-  // 更新 session 信息
-  updateSession: (
+  setConversation: (conversation: Conversation) => void
+  upsertMessage: (pageId: string, message: ChatMessage) => void
+  /** 批量追加流式增量（镜像层合并后一次性写入，避免每个分片都触发渲染） */
+  applyDeltas: (entries: DeltaBatchEntry[]) => void
+  appendToMessage: (
     pageId: string,
-    updates: Partial<Omit<MessagesRecord, 'pageId' | 'messages' | 'topics'>>
-  ) => Promise<void>
-  // 清除缓存（evict）
+    messageId: string,
+    text: string,
+    field: 'content' | 'reasoning'
+  ) => void
+  setStreaming: (messageId: string, streaming: boolean) => void
+  isStreaming: (messageId: string) => boolean
   evict: (pageId: string) => void
-  // 清除所有缓存
   evictAll: () => void
-  // 删除页面消息（从数据库）
-  removeRecord: (pageId: string) => Promise<void>
-  // 重置
+  removeRecord: (pageId: string) => void
   reset: () => void
-  // ============ Topic 操作 ============
-  addTopic: (pageId: string, topic: Topic) => Promise<void>
-  updateTopic: (pageId: string, topicId: string, updates: Partial<Topic>) => Promise<void>
+
+  addMessage: (
+    pageId: string,
+    draft: Omit<MessageDraft, 'id'> & { id?: string }
+  ) => Promise<ChatMessage>
+  replaceConversation: (pageId: string, conversation: Conversation) => Promise<void>
+  updateMessage: (pageId: string, messageId: string, patch: MessagePatch) => Promise<void>
+  updateMessages: (pageId: string, messageIds: string[], patch: MessagePatch) => Promise<void>
+  deleteMessage: (pageId: string, messageId: string) => Promise<void>
+  setLeaf: (pageId: string, messageId?: string) => Promise<void>
+  setSelected: (pageId: string, messageId?: string) => Promise<void>
+
+  addTopic: (
+    pageId: string,
+    input: { id?: string; name: string; startMessageId: string; endMessageId?: string }
+  ) => Promise<void>
+  updateTopic: (pageId: string, topicId: string, patch: Partial<Topic>) => Promise<void>
   deleteTopic: (pageId: string, topicId: string) => Promise<void>
   getTopics: (pageId: string) => Topic[]
 }
 
 type MessagesStore = MessagesState & MessagesActions
 
-const initialState: MessagesState = {
-  cache: {}
+export interface DeltaBatchEntry {
+  pageId: string
+  messageId: string
+  content: string
+  reasoning: string
 }
 
-const emptyRecord = (pageId: string): MessagesRecord => ({
-  pageId,
-  messages: [],
-  topics: [],
-  leafMessageId: undefined,
-  selectedMessageId: undefined
-})
-
 export const useMessagesStore = create<MessagesStore>((set, get) => ({
-  ...initialState,
+  cache: {},
+  streaming: {},
 
   load: async (pageId) => {
     const cached = get().cache[pageId]
     if (cached) return cached
 
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) {
-      return emptyRecord(pageId)
-    }
-
-    const record = (await persistence.workspace(scope).messages.get(pageId)) ?? emptyRecord(pageId)
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: record }
-    }))
-    return record
+    const conversation = await query('conversation.get', { pageId })
+    set((state) => ({ cache: { ...state.cache, [pageId]: conversation } }))
+    return conversation
   },
 
   get: (pageId) => get().cache[pageId],
 
   has: (pageId) => pageId in get().cache,
 
-  update: async (pageId, updater) => {
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) return
-
-    const current = get().cache[pageId] ?? emptyRecord(pageId)
-    const updated = updater(current)
-    // 先更新内存状态（UI 立即响应）
-    set((state) => ({
-      cache: { ...state.cache, [pageId]: updated }
-    }))
-    // 异步持久化（防抖合并，不阻塞 UI）
-    queueMessagesPut(scope, pageId, updated)
-  },
-
-  addMessage: async (pageId, message) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      messages: [...record.messages, message],
-      leafMessageId: message.id
-    }))
-  },
-
-  updateMessage: async (pageId, messageId, updates) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      messages: record.messages.map((m) =>
-        m.id === messageId ? { ...m, ...updates, updatedAt: Date.now() } : m
-      )
-    }))
-  },
-
-  deleteMessages: async (pageId, messageIds) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      messages: record.messages.filter((m) => !messageIds.has(m.id))
-    }))
-  },
-
-  updateSession: async (pageId, updates) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      ...updates
-    }))
-  },
-
-  evict: (pageId) => {
+  setConversation: (conversation) =>
     set((state) => {
-      const { [pageId]: _removed, ...rest } = state.cache
-      void _removed // 显式标记为已使用
-      return { cache: rest }
+      // 会话被权威数据替换时，丢弃已不存在消息的生成标记，避免标记泄漏
+      const ids = new Set(conversation.messages.map((message) => message.id))
+      const streaming = Object.fromEntries(
+        Object.entries(state.streaming).filter(([messageId]) => ids.has(messageId))
+      )
+
+      return {
+        cache: { ...state.cache, [conversation.pageId]: conversation },
+        streaming
+      }
+    }),
+
+  /**
+   * 写入单条消息
+   *
+   * 只有「空的助手消息」才是生成占位（可能是本端发起，也可能是内核队列触发），
+   * 用户消息与已有内容的消息不参与生成标记——标记的清除只由 chat.completed /
+   * chat.failed / chat.aborted 驱动。
+   */
+  upsertMessage: (pageId, message) =>
+    set((state) => {
+      const current = state.cache[pageId] ?? emptyConversation(pageId)
+      const exists = current.messages.some((item) => item.id === message.id)
+      const messages = exists
+        ? current.messages.map((item) => (item.id === message.id ? message : item))
+        : [...current.messages, message]
+
+      const isPlaceholder = message.role === 'assistant' && !message.content && !message.hasError
+
+      return {
+        cache: {
+          ...state.cache,
+          [pageId]: {
+            ...current,
+            messages,
+            leafMessageId: exists ? current.leafMessageId : message.id
+          }
+        },
+        streaming: isPlaceholder ? { ...state.streaming, [message.id]: true } : state.streaming
+      }
+    }),
+
+  appendToMessage: (pageId, messageId, text, field) =>
+    set((state) => {
+      const current = state.cache[pageId]
+      if (!current) return state
+
+      return {
+        cache: {
+          ...state.cache,
+          [pageId]: {
+            ...current,
+            messages: current.messages.map((message) =>
+              message.id === messageId
+                ? field === 'content'
+                  ? { ...message, content: message.content + text }
+                  : { ...message, reasoning: `${message.reasoning ?? ''}${text}` }
+                : message
+            )
+          }
+        }
+      }
+    }),
+
+  applyDeltas: (entries) =>
+    set((state) => {
+      const cache = { ...state.cache }
+      let changed = false
+
+      for (const entry of entries) {
+        const conversation = cache[entry.pageId]
+        if (!conversation) continue
+
+        const messages = conversation.messages.map((message) => {
+          if (message.id !== entry.messageId) return message
+          changed = true
+          return {
+            ...message,
+            content: entry.content ? message.content + entry.content : message.content,
+            reasoning: entry.reasoning
+              ? `${message.reasoning ?? ''}${entry.reasoning}`
+              : message.reasoning
+          }
+        })
+
+        cache[entry.pageId] = { ...conversation, messages }
+      }
+
+      return changed ? { cache } : state
+    }),
+
+  setStreaming: (messageId, streaming) =>
+    set((state) => {
+      if (streaming) return { streaming: { ...state.streaming, [messageId]: true } }
+      const next = { ...state.streaming }
+      delete next[messageId]
+      return { streaming: next }
+    }),
+
+  isStreaming: (messageId) => Boolean(get().streaming[messageId]),
+
+  evict: (pageId) =>
+    set((state) => {
+      const next = { ...state.cache }
+      delete next[pageId]
+      return { cache: next }
+    }),
+
+  evictAll: () => set({ cache: {}, streaming: {} }),
+
+  removeRecord: (pageId) => get().evict(pageId),
+
+  reset: () => set({ cache: {}, streaming: {} }),
+
+  addMessage: async (pageId, draft) => {
+    const message = await command('conversation.append', {
+      pageId,
+      draft: { ...draft, id: draft.id ?? uuidv4() }
+    })
+    get().upsertMessage(pageId, message)
+    return message
+  },
+
+  replaceConversation: async (pageId, conversation) => {
+    await command('conversation.replace', { pageId, conversation: { ...conversation, pageId } })
+  },
+
+  updateMessage: async (pageId, messageId, patch) => {
+    await command('conversation.updateMessage', { pageId, messageId, patch })
+  },
+
+  updateMessages: async (pageId, messageIds, patch) => {
+    if (messageIds.length === 0) return
+    await command('conversation.updateMessages', { pageId, messageIds, patch })
+  },
+
+  deleteMessage: async (pageId, messageId) => {
+    await command('conversation.deleteMessage', { pageId, messageId })
+  },
+
+  setLeaf: async (pageId, messageId) => {
+    await command('conversation.setLeaf', { pageId, messageId })
+  },
+
+  setSelected: async (pageId, messageId) => {
+    await command('conversation.setSelected', { pageId, messageId })
+  },
+
+  addTopic: async (pageId, input) => {
+    await command('topic.create', {
+      pageId,
+      topic: { ...input, id: input.id ?? uuidv4() }
     })
   },
 
-  evictAll: () => {
-    set({ cache: {} })
-  },
-
-  removeRecord: async (pageId) => {
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) {
-      get().evict(pageId)
-      return
-    }
-
-    queueMessagesDelete(scope, pageId)
-    get().evict(pageId)
-  },
-
-  reset: () => set(initialState),
-
-  // ============ Topic 操作 ============
-  addTopic: async (pageId, topic) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      topics: [...(record.topics ?? []), topic]
-    }))
-  },
-
-  updateTopic: async (pageId, topicId, updates) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      topics: (record.topics ?? []).map((t) => (t.id === topicId ? { ...t, ...updates } : t))
-    }))
+  updateTopic: async (pageId, topicId, patch) => {
+    await command('topic.update', {
+      pageId,
+      topicId,
+      patch: {
+        name: patch.name,
+        endMessageId: patch.endMessageId,
+        collapsed: patch.collapsed
+      }
+    })
   },
 
   deleteTopic: async (pageId, topicId) => {
-    await get().update(pageId, (record) => ({
-      ...record,
-      topics: (record.topics ?? []).filter((t) => t.id !== topicId)
-    }))
+    await command('topic.delete', { pageId, topicId })
   },
 
   getTopics: (pageId) => get().cache[pageId]?.topics ?? []
 }))
-
-/**
- * 获取消息 Store 的接口实现
- */
-export function getMessageStoreInterface(): IMessageStore {
-  const store = useMessagesStore
-  return {
-    load: (key) => store.getState().load(key),
-    get: (key) => store.getState().get(key),
-    has: (key) => store.getState().has(key),
-    evict: (key) => store.getState().evict(key),
-    evictAll: () => store.getState().evictAll(),
-    reset: () => store.getState().reset(),
-    update: (pageId, updater) => store.getState().update(pageId, updater),
-    addMessage: (pageId, message) => store.getState().addMessage(pageId, message),
-    updateMessage: (pageId, messageId, changes) =>
-      store.getState().updateMessage(pageId, messageId, changes),
-    deleteMessages: (pageId, messageIds) => store.getState().deleteMessages(pageId, messageIds),
-    updateSession: (pageId, changes) => store.getState().updateSession(pageId, changes),
-    addTopic: (pageId, topic) => store.getState().addTopic(pageId, topic),
-    updateTopic: (pageId, topicId, changes) =>
-      store.getState().updateTopic(pageId, topicId, changes),
-    deleteTopic: (pageId, topicId) => store.getState().deleteTopic(pageId, topicId),
-    getTopics: (pageId) => store.getState().getTopics(pageId),
-    removeRecord: (pageId) => store.getState().removeRecord(pageId)
-  }
-}
-
-// ==================== 兼容性导出（过渡期使用）====================
-// 导航功能已移至 navigationStore
-
-export type { NavigationRequest, RelativeNavigationRequest } from './interfaces/navigation'

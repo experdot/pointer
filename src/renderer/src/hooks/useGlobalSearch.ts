@@ -1,17 +1,15 @@
 import { useEffect, useCallback, useRef, useMemo } from 'react'
 import { useGlobalSearchStore } from '../stores/globalSearchStore'
-import { usePagesStore } from '../stores/pagesStore'
-import { useMessagesStore } from '../stores/messagesStore'
-import { performGlobalSearch } from '../utils/globalSearchUtils'
+import { query as runtimeQuery } from '../runtime/client'
 import * as navigationService from '../services/navigationService'
-import type { GlobalSearchMatch } from '../types/type'
-import { getSwitchGeneration } from '../stores/switchTransactionStore'
+import { currentGeneration } from '../runtime/generation'
+import type { SearchMatch } from '@renderer/types/shared'
 
 /** 防抖延迟时间 */
 const DEBOUNCE_DELAY = 500
 
 interface UseGlobalSearchResult {
-  navigateToResult: (match: GlobalSearchMatch) => Promise<void>
+  navigateToResult: (match: SearchMatch) => Promise<void>
   navigateToPrevious: () => void
   navigateToNext: () => void
   flatMatchesCount: number
@@ -32,23 +30,12 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     setHighlightMatch,
     searchTrigger
   } = useGlobalSearchStore()
-  const { pages } = usePagesStore()
-  const { load } = useMessagesStore()
-
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // 加载消息的函数
-  const loadMessages = useCallback(
-    async (pageId: string) => {
-      return load(pageId)
-    },
-    [load]
-  )
-
   // 执行搜索
   const executeSearch = useCallback(async () => {
-    const generation = getSwitchGeneration()
+    const generation = currentGeneration()
     // 取消之前的搜索
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -64,25 +51,25 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     setSearching(true)
 
     try {
-      const result = await performGlobalSearch(query, options, pages, loadMessages)
-      if (generation !== getSwitchGeneration()) {
+      const result = await runtimeQuery('search.workspace', { query, options })
+      if (generation !== currentGeneration()) {
         return
       }
-      setResults(result.groups, result.totalCount)
+      setResults(result.groups, result.total)
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Global search error:', error)
       }
-      if (generation !== getSwitchGeneration()) {
+      if (generation !== currentGeneration()) {
         return
       }
       setResults([], 0)
     } finally {
-      if (generation === getSwitchGeneration()) {
+      if (generation === currentGeneration()) {
         setSearching(false)
       }
     }
-  }, [query, options, pages, loadMessages, setResults, setSearching])
+  }, [query, options, setResults, setSearching])
 
   // 防抖搜索
   useEffect(() => {
@@ -124,7 +111,7 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
   // 跳转到搜索结果
   const navigateToResult = useCallback(
-    async (match: GlobalSearchMatch) => {
+    async (match: SearchMatch) => {
       // 使用统一的导航服务（处理页面打开、分支切换、Topic 展开、滚动）
       await navigationService.navigateToMessage({
         pageId: match.pageId,
@@ -146,7 +133,7 @@ export function useGlobalSearch(): UseGlobalSearchResult {
       pageIndex: number
       messageIndex: number
       matchIndex: number
-      match: GlobalSearchMatch
+      match: SearchMatch
     }[] = []
     results.forEach((group, pageIndex) => {
       group.messageGroups.forEach((messageGroup, messageIndex) => {

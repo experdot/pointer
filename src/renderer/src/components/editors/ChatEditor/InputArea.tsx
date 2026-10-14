@@ -17,7 +17,7 @@ import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useAttachment } from '../../../hooks/useAttachment'
 import { openSettings } from '../../../services/settingsService'
-import type { FileAttachment } from '../../../types/type'
+import type { AttachmentRef } from '@renderer/types/shared'
 import './InputArea.css'
 
 const { TextArea } = Input
@@ -28,7 +28,7 @@ export interface InputAreaRef {
 
 interface InputAreaProps {
   pageId: string
-  onSend: (content: string, attachments?: FileAttachment[]) => Promise<void>
+  onSend: (content: string, attachments?: AttachmentRef[]) => Promise<void>
   onStop: () => Promise<void>
   isStreaming: boolean
   disabled?: boolean

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import type { UpdateStatus } from '@shared/contracts'
 
 export interface UpdateInfo {
   version?: string
@@ -65,6 +66,8 @@ export interface UpdateActions {
   handleDownloadProgress: (progress: DownloadProgress) => void
   handleUpdateDownloaded: (info: UpdateInfo) => void
   handleUpdateError: (error: string) => void
+  /** 应用内核推送的更新状态 */
+  applyStatus: (status: UpdateStatus) => void
 }
 
 const initialState: UpdateState = {
@@ -225,6 +228,48 @@ export const useUpdateStore = create<UpdateState & UpdateActions>()(
         state.checkingForUpdates = false
         state.downloading = false
         state.downloadProgress = null
+      }),
+
+    applyStatus: (status) =>
+      set((state) => {
+        switch (status.state) {
+          case 'checking':
+            state.checkingForUpdates = true
+            state.error = null
+            break
+          case 'available':
+            state.checkingForUpdates = false
+            state.updateAvailable = true
+            state.updateInfo = status.version ? { version: status.version } : state.updateInfo
+            state.notificationShown = true
+            state.error = null
+            break
+          case 'downloading':
+            state.downloading = true
+            state.downloadProgress = {
+              bytesPerSecond: 0,
+              percent: status.percent ?? 0,
+              transferred: 0,
+              total: 0
+            }
+            break
+          case 'downloaded':
+            state.updateDownloaded = true
+            state.downloading = false
+            state.downloadProgress = null
+            if (status.version) state.updateInfo = { version: status.version }
+            break
+          case 'error':
+            state.error = status.message ?? '更新失败'
+            state.checkingForUpdates = false
+            state.downloading = false
+            state.downloadProgress = null
+            break
+          case 'idle':
+            state.checkingForUpdates = false
+            state.downloading = false
+            break
+        }
       })
   }))
 )

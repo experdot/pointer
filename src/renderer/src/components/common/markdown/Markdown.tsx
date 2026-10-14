@@ -14,6 +14,7 @@ import { useRef, useState, useEffect, useMemo, ReactElement } from 'react'
 
 import LoadingIcon from './three-dots.svg'
 import { useDebouncedCallback } from 'use-debounce'
+import { command } from '../../../runtime/client'
 import { copyToClipboard } from './utils'
 import TableViewModal from './TableViewModal'
 
@@ -260,9 +261,9 @@ export function PreCode(props: { children?: React.ReactNode }): React.JSX.Elemen
 
       setIsDownloading(true)
       try {
-        await window.api.saveFile({
+        await command('dialog.saveFile', {
+          suggestedName: `code-${timestamp}.${extension}`,
           content: code,
-          defaultPath: `code-${timestamp}.${extension}`,
           filters: [
             { name: `${language.toUpperCase()} Files`, extensions: [extension] },
             { name: 'All Files', extensions: ['*'] }

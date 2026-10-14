@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from 'antd'
 import { LeftOutlined, RightOutlined } from '@ant-design/icons'
-import type { ChatMessage } from '../../../types/type'
+import type { ChatMessage } from '@renderer/types/shared'
 import './BranchNavigator.css'
 
 interface BranchNavigatorProps {

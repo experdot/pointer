@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react'
+import { App } from 'antd'
+import type { ChatMessage } from '@shared/domain'
+import { currentGeneration } from '../runtime/generation'
 import { updateMessageTitle } from '../services/messagesService'
-import { generateMessageTitle, generateMessageTitleWithOptions } from '../services/titleService'
-import type { ChatMessage } from '../types/type'
-import { getSwitchGeneration } from '../stores/switchTransactionStore'
+import { generateMessageTitle } from '../services/titleService'
 
-// 生成选项接口（与 useChatTopics 共享）
 export interface GenerateOptions {
   extraRequirements?: string
   llmId?: string
@@ -23,119 +23,72 @@ export interface BatchProgress {
 }
 
 export interface UseChatTitlesResult {
-  // 基础操作
   updateTitle: (messageId: string, title: string) => void
   deleteTitle: (messageId: string) => void
-  // AI 生成标题（统一方法，支持可选的 options）
   generateTitle: (messageId: string, options?: GenerateOptions) => Promise<void>
-  // 批量生成标题（统一方法，支持可选的 options）
   batchGenerateTitles: (options?: GenerateOptions) => Promise<void>
   batchProgress: BatchProgress | null
 }
 
-export function useChatTitles({
-  pageId,
-  messages,
-  currentPath
-}: UseChatTitlesOptions): UseChatTitlesResult {
+export function useChatTitles({ pageId, currentPath }: UseChatTitlesOptions): UseChatTitlesResult {
+  const { message } = App.useApp()
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null)
 
   const updateTitle = useCallback(
     (messageId: string, title: string) => {
-      updateMessageTitle(pageId, messageId, title)
+      void updateMessageTitle(pageId, messageId, title)
     },
     [pageId]
   )
 
   const deleteTitle = useCallback(
     (messageId: string) => {
-      updateMessageTitle(pageId, messageId, '')
+      void updateMessageTitle(pageId, messageId, '')
     },
     [pageId]
   )
 
-  // 统一的 generateTitle 方法，通过 options 决定是否使用自定义配置
   const generateTitle = useCallback(
-    async (messageId: string, options?: GenerateOptions) => {
-      const message = messages.find((m) => m.id === messageId)
-      if (!message) return
-
-      try {
-        const generation = getSwitchGeneration()
-        const result =
-          options?.llmId || options?.extraRequirements || options?.modelConfigId
-            ? await generateMessageTitleWithOptions({
-                content: message.content,
-                extraRequirements: options.extraRequirements,
-                llmId: options.llmId,
-                modelConfigId: options.modelConfigId
-              })
-            : await generateMessageTitle(message.content)
-
-        if (generation === getSwitchGeneration() && result.success && result.title) {
-          updateMessageTitle(pageId, messageId, result.title)
-        } else if (result.error) {
-          console.error('Failed to generate title:', result.error)
-        }
-      } catch (error) {
-        console.error('Failed to generate title:', error)
+    async (messageId: string, options: GenerateOptions = {}) => {
+      const result = await generateMessageTitle(pageId, messageId, options)
+      if (!result.success) {
+        console.error('生成标题失败：', result.error)
+        message.error(`生成标题失败：${result.error ?? '未知原因'}`)
       }
     },
-    [pageId, messages]
+    [message, pageId]
   )
 
-  // 统一的批量生成标题方法，消除了原来两个几乎相同的方法
   const batchGenerateTitles = useCallback(
-    async (options?: GenerateOptions) => {
-      // 筛选出没有标题的消息
-      const messagesWithoutTitle = currentPath.filter((m) => !m.title)
-      if (messagesWithoutTitle.length === 0) return
+    async (options: GenerateOptions = {}) => {
+      const pending = currentPath.filter((message) => !message.title)
+      if (pending.length === 0) return
 
-      const total = messagesWithoutTitle.length
-      setBatchProgress({ current: 0, total })
+      setBatchProgress({ current: 0, total: pending.length })
+      const generation = currentGeneration()
+      const failures: string[] = []
 
       try {
-        const generation = getSwitchGeneration()
-        for (let i = 0; i < messagesWithoutTitle.length; i++) {
-          if (generation !== getSwitchGeneration()) break
-          const message = messagesWithoutTitle[i]
-          setBatchProgress({ current: i, total })
-
-          try {
-            const result =
-              options?.llmId || options?.extraRequirements || options?.modelConfigId
-                ? await generateMessageTitleWithOptions({
-                    content: message.content,
-                    extraRequirements: options.extraRequirements,
-                    llmId: options.llmId,
-                    modelConfigId: options.modelConfigId
-                  })
-                : await generateMessageTitle(message.content)
-
-            if (generation === getSwitchGeneration() && result.success && result.title) {
-              updateMessageTitle(pageId, message.id, result.title)
-            }
-          } catch (error) {
-            console.error(`Failed to generate title for message ${message.id}:`, error)
+        for (let index = 0; index < pending.length; index++) {
+          if (generation !== currentGeneration()) break
+          setBatchProgress({ current: index, total: pending.length })
+          const result = await generateMessageTitle(pageId, pending[index].id, options)
+          if (!result.success) {
+            console.error('批量生成标题失败：', result.error)
+            if (result.error) failures.push(result.error)
           }
-
-          // 添加小延迟避免请求过于频繁
-          if (i < messagesWithoutTitle.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 300))
-          }
+          if (index < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, 300))
         }
       } finally {
         setBatchProgress(null)
       }
+
+      if (failures.length > 0) {
+        message.warning(`有 ${failures.length} 条标题生成失败：${failures[0]}`)
+      }
     },
-    [currentPath, pageId]
+    [currentPath, message, pageId]
   )
 
-  return {
-    updateTitle,
-    deleteTitle,
-    generateTitle,
-    batchGenerateTitles,
-    batchProgress
-  }
+  return { updateTitle, deleteTitle, generateTitle, batchGenerateTitles, batchProgress }
 }

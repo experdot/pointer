@@ -5,25 +5,18 @@ import type { TreeDataNode } from 'antd'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
-import { useTabsStore } from '../../../stores/tabsStore'
-import { useLayoutStore } from '../../../stores/layoutStore'
-import { persistence } from '../../../persistence/registry'
-import { getCurrentWorkspaceScope } from '../../../persistence/scope'
+import { useViewStateStore } from '../../../stores/viewStateStore'
+import { query } from '../../../runtime/client'
+import type { PageRecord, MessagesRecord, ViewState } from '@renderer/types/shared'
 import type {
-  PageRecord,
-  MessagesRecord,
-  TabsRecord,
-  LayoutRecord
-} from '../../../persistence/interfaces/userData'
-import type {
-  PageFolder,
+  Folder,
   Settings,
   ConfigFolder,
   ConfigItemBase,
   ConfigTree,
   LLMConfig,
   ModelConfig
-} from '../../../types/type'
+} from '@renderer/types/shared'
 
 const { Text } = Typography
 
@@ -33,11 +26,10 @@ export interface ExportData {
   exportedAt: number
   data: {
     pages?: PageRecord[]
-    folders?: PageFolder[]
+    folders?: Folder[]
     messages?: MessagesRecord[]
     settings?: Partial<Settings>
-    tabs?: TabsRecord
-    layout?: LayoutRecord
+    viewState?: ViewState
   }
 }
 
@@ -49,7 +41,7 @@ interface ExportModalProps {
 type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 
 // 构建页面树
-function buildPagesTree(pages: PageRecord[], folders: PageFolder[]): TreeDataNode[] {
+function buildPagesTree(pages: PageRecord[], folders: Folder[]): TreeDataNode[] {
   const folderMap = new Map<string | undefined, TreeDataNode[]>()
 
   // 初始化根节点
@@ -258,17 +250,14 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
 
       // 导出对话数据
       if (stats.pageIds.length > 0) {
-        const workspacePersistence = persistence.workspace(getCurrentWorkspaceScope())
         exportData.data.pages = pages.filter((p) => stats.pageIds.includes(p.id))
         exportData.data.folders = folders.filter((f) => stats.folderIds.includes(f.id))
 
-        // 加载消息
+        // 加载会话
         const messages: MessagesRecord[] = []
         for (const pageId of stats.pageIds) {
-          const record = await workspacePersistence.messages.get(pageId)
-          if (record) {
-            messages.push(record)
-          }
+          const record = await query('conversation.get', { pageId })
+          messages.push(record)
         }
         exportData.data.messages = messages
       }
@@ -305,8 +294,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
 
       // 导出界面状态
       if (includeUI) {
-        exportData.data.tabs = useTabsStore.getState()
-        exportData.data.layout = useLayoutStore.getState()
+        exportData.data.viewState = useViewStateStore.getState().viewState
       }
 
       // 下载文件

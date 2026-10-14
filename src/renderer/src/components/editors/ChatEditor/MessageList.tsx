@@ -1,20 +1,12 @@
-import {
-  useRef,
-  useEffect,
-  useState,
-  useImperativeHandle,
-  forwardRef,
-  useMemo,
-  useLayoutEffect
-} from 'react'
+import { useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useLayoutEffect } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
-import { streamingManager } from '../../../services/streamingManager'
+import { useMessagesStore } from '../../../stores/messagesStore'
 import {
   filterMessagesByTopicCollapse,
   findTopicByStartMessageId
 } from '../../../services/messagesService'
-import type { ChatMessage, FileAttachment, Topic, TopicGroup } from '../../../types/type'
+import type { ChatMessage, AttachmentRef, Topic, TopicGroup } from '@renderer/types/shared'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
 import type {
   MessageActionCallbacks,
@@ -49,8 +41,8 @@ interface MessageListProps {
   onRetry: (messageId: string, llmId?: string, modelConfigId?: string) => void
   onContinue: (messageId: string) => void
   onDelete: (messageId: string) => void
-  onEdit: (messageId: string, content: string, attachments?: FileAttachment[]) => void
-  onEditAndResend: (messageId: string, content: string, attachments?: FileAttachment[]) => void
+  onEdit: (messageId: string, content: string, attachments?: AttachmentRef[]) => void
+  onEditAndResend: (messageId: string, content: string, attachments?: AttachmentRef[]) => void
   onSwitchBranch: (messageId: string) => void
   onQuote: (text: string) => void
   onToggleCollapse: (messageId: string) => void
@@ -105,11 +97,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
 
-  // 订阅 streamingManager 更新
-  const [, forceUpdate] = useState(0)
-  useEffect(() => {
-    return streamingManager.subscribe(() => forceUpdate((n) => n + 1))
-  }, [])
+  // 流式状态由镜像 store 驱动，内容已随 chat.delta 写入消息本体
+  const streamingMap = useMessagesStore((state) => state.streaming)
 
   // 预计算 childrenMap: O(N) 一次性构建，后续查找 O(1)
   // 使用 allMessages 而非 messages，因为需要知道所有分支的信息
@@ -378,7 +367,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         const siblings = childrenMap.get(message.parentMessageId) ?? []
 
         // 检查是否是正在 streaming 的消息
-        const streaming = streamingManager.get(message.id)
+        const streaming = Boolean(streamingMap[message.id])
 
         // Topic 消息数量（仅 Topic 起始消息有）
         const topicMessageCount = topicMessageCountMap.get(message.id)
@@ -396,13 +385,12 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
 
         return (
           <MessageItem
+            pageId={pageId}
             key={message.id}
             message={message}
             isLast={index === visibleMessages.length - 1}
             isLeaf={branchInfo?.isLeaf ?? true}
-            isStreaming={!!streaming}
-            streamingContent={streaming?.content}
-            streamingReasoning={streaming?.reasoning}
+            isStreaming={streaming}
             branchIndex={branchInfo?.branchIndex ?? 0}
             branchCount={branchInfo?.branchCount ?? 1}
             siblings={siblings}

@@ -3,7 +3,7 @@ import { Select, Collapse, Tag } from 'antd'
 import { FilterOutlined } from '@ant-design/icons'
 import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
-import type { GlobalSearchOptions } from '../../../types/type'
+import type { SearchOptions } from '@renderer/types/shared'
 
 const roleOptions = [
   { value: 'all', label: '全部角色' },
@@ -23,7 +23,7 @@ export function SearchOptions(): React.JSX.Element {
   const { folders } = useFoldersStore()
 
   const handleOptionChange = useCallback(
-    (key: keyof GlobalSearchOptions, value: boolean | string) => {
+    (key: keyof SearchOptions, value: boolean | string) => {
       setOptions({ [key]: value })
     },
     [setOptions]

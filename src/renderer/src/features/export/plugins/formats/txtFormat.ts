@@ -111,8 +111,8 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
       header += ` ${date.toLocaleString()}`
     }
 
-    if (metadata?.showModelName && message.modelId) {
-      const modelName = modelNameMap.get(message.modelId) || message.modelId
+    if (metadata?.showModelName && message.llmId) {
+      const modelName = modelNameMap.get(message.llmId) || message.llmId
       header += ` (${modelName})`
     }
 
@@ -131,9 +131,9 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
     lines.push('')
 
     // Add reasoning content if enabled
-    if (metadata?.showReasoningContent && message.reasoning_content) {
+    if (metadata?.showReasoningContent && message.reasoning) {
       lines.push('--- 思考过程 > 开始 ---')
-      lines.push(message.reasoning_content)
+      lines.push(message.reasoning)
       lines.push('--- 思考过程 > 结束---')
       lines.push('')
     }
@@ -152,13 +152,13 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
  * Get messages directly within a topic (excluding sub-topics)
  */
 function getDirectTopicMessages(
-  messages: import('../../../../types/type').ChatMessage[],
+  messages: import('@renderer/types/shared').ChatMessage[],
   startMessageId: string,
   endMessageId: string | undefined,
   allTopicStartIds: Set<string>
-): import('../../../../types/type').ChatMessage[] {
+): import('@renderer/types/shared').ChatMessage[] {
   const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const result: import('../../../../types/type').ChatMessage[] = []
+  const result: import('@renderer/types/shared').ChatMessage[] = []
   const visited = new Set<string>()
 
   function collect(id: string): void {

@@ -8,7 +8,7 @@ import { ReasoningContent } from './ReasoningContent'
 import { MessageContent } from './MessageContent'
 import { MessageActions } from './MessageActions'
 import { MessageAttachments } from '../MessageAttachments'
-import type { FileAttachment } from '../../../../types/type'
+import type { AttachmentRef } from '@renderer/types/shared'
 import type { MessageItemProps, TitleRowRef, TopicHeaderRef } from './types'
 import '../MessageItem.css'
 
@@ -17,8 +17,7 @@ export const MessageItem = React.memo(function MessageItem({
   isLast,
   isLeaf,
   isStreaming,
-  streamingContent,
-  streamingReasoning,
+  pageId,
   branchIndex,
   branchCount,
   siblings,
@@ -32,11 +31,11 @@ export const MessageItem = React.memo(function MessageItem({
   // 编辑状态
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
-  const [editAttachments, setEditAttachments] = useState<FileAttachment[]>([])
+  const [editAttachments, setEditAttachments] = useState<AttachmentRef[]>([])
   const [copied, setCopied] = useState(false)
 
   // 推理内容展开状态
-  const [reasoningExpanded, setReasoningExpanded] = useState(!!isStreaming && !!streamingReasoning)
+  const [reasoningExpanded, setReasoningExpanded] = useState(!!isStreaming && !!message.reasoning)
   const wasStreaming = useRef(isStreaming)
   const userToggledReasoning = useRef(false)
 
@@ -49,8 +48,9 @@ export const MessageItem = React.memo(function MessageItem({
   const isAssistant = message.role === 'assistant'
 
   // 显示内容
-  const displayContent = isStreaming ? (streamingContent ?? '') : message.content
-  const displayReasoning = isStreaming ? streamingReasoning : message.reasoning_content
+  // 流式内容由内核事件直接写入消息本体，这里始终展示权威内容
+  const displayContent = message.content
+  const displayReasoning = message.reasoning
 
   // 折叠预览文本
   const collapsedPreview = useMemo(() => {
@@ -62,12 +62,12 @@ export const MessageItem = React.memo(function MessageItem({
 
   // streaming 时有 reasoning 就展开
   useEffect(() => {
-    if (isStreaming && streamingReasoning && !userToggledReasoning.current) {
+    if (isStreaming && message.reasoning && !userToggledReasoning.current) {
       if (!reasoningExpanded) {
         setReasoningExpanded(true)
       }
     }
-  }, [isStreaming, streamingReasoning, reasoningExpanded])
+  }, [isStreaming, message.reasoning, reasoningExpanded])
 
   // streaming 结束后自动折叠
   useEffect(() => {
@@ -211,6 +211,7 @@ export const MessageItem = React.memo(function MessageItem({
 
             {/* 消息内容 */}
             <MessageContent
+              pageId={pageId}
               message={message}
               displayContent={displayContent}
               isUser={isUser}

@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
-import type { ConfigFolder, ConfigItemBase } from '../../types/type'
+import type { ConfigFolder, ConfigItemBase } from '@renderer/types/shared'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import './ConfigTree.css'
 

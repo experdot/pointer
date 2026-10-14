@@ -3,8 +3,10 @@ import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete } from 'antd
 import { ApiOutlined } from '@ant-design/icons'
 import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
-import { AIService } from '../../../services/aiService'
-import type { LLMConfig, ConfigFolder } from '../../../types/type'
+import { query } from '../../../runtime/client'
+import { useSettingsStore } from '../../../stores/settingsStore'
+import { useDraftField } from '../../../hooks/useDraftField'
+import type { LLMConfig, ConfigFolder } from '@renderer/types/shared'
 
 const BASE_URL_PRESETS = [
   { value: 'https://api.openai.com/v1', label: 'OpenAI' },
@@ -37,16 +39,27 @@ export function LLMConfigPanel(): React.JSX.Element {
   const selectedConfig = items.find((c) => c.id === selectedId)
   const modelOptions = selectedId ? modelOptionsMap[selectedId] || [] : []
 
-  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => item.type !== 'folder'
+  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => item.kind === 'item'
+
+  // 文本字段用本地草稿：中文输入法组词期间不被内核回推覆盖
+  const nameField = useDraftField(selectedConfig?.name ?? '', (next) =>
+    selectedConfig ? updateConfig(selectedConfig.id, { name: next }) : undefined
+  )
+  const baseUrlField = useDraftField(selectedConfig?.baseUrl ?? '', (next) =>
+    selectedConfig ? updateConfig(selectedConfig.id, { baseUrl: next }) : undefined
+  )
+  const modelNameField = useDraftField(selectedConfig?.modelName ?? '', (next) =>
+    selectedConfig ? updateConfig(selectedConfig.id, { modelName: next }) : undefined
+  )
 
   const handleTest = async (config: LLMConfig): Promise<void> => {
     setTesting(true)
     try {
-      const result = await window.api.ai.testConnection(config)
-      if (result.success) {
+      const result = await query('ai.test', { llmId: config.id })
+      if (result.ok) {
         message.success('连接成功')
       } else {
-        message.error(result.error || '连接失败')
+        message.error(result.message || '连接失败')
       }
     } catch {
       message.error('测试失败')
@@ -59,9 +72,11 @@ export function LLMConfigPanel(): React.JSX.Element {
     if (fetchingModels) return
     setFetchingModels(true)
     try {
-      const result = await AIService.getModels(config)
-      if (result.success && result.models) {
-        setModelOptionsMap((prev) => ({ ...prev, [config.id]: result.models! }))
+      const result = await query('ai.models', { llmId: config.id })
+      if (result.models.length > 0) {
+        setModelOptionsMap((prev) => ({ ...prev, [config.id]: result.models }))
+      } else if (result.error) {
+        message.error(result.error)
       }
     } catch {
       // 静默失败，保留旧列表
@@ -73,7 +88,7 @@ export function LLMConfigPanel(): React.JSX.Element {
   const handleCopyAsText = (config: LLMConfig): void => {
     const text = `名称: ${config.name}
 API Base URL: ${config.baseUrl}
-API Key: ${config.apiKey}
+API Key: ${config.hasApiKey ? '(已配置)' : '(未配置)'}
 模型名称: ${config.modelName}`
     navigator.clipboard.writeText(text)
     message.success('已复制到剪贴板')
@@ -91,11 +106,7 @@ API Key: ${config.apiKey}
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
         createItem={(inFolderId) =>
-          createConfig(
-            { type: 'item', name: '新配置', baseUrl: '', apiKey: '', modelName: '' },
-            undefined,
-            inFolderId
-          )
+          createConfig({ name: '新配置', baseUrl: '', modelName: '' }, undefined, inFolderId)
         }
         updateItem={updateConfig}
         deleteItem={deleteConfig}
@@ -115,31 +126,47 @@ API Key: ${config.apiKey}
           <Form layout="vertical" key={selectedConfig.id}>
             <Form.Item label="名称">
               <Input
-                value={selectedConfig.name}
-                onChange={(e) => updateConfig(selectedConfig.id, { name: e.target.value })}
+                value={nameField.value}
+                onChange={(e) => nameField.setValue(e.target.value)}
+                onFocus={nameField.handlers.onFocus}
+                onBlur={nameField.handlers.onBlur}
+                onCompositionStart={nameField.handlers.onCompositionStart}
+                onCompositionEnd={nameField.handlers.onCompositionEnd}
               />
             </Form.Item>
             <Form.Item label="API Base URL">
               <AutoComplete
-                value={selectedConfig.baseUrl}
-                onChange={(v) => updateConfig(selectedConfig.id, { baseUrl: v })}
+                value={baseUrlField.value}
+                onChange={(v) => baseUrlField.setValue(v)}
+                onFocus={baseUrlField.handlers.onFocus}
+                onBlur={baseUrlField.handlers.onBlur}
                 options={BASE_URL_PRESETS}
                 placeholder="选择或输入 API Base URL"
               />
             </Form.Item>
             <Form.Item label="API Key">
               <Input.Password
-                value={selectedConfig.apiKey}
-                onChange={(e) => updateConfig(selectedConfig.id, { apiKey: e.target.value })}
+                placeholder={selectedConfig.hasApiKey ? '已配置，输入以覆盖' : '尚未配置'}
+                onBlur={async (event) => {
+                  const value = event.target.value.trim()
+                  if (!value) return
+                  await useSettingsStore.getState().setApiKey(selectedConfig.id, value)
+                  event.target.value = ''
+                  message.success('密钥已加密保存')
+                }}
               />
             </Form.Item>
             <Form.Item label="模型名称">
               <AutoComplete
-                value={selectedConfig.modelName}
-                onChange={(v) => updateConfig(selectedConfig.id, { modelName: v })}
+                value={modelNameField.value}
+                onChange={(v) => modelNameField.setValue(v)}
                 options={modelOptions.map((m) => ({ value: m, label: m }))}
                 placeholder="选择或输入模型名称"
-                onFocus={() => handleFetchModels(selectedConfig)}
+                onFocus={() => {
+                  modelNameField.handlers.onFocus()
+                  handleFetchModels(selectedConfig)
+                }}
+                onBlur={modelNameField.handlers.onBlur}
                 filterOption={(input, option) =>
                   (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
                 }

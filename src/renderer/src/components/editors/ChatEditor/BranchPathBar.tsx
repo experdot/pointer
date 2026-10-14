@@ -11,7 +11,7 @@ import {
   RobotOutlined
 } from '@ant-design/icons'
 import { OutlineDropdown } from './OutlineDropdown'
-import type { ChatMessage, OutlineNode } from '../../../types/type'
+import type { ChatMessage, OutlineNode } from '@renderer/types/shared'
 import type { GenerateOptions } from '../../common/AIGeneratePopover'
 import {
   formatShortcutTooltip,

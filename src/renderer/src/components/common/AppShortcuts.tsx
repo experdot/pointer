@@ -140,7 +140,7 @@ export function AppShortcuts(): null {
   )
 
   useEffect(() => {
-    return window.api.shortcuts.onAction((action) => {
+    return window.shortcuts.onAction((action) => {
       void dispatchForwardedShortcutAction(action)
     })
   }, [])

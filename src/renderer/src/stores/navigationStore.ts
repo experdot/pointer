@@ -4,11 +4,30 @@
  */
 
 import { create } from 'zustand'
-import type {
-  INavigationStore,
-  NavigationRequest,
-  RelativeNavigationRequest
-} from './interfaces/navigation'
+
+export interface NavigationRequest {
+  pageId: string
+  messageId: string
+  instant?: boolean
+  requestScroll?: boolean
+  version: number
+}
+
+export interface RelativeNavigationRequest {
+  pageId: string
+  direction: 'prev' | 'next'
+  version: number
+}
+
+interface INavigationStore {
+  pendingNavigation: NavigationRequest | null
+  pendingRelativeNavigation: RelativeNavigationRequest | null
+  requestNavigation: (request: NavigationRequest) => void
+  requestRelativeNavigation: (request: RelativeNavigationRequest) => void
+  clearNavigation: (version: number) => void
+  clearRelativeNavigation: (version: number) => void
+  reset: () => void
+}
 
 interface NavigationState {
   pendingNavigation: NavigationRequest | null

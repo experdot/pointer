@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { Markdown } from './Markdown'
 import { screenshotElement } from '../../../utils/screenshot'
 import { copyToClipboard } from './utils'
+import { command } from '../../../runtime/client'
 import './tableViewModal.scss'
 
 interface TableViewModalProps {
@@ -37,9 +38,9 @@ export default function TableViewModal({
     const csv = convertTableHtmlToCSV(tableHtml)
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
     try {
-      await window.api.saveFile({
+      await command('dialog.saveFile', {
+        suggestedName: `table-${timestamp}.csv`,
         content: csv,
-        defaultPath: `table-${timestamp}.csv`,
         filters: [
           { name: 'CSV Files', extensions: ['csv'] },
           { name: 'All Files', extensions: ['*'] }
@@ -108,9 +109,10 @@ export default function TableViewModal({
       const buffer = new Uint8Array(await blob.arrayBuffer())
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
 
-      await window.api.saveFile({
-        content: buffer,
-        defaultPath: `table-${timestamp}.png`,
+      await command('dialog.saveFile', {
+        suggestedName: `table-${timestamp}.png`,
+        content: Buffer.from(buffer).toString('base64'),
+        encoding: 'base64',
         filters: [
           { name: 'PNG Images', extensions: ['png'] },
           { name: 'All Files', extensions: ['*'] }

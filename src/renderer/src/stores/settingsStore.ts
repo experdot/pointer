@@ -1,40 +1,33 @@
+/**
+ * 设置 Store
+ *
+ * 配置树的修改用领域层纯函数计算，再整体提交给内核；
+ * 本地先乐观更新以保证输入跟手，内核回推 settings.changed 后以权威结果覆盖。
+ */
+
 import { create } from 'zustand'
-import { persistence } from '../persistence/registry'
-import { getCurrentAccountScope } from '../persistence/scope'
-import { getSettingsQueue } from './persistenceQueue'
 import type {
-  Settings,
-  ConfigTree,
   ConfigFolder,
   ConfigItemBase,
+  ConfigTree,
   LLMConfig,
-  ModelConfig
-} from '../types/type'
-import type { ISettingsStore } from './interfaces/ui'
+  ModelConfig,
+  Settings
+} from '@shared/domain'
 import {
-  updateTreeItem,
-  updateTreeFolder,
-  removeTreeFolder,
-  clearTreeFolder,
-  removeTreeItem,
-  addTreeItem,
-  addTreeFolder,
-  batchUpdateTreeItems,
-  batchUpdateTreeFolders
-} from '../utils/treeUtils'
-
-// 空树结构
-const emptyTree = <T extends ConfigItemBase>(): ConfigTree<T> => ({
-  items: [],
-  folders: []
-})
-
-// 初始设置
-const initialSettings: Settings = {
-  fontSize: 'medium',
-  llmConfigs: emptyTree<LLMConfig>(),
-  modelConfigs: emptyTree<ModelConfig>()
-}
+  addConfigFolder,
+  addConfigItem,
+  batchUpdateConfigFolders,
+  batchUpdateConfigItems,
+  clearConfigFolder,
+  defaultSettings,
+  emptyConfigTree,
+  removeConfigFolder,
+  removeConfigItem,
+  updateConfigFolder,
+  updateConfigItem
+} from '@shared/domain'
+import { command, query } from '../runtime/client'
 
 interface SettingsState {
   settings: Settings
@@ -42,16 +35,13 @@ interface SettingsState {
 }
 
 interface SettingsActions {
-  // 初始化
   init: () => Promise<void>
 
-  // 基础设置
   setFontSize: (fontSize: Settings['fontSize']) => void
   setDefaultLLMId: (id: string | undefined) => void
   setDefaultModelConfigId: (id: string | undefined) => void
   setAutoCheckUpdate: (enabled: boolean) => void
 
-  // LLM 配置
   addLLMConfig: (config: LLMConfig) => void
   updateLLMConfig: (id: string, changes: Partial<LLMConfig>) => void
   removeLLMConfig: (id: string) => void
@@ -64,7 +54,6 @@ interface SettingsActions {
     updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
   ) => void
 
-  // Model 配置
   addModelConfig: (config: ModelConfig) => void
   updateModelConfig: (id: string, changes: Partial<ModelConfig>) => void
   removeModelConfig: (id: string) => void
@@ -77,313 +66,135 @@ interface SettingsActions {
     updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
   ) => void
 
-  // 重置
-  reset: () => Promise<void>
+  setApiKey: (llmId: string, apiKey: string) => Promise<void>
+  deleteApiKey: (llmId: string) => Promise<void>
+
+  /** 立即把待写入的设置提交给内核（切换账户/工作区前、窗口关闭前调用） */
+  flush: () => void
+  reset: () => void
 }
 
 type SettingsStore = SettingsState & SettingsActions
 
-// 持久化辅助函数
-const persist = (settings: Settings): void => {
-  const scope = getCurrentAccountScope()
-  getSettingsQueue(scope).enqueue('settings', settings)
-}
+/** 设置落盘去抖，与迁移前的写入队列保持一致 */
+const SETTINGS_WRITE_DELAY = 300
 
-export const useSettingsStore = create<SettingsStore>((set) => ({
-  settings: initialSettings,
-  initialized: false,
+export const useSettingsStore = create<SettingsStore>((set, get) => {
+  /**
+   * 待写入的设置文档
+   *
+   * 迁移前的设置写入有 300ms 去抖；迁移后每个按键都直接走
+   * "命令 → 内核写盘（fsync） → 事件回推"，输入时明显卡顿。
+   * 这里恢复去抖：内存立即更新，落盘合并到一次。
+   */
+  let pending: Settings | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
 
-  init: async () => {
-    const settings = await persistence.account(getCurrentAccountScope()).settings.get()
-    set({
-      settings: settings ? { ...initialSettings, ...settings } : initialSettings,
-      initialized: true
+  const flush = (): void => {
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
+    }
+    const next = pending
+    pending = null
+    if (!next) return
+
+    void command('settings.replace', { settings: next }).catch((error) => {
+      console.warn('[settings] 保存失败：', error)
     })
-  },
-
-  // 基础设置
-  setFontSize: (fontSize) => {
-    set((state) => {
-      const settings = { ...state.settings, fontSize }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  setDefaultLLMId: (id) => {
-    set((state) => {
-      const settings = { ...state.settings, defaultLLMId: id }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  setDefaultModelConfigId: (id) => {
-    set((state) => {
-      const settings = { ...state.settings, defaultModelConfigId: id }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  setAutoCheckUpdate: (enabled) => {
-    set((state) => {
-      const settings = { ...state.settings, autoCheckUpdate: enabled }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  // LLM 配置
-  addLLMConfig: (config) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: addTreeItem(state.settings.llmConfigs, config)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updateLLMConfig: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: updateTreeItem(state.settings.llmConfigs, id, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removeLLMConfig: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: removeTreeItem(state.settings.llmConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  addLLMConfigFolder: (folder) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: addTreeFolder(state.settings.llmConfigs, folder)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updateLLMConfigFolder: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: updateTreeFolder(
-          state.settings.llmConfigs,
-          id,
-          updates
-        ) as ConfigTree<LLMConfig>
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removeLLMConfigFolder: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: removeTreeFolder(state.settings.llmConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  clearLLMConfigFolder: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: clearTreeFolder(state.settings.llmConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdateLLMConfigs: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: batchUpdateTreeItems(state.settings.llmConfigs, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdateLLMConfigFolders: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        llmConfigs: batchUpdateTreeFolders(state.settings.llmConfigs, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  // Model 配置
-  addModelConfig: (config) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: addTreeItem(state.settings.modelConfigs, config)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updateModelConfig: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: updateTreeItem(state.settings.modelConfigs, id, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removeModelConfig: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: removeTreeItem(state.settings.modelConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  addModelConfigFolder: (folder) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: addTreeFolder(state.settings.modelConfigs, folder)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  updateModelConfigFolder: (id, updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: updateTreeFolder(
-          state.settings.modelConfigs,
-          id,
-          updates
-        ) as ConfigTree<ModelConfig>
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  removeModelConfigFolder: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: removeTreeFolder(state.settings.modelConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  clearModelConfigFolder: (id) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: clearTreeFolder(state.settings.modelConfigs, id)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdateModelConfigs: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: batchUpdateTreeItems(state.settings.modelConfigs, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  batchUpdateModelConfigFolders: (updates) => {
-    set((state) => {
-      const settings = {
-        ...state.settings,
-        modelConfigs: batchUpdateTreeFolders(state.settings.modelConfigs, updates)
-      }
-      persist(settings)
-      return { settings }
-    })
-  },
-
-  reset: async () => {
-    // Only reset memory state, don't clear persistence data
-    set({ settings: initialSettings, initialized: false })
   }
-}))
 
-/**
- * 获取设置 Store 的接口实现
- */
-export function getSettingsStoreInterface(): ISettingsStore {
-  const store = useSettingsStore
+  /** 乐观更新内存状态，落盘去抖合并 */
+  const commit = (settings: Settings): void => {
+    set({ settings, initialized: true })
+    pending = settings
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(flush, SETTINGS_WRITE_DELAY)
+  }
+
+  const mutate = (mutator: (settings: Settings, at: number) => Settings): void => {
+    commit(mutator(get().settings, Date.now()))
+  }
+
+  const mutateLlmTree = (
+    mutator: (tree: ConfigTree<LLMConfig>, at: number) => ConfigTree<LLMConfig>
+  ): void => {
+    mutate((settings, at) => ({ ...settings, llmConfigs: mutator(settings.llmConfigs, at) }))
+  }
+
+  const mutateModelTree = (
+    mutator: (tree: ConfigTree<ModelConfig>, at: number) => ConfigTree<ModelConfig>
+  ): void => {
+    mutate((settings, at) => ({ ...settings, modelConfigs: mutator(settings.modelConfigs, at) }))
+  }
+
   return {
-    get initialized() {
-      return store.getState().initialized
+    settings: defaultSettings(),
+    initialized: false,
+
+    init: async () => {
+      const settings = await query('settings.get', undefined)
+      set({ settings, initialized: true })
     },
-    get settings() {
-      return store.getState().settings
-    },
-    init: () => store.getState().init(),
-    reset: () => store.getState().reset(),
-    setFontSize: (size) => store.getState().setFontSize(size),
-    setDefaultLLMId: (id) => store.getState().setDefaultLLMId(id),
-    setDefaultModelConfigId: (id) => store.getState().setDefaultModelConfigId(id),
-    setAutoCheckUpdate: (enabled) => store.getState().setAutoCheckUpdate(enabled),
-    addLLMConfig: (config) => store.getState().addLLMConfig(config),
-    updateLLMConfig: (id, changes) => store.getState().updateLLMConfig(id, changes),
-    removeLLMConfig: (id) => store.getState().removeLLMConfig(id),
-    addLLMConfigFolder: (folder) => store.getState().addLLMConfigFolder(folder),
-    updateLLMConfigFolder: (id, changes) => store.getState().updateLLMConfigFolder(id, changes),
-    removeLLMConfigFolder: (id) => store.getState().removeLLMConfigFolder(id),
-    clearLLMConfigFolder: (id) => store.getState().clearLLMConfigFolder(id),
-    addModelConfig: (config) => store.getState().addModelConfig(config),
-    updateModelConfig: (id, changes) => store.getState().updateModelConfig(id, changes),
-    removeModelConfig: (id) => store.getState().removeModelConfig(id),
-    addModelConfigFolder: (folder) => store.getState().addModelConfigFolder(folder),
-    updateModelConfigFolder: (id, changes) => store.getState().updateModelConfigFolder(id, changes),
-    removeModelConfigFolder: (id) => store.getState().removeModelConfigFolder(id),
-    clearModelConfigFolder: (id) => store.getState().clearModelConfigFolder(id),
-    batchUpdateLLMConfigs: (updates) => store.getState().batchUpdateLLMConfigs(updates),
-    batchUpdateLLMConfigFolders: (updates) => store.getState().batchUpdateLLMConfigFolders(updates),
-    batchUpdateModelConfigs: (updates) => store.getState().batchUpdateModelConfigs(updates),
+
+    setFontSize: (fontSize) => mutate((settings) => ({ ...settings, fontSize })),
+    setDefaultLLMId: (id) => mutate((settings) => ({ ...settings, defaultLLMId: id })),
+    setDefaultModelConfigId: (id) =>
+      mutate((settings) => ({ ...settings, defaultModelConfigId: id })),
+    setAutoCheckUpdate: (enabled) =>
+      mutate((settings) => ({ ...settings, autoCheckUpdate: enabled })),
+
+    addLLMConfig: (config) => mutateLlmTree((tree) => addConfigItem(tree, config)),
+    updateLLMConfig: (id, changes) =>
+      mutateLlmTree((tree, at) => updateConfigItem(tree, id, changes, at)),
+    removeLLMConfig: (id) => mutateLlmTree((tree) => removeConfigItem(tree, id)),
+    addLLMConfigFolder: (folder) => mutateLlmTree((tree) => addConfigFolder(tree, folder)),
+    updateLLMConfigFolder: (id, changes) =>
+      mutateLlmTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
+    removeLLMConfigFolder: (id) => mutateLlmTree((tree) => removeConfigFolder(tree, id, 'promote')),
+    clearLLMConfigFolder: (id) => mutateLlmTree((tree) => clearConfigFolder(tree, id)),
+    batchUpdateLLMConfigs: (updates) =>
+      mutateLlmTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
+    batchUpdateLLMConfigFolders: (updates) =>
+      mutateLlmTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
+
+    addModelConfig: (config) => mutateModelTree((tree) => addConfigItem(tree, config)),
+    updateModelConfig: (id, changes) =>
+      mutateModelTree((tree, at) => updateConfigItem(tree, id, changes, at)),
+    removeModelConfig: (id) => mutateModelTree((tree) => removeConfigItem(tree, id)),
+    addModelConfigFolder: (folder) => mutateModelTree((tree) => addConfigFolder(tree, folder)),
+    updateModelConfigFolder: (id, changes) =>
+      mutateModelTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
+    removeModelConfigFolder: (id) =>
+      mutateModelTree((tree) => removeConfigFolder(tree, id, 'promote')),
+    clearModelConfigFolder: (id) => mutateModelTree((tree) => clearConfigFolder(tree, id)),
+    batchUpdateModelConfigs: (updates) =>
+      mutateModelTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
     batchUpdateModelConfigFolders: (updates) =>
-      store.getState().batchUpdateModelConfigFolders(updates)
+      mutateModelTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
+
+    setApiKey: async (llmId, apiKey) => {
+      await command('secrets.setApiKey', { llmId, apiKey })
+    },
+
+    deleteApiKey: async (llmId) => {
+      await command('secrets.deleteApiKey', { llmId })
+    },
+
+    flush,
+
+    reset: () => {
+      // 丢弃待写入内容，避免上一个账户的设置写到新账户
+      pending = null
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      set({ settings: defaultSettings(), initialized: false })
+    }
   }
-}
+})
+
+/** 供纯逻辑复用的空树构造 */
+export const createEmptyConfigTree = <T extends ConfigItemBase>(): ConfigTree<T> =>
+  emptyConfigTree<T>()

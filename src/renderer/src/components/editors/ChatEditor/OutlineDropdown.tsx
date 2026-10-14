@@ -12,7 +12,7 @@ import {
   DownOutlined
 } from '@ant-design/icons'
 import { AIGeneratePopover, type GenerateOptions } from '../../common/AIGeneratePopover'
-import type { OutlineNode } from '../../../types/type'
+import type { OutlineNode } from '@renderer/types/shared'
 import './OutlineDropdown.css'
 
 // 空心圆点图标（用于无标题消息）

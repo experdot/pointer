@@ -1,16 +1,13 @@
 import { create } from 'zustand'
-import { persistence } from '../persistence/registry'
-import { getCurrentAccountScope } from '../persistence/scope'
-import { getLayoutQueue } from './persistenceQueue'
-import type { ActivityPanel, LayoutRecord } from '../persistence/interfaces/userData'
-import type { ILayoutStore } from './interfaces/ui'
+import type { ActivityPanel, LayoutState } from '@shared/contracts'
+import { useViewStateStore } from './viewStateStore'
 
-export type { ActivityPanel } from '../persistence/interfaces/userData'
+export type { ActivityPanel, LayoutState }
 
 // 紧凑模式阈值
 const COMPACT_MODE_THRESHOLD = 768
 
-interface LayoutState extends LayoutRecord {
+interface LayoutStateInternal extends LayoutState {
   minSidebarWidth: number
   maxSidebarWidth: number
   initialized: boolean
@@ -28,26 +25,27 @@ interface LayoutActions {
   reset: () => Promise<void>
 }
 
-type LayoutStore = LayoutState & LayoutActions
+type LayoutStore = LayoutStateInternal & LayoutActions
 
-const initialState: LayoutState = {
+const initialState: LayoutStateInternal = {
   sidebarWidth: 260,
   sidebarVisible: true,
   activePanel: 'explorer',
   minSidebarWidth: 200,
   maxSidebarWidth: 500,
   initialized: false,
-  isCompactMode: window.innerWidth < COMPACT_MODE_THRESHOLD
+  isCompactMode: typeof window === 'undefined' ? false : window.innerWidth < COMPACT_MODE_THRESHOLD
 }
 
 const validActivePanels: ActivityPanel[] = ['explorer', 'search', 'favorites']
 
-const persist = (state: LayoutState): void => {
-  const scope = getCurrentAccountScope()
-  getLayoutQueue(scope).enqueue('layout', {
-    sidebarWidth: state.sidebarWidth,
-    sidebarVisible: state.sidebarVisible,
-    activePanel: state.activePanel
+const persist = (state: LayoutStateInternal): void => {
+  useViewStateStore.getState().patch({
+    layout: {
+      sidebarWidth: state.sidebarWidth,
+      sidebarVisible: state.sidebarVisible,
+      activePanel: state.activePanel
+    }
   })
 }
 
@@ -55,13 +53,13 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   ...initialState,
 
   init: async () => {
-    const layout = await persistence.account(getCurrentAccountScope()).layout.get()
+    const layout = useViewStateStore.getState().viewState.layout
     const activePanel =
       layout && validActivePanels.includes(layout.activePanel)
         ? layout.activePanel
         : initialState.activePanel
     set({
-      ...(layout ?? {}),
+      ...layout,
       activePanel,
       initialized: true
     })
@@ -114,41 +112,3 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     set(initialState)
   }
 }))
-
-/**
- * 获取布局 Store 的接口实现
- */
-export function getLayoutStoreInterface(): ILayoutStore {
-  const store = useLayoutStore
-  return {
-    get initialized() {
-      return store.getState().initialized
-    },
-    get sidebarWidth() {
-      return store.getState().sidebarWidth
-    },
-    get sidebarVisible() {
-      return store.getState().sidebarVisible
-    },
-    get activePanel() {
-      return store.getState().activePanel
-    },
-    get isCompactMode() {
-      return store.getState().isCompactMode
-    },
-    get minSidebarWidth() {
-      return store.getState().minSidebarWidth
-    },
-    get maxSidebarWidth() {
-      return store.getState().maxSidebarWidth
-    },
-    init: () => store.getState().init(),
-    reset: () => store.getState().reset(),
-    setSidebarWidth: (width) => store.getState().setSidebarWidth(width),
-    setSidebarVisible: (visible) => store.getState().setSidebarVisible(visible),
-    toggleSidebar: () => store.getState().toggleSidebar(),
-    setActivePanel: (panel) => store.getState().setActivePanel(panel),
-    revealPanel: (panel) => store.getState().revealPanel(panel),
-    setCompactMode: (isCompact) => store.getState().setCompactMode(isCompact)
-  }
-}

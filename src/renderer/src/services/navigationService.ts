@@ -1,4 +1,5 @@
-import { stores } from '../stores/registry'
+import { useMessagesStore } from '../stores/messagesStore'
+import { useNavigationStore } from '../stores/navigationStore'
 import * as messagesService from './messagesService'
 import * as pagesService from './pagesService'
 
@@ -33,7 +34,7 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
   }
 
   // Step 2: 确保消息数据已加载
-  const record = await stores.message.load(pageId)
+  const record = await useMessagesStore.getState().load(pageId)
 
   // Step 3: 检查消息是否在当前路径中
   const currentPath = messagesService.getMessagePath(record.messages, record.leafMessageId)
@@ -51,10 +52,12 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
   // Step 6: 请求 UI 执行滚动
   if (requestScroll) {
     navigationVersion++
-    stores.navigation.requestNavigation({
+    useNavigationStore.getState().requestNavigation({
       version: navigationVersion,
-      target: { pageId, messageId, instant },
-      timestamp: Date.now()
+      pageId,
+      messageId,
+      instant,
+      requestScroll
     })
   }
 }
@@ -65,7 +68,7 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
  * 获取包含指定消息的所有折叠 Topic ID
  */
 export function getCollapsedTopicsForMessage(pageId: string, messageId: string): string[] {
-  const record = stores.message.get(pageId)
+  const record = useMessagesStore.getState().get(pageId)
   if (!record) return []
 
   const topics = record.topics ?? []
@@ -101,11 +104,10 @@ export async function expandTopicsForMessage(pageId: string, messageId: string):
  */
 export function requestScrollToPrev(pageId: string): void {
   navigationVersion++
-  stores.navigation.requestRelativeNavigation({
+  useNavigationStore.getState().requestRelativeNavigation({
     version: navigationVersion,
     direction: 'prev',
-    pageId,
-    timestamp: Date.now()
+    pageId
   })
 }
 
@@ -114,10 +116,9 @@ export function requestScrollToPrev(pageId: string): void {
  */
 export function requestScrollToNext(pageId: string): void {
   navigationVersion++
-  stores.navigation.requestRelativeNavigation({
+  useNavigationStore.getState().requestRelativeNavigation({
     version: navigationVersion,
     direction: 'next',
-    pageId,
-    timestamp: Date.now()
+    pageId
   })
 }

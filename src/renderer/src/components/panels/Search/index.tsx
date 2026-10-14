@@ -5,7 +5,7 @@ import { useGlobalSearch } from '../../../hooks/useGlobalSearch'
 import { SearchInput } from './SearchInput'
 import { SearchOptions } from './SearchOptions'
 import { SearchResults } from './SearchResults'
-import type { GlobalSearchMatch } from '../../../types/type'
+import type { SearchMatch } from '@renderer/types/shared'
 import './index.css'
 
 export function Search(): React.JSX.Element {
@@ -14,7 +14,7 @@ export function Search(): React.JSX.Element {
   const { navigateToResult } = useGlobalSearch()
 
   const handleItemClick = useCallback(
-    (match: GlobalSearchMatch, pageIndex: number, messageIndex: number, matchIndex: number) => {
+    (match: SearchMatch, pageIndex: number, messageIndex: number, matchIndex: number) => {
       setSelectedIndex([pageIndex, messageIndex, matchIndex])
       navigateToResult(match)
     },

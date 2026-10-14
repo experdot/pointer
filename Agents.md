@@ -17,6 +17,8 @@ pnpm start            # Run preview mode
 pnpm lint             # Run ESLint
 pnpm format           # Run Prettier
 pnpm typecheck        # Type check both main and renderer processes
+pnpm test             # Run unit tests (domain + renderer mirror)
+pnpm smoke:kernel     # Boot the kernel in a temp dir and verify the full command/query chain
 
 # Building
 pnpm build            # Build with type checking
@@ -34,26 +36,36 @@ pnpm release:draft    # Build for release testing (no publish)
 
 ### Three-Tier Electron Structure
 
-- **Main Process** (`src/main/`): Window management, IPC handlers, AI API streaming
-- **Preload** (`src/preload/`): Context bridge exposing APIs to renderer
-- **Renderer** (`src/renderer/src/`): React application
+- **Domain** (`src/shared/domain/`): pure TypeScript entities, invariants and algorithms
+  (message tree, topics, workspace layout, `.pointer.md` codec, importers). No Electron, no IO.
+- **Contracts** (`src/shared/contracts/`): the single `RuntimePort` surface — queries, commands, events.
+- **Kernel** (`src/main/runtime/`): system of record. Owns persistence (atomic writes), the SQLite
+  index, sessions, AI streaming, search, attachments and secrets. Exposed to the renderer only
+  through `src/main/ipc/runtimeIpc.ts`.
+- **Presentation** (`src/renderer/src/`): React UI holding view state plus a mirror of kernel state
+  fed by events. It never touches paths, files or the filesystem.
+- **Preload** (`src/preload/`): exposes `window.runtime` (query/command/subscribe),
+  `window.electronWindow` and `window.shortcuts` only.
+
+Data flow: UI → `services/*` → `stores/*` → `runtime/client` → kernel command → kernel event →
+mirror store → UI. See `docs/architecture.md` for the rationale and migration status.
 
 ### Renderer Organization
 
 ```
+ runtime/      # 内核客户端与镜像装配（client.ts, bootstrap.ts, generation.ts）
 components/
   layout/       # MainLayout, ActivityBar, Sidebar, EditorArea, Tabs, TitleBar
   editors/      # ChatEditor, SettingsEditor, ExportEditor, WelcomePage
   panels/       # Explorer (conversation tree), Search
   common/       # Reusable components
 
-stores/         # Zustand stores (messagesStore, pagesStore, settingsStore, etc.)
-services/       # Business logic (aiService, messagesService, pagesService, etc.)
+stores/         # Zustand mirrors + view state (messagesStore, pagesStore, settingsStore, etc.)
+services/       # Thin wrappers that issue kernel commands (messagesService, pagesService, ...)
 hooks/          # Custom hooks (useChat, useChatStreaming, usePages, etc.)
 utils/          # Utilities including tab registry system
-types/          # TypeScript type definitions (ChatMessage, LLMConfig, Account, etc.)
+types/shared.ts # Re-export of domain + contract types used by the UI
 features/       # Feature modules (export plugins, etc.)
-persistence/    # Data persistence layer initialization
 ```
 
 ### Key Architectural Patterns
@@ -62,9 +74,11 @@ persistence/    # Data persistence layer initialization
 
 2. **Tab Registry System** (`utils/tabRegistry.ts`): Plugin-style registration for different tab types (chat, settings, export, welcome)
 
-3. **State Management**: Zustand stores with Immer for immutable updates, file-based persistence via IPC
+3. **State Management**: Zustand stores hold view state and a mirror of kernel state; all writes go
+   through kernel commands and return as events (no local persistence logic)
 
-4. **AI Streaming**: Main process handles API calls; renderer receives streamed responses via IPC
+4. **AI Streaming**: The kernel owns the request lifecycle; the renderer only reacts to
+   `chat.delta` / `chat.reasoning` / `chat.completed` events
 
 ## Code Style
 
@@ -75,10 +89,15 @@ persistence/    # Data persistence layer initialization
 
 ## Key Files
 
-| File                                       | Purpose                               |
-| ------------------------------------------ | ------------------------------------- |
-| `src/main/aiHandler.ts`                    | AI API streaming and request handling |
-| `src/main/ipcHandlers.ts`                  | IPC event handlers                    |
-| `src/renderer/src/stores/messagesStore.ts` | Message state and tree structure      |
-| `src/renderer/src/hooks/useChat.ts`        | Core chat logic hook                  |
-| `src/renderer/src/utils/tabRegistry.ts`    | Tab type registration system          |
+| File                                       | Purpose                                       |
+| ------------------------------------------ | --------------------------------------------- |
+| `src/shared/domain/index.ts`               | Domain entities, invariants, algorithms       |
+| `src/shared/contracts/queries.ts`          | Query contract (read side)                    |
+| `src/shared/contracts/commands.ts`         | Command contract (write side)                 |
+| `src/main/runtime/RuntimeCore.ts`          | Kernel assembly, session switching, dispatch  |
+| `src/main/runtime/WorkspaceStore.ts`       | Page tree, conversations, disk reconciliation |
+| `src/main/runtime/ChatEngine.ts`           | Streaming lifecycle and queue drain           |
+| `src/renderer/src/runtime/bootstrap.ts`    | Kernel mirror wiring for the UI               |
+| `src/renderer/src/stores/messagesStore.ts` | Conversation mirror and commands              |
+| `src/renderer/src/hooks/useChat.ts`        | Core chat logic hook                          |
+| `src/renderer/src/utils/tabRegistry.ts`    | Tab type registration system                  |

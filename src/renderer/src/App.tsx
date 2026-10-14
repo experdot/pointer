@@ -4,30 +4,28 @@ import zhCN from 'antd/locale/zh_CN'
 import './App.css'
 import { initializeTabTypes } from './utils/tabTypeRegistrations'
 import { initializeExportPlugins } from './features/export'
-import { initStores } from './stores/initStores'
-import { initPersistence } from './persistence/initPersistence'
 import { UpdateNotification } from './components/common/UpdateNotification'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
-import { SwitchTransactionOverlay } from './components/common/SwitchTransactionOverlay'
 import { AppShortcuts } from './components/common/AppShortcuts'
 import { MainLayout } from './components/layout/MainLayout'
-import { useAccountStore } from './stores/accountStore'
-import { useSwitchTransactionStore } from './stores/switchTransactionStore'
-import { initializeAccountSystem } from './services/accountService'
+import { useSessionStore } from './stores/sessionStore'
+import { bootstrapRuntime } from './runtime/bootstrap'
 
-// Initialize plugins and stores
+// 注册插件（页签类型与导出插件）
 initializeTabTypes()
 initializeExportPlugins()
-initPersistence()
-initStores()
 
 function AppContent(): React.JSX.Element {
   const [loading, setLoading] = useState(true)
-  const initialized = useAccountStore((state) => state.initialized)
-  const switchInProgress = useSwitchTransactionStore((state) => state.inProgress)
+  const [error, setError] = useState<string | null>(null)
+  const initialized = useSessionStore((state) => state.initialized)
 
   useEffect(() => {
-    initializeAccountSystem().finally(() => setLoading(false))
+    bootstrapRuntime()
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : String(reason))
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading || !initialized) {
@@ -40,8 +38,14 @@ function AppContent(): React.JSX.Element {
     )
   }
 
-  if (switchInProgress) {
-    return <SwitchTransactionOverlay />
+  if (error) {
+    return (
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}
+      >
+        内核启动失败：{error}
+      </div>
+    )
   }
 
   return (

@@ -1,183 +1,131 @@
 /**
  * 文件夹 Store
- * 管理文件夹列表
+ *
+ * 展开状态保存在 viewState 中，读取时合并到实体上供树组件使用。
  */
 
 import { create } from 'zustand'
-import { v4 as uuidv4 } from 'uuid'
-import { persistence } from '../persistence/registry'
-import { getCurrentWorkspaceScope, tryGetCurrentWorkspaceScope } from '../persistence/scope'
-import { queueFoldersSnapshot } from './persistenceQueue'
-import type { PageFolder } from '../types/type'
-import type { IFolderStore, FolderCreateDTO } from './interfaces/entities'
+import type { Folder } from '@shared/domain'
+import { command } from '../runtime/client'
+import { useViewStateStore } from './viewStateStore'
+
+export interface FolderView extends Folder {
+  expanded: boolean
+}
 
 interface FoldersState {
-  folders: PageFolder[]
+  folders: FolderView[]
   initialized: boolean
 }
 
 interface FoldersActions {
-  // IEntityStore 接口方法
-  init: () => Promise<void>
-  getById: (id: string) => PageFolder | undefined
-  getAll: () => PageFolder[]
-  create: (data: FolderCreateDTO) => Promise<PageFolder>
-  createMany: (data: FolderCreateDTO[]) => Promise<PageFolder[]>
-  update: (id: string, changes: Partial<PageFolder>) => Promise<void>
-  updateMany: (updates: Array<{ id: string; changes: Partial<PageFolder> }>) => Promise<void>
-  delete: (id: string) => Promise<void>
+  setFolders: (folders: Folder[]) => void
+  upsert: (folder: Folder) => void
+  getById: (id: string) => FolderView | undefined
+  getAll: () => FolderView[]
+  findByParentId: (parentId: string | undefined) => FolderView[]
+  create: (input?: {
+    name?: string
+    parentFolderId?: string
+    afterNodeId?: string
+  }) => Promise<Folder>
+  update: (id: string, patch: { name?: string }) => Promise<void>
+  rename: (id: string, name: string) => Promise<void>
+  move: (id: string, targetFolderId?: string, beforeNodeId?: string) => Promise<void>
+  delete: (ids: string | string[], mode?: 'promote' | 'cascade') => Promise<void>
   deleteMany: (ids: string[]) => Promise<void>
-  reset: () => Promise<void>
-  // 扩展方法
-  findByParentId: (parentId: string | undefined) => PageFolder[]
-  toggleExpanded: (id: string) => Promise<void>
+  clear: (id: string) => Promise<void>
+  toggleExpanded: (id: string) => void
+  syncExpanded: (expandedIds: string[]) => void
+  reset: () => void
 }
 
 type FoldersStore = FoldersState & FoldersActions
 
-const initialState: FoldersState = {
-  folders: [],
-  initialized: false
-}
-
-function persistFolders(folders: PageFolder[]): void {
-  queueFoldersSnapshot(getCurrentWorkspaceScope(), folders)
+function withExpanded(folders: Folder[], expandedIds: string[]): FolderView[] {
+  const set = new Set(expandedIds)
+  return folders.map((folder) => ({ ...folder, expanded: set.has(folder.id) }))
 }
 
 export const useFoldersStore = create<FoldersStore>((set, get) => ({
-  ...initialState,
+  folders: [],
+  initialized: false,
 
-  init: async () => {
-    const scope = tryGetCurrentWorkspaceScope()
-    if (!scope) {
-      set(initialState)
-      return
-    }
+  setFolders: (folders) =>
+    set({
+      folders: withExpanded(folders, useViewStateStore.getState().viewState.expandedFolderIds),
+      initialized: true
+    }),
 
-    const folders = await persistence.workspace(scope).folders.getAll()
-    set({ folders, initialized: true })
-  },
+  upsert: (folder) =>
+    set((state) => ({
+      folders: state.folders.some((item) => item.id === folder.id)
+        ? state.folders.map((item) =>
+            item.id === folder.id ? { ...folder, expanded: item.expanded } : item
+          )
+        : [...state.folders, { ...folder, expanded: false }]
+    })),
 
-  getById: (id) => get().folders.find((f) => f.id === id),
+  getById: (id) => get().folders.find((folder) => folder.id === id),
 
   getAll: () => get().folders,
 
-  create: async (data) => {
-    const createdAt = data.createdAt ?? Date.now()
-    const folder: PageFolder = {
-      type: 'folder',
-      id: data.id || uuidv4(),
-      name: data.name,
-      parentFolderId: data.parentFolderId,
-      order: data.order ?? 0,
-      expanded: data.expanded ?? true,
-      createdAt,
-      updatedAt: data.updatedAt
-    }
-    const nextFolders = get().folders.some((item) => item.id === folder.id)
-      ? get().folders.map((item) => (item.id === folder.id ? folder : item))
-      : [...get().folders, folder]
-    persistFolders(nextFolders)
-    set({ folders: nextFolders })
-    return folder
+  findByParentId: (parentId) =>
+    get().folders.filter((folder) => folder.parentFolderId === parentId),
+
+  create: (input) =>
+    command('folder.create', {
+      name: input?.name,
+      parentFolderId: input?.parentFolderId,
+      afterNodeId: input?.afterNodeId
+    }),
+
+  update: async (id, patch) => {
+    await command('folder.update', { folderId: id, patch })
   },
 
-  createMany: async (items) => {
-    if (items.length === 0) return []
-    const folders: PageFolder[] = items.map((data) => ({
-      type: 'folder',
-      id: data.id || uuidv4(),
-      name: data.name,
-      parentFolderId: data.parentFolderId,
-      order: data.order ?? 0,
-      expanded: data.expanded ?? true,
-      createdAt: data.createdAt ?? Date.now(),
-      updatedAt: data.updatedAt
-    }))
-    const folderMap = new Map(get().folders.map((folder) => [folder.id, folder]))
-    folders.forEach((folder) => folderMap.set(folder.id, folder))
-    const nextFolders = Array.from(folderMap.values())
-    persistFolders(nextFolders)
-    set({ folders: nextFolders })
-    return folders
+  rename: async (id, name) => {
+    await command('folder.update', { folderId: id, patch: { name } })
   },
 
-  update: async (id, changes) => {
-    const folder = get().folders.find((f) => f.id === id)
-    if (!folder) return
-
-    const updated = { ...folder, ...changes, updatedAt: Date.now() }
-    const nextFolders = get().folders.map((f) => (f.id === id ? updated : f))
-    persistFolders(nextFolders)
-    set({ folders: nextFolders })
+  move: async (id, targetFolderId, beforeNodeId) => {
+    await command('folder.move', { folderId: id, targetFolderId, beforeNodeId })
   },
 
-  updateMany: async (updates) => {
-    if (updates.length === 0) return
-    const folders = get().folders
-    const updatedAt = Date.now()
-    const updatedFolders = folders.map((f) => {
-      const update = updates.find((u) => u.id === f.id)
-      return update ? { ...f, ...update.changes, updatedAt } : f
-    })
-    persistFolders(updatedFolders)
-    set({ folders: updatedFolders })
-  },
-
-  delete: async (id) => {
-    const nextFolders = get().folders.filter((f) => f.id !== id)
-    persistFolders(nextFolders)
-    set({ folders: nextFolders })
+  delete: async (ids, mode = 'promote') => {
+    const list = Array.isArray(ids) ? ids : [ids]
+    if (list.length === 0) return
+    await command('folder.delete', { folderIds: list, mode })
   },
 
   deleteMany: async (ids) => {
     if (ids.length === 0) return
-    const idSet = new Set(ids)
-    const nextFolders = get().folders.filter((f) => !idSet.has(f.id))
-    persistFolders(nextFolders)
-    set({ folders: nextFolders })
+    await command('folder.delete', { folderIds: ids, mode: 'promote' })
   },
 
-  reset: async () => {
-    // Only reset memory state, don't clear persistence data
-    set(initialState)
+  clear: async (id) => {
+    await command('folder.clear', { folderId: id })
   },
 
-  findByParentId: (parentId) => {
-    return get().folders.filter((f) => f.parentFolderId === parentId)
-  },
-
-  toggleExpanded: async (id) => {
-    const folder = get().folders.find((f) => f.id === id)
-    if (folder) {
-      await get().update(id, { expanded: !folder.expanded })
+  toggleExpanded: (id) => {
+    const viewState = useViewStateStore.getState().viewState
+    const expanded = new Set(viewState.expandedFolderIds)
+    if (expanded.has(id)) {
+      expanded.delete(id)
+    } else {
+      expanded.add(id)
     }
-  }
-}))
+    const expandedFolderIds = [...expanded]
+    useViewStateStore.getState().patch({ expandedFolderIds })
+    set((state) => ({
+      folders: state.folders.map((folder) =>
+        folder.id === id ? { ...folder, expanded: expanded.has(id) } : folder
+      )
+    }))
+  },
 
-/**
- * 获取文件夹 Store 的接口实现
- */
-export function getFolderStoreInterface(): IFolderStore {
-  const store = useFoldersStore
-  return {
-    get initialized() {
-      return store.getState().initialized
-    },
-    get folders() {
-      return store.getState().folders
-    },
-    init: () => store.getState().init(),
-    reset: () => store.getState().reset(),
-    getById: (id) => store.getState().getById(id),
-    getAll: () => store.getState().getAll(),
-    create: (data) => store.getState().create(data),
-    createMany: (data) => store.getState().createMany(data),
-    update: (id, changes) => store.getState().update(id, changes),
-    updateMany: (updates) => store.getState().updateMany(updates),
-    delete: (id) => store.getState().delete(id),
-    deleteMany: (ids) => store.getState().deleteMany(ids),
-    findByParentId: (parentId) => store.getState().findByParentId(parentId),
-    toggleExpanded: (id) => store.getState().toggleExpanded(id)
-  }
-}
+  syncExpanded: (expandedIds) =>
+    set((state) => ({ folders: withExpanded(state.folders, expandedIds) })),
+
+  reset: () => set({ folders: [], initialized: false })
+}))
