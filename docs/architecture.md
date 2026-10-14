@@ -2,7 +2,6 @@
 
 > 状态：提案（待实现）
 > 适用范围：持久层、内核执行层、展示层及其边界契约
-> 相关文档：`docs/idea.crosstab.md`、`docs/idea.hypergraph.md`、`docs/idea.relation.md`（产品构想）
 
 ## 一、结论摘要
 
