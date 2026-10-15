@@ -17,8 +17,8 @@ import {
   type RuntimeQueryPayload,
   type RuntimeQueryResult,
   type RuntimeResponse
-} from '../shared/contracts'
-import type { ForwardedShortcutAction } from '../shared/shortcuts'
+} from '@shared/contracts'
+import type { ForwardedShortcutAction } from '@shared/shortcuts'
 
 function unwrap<T>(response: RuntimeResponse<T>): T {
   if (response.ok) return response.value

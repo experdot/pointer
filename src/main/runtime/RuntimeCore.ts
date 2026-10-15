@@ -7,13 +7,7 @@
 
 import { watch, type FSWatcher } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import type {
-  ChatMessage,
-  Conversation,
-  SearchOptions,
-  Settings,
-  Workspace
-} from '../../shared/domain'
+import type { ChatMessage, Conversation, SearchOptions, Settings, Workspace } from '@shared/domain'
 import {
   appendMessage,
   createTopic,
@@ -26,7 +20,7 @@ import {
   updateMessage,
   updateMessages,
   updateTopic
-} from '../../shared/domain'
+} from '@shared/domain'
 import type {
   AttachmentContent,
   ImportResult,
@@ -40,8 +34,8 @@ import type {
   UpdateStatus,
   ViewState,
   WorkspaceSearchResult
-} from '../../shared/contracts'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/contracts'
+import { RuntimeError } from '@shared/contracts'
 import { AccountStore } from './AccountStore'
 import { ChatEngine } from './ChatEngine'
 import { IndexDb } from './IndexDb'

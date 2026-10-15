@@ -12,9 +12,9 @@ import type {
   WorkspacePathValidation,
   WorkspaceRepairIssue,
   WorkspaceSummary
-} from '../../shared/domain'
-import { createWorkspace, toWorkspaceSummary } from '../../shared/domain'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/domain'
+import { createWorkspace, toWorkspaceSummary } from '@shared/domain'
+import { RuntimeError } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import { ensureDir, isDirectory, pathExists, readJson, removePath, writeJsonAtomic } from './fsx'
 

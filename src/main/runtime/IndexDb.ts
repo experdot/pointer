@@ -6,7 +6,7 @@
  */
 
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
-import type { ChatMessage, MessageRole, Page } from '../../shared/domain'
+import type { ChatMessage, MessageRole, Page } from '@shared/domain'
 
 export interface IndexedPage {
   id: string

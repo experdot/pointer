@@ -6,8 +6,8 @@
  */
 
 import { createParser } from 'eventsource-parser'
-import type { MessageRole, ModelParameters, ProviderConnection } from '../../shared/domain'
-import { RuntimeError } from '../../shared/contracts'
+import type { MessageRole, ModelParameters, ProviderConnection } from '@shared/domain'
+import { RuntimeError } from '@shared/contracts'
 
 export type ProviderContentPart =
   | { type: 'text'; text: string }

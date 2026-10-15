@@ -13,7 +13,7 @@ import type {
   ModelParameters,
   ProviderConnection,
   Settings
-} from '../../shared/domain'
+} from '@shared/domain'
 import {
   appendMessage,
   buildIndex,
@@ -22,9 +22,9 @@ import {
   pathToMessage,
   updateMessage,
   updateTopic
-} from '../../shared/domain'
-import type { RuntimeEvent } from '../../shared/contracts'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/domain'
+import type { RuntimeEvent } from '@shared/contracts'
+import { RuntimeError } from '@shared/contracts'
 import type { SettingsStore } from './SettingsStore'
 import type { WorkspaceStore } from './WorkspaceStore'
 import type { QueueStore } from './QueueStore'
@@ -38,7 +38,7 @@ import {
   buildPrompt,
   normalizeTitle,
   truncateForPrompt
-} from '../../shared/domain'
+} from '@shared/domain'
 
 export interface ChatEngineDeps {
   workspace: () => WorkspaceStore | null

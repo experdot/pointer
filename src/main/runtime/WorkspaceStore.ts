@@ -18,7 +18,7 @@ import type {
   Page,
   PageTree,
   Workspace
-} from '../../shared/domain'
+} from '@shared/domain'
 import {
   PAGE_FILE_FORMAT_VERSION,
   addFolder,
@@ -44,8 +44,8 @@ import {
   updateNode,
   validateConversation,
   validatePageTree
-} from '../../shared/domain'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/domain'
+import { RuntimeError } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
 import {

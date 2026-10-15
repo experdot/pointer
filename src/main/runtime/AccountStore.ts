@@ -3,9 +3,9 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { Account } from '../../shared/domain'
-import { createAccount, validateAccount } from '../../shared/domain'
-import { RuntimeError } from '../../shared/contracts'
+import type { Account } from '@shared/domain'
+import { createAccount, validateAccount } from '@shared/domain'
+import { RuntimeError } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import { ensureDir, readJson, removePath, writeJsonAtomic } from './fsx'
 
