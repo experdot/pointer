@@ -1,4 +1,6 @@
 import type { ChatMessage } from '@renderer/types/shared'
+import { DEFAULT_SEARCH_OPTIONS, compileMatcher } from '@shared/domain'
+import type { SearchOptions as DomainSearchOptions } from '@shared/domain'
 
 export interface SearchMatch {
   messageId: string
@@ -7,38 +9,13 @@ export interface SearchMatch {
   globalIndex: number
 }
 
-export interface SearchOptions {
-  matchCase: boolean
-  useRegex: boolean
-  matchWholeWord: boolean
-}
-
 /**
- * 转义正则表达式特殊字符
+ * 会话内查找只暴露三个开关
+ *
+ * 匹配算法本身复用领域层的 compileMatcher（与全局搜索同一份实现），
+ * 角色/时间/文件夹等过滤条件固定为「不过滤」。
  */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/**
- * 根据搜索选项创建正则表达式
- */
-export function createSearchPattern(query: string, options: SearchOptions): RegExp | null {
-  if (!query) return null
-
-  try {
-    let pattern = options.useRegex ? query : escapeRegExp(query)
-
-    if (options.matchWholeWord) {
-      pattern = `\\b${pattern}\\b`
-    }
-
-    return new RegExp(pattern, options.matchCase ? 'g' : 'gi')
-  } catch {
-    // 无效的正则表达式
-    return null
-  }
-}
+export type SearchOptions = Pick<DomainSearchOptions, 'matchCase' | 'useRegex' | 'matchWholeWord'>
 
 /**
  * 在消息列表中查找所有匹配项
@@ -48,31 +25,18 @@ export function findAllMatches(
   query: string,
   options: SearchOptions
 ): SearchMatch[] {
-  const pattern = createSearchPattern(query, options)
-  if (!pattern) return []
-
+  const matcher = compileMatcher(query, { ...DEFAULT_SEARCH_OPTIONS, ...options })
   const matches: SearchMatch[] = []
   let globalIndex = 0
 
   for (const message of messages) {
-    const content = message.content
-    let match: RegExpExecArray | null
-
-    // 重置 lastIndex
-    pattern.lastIndex = 0
-
-    while ((match = pattern.exec(content)) !== null) {
+    for (const range of matcher(message.content)) {
       matches.push({
         messageId: message.id,
-        startOffset: match.index,
-        endOffset: match.index + match[0].length,
+        startOffset: range.start,
+        endOffset: range.end,
         globalIndex: globalIndex++
       })
-
-      // 防止零长度匹配导致无限循环
-      if (match[0].length === 0) {
-        pattern.lastIndex++
-      }
     }
   }
 

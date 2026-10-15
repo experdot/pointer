@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useGlobalSearchStore } from '../stores/globalSearchStore'
 import type { ChatMessage } from '@renderer/types/shared'
+import {
+  buildTextIndex,
+  createRangeFromFullTextOffset,
+  findOccurrenceOffset
+} from '../utils/highlightRange'
 
 interface UseGlobalSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
@@ -74,32 +79,11 @@ export function useGlobalSearchHighlight({
       const matchText = messageContent.slice(highlightMatch.contentStart, highlightMatch.contentEnd)
       if (!matchText) return
 
-      // 收集文本节点
-      const textNodes: Text[] = []
-      const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT, null)
-      let node: Text | null
-      while ((node = walker.nextNode() as Text)) {
-        if (node.textContent) {
-          textNodes.push(node)
-        }
-      }
-
-      // 拼接所有文本节点的内容
-      let fullText = ''
-      const nodeOffsets: { node: Text; start: number; end: number }[] = []
-      for (const textNode of textNodes) {
-        const text = textNode.textContent ?? ''
-        nodeOffsets.push({
-          node: textNode,
-          start: fullText.length,
-          end: fullText.length + text.length
-        })
-        fullText += text
-      }
+      const { fullText, offsets } = buildTextIndex(contentEl)
 
       // 找到匹配位置（基于原始内容位置在渲染后的 DOM 中查找）
       // 由于 Markdown 渲染可能改变位置，这里按“该消息中的第 N 个命中”定位
-      const idx = findNthMatchIndex(
+      const idx = findOccurrenceOffset(
         fullText,
         matchText,
         highlightMatch.occurrenceIndexInMessage ?? 0
@@ -113,7 +97,7 @@ export function useGlobalSearchHighlight({
       }
 
       // 创建 Range
-      const range = createRangeFromFullTextOffset(nodeOffsets, idx, idx + matchText.length)
+      const range = createRangeFromFullTextOffset(offsets, idx, idx + matchText.length)
       if (!range) {
         if (retryCount < MAX_HIGHLIGHT_RETRY_COUNT) {
           retryCount++
@@ -163,62 +147,4 @@ export function useGlobalSearchHighlight({
       }
     }
   }, [pageId])
-}
-
-function findNthMatchIndex(fullText: string, matchText: string, occurrenceIndex: number): number {
-  let currentIndex = 0
-  let searchStartIndex = 0
-
-  while (true) {
-    const idx = fullText.indexOf(matchText, searchStartIndex)
-    if (idx === -1) return -1
-
-    if (currentIndex === occurrenceIndex) {
-      return idx
-    }
-
-    currentIndex++
-    searchStartIndex = idx + 1
-  }
-}
-
-/**
- * 根据拼接文本的偏移量创建 Range
- */
-function createRangeFromFullTextOffset(
-  nodeOffsets: { node: Text; start: number; end: number }[],
-  startOffset: number,
-  endOffset: number
-): Range | null {
-  let startNode: Text | null = null
-  let startLocalOffset = 0
-  let endNode: Text | null = null
-  let endLocalOffset = 0
-
-  for (const { node, start, end } of nodeOffsets) {
-    // 查找起始节点
-    if (!startNode && startOffset >= start && startOffset < end) {
-      startNode = node
-      startLocalOffset = startOffset - start
-    }
-
-    // 查找结束节点
-    if (endOffset > start && endOffset <= end) {
-      endNode = node
-      endLocalOffset = endOffset - start
-    }
-
-    if (startNode && endNode) break
-  }
-
-  if (!startNode || !endNode) return null
-
-  try {
-    const range = document.createRange()
-    range.setStart(startNode, startLocalOffset)
-    range.setEnd(endNode, endLocalOffset)
-    return range
-  } catch {
-    return null
-  }
 }
