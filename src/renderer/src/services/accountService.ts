@@ -3,7 +3,7 @@
  */
 
 import type { Account } from '@shared/domain'
-import { getDefaultAccountId, useAccountStore } from '../stores/accountStore'
+import { useAccountStore } from '../stores/accountStore'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export async function switchAccount(accountId: string): Promise<void> {
@@ -22,17 +22,6 @@ export async function updateAccount(
   updates: { name?: string; avatar?: string }
 ): Promise<void> {
   await useAccountStore.getState().update(id, updates)
-}
-
-export async function removeAccount(accountId: string): Promise<void> {
-  // 与迁移前一致：默认账户与当前账户不允许删除
-  if (accountId === getDefaultAccountId()) {
-    throw new Error('Cannot delete default account')
-  }
-  if (accountId === useAccountStore.getState().currentAccountId) {
-    throw new Error('Cannot delete current account')
-  }
-  await useAccountStore.getState().remove(accountId)
 }
 
 export async function logout(): Promise<void> {
