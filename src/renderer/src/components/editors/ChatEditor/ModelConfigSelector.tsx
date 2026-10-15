@@ -3,7 +3,7 @@ import { TreeSelect, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { openSettings } from '../../../services/settingsService'
-import type { ModelConfig, ConfigFolder } from '@renderer/types/shared'
+import { buildConfigSelectorTree } from '../../../utils/treeNodes'
 import './ModelConfigSelector.css'
 
 interface ModelConfigSelectorProps {
@@ -14,50 +14,6 @@ interface ModelConfigSelectorProps {
   style?: React.CSSProperties
   variant?: 'outlined' | 'filled' | 'borderless'
   disabled?: boolean
-}
-
-interface TreeNode {
-  value: string
-  title: string
-  selectable?: boolean
-  children?: TreeNode[]
-}
-
-function buildTree(items: ModelConfig[], folders: ConfigFolder[]): TreeNode[] {
-  const folderMap = new Map<string | undefined, TreeNode[]>()
-
-  // 初始化根节点
-  folderMap.set(undefined, [])
-
-  // 创建文件夹节点
-  folders.forEach((folder) => {
-    const parentId = folder.parentFolderId
-    if (!folderMap.has(parentId)) {
-      folderMap.set(parentId, [])
-    }
-    const node: TreeNode = {
-      value: `folder-${folder.id}`,
-      title: folder.name,
-      selectable: false,
-      children: []
-    }
-    folderMap.get(parentId)!.push(node)
-    folderMap.set(folder.id, node.children!)
-  })
-
-  // 新建配置项到对应文件夹
-  items.forEach((item) => {
-    const parentId = item.parentFolderId
-    if (!folderMap.has(parentId)) {
-      folderMap.set(parentId, [])
-    }
-    folderMap.get(parentId)!.push({
-      value: item.id,
-      title: item.name
-    })
-  })
-
-  return folderMap.get(undefined) || []
 }
 
 export function ModelConfigSelector({
@@ -74,7 +30,7 @@ export function ModelConfigSelector({
 
   const currentValue = value ?? settings.defaultModelConfigId
 
-  const treeData = useMemo(() => buildTree(items, folders), [items, folders])
+  const treeData = useMemo(() => buildConfigSelectorTree(items, folders), [items, folders])
 
   const handleChange = (modelConfigId: string | undefined): void => {
     if (onChange) {
