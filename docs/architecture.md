@@ -1,6 +1,7 @@
 # Pointer 目标架构
 
-> 状态：提案（待实现）
+> 状态：主体已实施（内核位于 `src/main/runtime`，渲染进程已收口）。第一至十章是重构前写的设计提案，
+> 保留当时的判断与取舍；文中与实现不一致之处，以文末《迁移进度》和代码为准。
 > 适用范围：持久层、内核执行层、展示层及其边界契约
 
 ## 一、结论摘要
@@ -120,7 +121,12 @@ src/
 
 ### 4.1 运行位置
 
-主进程持有 runtime，但把重活（SQLite、目录扫描、Markdown 解析、全文索引）放进 worker 线程，主线程只负责窗口与 IPC 转发。
+**目标**：主进程持有 runtime，但把重活（SQLite、目录扫描、Markdown 解析、全文索引）放进 worker 线程，
+主线程只负责窗口与 IPC 转发。
+
+**当前实现**：`RuntimeCore` 直接运行在主进程（`src/main/index.ts` 装配、`src/main/ipc/runtimeIpc.ts` 转发），
+没有 worker 线程。内核里的存储与索引都是异步 IO，但大工作区扫描仍会占用主线程；契约已按可搬迁设计
+（`RuntimeHost` / `RuntimeUpdater` 由主进程注入），搬迁本身列在文末《仍未完成》。
 
 `refactor-v2` 分支中的 `RuntimeWorkerHost` + `runtimeWorker` + `RuntimeCore` 方向正确，但应把它理解为**层边界**而非"用了 worker"：边界清晰后，同一个 runtime 可以脱离 Electron 运行（headless CLI、集成测试、未来的本地 daemon），这才是真正的收益。
 
@@ -134,7 +140,17 @@ src/
 
 ### 4.3 密钥
 
-当前 API Key 以明文存在于 renderer 内存并通过 IPC 传输，同时明文存放在账户目录的 JSON 中。目标做法：
+**当前实现（有意与迁移前保持一致）**：API Key 明文随 LLM 配置保存在账户的 `settings.json`
+（`LLMConfig.apiKey`）中；`settings.get` 会把明文推给渲染进程，`settings.replace` 也整体接收
+渲染进程提交的配置文档。也就是说密钥既存在于渲染进程内存，也经 IPC 传输。
+
+迁移过程中确实实现过下面这套加密方案（单独的 `secrets.json` + `safeStorage` + `hasApiKey` 标记），
+但在 `1417229` 被回退：它与迁移前"明文存 `settings.json`"的既有行为不一致，并连带产生旧配置读不到密钥、
+半填文档被回推覆盖等问题。现在 `secrets.json` 只作为一次性迁移来源被读取（解密后写回明文，
+见 `SettingsStore.migrateLegacySecrets`），不再写入。
+
+**目标做法（当前未采用）**。若要恢复加密保管，需要同时给出：旧明文密钥的迁移路径、缺密钥配置的可用性降级，
+以及"测试连接 / 拉取模型列表"改由谁发起（现在这两条都在 main 里用明文密钥完成）：
 
 - renderer 只传 `llmConfigId`；
 - 密钥由 main 用 `safeStorage` 加密保管；
@@ -201,7 +217,7 @@ export type RuntimeEvent =
 
 - 命令中**不出现路径**、文件名与 `allowCustomPath`。renderer 表达"将页面 X 重命名为 Y"，落在哪个文件、如何原子写入由内核决定。
 - 从 preload 中整体撤掉泛型 `fs:*` 通道。这既是当前架构最大的攻击面，也顺带消除了"两套路径实现必须一致"的问题。
-- 密钥不出 main。
+- **密钥不出 main**：尚未成立。当前 `settings.get` 会把明文密钥返回给渲染进程，见 §4.3。
 
 ## 七、展示层设计
 
@@ -268,7 +284,9 @@ export type RuntimeEvent =
 
 - 是否需要支持同一工作区多窗口同时打开？若需要，写者仲裁与冲突提示的策略需先行定义。
 - 流式 journal 的落盘频率需在"崩溃恢复完整度"与"磁盘写入量"之间取值（建议以时间间隔为准，如 2 秒）。
-- `.pointer.md` 的 frontmatter 是否需要扩展版本号字段，以便未来做格式演进与迁移。
+- `.pointer.md` 已带版本号（`<pointer-page version="N">`，当前为 2），但解析器只认新标签，
+  没有迁移前 `<page>` / `<message>` 标签的读取路径：旧工作区升级后页面文件仍在磁盘上，却扫描不到，
+  界面上表现为对话消失且没有任何提示。需要决定是补一条 v1 兼容读取，还是至少在升级时给出显式提示。
 
 ## 附：迁移进度
 
@@ -277,7 +295,7 @@ export type RuntimeEvent =
 **领域层（`src/shared/domain`）**：纯 TypeScript、零副作用，覆盖实体、不变量与算法。
 包含 `common`、`account`、`workspace`、`page`、`naming`、`layout`、`chat`、`messageTree`、
 `outline`、`queue`、`search`、`configTree`、`settings`、`pageFile`、`importers`，
-配 10 个测试文件、78 个用例（`pnpm test`），可脱离 Electron 运行。
+配 12 个测试文件、96 个用例（`pnpm test`），可脱离 Electron 运行。
 
 **桥接层（`src/shared/contracts`）**：`RuntimePort` 与 Query / Command / Event 三张映射表；
 `RuntimeError` 携带稳定错误码；`ViewState` 作为不透明展示层文档。
@@ -288,7 +306,8 @@ export type RuntimeEvent =
 - `AccountStore` / `WorkspaceRegistry`：账户、工作区注册表与工作区身份校验（含路径修复）
 - `WorkspaceStore`：页面树与磁盘对齐（布局是元数据的纯函数）、会话读写、会话缓存、外部改动检测、附件
 - `IndexDb`：SQLite 索引（FTS5 trigram 全文 + 页面表），派生且可重建
-- `SettingsStore`：设置与 `safeStorage` 加密密钥
+- `SettingsStore`：账户级设置的规范化与原子写；API Key 明文随配置保存，加密的 `secrets.json`
+  只作为一次性迁移来源读取
 - `ViewStateStore` / `QueueStore`：展示层状态与消息队列
 - `providers` / `ChatEngine`：OpenAI 兼容协议适配与流式生命周期（落盘时机、中止、错误、队列自动出队）
 - `SearchService`：索引缩小候选 + 领域匹配器精确命中
@@ -296,8 +315,8 @@ export type RuntimeEvent =
 - `src/main/ipc/runtimeIpc.ts` 与 preload 的 `window.runtime`：渲染进程唯一入口
 
 **验证**：`pnpm smoke:kernel` 在临时目录中启动完整内核，覆盖账户、工作区创建与切换、
-文件夹与页面、会话与分支序号、Markdown 落盘、全局检索、设置与密钥标记、消息队列、
-第三方导入、事件流，共 17 项检查全部通过。
+文件夹与页面、会话与分支序号、Markdown 落盘、全局检索、设置写回（含明文 API Key）、消息队列、
+第三方导入、事件流，共 22 项检查全部通过。
 
 ### 待完成
 
@@ -315,8 +334,8 @@ store 全部改写为镜像 + 命令；服务层退化为命令封装；聊天 h
 **preload 收窄**：只暴露 `window.runtime`（查询/命令/事件）、`window.electronWindow`、
 `window.shortcuts`；`window.api.*` 整体移除，渲染进程不再具备文件系统能力。
 
-**验证**：`pnpm typecheck`、`pnpm lint`、`pnpm test`（83 个用例，含镜像层契约测试）、
-`pnpm smoke:kernel`（17 项内核检查）、`pnpm build` 与 `pnpm dev` 启动均通过。
+**验证**：`pnpm typecheck`、`pnpm lint`、`pnpm test`（14 个测试文件、116 个用例，含镜像层契约测试）、
+`pnpm smoke:kernel`（22 项内核检查）、`pnpm build` 与 `pnpm dev` 启动均通过。
 
 ### 仍未完成（保持目标未结）
 

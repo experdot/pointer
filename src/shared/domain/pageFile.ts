@@ -4,7 +4,11 @@
  * 设计目标：
  * - 人类可读：正文就是 Markdown，可直接用编辑器打开、纳入 git
  * - 机器可解析：元数据放在 HTML 注释内的 XML 片段里，不会渲染到正文
- * - 可演进：文件头带 version，格式变更时据此判断与迁移
+ * - 可演进：文件头带 version，读侧拒绝 version 大于 PAGE_FILE_FORMAT_VERSION 的文件。
+ *   注意：当前只接受新版标签（<pointer-page> / <pointer-message>），没有迁移前
+ *   <page> / <message> 标签的读取路径——用旧标签写出的文件会被判为 missing-page-block，
+ *   在工作区扫描时静默跳过（界面上表现为对话消失）。做格式变更前必须先补上旧版本的读取
+ *   或显式迁移提示，详见 docs/architecture.md 的《待确认问题》。
  *
  * 结构：
  *
