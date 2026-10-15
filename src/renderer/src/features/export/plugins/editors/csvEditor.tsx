@@ -4,50 +4,11 @@ import { Table, Input, Button, Space, Popconfirm } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { EditorPlugin, EditorProps } from '../../types'
+import { parseCsv } from '../../parseCsv'
 
 interface TableRow {
   key: string
   [column: string]: string
-}
-
-/**
- * Parse CSV string to table data
- */
-function parseCsv(csv: string): { headers: string[]; rows: string[][] } {
-  const lines = csv.trim().split('\n')
-  if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
-    return { headers: ['Column 1'], rows: [] }
-  }
-
-  const parseRow = (line: string): string[] => {
-    const cells: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = !inQuotes
-        }
-      } else if (char === ',' && !inQuotes) {
-        cells.push(current)
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    cells.push(current)
-    return cells
-  }
-
-  const headers = parseRow(lines[0])
-  const rows = lines.slice(1).map(parseRow)
-
-  return { headers, rows }
 }
 
 /**

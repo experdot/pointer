@@ -9,6 +9,7 @@ import type {
 } from '../../../../features/export/types'
 import type { ChatMessage, Topic } from '@renderer/types/shared'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
+import { collectSubtreeIds } from '../../../../features/export/messageTraversal'
 
 interface MessageGroup {
   topic?: Topic
@@ -364,28 +365,5 @@ function getTopicMessageIds(
   startMessageId: string,
   endMessageId?: string
 ): string[] {
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const result: string[] = []
-  const visited = new Set<string>()
-
-  function collectDescendants(id: string): void {
-    if (visited.has(id)) return
-    visited.add(id)
-
-    const msg = messageMap.get(id)
-    if (msg) {
-      result.push(id)
-
-      if (endMessageId && id === endMessageId) return
-
-      for (const m of messages) {
-        if (m.parentMessageId === id) {
-          collectDescendants(m.id)
-        }
-      }
-    }
-  }
-
-  collectDescendants(startMessageId)
-  return result
+  return collectSubtreeIds(messages, startMessageId, endMessageId)
 }
