@@ -26,7 +26,7 @@ export class QueueStore {
     return file ?? emptyQueue(pageId)
   }
 
-  async add(pageId: string, item: QueueItem): Promise<MessageQueue> {
+  async add(pageId: string, item: Omit<QueueItem, 'order'>): Promise<MessageQueue> {
     const next = enqueue(await this.get(pageId), item)
     await this.save(next)
     return next

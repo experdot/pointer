@@ -32,6 +32,10 @@ describe('文件名清洗', () => {
     expect(sanitizeFileName('com0.txt')).toBe('com0.txt')
   })
 
+  it('截断后不会留下结尾点', () => {
+    expect(sanitizeFileName(`${'a'.repeat(79)}.x`)).toBe('a'.repeat(79))
+  })
+
   it('限制基础名长度', () => {
     expect(sanitizeFileName('a'.repeat(200))).toHaveLength(MAX_FILE_BASE_LENGTH)
   })
@@ -51,6 +55,13 @@ describe('唯一命名', () => {
 
   it('大小写不同的既有名称视为占用', () => {
     expect(uniqueName(new Set([nameKey('Notes')]), 'notes')).toBe('notes (1)')
+  })
+
+  it('重名很多时依次递增，不依赖时钟兜底', () => {
+    const taken = new Set(
+      Array.from({ length: 5 }, (_, index) => nameKey(index === 0 ? '页面' : `页面 (${index})`))
+    )
+    expect(uniqueName(taken, '页面')).toBe('页面 (5)')
   })
 })
 

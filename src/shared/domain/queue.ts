@@ -25,7 +25,8 @@ function sorted(queue: MessageQueue): QueueItem[] {
   return [...queue.items].sort((a, b) => a.order - b.order || a.createdAt - b.createdAt)
 }
 
-export function enqueue(queue: MessageQueue, item: QueueItem): MessageQueue {
+/** 入队：order 由队列统一分配，调用方只需提供其余字段 */
+export function enqueue(queue: MessageQueue, item: Omit<QueueItem, 'order'>): MessageQueue {
   const nextOrder = queue.items.reduce((max, entry) => Math.max(max, entry.order + 1), 0)
   return { ...queue, items: [...queue.items, { ...item, order: nextOrder }] }
 }

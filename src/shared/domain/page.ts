@@ -111,18 +111,32 @@ export function addPage(tree: PageTree, page: Page): PageTree {
   return { ...tree, pages: [...tree.pages, page] }
 }
 
-export function updateNode(
+/** 更新单个页面（页面字段不会落到文件夹上） */
+export function updatePage(
   tree: PageTree,
-  nodeId: string,
+  pageId: string,
   patch: Partial<Pick<Page, 'name' | 'parentFolderId' | 'order' | 'starred'>>,
   at: number
 ): PageTree {
   return {
-    folders: tree.folders.map((folder) =>
-      folder.id === nodeId ? { ...folder, ...patch, updatedAt: at } : folder
-    ),
+    ...tree,
     pages: tree.pages.map((page) =>
-      page.id === nodeId ? { ...page, ...patch, updatedAt: at } : page
+      page.id === pageId ? { ...page, ...patch, updatedAt: at } : page
+    )
+  }
+}
+
+/** 更新单个文件夹 */
+export function updateFolder(
+  tree: PageTree,
+  folderId: string,
+  patch: Partial<Pick<Folder, 'name' | 'parentFolderId' | 'order'>>,
+  at: number
+): PageTree {
+  return {
+    ...tree,
+    folders: tree.folders.map((folder) =>
+      folder.id === folderId ? { ...folder, ...patch, updatedAt: at } : folder
     )
   }
 }
@@ -135,8 +149,8 @@ export function moveNode(
   tree: PageTree,
   nodeId: string,
   targetFolderId: string | undefined,
-  beforeNodeId?: string,
-  at = Date.now()
+  beforeNodeId: string | undefined,
+  at: number
 ): PageTree {
   const node = findNode(tree, nodeId)
   if (!node) return tree
@@ -197,7 +211,8 @@ export function moveNode(
 export function removeFolder(
   tree: PageTree,
   folderId: string,
-  mode: 'promote' | 'cascade'
+  mode: 'promote' | 'cascade',
+  at: number
 ): PageTree {
   if (mode === 'cascade') {
     const removedFolderIds = new Set([folderId, ...descendantFolderIds(tree, folderId)])
@@ -214,12 +229,12 @@ export function removeFolder(
     .filter((folder) => folder.id !== folderId)
     .map((folder) =>
       folder.parentFolderId === folderId
-        ? { ...folder, parentFolderId: undefined, order: offset++ }
+        ? { ...folder, parentFolderId: undefined, order: offset++, updatedAt: at }
         : folder
     )
   const pages = tree.pages.map((page) =>
     page.parentFolderId === folderId
-      ? { ...page, parentFolderId: undefined, order: offset++ }
+      ? { ...page, parentFolderId: undefined, order: offset++, updatedAt: at }
       : page
   )
 

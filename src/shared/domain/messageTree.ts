@@ -471,7 +471,11 @@ interface CreateTopicInput {
 }
 
 /** 创建 Topic，区间必须落在同一路径上 */
-export function createTopic(conversation: Conversation, input: CreateTopicInput): Conversation {
+export function createTopic(
+  conversation: Conversation,
+  input: CreateTopicInput,
+  at: number
+): Conversation {
   const index = buildIndex(conversation.messages)
   if (!index.byId.has(input.startMessageId)) return conversation
   if (input.endMessageId && !isDescendantOf(index, input.startMessageId, input.endMessageId)) {
@@ -486,7 +490,7 @@ export function createTopic(conversation: Conversation, input: CreateTopicInput)
     collapsed: false
   }
 
-  return { ...conversation, topics: [...conversation.topics, topic] }
+  return { ...conversation, topics: [...conversation.topics, topic], updatedAt: at }
 }
 
 export function updateTopic(
@@ -511,20 +515,11 @@ export function updateTopic(
   }
 }
 
-export function deleteTopic(conversation: Conversation, topicId: string): Conversation {
-  return { ...conversation, topics: conversation.topics.filter((t) => t.id !== topicId) }
-}
-
-export function setTopicCollapsed(
-  conversation: Conversation,
-  topicId: string,
-  collapsed: boolean
-): Conversation {
+export function deleteTopic(conversation: Conversation, topicId: string, at: number): Conversation {
   return {
     ...conversation,
-    topics: conversation.topics.map((topic) =>
-      topic.id === topicId ? { ...topic, collapsed } : topic
-    )
+    topics: conversation.topics.filter((t) => t.id !== topicId),
+    updatedAt: at
   }
 }
 

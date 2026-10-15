@@ -140,7 +140,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     addLLMConfigFolder: (folder) => mutateLlmTree((tree) => addConfigFolder(tree, folder)),
     updateLLMConfigFolder: (id, changes) =>
       mutateLlmTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
-    removeLLMConfigFolder: (id) => mutateLlmTree((tree) => removeConfigFolder(tree, id, 'promote')),
+    removeLLMConfigFolder: (id) =>
+      mutateLlmTree((tree, at) => removeConfigFolder(tree, id, 'promote', at)),
     clearLLMConfigFolder: (id) => mutateLlmTree((tree) => clearConfigFolder(tree, id)),
     batchUpdateLLMConfigs: (updates) =>
       mutateLlmTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
@@ -155,7 +156,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     updateModelConfigFolder: (id, changes) =>
       mutateModelTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
     removeModelConfigFolder: (id) =>
-      mutateModelTree((tree) => removeConfigFolder(tree, id, 'promote')),
+      mutateModelTree((tree, at) => removeConfigFolder(tree, id, 'promote', at)),
     clearModelConfigFolder: (id) => mutateModelTree((tree) => clearConfigFolder(tree, id)),
     batchUpdateModelConfigs: (updates) =>
       mutateModelTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),

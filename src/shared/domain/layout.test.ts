@@ -45,6 +45,16 @@ describe('工作区布局', () => {
     expect(layout.pagePaths.get('p1')).toBe('未命名 (1).pointer.md')
   })
 
+  it('文件夹名与页面文件名同名冲突时共享命名空间', () => {
+    const layout = computeWorkspaceLayout({
+      folders: [folder('f1', 'X.POINTER.MD')],
+      pages: [page('p1', 'x')]
+    })
+
+    expect(layout.folderDirs.get('f1')).toBe('X.POINTER.MD')
+    expect(layout.pagePaths.get('p1')).toBe('x (1).pointer.md')
+  })
+
   it('布局是纯函数：相同输入得到相同结果', () => {
     const input = {
       folders: [folder('f1', 'A')],

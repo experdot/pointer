@@ -9,12 +9,17 @@ import type { ChatMessage, MessageRole } from './chat'
 type RoleFilter = 'all' | 'user' | 'assistant'
 type TimeRange = 'all' | 'today' | 'week' | 'month'
 
-export interface SearchOptions {
+/** 匹配与会话内检索的选项：domain 函数只依赖这些字段 */
+export interface SearchMatchOptions {
   matchCase: boolean
   useRegex: boolean
   matchWholeWord: boolean
   roleFilter: RoleFilter
   timeRange: TimeRange
+}
+
+/** 工作区检索选项：folderIds 由内核层消费，domain 检索函数会忽略 */
+export interface SearchOptions extends SearchMatchOptions {
   folderIds?: string[]
 }
 
@@ -44,7 +49,7 @@ const WORD_CHAR = '[\\p{L}\\p{N}_]'
 /**
  * 编译匹配器；正则非法时返回永不命中的匹配器
  */
-export function compileMatcher(query: string, options: SearchOptions): Matcher {
+export function compileMatcher(query: string, options: SearchMatchOptions): Matcher {
   const trimmed = query.trim()
   if (!trimmed) return () => []
 
@@ -147,7 +152,7 @@ interface SearchParams {
   pageId: string
   messages: readonly ChatMessage[]
   matcher: Matcher
-  options: SearchOptions
+  options: SearchMatchOptions
   now: number
 }
 

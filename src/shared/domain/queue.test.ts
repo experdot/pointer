@@ -14,8 +14,7 @@ import {
 
 function queueWith(...ids: string[]): MessageQueue {
   return ids.reduce(
-    (queue, id, index) =>
-      enqueue(queue, { id, content: `content-${id}`, order: 0, createdAt: index }),
+    (queue, id, index) => enqueue(queue, { id, content: `content-${id}`, createdAt: index }),
     emptyQueue('page-1')
   )
 }

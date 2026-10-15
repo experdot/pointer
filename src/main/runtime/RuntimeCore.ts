@@ -324,7 +324,8 @@ export class RuntimeCore {
         const input = payload as { folderIds: string[]; mode?: 'promote' | 'cascade' }
         const removed = await this.requireWorkspace().deleteFolders(
           input.folderIds,
-          input.mode ?? 'promote'
+          input.mode ?? 'promote',
+          Date.now()
         )
         for (const pageId of removed) this.emit('conversation.changed', { pageId })
         this.emitTreeChanged()
@@ -388,7 +389,7 @@ export class RuntimeCore {
         return this.mutateConversation<{
           pageId: string
           topic: Parameters<typeof createTopic>[1]
-        }>(payload, (conversation, input) => createTopic(conversation, input.topic))
+        }>(payload, (conversation, input, at) => createTopic(conversation, input.topic, at))
       case 'topic.update':
         return this.mutateConversation<{
           pageId: string
@@ -400,7 +401,7 @@ export class RuntimeCore {
       case 'topic.delete':
         return this.mutateConversation<{ pageId: string; topicId: string }>(
           payload,
-          (conversation, input) => deleteTopic(conversation, input.topicId)
+          (conversation, input, at) => deleteTopic(conversation, input.topicId, at)
         )
 
       // 对话执行
@@ -436,7 +437,6 @@ export class RuntimeCore {
         await this.requireQueues().add(input.pageId, {
           id: randomUUID(),
           content: input.content,
-          order: 0,
           createdAt: at
         })
         this.emit('queue.changed', { pageId: input.pageId })
@@ -785,7 +785,7 @@ export class RuntimeCore {
     }
 
     const format = input.source === 'chatgpt' ? 'openai' : input.source
-    const parsed = parseImport(payload, format)
+    const parsed = parseImport(payload, format, Date.now())
     const selected =
       input.ids && input.ids.length > 0
         ? parsed.conversations.filter((conversation) => input.ids?.includes(conversation.id))

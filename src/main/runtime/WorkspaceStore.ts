@@ -43,7 +43,8 @@ import {
   sanitizeFileName,
   serializePageFile,
   uniqueName,
-  updateNode,
+  updateFolder,
+  updatePage,
   validateConversation,
   validatePageTree
 } from '@shared/domain'
@@ -97,7 +98,6 @@ export class WorkspaceStore {
   async open(): Promise<void> {
     await this.ensureStructure()
     await this.loadFolders()
-    await this.migrateLegacyPagesDirectory()
     await this.scanFromDisk()
     await this.applyLayout()
     await this.syncIndex()
@@ -249,7 +249,7 @@ export class WorkspaceStore {
     if (Object.keys(updates).length === 0) return
 
     const before = this.pages
-    this.pages = updateNode(this.getTree(), pageId, updates, at).pages
+    this.pages = updatePage(this.getTree(), pageId, updates, at).pages
     await this.persistPageMetadataDiff(before)
     await this.applyLayout()
     await this.syncIndexForPage(pageId)
@@ -326,7 +326,7 @@ export class WorkspaceStore {
     if (patch.name === undefined || patch.name.trim() === folder.name) return
 
     const name = this.uniqueNameAt(folder.parentFolderId, patch.name.trim(), folderId)
-    this.folders = updateNode(this.getTree(), folderId, { name }, at).folders
+    this.folders = updateFolder(this.getTree(), folderId, { name }, at).folders
     await this.persistFolders()
     await this.applyLayout()
   }
@@ -364,12 +364,13 @@ export class WorkspaceStore {
    */
   async deleteFolders(
     folderIds: readonly string[],
-    mode: 'promote' | 'cascade'
+    mode: 'promote' | 'cascade',
+    at: number
   ): Promise<string[]> {
     const before = this.pages.map((page) => page.id)
     let tree = this.getTree()
     for (const folderId of folderIds) {
-      tree = removeFolderInTree(tree, folderId, mode)
+      tree = removeFolderInTree(tree, folderId, mode, at)
     }
 
     const remaining = new Set(tree.pages.map((page) => page.id))
@@ -599,29 +600,6 @@ export class WorkspaceStore {
   private async loadFolders(): Promise<void> {
     const file = await readJson<FoldersFile>(this.paths.foldersFile(this.path))
     this.folders = file?.folders ?? []
-  }
-
-  /**
-   * 一次性迁移：早期版本把页面统一放在 pages/ 子目录下，
-   * 新布局要求页面直接位于工作区根目录（目录即文件夹）。
-   */
-  private async migrateLegacyPagesDirectory(): Promise<void> {
-    const legacyDir = join(this.path, 'pages')
-    if (!(await isDirectory(legacyDir))) return
-    if (this.folders.some((folder) => folder.name === 'pages')) return
-
-    const files = await walkFiles(legacyDir, {
-      include: isPageFileName,
-      skipDirectory: () => false
-    })
-    for (const file of files) {
-      const relative = file.relativePath
-      const target = join(this.path, relative)
-      if (await pathExists(target)) continue
-      await movePath(file.absolutePath, target)
-    }
-
-    await removePath(legacyDir, true)
   }
 
   private async persistFolders(): Promise<void> {

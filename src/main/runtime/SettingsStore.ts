@@ -2,20 +2,12 @@
  * 账户级设置
  *
  * API Key 以明文随 LLM 配置保存在 settings.json 中（保持与迁移前一致的简单机制）。
- * 兼容：早期版本的密钥加密存在 secrets.json，首次加载时解密一次并写回明文。
  */
 
-import { safeStorage } from 'electron'
 import type { LLMConfig, Settings } from '@shared/domain'
 import { defaultSettings, validateSettings } from '@shared/domain'
 import type { PathResolver } from './paths'
 import { readJson, writeJsonAtomic } from './fsx'
-
-interface LegacySecretsFile {
-  version?: number
-  /** llmId -> base64(safeStorage 加密内容) */
-  keys?: Record<string, string>
-}
 
 export class SettingsStore {
   private settings: Settings = defaultSettings()
@@ -33,7 +25,6 @@ export class SettingsStore {
     this.accountId = accountId
     const file = await readJson<Settings>(this.paths.settingsFile(accountId))
     this.settings = normalizeSettings(file)
-    await this.migrateLegacySecrets(accountId)
   }
 
   get(): Settings {
@@ -53,37 +44,6 @@ export class SettingsStore {
     this.settings = incoming
     await writeJsonAtomic(this.paths.settingsFile(this.accountId), this.settings)
     return this.get()
-  }
-
-  /**
-   * 一次性迁移：把 secrets.json 里加密的密钥解密后写回 settings.json 明文。
-   * 迁移后不再读写 secrets.json（旧文件保留不删，可手动清理）。
-   */
-  private async migrateLegacySecrets(accountId: string): Promise<void> {
-    const secrets = await readJson<LegacySecretsFile>(this.paths.secretsFile(accountId))
-    if (!secrets?.keys || Object.keys(secrets.keys).length === 0) return
-    if (!safeStorage.isEncryptionAvailable()) return
-
-    let changed = false
-    const items = this.settings.llmConfigs.items.map((item) => {
-      if (item.apiKey) return item
-      const encoded = secrets.keys?.[item.id]
-      if (!encoded) return item
-      try {
-        const apiKey = safeStorage.decryptString(Buffer.from(encoded, 'base64'))
-        if (!apiKey) return item
-        changed = true
-        return { ...item, apiKey }
-      } catch (error) {
-        console.warn('[runtime] 历史密钥解密失败：', error)
-        return item
-      }
-    })
-
-    if (!changed) return
-    this.settings = { ...this.settings, llmConfigs: { ...this.settings.llmConfigs, items } }
-    await writeJsonAtomic(this.paths.settingsFile(accountId), this.settings)
-    console.info('[runtime] 已将历史加密密钥迁移为明文保存')
   }
 }
 

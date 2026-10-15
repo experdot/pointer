@@ -42,6 +42,26 @@ describe('额外要求注入', () => {
 
     expect(prompt).toContain('5. 额外要求：更细粒度分段')
   })
+
+  it('内容与额外要求中的 $ 模式按字面量处理', () => {
+    const content = "价格 $& 与 $1 与 $' 结尾"
+    const prompt = buildPrompt(MESSAGE_TITLE_PROMPT, content)
+
+    expect(prompt).toContain(content)
+
+    const withExtra = applyExtraRequirements(prompt, "使用 $& 和 $' 强调")
+    expect(withExtra).toContain("额外要求：使用 $& 和 $' 强调")
+    expect(withExtra.trimEnd().endsWith('标题：')).toBe(true)
+  })
+
+  it('分段额外要求同样按字面量处理 $ 模式', () => {
+    const prompt = applySegmentationRequirements(
+      buildPrompt(TOPIC_SEGMENTATION_PROMPT, '0. 用户：你好'),
+      '注意 $& 与 $1'
+    )
+
+    expect(prompt).toContain('5. 额外要求：注意 $& 与 $1')
+  })
 })
 
 describe('标题清理与长度', () => {

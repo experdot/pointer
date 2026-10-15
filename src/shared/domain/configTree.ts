@@ -91,7 +91,7 @@ export function addConfigFolder<T extends ConfigItemBase>(
 export function updateConfigItem<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   itemId: string,
-  patch: Partial<T>,
+  patch: Partial<Omit<T, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>,
   at: number
 ): ConfigTree<T> {
   return {
@@ -105,7 +105,7 @@ export function updateConfigItem<T extends ConfigItemBase>(
 export function updateConfigFolder<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   folderId: string,
-  patch: Partial<ConfigFolder>,
+  patch: Partial<Omit<ConfigFolder, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>,
   at: number
 ): ConfigTree<T> {
   return {
@@ -125,7 +125,10 @@ export function removeConfigItem<T extends ConfigItemBase>(
 
 export function batchUpdateConfigItems<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
-  updates: ReadonlyArray<{ id: string; changes: Partial<T> }>,
+  updates: ReadonlyArray<{
+    id: string
+    changes: Partial<Omit<T, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>
+  }>,
   at: number
 ): ConfigTree<T> {
   return updates.reduce(
@@ -136,7 +139,10 @@ export function batchUpdateConfigItems<T extends ConfigItemBase>(
 
 export function batchUpdateConfigFolders<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
-  updates: ReadonlyArray<{ id: string; changes: Partial<ConfigFolder> }>,
+  updates: ReadonlyArray<{
+    id: string
+    changes: Partial<Omit<ConfigFolder, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>
+  }>,
   at: number
 ): ConfigTree<T> {
   return updates.reduce(
@@ -153,7 +159,8 @@ export function batchUpdateConfigFolders<T extends ConfigItemBase>(
 export function removeConfigFolder<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   folderId: string,
-  mode: 'promote' | 'cascade'
+  mode: 'promote' | 'cascade',
+  at: number
 ): ConfigTree<T> {
   if (mode === 'cascade') {
     const removedFolderIds = new Set([folderId, ...configDescendantFolderIds(tree, folderId)])
@@ -170,12 +177,12 @@ export function removeConfigFolder<T extends ConfigItemBase>(
     .filter((folder) => folder.id !== folderId)
     .map((folder) =>
       folder.parentFolderId === folderId
-        ? { ...folder, parentFolderId: undefined, order: offset++ }
+        ? { ...folder, parentFolderId: undefined, order: offset++, updatedAt: at }
         : folder
     )
   const items = tree.items.map((item) =>
     item.parentFolderId === folderId
-      ? { ...item, parentFolderId: undefined, order: offset++ }
+      ? { ...item, parentFolderId: undefined, order: offset++, updatedAt: at }
       : item
   )
 

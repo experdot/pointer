@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { detectFormat, parseImport } from './importers'
 import { PAGE_FILE_FORMAT_VERSION, parsePageFile, serializePageFile } from './pageFile'
 
+/** 导入缺少时间戳时使用的固定时钟 */
+const NOW = 1_700_000_000_000
+
 describe('导入格式检测', () => {
   it('识别三种导出格式', () => {
     expect(detectFormat([{ mapping: {}, current_node: 'a' }])).toBe('openai')
@@ -59,7 +62,7 @@ describe('ChatGPT 导出解析', () => {
   ]
 
   it('跳过空消息并把父节点重映射到最近的可见祖先', () => {
-    const result = parseImport(payload)
+    const result = parseImport(payload, undefined, NOW)
     expect(result.format).toBe('openai')
     expect(result.conversations).toHaveLength(1)
 
@@ -105,7 +108,8 @@ describe('DeepSeek 导出解析', () => {
           }
         }
       ],
-      'deepseek'
+      'deepseek',
+      NOW
     )
 
     const conversation = result.conversations[0]
@@ -137,7 +141,8 @@ describe('Pointer 旧版导出解析', () => {
           }
         ]
       },
-      'pointer'
+      'pointer',
+      NOW
     )
 
     const conversation = result.conversations[0]
@@ -186,7 +191,7 @@ describe('未知角色归一', () => {
   ]
 
   it('tool 按 assistant 保留，空 tool 消息跳过', () => {
-    const result = parseImport(toolPayload)
+    const result = parseImport(toolPayload, undefined, NOW)
 
     expect(result.conversations).toHaveLength(1)
     expect(result.conversations[0].messages.map((message) => [message.id, message.role])).toEqual([
@@ -195,7 +200,7 @@ describe('未知角色归一', () => {
   })
 
   it('导入结果经页面文件往返后消息不丢失', () => {
-    const conversation = parseImport(toolPayload).conversations[0]
+    const conversation = parseImport(toolPayload, undefined, NOW).conversations[0]
     const text = serializePageFile({
       version: PAGE_FILE_FORMAT_VERSION,
       page: { id: 'page-tool', kind: 'page', name: '工具', order: 0, createdAt: 1 },
@@ -214,7 +219,7 @@ describe('未知角色归一', () => {
   })
 
   it('children 成环的导出也能正常解析', () => {
-    const result = parseImport([
+    const payload = [
       {
         title: '环',
         id: 'c-cycle',
@@ -249,8 +254,9 @@ describe('未知角色归一', () => {
           }
         }
       }
-    ])
+    ]
 
+    const result = parseImport(payload, undefined, NOW)
     const conversation = result.conversations[0]
     expect(conversation.messages).toHaveLength(3)
     expect(['c1', 'c2']).toContain(conversation.leafMessageId)

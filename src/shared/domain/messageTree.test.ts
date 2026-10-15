@@ -132,12 +132,11 @@ describe('消息树变更', () => {
 
   it('删除 Topic 区间内的消息时清理边界', () => {
     let conversation = fixture()
-    conversation = createTopic(conversation, {
-      id: 't1',
-      name: '片段',
-      startMessageId: 'root',
-      endMessageId: 'a1'
-    })
+    conversation = createTopic(
+      conversation,
+      { id: 't1', name: '片段', startMessageId: 'root', endMessageId: 'a1' },
+      10
+    )
 
     const after = deleteMessage(conversation, 'a1', 12)
     expect(after.topics[0].endMessageId).toBeUndefined()
@@ -181,8 +180,8 @@ describe('Topic 分组与大纲', () => {
 
   it('区间未指定结束消息时以下一个 Topic 为界', () => {
     let conversation = pathConversation()
-    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' })
-    conversation = createTopic(conversation, { id: 't2', name: '第二段', startMessageId: 'm3' })
+    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' }, 10)
+    conversation = createTopic(conversation, { id: 't2', name: '第二段', startMessageId: 'm3' }, 11)
 
     const groups = computeTopicGroups(conversation.topics, currentPath(conversation))
 
@@ -195,12 +194,12 @@ describe('Topic 分组与大纲', () => {
 
   it('显式结束消息会覆盖默认边界', () => {
     let conversation = pathConversation()
-    conversation = createTopic(conversation, {
-      id: 't1',
-      name: '第一段',
-      startMessageId: 'm1',
-      endMessageId: 'm2'
-    })
+    conversation = createTopic(
+      conversation,
+      { id: 't1', name: '第一段', startMessageId: 'm1', endMessageId: 'm2' },
+      10
+    )
+    expect(conversation.updatedAt).toBe(10)
 
     const groups = computeTopicGroups(conversation.topics, currentPath(conversation))
     expect(groups[0].messageIds).toEqual(['m1', 'm2'])
@@ -208,18 +207,18 @@ describe('Topic 分组与大纲', () => {
 
   it('结束消息不在起始消息路径上时拒绝设置', () => {
     const conversation = fixture()
-    const after = createTopic(conversation, {
-      id: 't1',
-      name: '非法',
-      startMessageId: 'a1',
-      endMessageId: 'b'
-    })
+    const after = createTopic(
+      conversation,
+      { id: 't1', name: '非法', startMessageId: 'a1', endMessageId: 'b' },
+      10
+    )
     expect(after.topics).toEqual([])
+    expect(after.updatedAt).toBe(conversation.updatedAt)
   })
 
   it('折叠的 Topic 只保留首条消息', () => {
     let conversation = pathConversation()
-    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' })
+    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' }, 10)
     conversation = updateTopic(conversation, 't1', { collapsed: true }, 10)
 
     const path = currentPath(conversation)
@@ -229,19 +228,19 @@ describe('Topic 分组与大纲', () => {
 
   it('删除 Topic 后不再出现在分组中', () => {
     let conversation = pathConversation()
-    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' })
-    conversation = deleteTopic(conversation, 't1')
+    conversation = createTopic(conversation, { id: 't1', name: '第一段', startMessageId: 'm1' }, 10)
+    conversation = deleteTopic(conversation, 't1', 11)
+    expect(conversation.updatedAt).toBe(11)
     expect(computeTopicGroups(conversation.topics, currentPath(conversation))).toEqual([])
   })
 
   it('大纲把 Topic 作为顶级节点，其下挂载消息', () => {
     let conversation = pathConversation()
-    conversation = createTopic(conversation, {
-      id: 't1',
-      name: '第一段',
-      startMessageId: 'm1',
-      endMessageId: 'm2'
-    })
+    conversation = createTopic(
+      conversation,
+      { id: 't1', name: '第一段', startMessageId: 'm1', endMessageId: 'm2' },
+      10
+    )
     conversation = updateMessage(conversation, 'm2', { title: '有标题' }, 11)
 
     const path = currentPath(conversation)

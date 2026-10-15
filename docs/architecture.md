@@ -48,7 +48,6 @@ session.json           上次使用的账户与工作区
 accounts/<accountId>/
   workspaces.json      该账户的工作区列表
   settings.json        账户级设置（LLM 配置、模型配置，API Key 以明文随配置保存）
-  secrets.json         历史版本的加密密钥，仅作一次性迁移来源读取
 workspaces/<accountId>/default/    默认工作区
 ```
 

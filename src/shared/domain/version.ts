@@ -3,6 +3,7 @@
  *
  * 只实现应用需要的部分：major.minor.patch 与预发布标识（如 2.0.0-preview.1）。
  * 预发布版本永远小于同号的正式版本；预发布之间按标识逐段比较，数字段按数值比较。
+ * 构建元数据（+build）按 semver 忽略，不参与比较。
  */
 
 interface ParsedVersion {
@@ -14,7 +15,7 @@ interface ParsedVersion {
 
 function parseVersion(value: string): ParsedVersion | null {
   const trimmed = value.trim().replace(/^v/i, '')
-  const match = trimmed.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+](.*))?$/)
+  const match = trimmed.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/)
   if (!match) return null
 
   const prerelease = (match[4] ?? '')

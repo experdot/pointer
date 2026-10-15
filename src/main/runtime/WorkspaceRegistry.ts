@@ -50,12 +50,9 @@ export class WorkspaceRegistry {
   async load(accountId: string): Promise<void> {
     this.accountId = accountId
     const file = await readJson<WorkspacesFile>(this.paths.workspacesFile(accountId))
-    // 兼容早期只保存元数据的列表文件
-    this.workspaces = (file?.workspaces ?? []).map((workspace) => ({
-      ...workspace,
-      accountId: workspace.accountId ?? accountId,
-      createdAt: workspace.createdAt ?? Date.now()
-    }))
+    this.workspaces = file?.workspaces ?? []
+
+    // 指针失效（如工作区被外部移除）时回退到列表中的第一个工作区
     this.currentWorkspaceId =
       file?.currentWorkspaceId &&
       this.workspaces.some((workspace) => workspace.id === file.currentWorkspaceId)

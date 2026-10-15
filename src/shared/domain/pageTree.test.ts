@@ -71,16 +71,19 @@ describe('页面树变更', () => {
 
   it('禁止把文件夹移动到自身后代之下', () => {
     const tree = fixture()
-    expect(moveNode(tree, 'f1', 'f2')).toEqual(tree)
+    expect(moveNode(tree, 'f1', 'f2', undefined, 100)).toEqual(tree)
   })
 
   it('删除文件夹可提升子节点或级联删除', () => {
-    const promoted = removeFolder(fixture(), 'f1', 'promote')
+    const promoted = removeFolder(fixture(), 'f1', 'promote', 100)
     expect(promoted.folders.map((item) => item.id)).toEqual(['f2'])
     expect(promoted.pages.map((item) => item.id).sort()).toEqual(['p1', 'p2'])
     expect(promoted.folders[0].parentFolderId).toBeUndefined()
+    expect(promoted.folders[0].updatedAt).toBe(100)
+    expect(promoted.pages.find((item) => item.id === 'p1')?.updatedAt).toBe(100)
+    expect(promoted.pages.find((item) => item.id === 'p2')?.updatedAt).toBeUndefined()
 
-    const cascaded = removeFolder(fixture(), 'f1', 'cascade')
+    const cascaded = removeFolder(fixture(), 'f1', 'cascade', 100)
     expect(cascaded.folders).toEqual([])
     expect(cascaded.pages.map((item) => item.id)).toEqual(['p2'])
   })

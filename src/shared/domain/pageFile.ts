@@ -385,6 +385,7 @@ function parseMessageBlock(section: string): ChatMessage | null {
 
   const body = rest.slice((metaMatch.index ?? 0) + metaMatch[0].length)
 
+  // 正文与 reasoning 会 trim 首尾空白：序列化时各部分以空行分隔，首尾空白无法与分隔符区分
   const reasoningMatch = body.match(
     /<details>\s*<summary>[^<]*<\/summary>\s*([\s\S]*?)\s*<\/details>/
   )

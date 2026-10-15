@@ -61,7 +61,8 @@ export function truncateForPrompt(content: string, maxLength = MAX_PROMPT_CONTEN
 }
 
 export function buildPrompt(template: string, content: string, maxLength?: number): string {
-  return template.replace('{content}', truncateForPrompt(content, maxLength))
+  // 函数式替换：content 里的 $&、$'、$1 等不会被当作替换模式解释
+  return template.replace('{content}', () => truncateForPrompt(content, maxLength))
 }
 
 /**
@@ -72,7 +73,10 @@ export function buildPrompt(template: string, content: string, maxLength?: numbe
 export function applyExtraRequirements(prompt: string, extraRequirements?: string): string {
   const extra = extraRequirements?.trim()
   if (!extra) return prompt
-  return prompt.replace(/(标题|话题名称)：$/, `\n额外要求：${extra}\n\n$1：`)
+  return prompt.replace(
+    /(标题|话题名称)：$/,
+    (_match, anchor: string) => `\n额外要求：${extra}\n\n${anchor}：`
+  )
 }
 
 /** 智能分段的额外要求：作为第 5 条注意项追加（与迁移前一致） */
@@ -81,7 +85,7 @@ export function applySegmentationRequirements(prompt: string, extraRequirements?
   if (!extra) return prompt
   return prompt.replace(
     '4. 直接输出JSON数组，不要有任何其他内容',
-    `4. 直接输出JSON数组，不要有任何其他内容\n5. 额外要求：${extra}`
+    (match) => `${match}\n5. 额外要求：${extra}`
   )
 }
 

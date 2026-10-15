@@ -57,12 +57,15 @@ describe('配置树', () => {
   })
 
   it('删除文件夹支持提升与级联两种模式', () => {
-    const promoted = removeConfigFolder(fixture(), 'f1', 'promote')
+    const promoted = removeConfigFolder(fixture(), 'f1', 'promote', 100)
     expect(promoted.folders.map((entry) => entry.id)).toEqual(['f2'])
     expect(promoted.folders[0].parentFolderId).toBeUndefined()
+    expect(promoted.folders[0].updatedAt).toBe(100)
     expect(promoted.items.find((entry) => entry.id === 'i1')?.parentFolderId).toBeUndefined()
+    expect(promoted.items.find((entry) => entry.id === 'i1')?.updatedAt).toBe(100)
+    expect(promoted.items.find((entry) => entry.id === 'i2')?.updatedAt).toBeUndefined()
 
-    const cascaded = removeConfigFolder(fixture(), 'f1', 'cascade')
+    const cascaded = removeConfigFolder(fixture(), 'f1', 'cascade', 100)
     expect(cascaded.folders).toEqual([])
     expect(cascaded.items.map((entry) => entry.id)).toEqual(['i2'])
   })

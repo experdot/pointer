@@ -119,7 +119,7 @@ export function ThirdPartyImportModal({
         return false
       }
 
-      const parsed = parseImport(data, format)
+      const parsed = parseImport(data, format, Date.now())
       if (parsed.conversations.length === 0) {
         message.error('文件中没有可导入的对话')
         return false

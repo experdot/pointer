@@ -43,7 +43,7 @@ pnpm release:draft    # Build for release testing (no publish)
 - **Contracts** (`src/shared/contracts/`): the single `RuntimePort` surface — queries, commands, events.
 - **Kernel** (`src/main/runtime/`): system of record. Owns persistence (atomic writes), the SQLite
   index, sessions, AI streaming, search, attachments, settings and API keys (stored in plaintext in
-  the account's `settings.json`; the encrypted `secrets.json` is read only once for migration).
+  the account's `settings.json`).
   Exposed to the renderer only through `src/main/ipc/runtimeIpc.ts`.
 - **Presentation** (`src/renderer/src/`): React UI holding view state plus a mirror of kernel state
   fed by events. It never touches paths, files or the filesystem.

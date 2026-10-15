@@ -74,7 +74,7 @@ function withBranchIndexes(messages: RawMessage[]): ChatMessage[] {
   }))
 }
 
-function timestampToMillis(value: unknown): number {
+function timestampToMillis(value: unknown, now: number): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
     // 兼容秒级时间戳
     return value < 1e12 ? Math.round(value * 1000) : Math.round(value)
@@ -83,7 +83,7 @@ function timestampToMillis(value: unknown): number {
     const parsed = Date.parse(value)
     if (!Number.isNaN(parsed)) return parsed
   }
-  return Date.now()
+  return now
 }
 
 function joinParts(parts: unknown): string {
@@ -129,6 +129,7 @@ export function detectFormat(payload: unknown): ImportFormat | null {
     if (!first || typeof first !== 'object') return null
     if ('mapping' in first && 'current_node' in first) return 'openai'
     if ('mapping' in first && typeof first.mapping === 'object' && first.mapping !== null) {
+      // 缺少 current_node 的 OpenAI 导出也会落到这里按 deepseek 处理（已知误判风险，暂不修）
       return 'deepseek'
     }
     return null
@@ -142,7 +143,11 @@ export function detectFormat(payload: unknown): ImportFormat | null {
   return null
 }
 
-export function parseImport(payload: unknown, format?: ImportFormat): ImportParseResult {
+export function parseImport(
+  payload: unknown,
+  format: ImportFormat | undefined,
+  now: number
+): ImportParseResult {
   const resolved = format ?? detectFormat(payload)
   if (!resolved) {
     return { format: 'pointer', conversations: [], errors: ['无法识别的导出格式'] }
@@ -150,11 +155,11 @@ export function parseImport(payload: unknown, format?: ImportFormat): ImportPars
 
   switch (resolved) {
     case 'openai':
-      return parseOpenAI(payload as OpenAIExport[])
+      return parseOpenAI(payload as OpenAIExport[], now)
     case 'deepseek':
-      return parseDeepSeek(payload as DeepSeekExport[])
+      return parseDeepSeek(payload as DeepSeekExport[], now)
     case 'pointer':
-      return parsePointer(payload as PointerExport)
+      return parsePointer(payload as PointerExport, now)
   }
 }
 
@@ -185,7 +190,7 @@ interface OpenAIExport {
   current_node?: string
 }
 
-function parseOpenAI(payload: OpenAIExport[]): ImportParseResult {
+function parseOpenAI(payload: OpenAIExport[], now: number): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
@@ -240,7 +245,7 @@ function parseOpenAI(payload: OpenAIExport[]): ImportParseResult {
         id,
         role: normalizeRole(message.author.role),
         content: joinParts(message.content?.parts),
-        createdAt: timestampToMillis(message.create_time),
+        createdAt: timestampToMillis(message.create_time, now),
         parentMessageId: resolveParent(node.parent),
         llmId: message.metadata?.model_slug
       })
@@ -254,8 +259,10 @@ function parseOpenAI(payload: OpenAIExport[]): ImportParseResult {
     conversations.push({
       id: conversation.conversation_id ?? conversation.id ?? `openai-${conversations.length}`,
       title: conversation.title?.trim() || '未命名对话',
-      createdAt: timestampToMillis(conversation.create_time),
-      updatedAt: conversation.update_time ? timestampToMillis(conversation.update_time) : undefined,
+      createdAt: timestampToMillis(conversation.create_time, now),
+      updatedAt: conversation.update_time
+        ? timestampToMillis(conversation.update_time, now)
+        : undefined,
       messages: withBranchIndexes(raw),
       leafMessageId
     })
@@ -285,7 +292,7 @@ interface DeepSeekExport {
   mapping: Record<string, DeepSeekNode>
 }
 
-function parseDeepSeek(payload: DeepSeekExport[]): ImportParseResult {
+function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
@@ -312,7 +319,9 @@ function parseDeepSeek(payload: DeepSeekExport[]): ImportParseResult {
         id,
         role: fragment.type === 'REQUEST' ? 'user' : 'assistant',
         content: fragment.content,
-        createdAt: timestampToMillis(node.message.inserted_at),
+        createdAt: timestampToMillis(node.message.inserted_at, now),
+        // 注意：父节点若不在保留集合内（缺消息/缺片段），这里不做跨节点重映射，
+        // 下游会以 orphan 诊断呈现；如需修复可参考 OpenAI 的 resolveParent 思路
         parentMessageId: node.parent === 'root' ? undefined : (node.parent ?? undefined),
         llmId: node.message.model
       })
@@ -321,8 +330,10 @@ function parseDeepSeek(payload: DeepSeekExport[]): ImportParseResult {
     conversations.push({
       id: conversation.id ?? `deepseek-${conversations.length}`,
       title: conversation.title?.trim() || '未命名对话',
-      createdAt: timestampToMillis(conversation.inserted_at),
-      updatedAt: conversation.updated_at ? timestampToMillis(conversation.updated_at) : undefined,
+      createdAt: timestampToMillis(conversation.inserted_at, now),
+      updatedAt: conversation.updated_at
+        ? timestampToMillis(conversation.updated_at, now)
+        : undefined,
       messages: withBranchIndexes(raw),
       leafMessageId: findLeafNode(childrenById)
     })
@@ -359,7 +370,7 @@ interface PointerExport {
   pages: PointerPage[]
 }
 
-function parsePointer(payload: PointerExport): ImportParseResult {
+function parsePointer(payload: PointerExport, now: number): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
@@ -395,7 +406,7 @@ function parsePointer(payload: PointerExport): ImportParseResult {
         role: normalizeRole(message.role),
         content: message.content ?? '',
         reasoning: message.reasoning_content,
-        createdAt: timestampToMillis(message.timestamp),
+        createdAt: timestampToMillis(message.timestamp, now),
         parentMessageId: parentMap.get(message.id) ?? message.parentId,
         llmId: message.modelId
       })
@@ -405,7 +416,7 @@ function parsePointer(payload: PointerExport): ImportParseResult {
     conversations.push({
       id: page.id,
       title: page.title?.trim() || '未命名对话',
-      createdAt: page.createdAt ?? Date.now(),
+      createdAt: page.createdAt ?? now,
       updatedAt: page.updatedAt,
       messages: withBranchIndexes(raw),
       leafMessageId:

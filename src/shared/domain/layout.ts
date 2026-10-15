@@ -26,16 +26,16 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
   const pagePaths = new Map<string, string>()
 
   const assign = (parentFolderId: string | undefined, parentDir: string): void => {
-    // 目录名与页面文件名互不冲突（页面带扩展名），分别去重
-    const takenDirs = new Set<string>()
-    const takenFiles = new Set<string>()
+    // 目录名与页面文件名在同一层级共享命名空间：
+    // 文件夹名可以以 .pointer.md 结尾，与页面文件完全同名，磁盘上无法共存
+    const taken = new Set<string>()
 
     const childFolders = folders
       .filter((folder) => folder.parentFolderId === parentFolderId)
       .sort(compareNodes)
     for (const folder of childFolders) {
-      const dirName = uniqueName(takenDirs, sanitizeFileName(folder.name))
-      takenDirs.add(nameKey(dirName))
+      const dirName = uniqueName(taken, sanitizeFileName(folder.name))
+      taken.add(nameKey(dirName))
       const dir = parentDir ? `${parentDir}/${dirName}` : dirName
       folderDirs.set(folder.id, dir)
       assign(folder.id, dir)
@@ -45,8 +45,8 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
       .filter((page) => page.parentFolderId === parentFolderId)
       .sort(compareNodes)
     for (const page of childPages) {
-      const fileName = uniquePageFileName(takenFiles, page.name)
-      takenFiles.add(nameKey(fileName))
+      const fileName = uniquePageFileName(taken, page.name)
+      taken.add(nameKey(fileName))
       pagePaths.set(page.id, parentDir ? `${parentDir}/${fileName}` : fileName)
     }
   }

@@ -32,11 +32,11 @@ const ILLEGAL_FILE_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g
 /** 将任意名称转换为可用于文件名的安全形式 */
 export function sanitizeFileName(name: string): string {
   let base = name.replace(ILLEGAL_FILE_CHARS, ' ').replace(/\s+/g, ' ').trim()
-  // Windows 不允许文件名以点或空格结尾
-  base = base.replace(/[. ]+$/, '')
   if (base.length > MAX_FILE_BASE_LENGTH) {
     base = base.slice(0, MAX_FILE_BASE_LENGTH).trim()
   }
+  // Windows 不允许文件名以点或空格结尾；必须在截断之后处理，截断可能重新引入结尾点
+  base = base.replace(/[. ]+$/, '')
   if (!base) return 'untitled'
   // Windows 保留名对「首个 . 之前的段」生效（如 aux.txt、con.tar.gz 均等价于设备名）
   if (RESERVED_BASE_NAMES.test(base.split('.')[0])) return `_${base}`
@@ -52,37 +52,27 @@ function nameCandidate(desired: string, index: number): string {
  * 在已占用名称集合中生成唯一的显示名称
  *
  * taken 中的元素应为 nameKey() 归一化后的结果。
+ * 候选值互不相同且 taken 有限，循环必然返回（不依赖时钟兜底）。
  */
-export function uniqueName(
-  taken: ReadonlySet<string>,
-  desired: string,
-  maxAttempts = 1000
-): string {
-  for (let index = 0; index < maxAttempts; index++) {
+export function uniqueName(taken: ReadonlySet<string>, desired: string): string {
+  for (let index = 0; ; index++) {
     const candidate = nameCandidate(desired, index)
     if (!taken.has(nameKey(candidate))) return candidate
   }
-  return `${desired} ${Date.now()}`
 }
 
 /**
  * 在已占用文件名集合中生成唯一的页面文件名（含扩展名）
  *
- * taken 中的元素应为 nameKey() 归一化后的结果。
+ * taken 中的元素应为 nameKey() 归一化后的结果；候选互不相同，必然返回。
  */
-export function uniquePageFileName(
-  taken: ReadonlySet<string>,
-  pageName: string,
-  maxAttempts = 1000
-): string {
+export function uniquePageFileName(taken: ReadonlySet<string>, pageName: string): string {
   const base = sanitizeFileName(pageName)
 
-  for (let index = 0; index < maxAttempts; index++) {
+  for (let index = 0; ; index++) {
     const fileName = `${nameCandidate(base, index)}${PAGE_FILE_EXTENSION}`
     if (!taken.has(nameKey(fileName))) return fileName
   }
-
-  return `${base} ${Date.now()}${PAGE_FILE_EXTENSION}`
 }
 
 /** 判断文件名是否属于 Pointer 页面文件 */
