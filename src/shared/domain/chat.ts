@@ -88,7 +88,11 @@ export const ROLE_DISPLAY_NAMES: Record<MessageRole, string> = {
   system: 'System'
 }
 
+/** 展示名到角色的映射（大小写不敏感，允许前后空白） */
 export function roleFromDisplayName(value: string): MessageRole | undefined {
-  const entry = Object.entries(ROLE_DISPLAY_NAMES).find(([, display]) => display === value)
+  const normalized = value.trim().toLowerCase()
+  const entry = Object.entries(ROLE_DISPLAY_NAMES).find(
+    ([, display]) => display.toLowerCase() === normalized
+  )
   return entry?.[0] as MessageRole | undefined
 }

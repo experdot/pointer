@@ -73,3 +73,13 @@ describe('配置树', () => {
     expect(tree.items.map((entry) => entry.id)).toEqual(['i2'])
   })
 })
+
+describe('损伤数据的环保护', () => {
+  it('configDescendantFolderIds 在循环文件夹下也能终止', () => {
+    const cyclic: ConfigTree<ConfigItemBase> = {
+      folders: [folder('a', 'A', 'b'), folder('b', 'B', 'a')],
+      items: []
+    }
+    expect([...configDescendantFolderIds(cyclic, 'a')].sort()).toEqual(['b'])
+  })
+})

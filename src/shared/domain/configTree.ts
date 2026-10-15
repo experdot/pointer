@@ -50,15 +50,16 @@ export function configDescendantFolderIds<T extends ConfigItemBase>(
   folderId: string
 ): string[] {
   const result: string[] = []
+  const visited = new Set<string>([folderId])
   const stack = [folderId]
 
   while (stack.length > 0) {
     const current = stack.pop() as string
     for (const folder of tree.folders) {
-      if (folder.parentFolderId === current) {
-        result.push(folder.id)
-        stack.push(folder.id)
-      }
+      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
+      visited.add(folder.id)
+      result.push(folder.id)
+      stack.push(folder.id)
     }
   }
 

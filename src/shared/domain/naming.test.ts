@@ -23,6 +23,15 @@ describe('文件名清洗', () => {
     expect(sanitizeFileName('')).toBe('untitled')
   })
 
+  it('带扩展名的保留名同样规避，普通名不受影响', () => {
+    expect(sanitizeFileName('aux.txt')).toBe('_aux.txt')
+    expect(sanitizeFileName('COM1.bak')).toBe('_COM1.bak')
+    expect(sanitizeFileName('nul.log')).toBe('_nul.log')
+    expect(sanitizeFileName('nul.')).toBe('_nul')
+    expect(sanitizeFileName('console')).toBe('console')
+    expect(sanitizeFileName('com0.txt')).toBe('com0.txt')
+  })
+
   it('限制基础名长度', () => {
     expect(sanitizeFileName('a'.repeat(200))).toHaveLength(MAX_FILE_BASE_LENGTH)
   })

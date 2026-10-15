@@ -110,13 +110,16 @@ export function isDescendantOf(index: MessageIndex, ancestorId: string, nodeId: 
   return false
 }
 
-/** 子树所有节点 id（含自身） */
+/** 子树所有节点 id（含自身）；visited 守卫保证损伤数据成环时也能终止 */
 export function subtreeIds(index: MessageIndex, messageId: string): string[] {
   const result: string[] = []
+  const visited = new Set<string>()
   const stack = [messageId]
 
   while (stack.length > 0) {
     const current = stack.pop() as string
+    if (visited.has(current)) continue
+    visited.add(current)
     result.push(current)
     for (const child of childMessages(index, current)) {
       stack.push(child.id)

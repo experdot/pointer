@@ -38,7 +38,8 @@ export function sanitizeFileName(name: string): string {
     base = base.slice(0, MAX_FILE_BASE_LENGTH).trim()
   }
   if (!base) return 'untitled'
-  if (RESERVED_BASE_NAMES.test(base)) return `_${base}`
+  // Windows 保留名对「首个 . 之前的段」生效（如 aux.txt、con.tar.gz 均等价于设备名）
+  if (RESERVED_BASE_NAMES.test(base.split('.')[0])) return `_${base}`
   return base
 }
 

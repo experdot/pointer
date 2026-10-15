@@ -119,3 +119,16 @@ describe('页面树校验', () => {
     expect(validatePageTree(tree).map((diagnostic) => diagnostic.code)).toContain('tree.cycle')
   })
 })
+
+describe('损伤数据的环保护', () => {
+  it('descendantFolderIds 在循环文件夹下也能终止', () => {
+    const cyclic: PageTree = {
+      folders: [folder('a', 'A', 'b'), folder('b', 'B', 'a')],
+      pages: []
+    }
+    expect([...descendantFolderIds(cyclic, 'a')].sort()).toEqual(['b'])
+
+    const selfParent: PageTree = { folders: [folder('s', 'S', 's')], pages: [] }
+    expect(descendantFolderIds(selfParent, 's')).toEqual([])
+  })
+})

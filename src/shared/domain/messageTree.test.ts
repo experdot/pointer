@@ -270,3 +270,38 @@ describe('并发场景下的确定性', () => {
     expect(resolveLeafId(buildIndex([]))).toBeUndefined()
   })
 })
+
+describe('损伤数据的环保护', () => {
+  it('subtreeIds 与 deleteMessage 在父子成环时也能终止', () => {
+    const cyclic: Conversation = {
+      ...emptyConversation('page-cycle'),
+      messages: [
+        {
+          id: 'm1',
+          role: 'user',
+          content: '1',
+          createdAt: 1,
+          branchIndex: 0,
+          parentMessageId: 'm2'
+        },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: '2',
+          createdAt: 2,
+          branchIndex: 0,
+          parentMessageId: 'm1'
+        },
+        { id: 'free', role: 'user', content: '3', createdAt: 3, branchIndex: 0 }
+      ],
+      leafMessageId: 'm1'
+    }
+
+    const index = buildIndex(cyclic.messages)
+    const ids = subtreeIds(index, 'm1')
+    expect([...ids].sort()).toEqual(['m1', 'm2'])
+
+    const after = deleteMessage(cyclic, 'm1', 10)
+    expect(after.messages.map((message) => message.id)).toEqual(['free'])
+  })
+})

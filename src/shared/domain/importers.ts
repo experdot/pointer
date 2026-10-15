@@ -36,6 +36,15 @@ interface RawMessage {
   llmId?: string
 }
 
+/** 外部导出中的角色统一为领域角色；tool 等三值之外的未知值归并为 assistant */
+function normalizeRole(value: unknown): MessageRole {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (normalized === 'user' || normalized === 'assistant' || normalized === 'system') {
+    return normalized
+  }
+  return 'assistant'
+}
+
 /** 按父节点分组后顺序分配 branchIndex */
 function withBranchIndexes(messages: RawMessage[]): ChatMessage[] {
   const byParent = new Map<string | undefined, RawMessage[]>()
@@ -101,10 +110,14 @@ function findLeafNode(
   if (!current) return undefined
 
   let currentId = current
+  const visited = new Set<string>([currentId])
   for (;;) {
     const children = (childrenById.get(currentId) ?? []).filter((id) => !skip.has(id))
     if (children.length === 0) return currentId
-    currentId = children[children.length - 1]
+    const next = children[children.length - 1]
+    if (visited.has(next)) return currentId
+    visited.add(next)
+    currentId = next
   }
 }
 
@@ -149,7 +162,7 @@ export function parseImport(payload: unknown, format?: ImportFormat): ImportPars
 
 interface OpenAIMessage {
   id: string
-  author: { role: MessageRole }
+  author: { role: string }
   content: { parts?: unknown[] } | null
   create_time: number | null
   metadata?: { is_visually_hidden_from_conversation?: boolean; model_slug?: string }
@@ -194,8 +207,10 @@ function parseOpenAI(payload: OpenAIExport[]): ImportParseResult {
       const message = node.message
       const content = joinParts(message?.content?.parts)
       const hidden = message?.metadata?.is_visually_hidden_from_conversation === true
-      const emptyAssistant = message?.author.role === 'assistant' && !content
-      const emptySystem = message?.author.role === 'system' && !content
+      // 未知角色归并为 assistant 后，空消息按空 assistant 跳过
+      const role = normalizeRole(message?.author.role)
+      const emptyAssistant = role === 'assistant' && !content
+      const emptySystem = role === 'system' && !content
 
       if (!message || hidden || emptyAssistant || emptySystem) {
         skipped.add(id)
@@ -223,7 +238,7 @@ function parseOpenAI(payload: OpenAIExport[]): ImportParseResult {
       childrenById.set(id, node.children ?? [])
       raw.push({
         id,
-        role: message.author.role,
+        role: normalizeRole(message.author.role),
         content: joinParts(message.content?.parts),
         createdAt: timestampToMillis(message.create_time),
         parentMessageId: resolveParent(node.parent),
@@ -320,7 +335,7 @@ function parseDeepSeek(payload: DeepSeekExport[]): ImportParseResult {
 
 interface PointerMessage {
   id: string
-  role: MessageRole
+  role: string
   content?: string
   reasoning_content?: string
   timestamp?: number
@@ -377,7 +392,7 @@ function parsePointer(payload: PointerExport): ImportParseResult {
       childrenById.set(message.id, message.children ?? [])
       raw.push({
         id: message.id,
-        role: message.role,
+        role: normalizeRole(message.role),
         content: message.content ?? '',
         reasoning: message.reasoning_content,
         createdAt: timestampToMillis(message.timestamp),

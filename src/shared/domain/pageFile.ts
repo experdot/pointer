@@ -75,19 +75,36 @@ function unescapeXml(value: string): string {
     .replace(/&amp;/g, '&')
 }
 
-/** 防止正文伪造元数据注释块或提前结束 details */
+/**
+ * 防止正文伪造元数据注释块或提前结束 details
+ *
+ * 必须先转义 &，后续规则引入的 & 都是转义产物，因此写入内容可以无损读回：
+ * 正文里原本就有的 &lt;!--、<\/details 等字面量会先变成 &amp;lt;!--、&lt;\/details，
+ * 读取时不会被误解码。
+ */
 function escapeBody(value: string): string {
   return value
+    .replace(/&/g, '&amp;')
     .replace(/<!--/g, '&lt;!--')
     .replace(/-->/g, '--&gt;')
-    .replace(/<\/details/gi, '<\\/details')
+    .replace(/<\/details/gi, (match) => `&lt;${match.slice(1)}`)
+    .replace(/<\\\/details/gi, (match) => `&lt;${match.slice(1)}`)
 }
 
+/**
+ * 与 escapeBody 互逆
+ *
+ * 顺序约定：先兼容旧文件的反斜杠写法，再还原 &lt; 系列；&amp; 必须放在最后一步，
+ * 否则会把刚还原的转义产物二次解码。
+ */
 function unescapeBody(value: string): string {
   return value
+    .replace(/<\\\/details/gi, '</details')
+    .replace(/&lt;(\\\/details)/gi, '<$1')
+    .replace(/&lt;(\/details)/gi, '<$1')
     .replace(/&lt;!--/g, '<!--')
     .replace(/--&gt;/g, '-->')
-    .replace(/<\\\/details/gi, '</details')
+    .replace(/&amp;/g, '&')
 }
 
 // ==================== XML 小工具 ====================
@@ -352,11 +369,11 @@ function parseMessageBlock(section: string): ChatMessage | null {
   if (headerEnd === -1) return null
 
   const headerLine = section.slice(0, headerEnd).trim()
-  const headerMatch = headerLine.match(/^##\s+\d+(?::\d+)?\s+(User|Assistant|System)\s*$/)
+  const headerMatch = headerLine.match(/^##\s+\d+(?::\d+)?\s+(\S+)\s*$/)
   if (!headerMatch) return null
 
-  const role = roleFromDisplayName(headerMatch[1])
-  if (!role) return null
+  // 角色词大小写不敏感；历史文件里写坏的未知角色头（如 undefined）按 assistant 保留正文
+  const role = roleFromDisplayName(headerMatch[1]) ?? 'assistant'
 
   const rest = section.slice(headerEnd + 1)
   const metaMatch = rest.match(/<!--\s*\n?<pointer-message>([\s\S]*?)<\/pointer-message>\s*\n?-->/)

@@ -34,18 +34,19 @@ export function nextOrder(tree: PageTree, parentFolderId: string | undefined): n
   return siblings.reduce((max, node) => Math.max(max, node.order + 1), 0)
 }
 
-/** 文件夹的全部后代文件夹 id（不含自身） */
+/** 文件夹的全部后代文件夹 id（不含自身）；visited 守卫保证损伤数据成环时也能终止 */
 export function descendantFolderIds(tree: PageTree, folderId: string): string[] {
   const result: string[] = []
+  const visited = new Set<string>([folderId])
   const stack = [folderId]
 
   while (stack.length > 0) {
     const current = stack.pop() as string
     for (const folder of tree.folders) {
-      if (folder.parentFolderId === current) {
-        result.push(folder.id)
-        stack.push(folder.id)
-      }
+      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
+      visited.add(folder.id)
+      result.push(folder.id)
+      stack.push(folder.id)
     }
   }
 

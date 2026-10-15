@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { detectFormat, parseImport } from './importers'
+import { PAGE_FILE_FORMAT_VERSION, parsePageFile, serializePageFile } from './pageFile'
 
 describe('导入格式检测', () => {
   it('识别三种导出格式', () => {
@@ -146,5 +147,112 @@ describe('Pointer 旧版导出解析', () => {
       ['c', 1]
     ])
     expect(conversation.leafMessageId).toBe('c')
+  })
+})
+
+describe('未知角色归一', () => {
+  const toolPayload = [
+    {
+      title: '工具对话',
+      conversation_id: 'c-tool',
+      create_time: 1_700_000_000,
+      mapping: {
+        root: { id: 'root', parent: null, children: ['t1', 't2'], message: null },
+        t1: {
+          id: 't1',
+          parent: 'root',
+          children: [],
+          message: {
+            id: 't1',
+            author: { role: 'tool' },
+            content: { parts: ['搜索结果'] },
+            create_time: 1_700_000_001
+          }
+        },
+        t2: {
+          id: 't2',
+          parent: 'root',
+          children: [],
+          message: {
+            id: 't2',
+            author: { role: 'tool' },
+            content: { parts: [] },
+            create_time: 1_700_000_002
+          }
+        }
+      },
+      current_node: 't1'
+    }
+  ]
+
+  it('tool 按 assistant 保留，空 tool 消息跳过', () => {
+    const result = parseImport(toolPayload)
+
+    expect(result.conversations).toHaveLength(1)
+    expect(result.conversations[0].messages.map((message) => [message.id, message.role])).toEqual([
+      ['t1', 'assistant']
+    ])
+  })
+
+  it('导入结果经页面文件往返后消息不丢失', () => {
+    const conversation = parseImport(toolPayload).conversations[0]
+    const text = serializePageFile({
+      version: PAGE_FILE_FORMAT_VERSION,
+      page: { id: 'page-tool', kind: 'page', name: '工具', order: 0, createdAt: 1 },
+      messages: conversation.messages,
+      topics: [],
+      leafMessageId: conversation.leafMessageId
+    })
+
+    const parsed = parsePageFile(text)
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.messages.map((message) => [message.id, message.role])).toEqual([
+      ['t1', 'assistant']
+    ])
+    expect(parsed.value.messages[0].content).toBe('搜索结果')
+  })
+
+  it('children 成环的导出也能正常解析', () => {
+    const result = parseImport([
+      {
+        title: '环',
+        id: 'c-cycle',
+        inserted_at: '2024-01-01T00:00:00.000Z',
+        mapping: {
+          r: {
+            id: 'r',
+            parent: null,
+            children: ['c1'],
+            message: {
+              inserted_at: '2024-01-01T00:00:01.000Z',
+              fragments: [{ type: 'REQUEST', content: 'r' }]
+            }
+          },
+          c1: {
+            id: 'c1',
+            parent: 'r',
+            children: ['c2'],
+            message: {
+              inserted_at: '2024-01-01T00:00:02.000Z',
+              fragments: [{ type: 'RESPONSE', content: 'c1' }]
+            }
+          },
+          c2: {
+            id: 'c2',
+            parent: 'c1',
+            children: ['c1'],
+            message: {
+              inserted_at: '2024-01-01T00:00:03.000Z',
+              fragments: [{ type: 'REQUEST', content: 'c2' }]
+            }
+          }
+        }
+      }
+    ])
+
+    const conversation = result.conversations[0]
+    expect(conversation.messages).toHaveLength(3)
+    expect(['c1', 'c2']).toContain(conversation.leafMessageId)
   })
 })

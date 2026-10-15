@@ -125,6 +125,53 @@ describe('页面文件编解码', () => {
     expect(metadata.value.topics).toHaveLength(1)
   })
 
+  it('转义字面量与真实标记混排时可以无损往返', () => {
+    const literal = 'a &lt;!-- b --&gt; c <\\/details d &amp; e'
+    const mixed = '真注释 <!-- x --> 与真闭合 </details> 同现'
+
+    const document: PageFileDocument = {
+      version: PAGE_FILE_FORMAT_VERSION,
+      page: { id: 'p-escape', kind: 'page', name: '转义', order: 0, createdAt: 1 },
+      messages: [
+        { id: 'm1', role: 'user', content: literal, createdAt: 1, branchIndex: 0 },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: mixed,
+          reasoning: `思考 ${literal} 结束`,
+          createdAt: 2,
+          branchIndex: 0,
+          parentMessageId: 'm1'
+        }
+      ],
+      topics: []
+    }
+
+    const parsed = parsePageFile(serializePageFile(document))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.messages).toEqual(document.messages)
+  })
+
+  it('未知或大小写异常的角色头不再丢弃消息', () => {
+    const text = serializePageFile(buildDocument())
+      .replace('## 1 User', '## 1 user')
+      .replace('## 2 Assistant', '## 2 undefined')
+      .replace('## 2:2 User', '## 2:2 Tool')
+
+    const parsed = parsePageFile(text)
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+
+    expect(parsed.value.messages.map((message) => [message.id, message.role])).toEqual([
+      ['m1', 'user'],
+      ['m2', 'assistant'],
+      ['m3', 'assistant']
+    ])
+    expect(parsed.value.messages[0].content).toContain('第一行')
+    expect(parsed.value.messages[1].reasoning).toContain('</details>')
+  })
+
   it('非 Pointer 文件与高版本文件被拒绝', () => {
     expect(parsePageFile('# 普通 Markdown').ok).toBe(false)
     expect(parsePageMetadata('# 普通 Markdown').ok).toBe(false)
