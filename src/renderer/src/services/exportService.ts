@@ -68,19 +68,3 @@ export function exportTableBlock(table: string, pageId?: string): void {
     pageId
   })
 }
-
-/**
- * Copy content to clipboard
- */
-export async function copyToClipboard(content: string | Blob): Promise<void> {
-  if (content instanceof Blob) {
-    // For images, use clipboard API
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        [content.type]: content
-      })
-    ])
-  } else {
-    await navigator.clipboard.writeText(content)
-  }
-}

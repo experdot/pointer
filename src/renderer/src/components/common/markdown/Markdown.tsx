@@ -15,7 +15,7 @@ import { useRef, useState, useEffect, useMemo, ReactElement } from 'react'
 import LoadingIcon from './three-dots.svg'
 import { useDebouncedCallback } from 'use-debounce'
 import { command } from '../../../runtime/client'
-import { copyToClipboard } from './utils'
+import { copyToClipboard } from '../../../utils/clipboard'
 import TableViewModal from './TableViewModal'
 
 export function Mermaid(props: { code: string }): React.JSX.Element | null {

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Markdown } from './Markdown'
 import { screenshotElement } from '../../../utils/screenshot'
-import { copyToClipboard } from './utils'
+import { copyToClipboard } from '../../../utils/clipboard'
 import { command } from '../../../runtime/client'
 import './tableViewModal.scss'
 
