@@ -94,6 +94,16 @@ export function ConfigTree<T extends ConfigItemBase>({
     [createFolder, onSelect]
   )
 
+  // 稳定引用：内联箭头会让 TreeView 的 treeData useMemo 每次失效
+  const getItemName = useCallback((item: T): string => item[itemNameKey] as string, [itemNameKey])
+
+  const handleUpdateItemName = useCallback(
+    (id: string, name: string): void => {
+      updateItem(id, { [itemNameKey]: name } as Partial<T>)
+    },
+    [itemNameKey, updateItem]
+  )
+
   const handleToggleMultiSelect = (): void => {
     setMultiSelect(!multiSelect)
     if (multiSelect) {
@@ -190,10 +200,10 @@ export function ConfigTree<T extends ConfigItemBase>({
         selectedId={selectedId}
         onSelect={onSelect}
         itemIcon={itemIcon}
-        getItemName={(item) => item[itemNameKey] as string}
+        getItemName={getItemName}
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        updateItem={(id, name) => updateItem(id, { [itemNameKey]: name } as Partial<T>)}
+        updateItem={handleUpdateItemName}
         deleteItem={deleteItem}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}

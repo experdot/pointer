@@ -31,6 +31,13 @@ import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import { resolveCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
 
+// 模块级常量：内联的 JSX 与箭头函数会让 TreeView 的 treeData useMemo 每次失效
+const PAGE_ICON = <MessageOutlined />
+
+function pageName(page: Page): string {
+  return page.name
+}
+
 export function Explorer(): React.JSX.Element {
   const {
     pages,
@@ -97,6 +104,15 @@ export function Explorer(): React.JSX.Element {
       openPage(id, false)
     }
   }
+
+  const isPageItem = useCallback((item: Page | Folder): item is Page => item.kind === 'page', [])
+
+  const handleUpdateItemName = useCallback(
+    (id: string, name: string): void => {
+      void updatePage(id, { name })
+    },
+    [updatePage]
+  )
 
   const handleCreatePage = async (): Promise<void> => {
     const page = await createPage(resolveCreationTarget(selectedKey, folders, pages))
@@ -371,12 +387,12 @@ export function Explorer(): React.JSX.Element {
         folders={folders}
         selectedId={selectedKey}
         onSelect={handleSelect}
-        itemIcon={<MessageOutlined />}
-        getItemName={(page) => page.name}
+        itemIcon={PAGE_ICON}
+        getItemName={pageName}
         getItemTitleExtra={getItemTitleExtra}
-        isItem={(item): item is Page => (item as Page | Folder).kind === 'page'}
+        isItem={isPageItem}
         batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
-        updateItem={(id, name) => updatePage(id, { name })}
+        updateItem={handleUpdateItemName}
         deleteItem={deletePage}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}

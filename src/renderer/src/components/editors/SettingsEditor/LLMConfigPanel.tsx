@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete } from 'antd'
 import { ApiOutlined } from '@ant-design/icons'
 import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
@@ -38,7 +38,11 @@ export function LLMConfigPanel(): React.JSX.Element {
   const selectedConfig = items.find((c) => c.id === selectedId)
   const modelOptions = selectedId ? modelOptionsMap[selectedId] || [] : []
 
-  const isItem = (item: LLMConfig | ConfigFolder): item is LLMConfig => item.kind === 'item'
+  // 稳定引用：内联箭头会让 ConfigTree 里的 treeData useMemo 每次失效
+  const isItem = useCallback(
+    (item: LLMConfig | ConfigFolder): item is LLMConfig => item.kind === 'item',
+    []
+  )
 
   // 文本字段用本地草稿：中文输入法组词期间不被内核回推覆盖
   const nameField = useDraftField(selectedConfig?.name ?? '', (next) =>

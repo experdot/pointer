@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Input, Empty, Tree, Dropdown, Button, Tooltip } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -107,7 +107,12 @@ function getRootItems<TItem extends ItemLike, TFolder extends FolderLike>(
   return [...rootFolders, ...rootItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
 
-// ==================== 节点标题组件（使用 memo 优化） ====================
+/** 模块级默认值：默认参数每次渲染都会新建函数，会让 treeData 的 useMemo 失效 */
+function defaultFolderName(folder: FolderLike): string {
+  return folder.name
+}
+
+// ==================== 节点标题组件（菜单项在展开时才计算） ====================
 
 interface TreeNodeTitleProps<TItem extends ItemLike, TFolder extends FolderLike> {
   id: string
@@ -120,8 +125,7 @@ interface TreeNodeTitleProps<TItem extends ItemLike, TFolder extends FolderLike>
   createItemLabel?: string
 }
 
-// 使用泛型的 memo 组件
-const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>({
+const TreeNodeTitle = <TItem extends ItemLike, TFolder extends FolderLike>({
   id,
   title,
   isHighlighted,
@@ -188,9 +192,6 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
     </Dropdown>
   )
 }
-
-// memo 包装，只有 props 变化时才重新渲染
-const TreeNodeTitle = memo(TreeNodeTitleInner) as typeof TreeNodeTitleInner
 
 // ==================== 编辑输入框组件 ====================
 
@@ -342,7 +343,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   itemIcon,
   getItemName,
   getItemTitleExtra,
-  getFolderName = (f) => f.name,
+  getFolderName = defaultFolderName,
   isItem,
   batchUpdateItemsOrder,
   updateItem,
@@ -790,25 +791,6 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 标题渲染 ====================
 
-  // 使用 useCallback 缓存 getContextMenuItems，避免每次渲染时创建新函数
-  const memoizedGetContextMenuItems = useCallback(
-    (node: TreeNodeData<TItem, TFolder>) => getContextMenuItems(node),
-    // 只依赖外部传入的 props，不依赖内部函数
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      getItemLeadingMenuItems,
-      getItemMenuItems,
-      getFolderMenuItems,
-      getItemName,
-      getFolderName,
-      clearFolder,
-      onCreateItemInFolder,
-      onCreateSubFolder,
-      createItemLabel,
-      createFolderLabel
-    ]
-  )
-
   const titleRender = (node: TreeDataNode): React.ReactNode => {
     const treeNode = node as TreeNodeData<TItem, TFolder>
     const id = node.key as string
@@ -836,7 +818,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         isHighlighted={isHighlighted}
         treeNode={treeNode}
         onDoubleClick={onDoubleClick}
-        getContextMenuItems={memoizedGetContextMenuItems}
+        getContextMenuItems={getContextMenuItems}
         onCreateItemInFolder={onCreateItemInFolder}
         createItemLabel={createItemLabel}
       />
