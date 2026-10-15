@@ -22,7 +22,6 @@ import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitle } from '../../services/titleService'
-import { currentGeneration } from '../../runtime/generation'
 import * as pagesService from '../../services/pagesService'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
@@ -155,14 +154,8 @@ export function Explorer(): React.JSX.Element {
   // AI 生成标题 - 直接在回调中执行生成
   const handleGenerateItemName = useCallback(
     async (pageId: string, options: GenerateOptions): Promise<void> => {
-      const pageMessages = messagesCache[pageId]?.messages || []
-      if (pageMessages.length === 0) return
-
-      const generation = currentGeneration()
-      void pageMessages
-      const result = await generateSessionTitle(pageId, options)
-      void result
-      void generation
+      if ((messagesCache[pageId]?.messages.length ?? 0) === 0) return
+      await generateSessionTitle(pageId, options)
     },
     [messagesCache]
   )

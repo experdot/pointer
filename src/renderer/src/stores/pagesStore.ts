@@ -14,7 +14,6 @@ interface PagesState {
 }
 
 interface PagesActions {
-  setPages: (pages: Page[]) => void
   upsert: (page: Page) => void
   getById: (id: string) => Page | undefined
   getAll: () => Page[]
@@ -29,7 +28,6 @@ interface PagesActions {
   update: (id: string, patch: { name?: string; starred?: boolean }) => Promise<void>
   move: (id: string, targetFolderId?: string, beforeNodeId?: string) => Promise<void>
   delete: (ids: string | string[]) => Promise<void>
-  deleteMany: (ids: string[]) => Promise<void>
   reset: () => void
 }
 
@@ -38,8 +36,6 @@ type PagesStore = PagesState & PagesActions
 export const usePagesStore = create<PagesStore>((set, get) => ({
   pages: [],
   initialized: false,
-
-  setPages: (pages) => set({ pages, initialized: true }),
 
   upsert: (page) =>
     set((state) => ({
@@ -78,11 +74,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     const list = Array.isArray(ids) ? ids : [ids]
     if (list.length === 0) return
     await command('page.delete', { pageIds: list })
-  },
-
-  deleteMany: async (ids) => {
-    if (ids.length === 0) return
-    await command('page.delete', { pageIds: ids })
   },
 
   reset: () => set({ pages: [], initialized: false })

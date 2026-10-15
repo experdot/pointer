@@ -57,7 +57,7 @@ export async function deletePage(id: string): Promise<void> {
 }
 
 export async function deletePages(ids: readonly string[]): Promise<void> {
-  await usePagesStore.getState().deleteMany([...ids])
+  await usePagesStore.getState().delete([...ids])
 }
 
 export async function movePage(

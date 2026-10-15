@@ -249,8 +249,8 @@ function handleEvent(event: RuntimeEvent): void {
     case 'session.changed':
       useSessionStore.getState().setSession(event.payload as SessionSnapshot)
       void refreshWorkspaceScope()
-      useMessagesStore.getState().evictAll()
-      useMessageQueueStore.getState().evictAll()
+      useMessagesStore.getState().reset()
+      useMessageQueueStore.getState().reset()
       // 与迁移前一致：切换账户/工作区后清空易失状态，避免上个上下文的内容泄漏
       useChatUIStore.getState().reset()
       useGlobalSearchStore.getState().reset()

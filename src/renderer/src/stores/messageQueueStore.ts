@@ -9,14 +9,12 @@ import { command } from '../runtime/client'
 
 interface MessageQueueState {
   cache: Record<string, MessageQueue>
-  initialized: boolean
 }
 
 interface MessageQueueActions {
   setQueue: (queue: MessageQueue) => void
   getQueue: (pageId: string) => MessageQueue
   evict: (pageId: string) => void
-  evictAll: () => void
   addItem: (pageId: string, content: string) => Promise<void>
   updateItem: (pageId: string, itemId: string, content: string) => Promise<void>
   removeItem: (pageId: string, itemId: string) => Promise<void>
@@ -30,12 +28,10 @@ type MessageQueueStore = MessageQueueState & MessageQueueActions
 
 export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
   cache: {},
-  initialized: false,
 
   setQueue: (queue) =>
     set((state) => ({
-      cache: { ...state.cache, [queue.pageId]: queue },
-      initialized: true
+      cache: { ...state.cache, [queue.pageId]: queue }
     })),
 
   getQueue: (pageId) => get().cache[pageId] ?? emptyQueue(pageId),
@@ -47,8 +43,6 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
       delete next[pageId]
       return { cache: next }
     }),
-
-  evictAll: () => set({ cache: {} }),
 
   addItem: async (pageId, content) => {
     await command('queue.add', { pageId, content })
@@ -74,5 +68,5 @@ export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
     await command('queue.setPaused', { pageId, paused: false })
   },
 
-  reset: () => set({ cache: {}, initialized: false })
+  reset: () => set({ cache: {} })
 }))

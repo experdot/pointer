@@ -39,17 +39,9 @@ interface MessagesActions {
   upsertMessage: (pageId: string, message: ChatMessage) => void
   /** 批量追加流式增量（镜像层合并后一次性写入，避免每个分片都触发渲染） */
   applyDeltas: (entries: DeltaBatchEntry[]) => void
-  appendToMessage: (
-    pageId: string,
-    messageId: string,
-    text: string,
-    field: 'content' | 'reasoning'
-  ) => void
   setStreaming: (messageId: string, streaming: boolean) => void
   isStreaming: (messageId: string) => boolean
   evict: (pageId: string) => void
-  evictAll: () => void
-  removeRecord: (pageId: string) => void
   reset: () => void
 
   addMessage: (
@@ -142,28 +134,6 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       }
     }),
 
-  appendToMessage: (pageId, messageId, text, field) =>
-    set((state) => {
-      const current = state.cache[pageId]
-      if (!current) return state
-
-      return {
-        cache: {
-          ...state.cache,
-          [pageId]: {
-            ...current,
-            messages: current.messages.map((message) =>
-              message.id === messageId
-                ? field === 'content'
-                  ? { ...message, content: message.content + text }
-                  : { ...message, reasoning: `${message.reasoning ?? ''}${text}` }
-                : message
-            )
-          }
-        }
-      }
-    }),
-
   applyDeltas: (entries) =>
     set((state) => {
       const cache = { ...state.cache }
@@ -207,10 +177,6 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       delete next[pageId]
       return { cache: next }
     }),
-
-  evictAll: () => set({ cache: {}, streaming: {} }),
-
-  removeRecord: (pageId) => get().evict(pageId),
 
   reset: () => set({ cache: {}, streaming: {} }),
 
