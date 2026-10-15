@@ -90,15 +90,15 @@ export function isFolderAncestor(
   return false
 }
 
-export function findFolder(tree: PageTree, folderId: string): Folder | undefined {
+function findFolder(tree: PageTree, folderId: string): Folder | undefined {
   return tree.folders.find((folder) => folder.id === folderId)
 }
 
-export function findPage(tree: PageTree, pageId: string): Page | undefined {
+function findPage(tree: PageTree, pageId: string): Page | undefined {
   return tree.pages.find((page) => page.id === pageId)
 }
 
-export function findNode(tree: PageTree, nodeId: string): Folder | Page | undefined {
+function findNode(tree: PageTree, nodeId: string): Folder | Page | undefined {
   return findFolder(tree, nodeId) ?? findPage(tree, nodeId)
 }
 

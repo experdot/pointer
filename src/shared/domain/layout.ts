@@ -9,12 +9,12 @@ import { nameKey } from './common'
 import { sanitizeFileName, uniquePageFileName, uniqueName } from './naming'
 import type { Folder, Page } from './page'
 
-export interface WorkspaceLayoutInput {
+interface WorkspaceLayoutInput {
   folders: readonly Folder[]
   pages: readonly Page[]
 }
 
-export interface WorkspaceLayout {
+interface WorkspaceLayout {
   /** 文件夹 id 到相对目录路径（根目录为 ''） */
   folderDirs: Map<string, string>
   /** 页面 id 到相对文件路径（使用 / 分隔） */

@@ -15,7 +15,7 @@ import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import './ConfigTree.css'
 
-export interface ConfigTreeProps<T extends ConfigItemBase> {
+interface ConfigTreeProps<T extends ConfigItemBase> {
   items: T[]
   folders: ConfigFolder[]
   selectedId: string | null

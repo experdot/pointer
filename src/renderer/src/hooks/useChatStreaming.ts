@@ -23,13 +23,13 @@ export interface SendMessageOptions {
   modelConfigId?: string
 }
 
-export interface UseChatStreamingOptions {
+interface UseChatStreamingOptions {
   pageId: string
   record: Conversation | undefined
   messages: ChatMessage[]
 }
 
-export interface UseChatStreamingResult {
+interface UseChatStreamingResult {
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>
   stopStreaming: () => Promise<void>
   retryMessage: (messageId: string, llmId?: string, modelConfigId?: string) => Promise<void>

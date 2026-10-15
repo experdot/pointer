@@ -7,7 +7,7 @@
 
 import { nameKey } from './common'
 
-export const PAGE_FILE_EXTENSION = '.pointer.md'
+const PAGE_FILE_EXTENSION = '.pointer.md'
 export const MAX_FILE_BASE_LENGTH = 80
 
 /** 新建页面与文件夹的默认名称（内核创建时使用，展示层据此判断"尚未改名"） */
@@ -43,7 +43,7 @@ export function sanitizeFileName(name: string): string {
 }
 
 /** 名称候选值：index 为 0 时返回原名，否则追加 " (n)" */
-export function nameCandidate(desired: string, index: number): string {
+function nameCandidate(desired: string, index: number): string {
   return index === 0 ? desired : `${desired} (${index})`
 }
 

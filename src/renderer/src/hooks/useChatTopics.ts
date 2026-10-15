@@ -11,14 +11,14 @@ export interface GenerateOptions {
   modelConfigId?: string
 }
 
-export interface UseChatTopicsOptions {
+interface UseChatTopicsOptions {
   pageId: string
   messages: ChatMessage[]
   currentPath: ChatMessage[]
   topics: Topic[]
 }
 
-export interface UseChatTopicsResult {
+interface UseChatTopicsResult {
   createTopic: (messageId: string, name: string) => Promise<Topic | undefined>
   updateTopic: (topicId: string, updates: Partial<Omit<Topic, 'id'>>) => Promise<void>
   deleteTopic: (topicId: string) => Promise<void>

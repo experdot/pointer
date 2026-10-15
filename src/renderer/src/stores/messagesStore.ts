@@ -74,7 +74,7 @@ interface MessagesActions {
 
 type MessagesStore = MessagesState & MessagesActions
 
-export interface DeltaBatchEntry {
+interface DeltaBatchEntry {
   pageId: string
   messageId: string
   content: string

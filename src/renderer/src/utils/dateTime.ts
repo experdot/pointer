@@ -1,7 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
-export type DateLike = number | string | Date | Dayjs | null | undefined
+type DateLike = number | string | Date | Dayjs | null | undefined
 
 export function parseDateLike(value: DateLike): Dayjs | null {
   if (value == null) return null

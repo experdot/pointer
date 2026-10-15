@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 
-export interface NavigationRequest {
+interface NavigationRequest {
   pageId: string
   messageId: string
   instant?: boolean
@@ -13,7 +13,7 @@ export interface NavigationRequest {
   version: number
 }
 
-export interface RelativeNavigationRequest {
+interface RelativeNavigationRequest {
   pageId: string
   direction: 'prev' | 'next'
   version: number

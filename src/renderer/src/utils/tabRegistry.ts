@@ -5,7 +5,7 @@ import type { Tab } from '@renderer/types/shared'
 export type { Tab } from '@renderer/types/shared'
 
 // Tab 类型配置
-export interface TabTypeConfig {
+interface TabTypeConfig {
   type: string
   icon: ReactNode
   // 渲染编辑器内容

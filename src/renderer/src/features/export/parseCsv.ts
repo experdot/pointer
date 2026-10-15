@@ -4,7 +4,7 @@
  * 导出编辑器与表格预览共用；空内容返回一个只有默认列名的空表。
  */
 
-export interface ParsedCsv {
+interface ParsedCsv {
   headers: string[]
   rows: string[][]
 }

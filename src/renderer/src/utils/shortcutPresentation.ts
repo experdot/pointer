@@ -71,11 +71,11 @@ export function isMacPlatform(): boolean {
   return resolveDisplayPlatform() === 'darwin'
 }
 
-export function isLinuxPlatform(): boolean {
+function isLinuxPlatform(): boolean {
   return resolveDisplayPlatform() === 'linux'
 }
 
-export function isWindowsPlatform(): boolean {
+function isWindowsPlatform(): boolean {
   return resolveDisplayPlatform() === 'windows'
 }
 
@@ -144,7 +144,7 @@ export function formatShortcutTooltip(label: string, shortcutId: ShortcutLabelId
   return `${label} (${getShortcutLabel(shortcutId)})`
 }
 
-export function withStandardMenu(
+function withStandardMenu(
   menu: NonNullable<DropdownProps['menu']>
 ): NonNullable<DropdownProps['menu']> {
   return {

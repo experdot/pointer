@@ -12,7 +12,7 @@ import type { ExportEditorContext } from '../features/export/types'
 /**
  * Open the export tab with optional context
  */
-export function openExportTab(context?: ExportEditorContext): void {
+function openExportTab(context?: ExportEditorContext): void {
   useTabsStore.getState().openTab({
     id: uuidv4(),
     type: 'export',

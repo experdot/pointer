@@ -8,7 +8,7 @@
 import type { Account, ChatMessage, Page, Settings } from '../domain'
 import type { PageTreeSnapshot, SessionSnapshot, UpdateStatus } from './queries'
 
-export interface RuntimeEventMap {
+interface RuntimeEventMap {
   'accounts.changed': Account[]
   'session.changed': SessionSnapshot
   'tree.changed': PageTreeSnapshot
@@ -26,7 +26,7 @@ export interface RuntimeEventMap {
   'app.updateStatus': UpdateStatus
 }
 
-export type RuntimeEventName = keyof RuntimeEventMap
+type RuntimeEventName = keyof RuntimeEventMap
 
 export type RuntimeEvent = {
   [K in RuntimeEventName]: { type: K; payload: RuntimeEventMap[K] }

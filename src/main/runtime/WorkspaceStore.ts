@@ -71,7 +71,7 @@ interface FoldersFile {
   folders: Folder[]
 }
 
-export interface NodeMetadataPatch {
+interface NodeMetadataPatch {
   name?: string
   starred?: boolean
 }

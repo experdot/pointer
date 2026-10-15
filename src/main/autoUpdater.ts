@@ -5,7 +5,7 @@ import { join } from 'path'
 import type { UpdateCheckResult, UpdateStatus } from '@shared/contracts'
 import { isNewerVersion } from '@shared/domain'
 
-export interface UpdaterBridge {
+interface UpdaterBridge {
   check: () => Promise<UpdateCheckResult>
   download: () => Promise<void>
   quitAndInstall: () => void

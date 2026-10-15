@@ -22,7 +22,7 @@ export interface GenerateOptions {
   extraRequirements?: string
 }
 
-export interface TitleGenerationResult {
+interface TitleGenerationResult {
   title: string
   success: boolean
   error?: string

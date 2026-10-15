@@ -27,7 +27,7 @@
 
 import { join } from 'node:path'
 
-export const POINTER_DIR = '.pointer'
+const POINTER_DIR = '.pointer'
 
 export class PathResolver {
   constructor(readonly appDataPath: string) {}

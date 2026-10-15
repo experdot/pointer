@@ -7,7 +7,7 @@
 
 import type { Folder, Page } from '@renderer/types/shared'
 
-export interface CreationTarget {
+interface CreationTarget {
   parentFolderId?: string
   afterNodeId?: string
 }

@@ -14,7 +14,7 @@ interface AccountsFile {
   currentAccountId: string | null
 }
 
-export interface SessionFile {
+interface SessionFile {
   accountId: string | null
   workspaceId: string | null
 }

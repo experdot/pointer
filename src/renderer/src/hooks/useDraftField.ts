@@ -10,14 +10,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export interface DraftFieldHandlers {
+interface DraftFieldHandlers {
   onFocus: () => void
   onBlur: () => void
   onCompositionStart: () => void
   onCompositionEnd: (event?: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }
 
-export interface DraftField {
+interface DraftField {
   value: string
   setValue: (next: string) => void
   handlers: DraftFieldHandlers

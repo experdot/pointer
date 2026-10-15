@@ -42,7 +42,7 @@ export interface WorkspacePathValidation {
   error?: string
 }
 
-export interface CreateWorkspaceInput {
+interface CreateWorkspaceInput {
   id: string
   accountId: string
   name: string

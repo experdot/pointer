@@ -18,14 +18,14 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { useSettingsUIStore } from '../stores/settingsUIStore'
 import { useTabsStore } from '../stores/tabsStore'
 
-export interface LLMConfigInput {
+interface LLMConfigInput {
   name: string
   baseUrl: string
   modelName: string
   apiKey?: string
 }
 
-export interface ModelConfigInput {
+interface ModelConfigInput {
   name: string
   systemPrompt: string
   topP: number

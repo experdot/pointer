@@ -9,7 +9,7 @@ import { createParser } from 'eventsource-parser'
 import type { MessageRole, ModelParameters, ProviderConnection } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
 
-export type ProviderContentPart =
+type ProviderContentPart =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
 
@@ -18,7 +18,7 @@ export interface ProviderMessage {
   content: string | ProviderContentPart[]
 }
 
-export interface StreamHandlers {
+interface StreamHandlers {
   onDelta: (text: string) => void
   onReasoning: (text: string) => void
 }
@@ -138,7 +138,7 @@ export async function streamChat(
   return { content, reasoning }
 }
 
-export function withSystemPrompt(
+function withSystemPrompt(
   messages: readonly ProviderMessage[],
   parameters: ModelParameters
 ): ProviderMessage[] {

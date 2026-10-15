@@ -44,7 +44,7 @@ interface ItemLike {
   order?: number
 }
 
-export interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLike> {
+interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLike> {
   items: TItem[]
   folders: TFolder[]
   selectedId: string | null

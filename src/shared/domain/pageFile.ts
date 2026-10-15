@@ -35,7 +35,7 @@ import type { Page } from './page'
 
 export const PAGE_FILE_FORMAT_VERSION = 2
 
-export const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
+const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
 export const MESSAGE_HEADER_PREFIX = '<!-- [POINTER-MSG] -->'
 const REASONING_OPEN = '<details>\n<summary>💭 Thinking</summary>\n\n'
 const REASONING_CLOSE = '\n\n</details>'
@@ -50,14 +50,14 @@ export interface PageFileDocument {
 }
 
 /** 页面元数据（不包含消息），用于工作区扫描 */
-export interface PageMetadata {
+interface PageMetadata {
   page: Page
   topics: Topic[]
   leafMessageId?: string
   selectedMessageId?: string
 }
 
-export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string }
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string }
 
 // ==================== 转义 ====================
 

@@ -134,7 +134,7 @@ export async function mtimeOf(target: string): Promise<number | null> {
   }
 }
 
-export interface WalkEntry {
+interface WalkEntry {
   absolutePath: string
   /** 相对遍历根目录的路径，使用 / 分隔 */
   relativePath: string

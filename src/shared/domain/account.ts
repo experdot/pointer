@@ -10,7 +10,7 @@ export interface Account extends Timestamps {
   avatar?: string
 }
 
-export interface CreateAccountInput {
+interface CreateAccountInput {
   id: string
   name: string
   avatar?: string

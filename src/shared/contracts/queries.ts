@@ -31,7 +31,7 @@ export interface ModelCatalog {
   error?: string
 }
 
-export interface ConnectionCheck {
+interface ConnectionCheck {
   ok: boolean
   message: string
 }
@@ -59,7 +59,7 @@ export interface UpdateCheckResult {
   version?: string
 }
 
-export interface RuntimeQueryMap {
+interface RuntimeQueryMap {
   'session.get': { payload: void; result: SessionSnapshot }
   'accounts.list': { payload: void; result: Account[] }
   'workspaces.list': { payload: void; result: WorkspaceSummary[] }

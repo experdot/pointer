@@ -38,12 +38,12 @@ export interface RuntimeCommandRequest {
   payload: unknown
 }
 
-export interface RuntimeSuccess<T = unknown> {
+interface RuntimeSuccess<T = unknown> {
   ok: true
   value: T
 }
 
-export interface RuntimeFailure {
+interface RuntimeFailure {
   ok: false
   code: string
   message: string

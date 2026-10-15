@@ -18,7 +18,7 @@ function sortNodes(nodes: TreeNodeView[]): TreeNodeView[] {
   )
 }
 
-export interface UsePagesResult {
+interface UsePagesResult {
   pages: Page[]
   folders: FolderView[]
   rootPages: Page[]

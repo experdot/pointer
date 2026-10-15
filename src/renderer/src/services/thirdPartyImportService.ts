@@ -6,14 +6,14 @@
 
 import { command } from '../runtime/client'
 
-export type ImportPlatform = 'openai' | 'deepseek' | 'pointer'
+type ImportPlatform = 'openai' | 'deepseek' | 'pointer'
 
-export interface ImportFileInput {
+interface ImportFileInput {
   name: string
   content: string
 }
 
-export interface ImportSummary {
+interface ImportSummary {
   success: number
   skipped: number
   failed: number

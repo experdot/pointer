@@ -5,7 +5,7 @@
  * 两者的文本收集、偏移索引与 Range 构造完全一致，因此集中在这里。
  */
 
-export interface TextOffset {
+interface TextOffset {
   node: Text
   /** 该节点在拼接文本中的起始偏移（含） */
   start: number
@@ -13,14 +13,14 @@ export interface TextOffset {
   end: number
 }
 
-export interface TextIndex {
+interface TextIndex {
   /** 所有非空文本节点按 DOM 顺序拼接的结果 */
   fullText: string
   offsets: TextOffset[]
 }
 
 /** 收集元素下所有非空文本节点 */
-export function collectTextNodes(root: Element): Text[] {
+function collectTextNodes(root: Element): Text[] {
   const nodes: Text[] = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null)
 

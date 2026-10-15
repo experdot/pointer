@@ -9,7 +9,7 @@ import './AIGeneratePopover.css'
 
 const { TextArea } = Input
 
-export type GenerateMode = 'title' | 'topic' | 'batch-title' | 'smart-segment' | 'session-title'
+type GenerateMode = 'title' | 'topic' | 'batch-title' | 'smart-segment' | 'session-title'
 
 export interface GenerateOptions {
   extraRequirements?: string

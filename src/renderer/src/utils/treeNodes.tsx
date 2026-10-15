@@ -11,14 +11,14 @@ import type { TreeDataNode } from 'antd'
 import type { ConfigFolder, ConfigItemBase, ConfigTree, Folder, Page } from '@shared/domain'
 
 /** TreeSelect 使用的节点结构（配置选择器） */
-export interface ConfigSelectorNode {
+interface ConfigSelectorNode {
   value: string
   title: string
   selectable?: boolean
   children?: ConfigSelectorNode[]
 }
 
-export type NodeKind = 'folder' | 'item'
+type NodeKind = 'folder' | 'item'
 
 /** 给节点标题追加装饰（例如「ID冲突」标记）；返回空表示不加 */
 export type NodeDecorator = (node: { kind: NodeKind; id: string; name: string }) => ReactNode

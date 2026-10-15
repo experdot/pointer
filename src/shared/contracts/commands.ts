@@ -36,7 +36,7 @@ export type MessagePatch = Partial<
   >
 >
 
-export interface NodePatch {
+interface NodePatch {
   name?: string
   starred?: boolean
 }
@@ -51,7 +51,7 @@ export type TitleTarget =
   | { kind: 'topic'; topicId: string }
   | { kind: 'session'; topicId?: string }
 
-export interface ImportFile {
+interface ImportFile {
   name: string
   mimeType: string
   dataBase64: string
@@ -74,12 +74,12 @@ export interface ImportResult {
   importedMessages: number
 }
 
-export interface FileFilter {
+interface FileFilter {
   name: string
   extensions: string[]
 }
 
-export interface RuntimeCommandMap {
+interface RuntimeCommandMap {
   // 会话与账户
   'session.selectAccount': { payload: { accountId: string }; result: void }
   'session.selectWorkspace': { payload: { workspaceId: string }; result: void }

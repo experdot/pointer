@@ -8,13 +8,13 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import type { ChatMessage, MessageRole, Page } from '@shared/domain'
 
-export interface IndexedPage {
+interface IndexedPage {
   id: string
   relPath: string
   mtime: number
 }
 
-export interface MessageCandidate {
+interface MessageCandidate {
   pageId: string
   messageId: string
   role: MessageRole

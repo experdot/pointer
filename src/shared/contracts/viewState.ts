@@ -7,7 +7,7 @@
 
 export type ActivityPanel = 'explorer' | 'search' | 'favorites'
 
-export interface TabState {
+interface TabState {
   id: string
   type: string
   title: string

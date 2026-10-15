@@ -20,7 +20,7 @@ export interface ModelConfig extends ConfigItemBase {
   temperature: number
 }
 
-export type FontSize = 'small' | 'medium' | 'large'
+type FontSize = 'small' | 'medium' | 'large'
 
 export interface Settings {
   fontSize: FontSize

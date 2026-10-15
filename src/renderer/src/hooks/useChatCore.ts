@@ -6,16 +6,16 @@ import { usePagesStore } from '../stores/pagesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import * as messagesService from '../services/messagesService'
 
-export interface UseChatCoreOptions {
+interface UseChatCoreOptions {
   pageId: string
 }
 
-export interface ChatConfigs {
+interface ChatConfigs {
   llmId: string
   modelConfigId?: string
 }
 
-export interface UseChatCoreResult {
+interface UseChatCoreResult {
   page: ReturnType<typeof usePagesStore.getState>['pages'][number] | undefined
   messages: ChatMessage[]
   currentPath: ChatMessage[]

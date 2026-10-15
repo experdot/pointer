@@ -2,21 +2,21 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { UpdateStatus } from '@shared/contracts'
 
-export interface UpdateInfo {
+interface UpdateInfo {
   version?: string
   releaseDate?: string
   releaseName?: string
   releaseNotes?: string
 }
 
-export interface DownloadProgress {
+interface DownloadProgress {
   bytesPerSecond: number
   percent: number
   transferred: number
   total: number
 }
 
-export interface UpdateState {
+interface UpdateState {
   // 基本状态
   currentVersion: string
   checkingForUpdates: boolean
@@ -39,7 +39,7 @@ export interface UpdateState {
   isStartupCheck: boolean
 }
 
-export interface UpdateActions {
+interface UpdateActions {
   // 基本状态管理
   setCurrentVersion: (version: string) => void
   setCheckingForUpdates: (checking: boolean) => void

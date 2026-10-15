@@ -40,7 +40,7 @@ import {
   truncateForPrompt
 } from '@shared/domain'
 
-export interface ChatEngineDeps {
+interface ChatEngineDeps {
   workspace: () => WorkspaceStore | null
   settings: () => SettingsStore | null
   queues: () => QueueStore | null
@@ -52,7 +52,7 @@ export interface ChatRequestHandle {
   messageId: string
 }
 
-export interface SendInput {
+interface SendInput {
   pageId: string
   content: string
   attachments?: AttachmentRef[]
