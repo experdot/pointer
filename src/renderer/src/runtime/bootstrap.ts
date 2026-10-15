@@ -265,10 +265,6 @@ function handleEvent(event: RuntimeEvent): void {
       usePagesStore.getState().upsert(event.payload.page)
       break
 
-    case 'folder.changed':
-      useFoldersStore.getState().upsert(event.payload.folder)
-      break
-
     case 'conversation.changed':
       void loadConversation(event.payload.pageId)
       break
@@ -359,18 +355,6 @@ export function teardownRuntime(): void {
 
 export async function refreshTree(): Promise<void> {
   applyTree(await query('tree.get', undefined))
-}
-
-export async function refreshSettings(): Promise<void> {
-  const settings = await query('settings.get', undefined)
-  useSettingsStore.setState({ settings, initialized: true })
-}
-
-export const mirrorHelpers = {
-  loadConversation,
-  loadQueue,
-  applyViewState,
-  refreshWorkspaceScope
 }
 
 export type { ChatMessage, Conversation, MessageQueue }

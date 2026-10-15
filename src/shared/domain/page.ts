@@ -21,8 +21,6 @@ export interface PageTree {
   pages: Page[]
 }
 
-export const EMPTY_PAGE_TREE: PageTree = { folders: [], pages: [] }
-
 /** 同级节点（文件夹 + 页面），按 order 排序 */
 export function childrenOf(tree: PageTree, parentFolderId: string | undefined): TreeNodeBase[] {
   const folders = tree.folders.filter((folder) => folder.parentFolderId === parentFolderId)

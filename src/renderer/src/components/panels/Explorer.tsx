@@ -21,7 +21,7 @@ import { useGlobalSearchStore } from '../../stores/globalSearchStore'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
-import { generateSessionTitleWithOptions } from '../../services/titleService'
+import { generateSessionTitle } from '../../services/titleService'
 import { currentGeneration } from '../../runtime/generation'
 import * as pagesService from '../../services/pagesService'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
@@ -159,7 +159,7 @@ export function Explorer(): React.JSX.Element {
 
       const generation = currentGeneration()
       void pageMessages
-      const result = await generateSessionTitleWithOptions(pageId, options)
+      const result = await generateSessionTitle(pageId, options)
       void result
       void generation
     },

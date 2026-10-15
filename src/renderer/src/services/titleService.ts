@@ -62,8 +62,6 @@ export async function generateMessageTitle(
   return generateTitleFor(pageId, { kind: 'message', messageId }, options)
 }
 
-export const generateMessageTitleWithOptions = generateMessageTitle
-
 export async function generateTopicTitle(
   pageId: string,
   topicId: string,
@@ -72,16 +70,12 @@ export async function generateTopicTitle(
   return generateTitleFor(pageId, { kind: 'topic', topicId }, options)
 }
 
-export const generateTopicTitleWithOptions = generateTopicTitle
-
 export async function generateSessionTitle(
   pageId: string,
   options: GenerateOptions = {}
 ): Promise<TitleGenerationResult> {
   return generateTitleFor(pageId, { kind: 'session' }, options)
 }
-
-export const generateSessionTitleWithOptions = generateSessionTitle
 
 export async function batchGenerateTitles(
   pageId: string,
@@ -108,8 +102,6 @@ export async function batchGenerateTitles(
 
   return { success, failed: messageIds.length - success, errors }
 }
-
-export const batchGenerateTitlesWithOptions = batchGenerateTitles
 
 /**
  * 智能分段：让模型给出话题转折点，然后创建对应的 Topic
@@ -171,10 +163,4 @@ export async function analyzeTopicSegments(
       error: error instanceof Error ? error.message : String(error)
     }
   }
-}
-
-export const analyzeTopicSegmentsWithOptions = analyzeTopicSegments
-
-export async function suggestNewTopic(): Promise<string> {
-  return '继续'
 }

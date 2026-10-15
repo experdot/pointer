@@ -30,15 +30,6 @@ export function enqueue(queue: MessageQueue, item: QueueItem): MessageQueue {
   return { ...queue, items: [...queue.items, { ...item, order: nextOrder }] }
 }
 
-export function appendContent(
-  queue: MessageQueue,
-  content: string,
-  id: string,
-  at: number
-): MessageQueue {
-  return enqueue(queue, { id, content, order: 0, createdAt: at })
-}
-
 export function removeItem(queue: MessageQueue, itemId: string): MessageQueue {
   return normalizeOrders({ ...queue, items: queue.items.filter((item) => item.id !== itemId) })
 }

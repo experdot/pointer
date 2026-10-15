@@ -3,13 +3,8 @@
  */
 
 import type { Account } from '@shared/domain'
-import { bootstrapRuntime } from '../runtime/bootstrap'
 import { getDefaultAccountId, useAccountStore } from '../stores/accountStore'
 import { useSettingsStore } from '../stores/settingsStore'
-
-export async function initializeAccountSystem(): Promise<void> {
-  await bootstrapRuntime()
-}
 
 export async function switchAccount(accountId: string): Promise<void> {
   // 切换前先把待写入的设置落盘，避免写到新账户名下
@@ -38,15 +33,6 @@ export async function removeAccount(accountId: string): Promise<void> {
     throw new Error('Cannot delete current account')
   }
   await useAccountStore.getState().remove(accountId)
-}
-
-export function getCurrentAccount(): Account | null {
-  const store = useAccountStore.getState()
-  return store.accounts.find((account) => account.id === store.currentAccountId) ?? null
-}
-
-export function getAllAccounts(): Account[] {
-  return useAccountStore.getState().getAll()
 }
 
 export async function logout(): Promise<void> {

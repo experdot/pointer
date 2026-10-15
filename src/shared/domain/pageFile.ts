@@ -37,7 +37,6 @@ export const PAGE_FILE_FORMAT_VERSION = 2
 
 export const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
 export const MESSAGE_HEADER_PREFIX = '<!-- [POINTER-MSG] -->'
-export const MESSAGE_SEPARATOR = '\n\n<!-- ═══════════ -->\n\n'
 const REASONING_OPEN = '<details>\n<summary>💭 Thinking</summary>\n\n'
 const REASONING_CLOSE = '\n\n</details>'
 

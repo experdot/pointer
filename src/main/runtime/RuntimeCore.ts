@@ -19,7 +19,6 @@ import {
   createTopic,
   deleteMessage,
   deleteTopic,
-  emptyConversation,
   parseImport,
   setLeaf,
   setSelected,
@@ -942,9 +941,4 @@ function guessMimeType(relativePath: string): string {
     default:
       return 'application/octet-stream'
   }
-}
-
-/** 便于外部构造空会话（导入等场景） */
-export function createEmptyConversation(pageId: string): Conversation {
-  return emptyConversation(pageId)
 }

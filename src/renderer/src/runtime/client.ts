@@ -41,10 +41,6 @@ export function subscribe(listener: Parameters<RuntimePort['subscribe']>[0]): ()
   return port().subscribe(listener)
 }
 
-export function isRuntimeError(error: unknown): error is Error & { code: string } {
-  return error instanceof Error && (error as Error & { code?: string }).code !== undefined
-}
-
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }

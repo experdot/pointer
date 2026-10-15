@@ -72,23 +72,3 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
 
   reset: () => set(initialState)
 }))
-
-/**
- * 获取导航 Store 的接口实现
- */
-export function getNavigationStoreInterface(): INavigationStore {
-  const store = useNavigationStore
-  return {
-    get pendingNavigation() {
-      return store.getState().pendingNavigation
-    },
-    get pendingRelativeNavigation() {
-      return store.getState().pendingRelativeNavigation
-    },
-    requestNavigation: (request) => store.getState().requestNavigation(request),
-    requestRelativeNavigation: (request) => store.getState().requestRelativeNavigation(request),
-    clearNavigation: (version) => store.getState().clearNavigation(version),
-    clearRelativeNavigation: (version) => store.getState().clearRelativeNavigation(version),
-    reset: () => store.getState().reset()
-  }
-}

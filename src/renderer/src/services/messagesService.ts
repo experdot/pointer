@@ -10,11 +10,9 @@ import {
   childMessages,
   computeOutline,
   computeTopicGroups,
-  currentPath,
   filterByTopicCollapse,
   findTopicByStartMessageId,
   getMessageTopicInfo,
-  nextBranchIndex,
   pathToMessage
 } from '@shared/domain'
 import { useMessagesStore } from '../stores/messagesStore'
@@ -62,27 +60,11 @@ export function getChildMessages(
   return childMessages(buildIndex(messages), parentId)
 }
 
-export function getNextBranchIndex(
-  messages: readonly ChatMessage[],
-  parentId: string | undefined
-): number {
-  return nextBranchIndex(buildIndex(messages), parentId)
-}
-
 export function getMessagePath(
   messages: readonly ChatMessage[],
   leafId: string | undefined
 ): ChatMessage[] {
   return pathToMessage(buildIndex(messages), leafId)
-}
-
-export function getMessages(pageId: string): ChatMessage[] {
-  return useMessagesStore.getState().get(pageId)?.messages ?? []
-}
-
-export function getCurrentPath(pageId: string): ChatMessage[] {
-  const conversation = useMessagesStore.getState().get(pageId)
-  return conversation ? currentPath(conversation) : []
 }
 
 export async function switchBranch(pageId: string, messageId: string): Promise<void> {

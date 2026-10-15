@@ -67,10 +67,6 @@ function resolveDisplayPlatform(): DisplayPlatform {
   return cachedDisplayPlatform
 }
 
-export function getDisplayPlatform(): DisplayPlatform {
-  return resolveDisplayPlatform()
-}
-
 export function isMacPlatform(): boolean {
   return resolveDisplayPlatform() === 'darwin'
 }

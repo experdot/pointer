@@ -121,8 +121,3 @@ export function useChatStreaming({
 
   return { sendMessage, stopStreaming, retryMessage, continueMessage }
 }
-
-/** 判断某条消息是否正在生成 */
-export function useMessageStreaming(messageId: string): boolean {
-  return useMessagesStore((state) => Boolean(state.streaming[messageId]))
-}

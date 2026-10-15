@@ -53,11 +53,6 @@ interface UseChatResult {
 
   smartSegmentation: (options?: GenerateOptions) => Promise<void>
   isSegmenting: boolean
-
-  generateTitleWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
-  generateTopicWithOptions: (messageId: string, options: GenerateOptions) => Promise<void>
-  batchGenerateTitlesWithOptions: (options: GenerateOptions) => Promise<void>
-  smartSegmentationWithOptions: (options: GenerateOptions) => Promise<void>
 }
 
 export function useChat({ pageId }: UseChatOptions): UseChatResult {
@@ -149,11 +144,6 @@ export function useChat({ pageId }: UseChatOptions): UseChatResult {
     findTopicByMessageId: topicsHook.findTopicByMessageId,
 
     smartSegmentation: topicsHook.smartSegmentation,
-    isSegmenting: topicsHook.isSegmenting,
-
-    generateTitleWithOptions: titles.generateTitle,
-    generateTopicWithOptions: topicsHook.generateTopic,
-    batchGenerateTitlesWithOptions: titles.batchGenerateTitles,
-    smartSegmentationWithOptions: topicsHook.smartSegmentation
+    isSegmenting: topicsHook.isSegmenting
   }
 }

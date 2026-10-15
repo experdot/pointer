@@ -24,16 +24,6 @@ export function registerTabType(config: TabTypeConfig): void {
   tabTypeRegistry.set(config.type, config)
 }
 
-// 获取 tab 类型配置
-export function getTabTypeConfig(type: string): TabTypeConfig | undefined {
-  return tabTypeRegistry.get(type)
-}
-
-// 获取所有已注册的 tab 类型
-export function getAllTabTypes(): string[] {
-  return Array.from(tabTypeRegistry.keys())
-}
-
 // 获取 tab 图标
 export function getTabIcon(type: string): ReactNode {
   return tabTypeRegistry.get(type)?.icon ?? null
