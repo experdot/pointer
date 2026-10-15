@@ -4,7 +4,7 @@ import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
 import * as navigationService from '../../../services/navigationService'
-import { generateSessionTitleWithOptions } from '../../../services/titleService'
+import { generateSessionTitle } from '../../../services/titleService'
 import { useMessagesStore } from '../../../stores/messagesStore'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
@@ -54,11 +54,11 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     // 批量操作进度
     batchProgress,
     isSegmenting,
-    // 带选项的生成方法
-    generateTitleWithOptions,
-    generateTopicWithOptions,
-    batchGenerateTitlesWithOptions,
-    smartSegmentationWithOptions
+    // 生成方法
+    generateTitle,
+    generateTopic,
+    batchGenerateTitles,
+    smartSegmentation
   } = useChat({ pageId })
 
   // 流式状态来自内核镜像
@@ -237,7 +237,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       <Header
         page={page}
         onGenerate={async (options) => {
-          const result = await generateSessionTitleWithOptions(page.id, options)
+          const result = await generateSessionTitle(page.id, options)
           if (!result.success) {
             console.error('生成会话标题失败：', result.error)
             notify.error(`生成会话标题失败：${result.error ?? '未知原因'}`)
@@ -254,8 +254,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
         outline={outline}
-        onBatchGenerateTitles={batchGenerateTitlesWithOptions}
-        onSmartSegment={smartSegmentationWithOptions}
+        onBatchGenerateTitles={batchGenerateTitles}
+        onSmartSegment={smartSegmentation}
         batchProgress={batchProgress}
         isSegmenting={isSegmenting}
       />
@@ -280,8 +280,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onExpandAll={handleExpandAll}
         onUpdateTitle={updateTitle}
         onDeleteTitle={deleteTitle}
-        onGenerateTitle={generateTitleWithOptions}
-        onGenerateTopic={generateTopicWithOptions}
+        onGenerateTitle={generateTitle}
+        onGenerateTopic={generateTopic}
         // Topic 相关
         topics={topics}
         topicGroups={topicGroups}

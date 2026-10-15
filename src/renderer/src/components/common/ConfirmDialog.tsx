@@ -1,7 +1,7 @@
 import { App } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 
-export interface ConfirmDialogOptions {
+interface ConfirmDialogOptions {
   title: string
   content?: React.ReactNode
   okText?: string

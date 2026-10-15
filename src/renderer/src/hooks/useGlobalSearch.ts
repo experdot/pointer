@@ -4,9 +4,7 @@ import { query as runtimeQuery } from '../runtime/client'
 import * as navigationService from '../services/navigationService'
 import { currentGeneration } from '../runtime/generation'
 import type { SearchMatch } from '@renderer/types/shared'
-
-/** 防抖延迟时间 */
-const DEBOUNCE_DELAY = 500
+import { SEARCH_DEBOUNCE_MS } from '../utils/searchUtils'
 
 interface UseGlobalSearchResult {
   navigateToResult: (match: SearchMatch) => Promise<void>
@@ -79,7 +77,7 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
     debounceRef.current = setTimeout(() => {
       executeSearch()
-    }, DEBOUNCE_DELAY)
+    }, SEARCH_DEBOUNCE_MS)
 
     return () => {
       if (debounceRef.current) {

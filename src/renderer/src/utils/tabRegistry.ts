@@ -5,7 +5,7 @@ import type { Tab } from '@renderer/types/shared'
 export type { Tab } from '@renderer/types/shared'
 
 // Tab 类型配置
-export interface TabTypeConfig {
+interface TabTypeConfig {
   type: string
   icon: ReactNode
   // 渲染编辑器内容
@@ -22,16 +22,6 @@ const tabTypeRegistry = new Map<string, TabTypeConfig>()
 // 注册 tab 类型
 export function registerTabType(config: TabTypeConfig): void {
   tabTypeRegistry.set(config.type, config)
-}
-
-// 获取 tab 类型配置
-export function getTabTypeConfig(type: string): TabTypeConfig | undefined {
-  return tabTypeRegistry.get(type)
-}
-
-// 获取所有已注册的 tab 类型
-export function getAllTabTypes(): string[] {
-  return Array.from(tabTypeRegistry.keys())
 }
 
 // 获取 tab 图标

@@ -7,7 +7,7 @@
 import type { Diagnostic } from './common'
 import type { ChatMessage, Conversation, MessageDraft, Topic } from './chat'
 
-export interface MessageIndex {
+interface MessageIndex {
   byId: Map<string, ChatMessage>
   /** 父节点 id（根节点为 undefined）到有序子节点列表 */
   childrenByParent: Map<string | undefined, ChatMessage[]>
@@ -460,7 +460,7 @@ export function normalizeSiblingIndexes(conversation: Conversation, at: number):
 
 // ==================== Topic 变更 ====================
 
-export interface CreateTopicInput {
+interface CreateTopicInput {
   id: string
   name: string
   startMessageId: string

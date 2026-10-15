@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import { useSettings, useModelConfigs } from '../../../hooks/useSettings'
@@ -29,7 +29,11 @@ export function ModelConfigPanel(): React.JSX.Element {
 
   const selectedConfig = items.find((c) => c.id === selectedId)
 
-  const isItem = (item: ModelConfig | ConfigFolder): item is ModelConfig => item.kind === 'item'
+  // 稳定引用：内联箭头会让 ConfigTree 里的 treeData useMemo 每次失效
+  const isItem = useCallback(
+    (item: ModelConfig | ConfigFolder): item is ModelConfig => item.kind === 'item',
+    []
+  )
 
   // 文本字段用本地草稿，避免中文输入法组词期间被内核回推覆盖
   const nameField = useDraftField(selectedConfig?.name ?? '', (next) =>

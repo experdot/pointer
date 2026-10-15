@@ -7,6 +7,7 @@
 import { useCallback, useRef } from 'react'
 import { App } from 'antd'
 import type { AttachmentRef, ChatMessage, Conversation } from '@shared/domain'
+import { isDefaultPageName } from '@shared/domain'
 import { command, errorMessage } from '../runtime/client'
 import { useMessagesStore } from '../stores/messagesStore'
 import { usePagesStore } from '../stores/pagesStore'
@@ -22,13 +23,13 @@ export interface SendMessageOptions {
   modelConfigId?: string
 }
 
-export interface UseChatStreamingOptions {
+interface UseChatStreamingOptions {
   pageId: string
   record: Conversation | undefined
   messages: ChatMessage[]
 }
 
-export interface UseChatStreamingResult {
+interface UseChatStreamingResult {
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>
   stopStreaming: () => Promise<void>
   retryMessage: (messageId: string, llmId?: string, modelConfigId?: string) => Promise<void>
@@ -51,7 +52,7 @@ export function useChatStreaming({
 
       try {
         const currentPage = usePagesStore.getState().getById(pageId)
-        const isDefaultName = currentPage ? /^新对话(?: \(\d+\))?$/.test(currentPage.name) : false
+        const isDefaultName = currentPage ? isDefaultPageName(currentPage.name) : false
         if (isFirstMessage && isDefaultName && content.trim()) {
           const title =
             content.slice(0, DEFAULT_SESSION_TITLE_PREVIEW_LENGTH) +
@@ -120,9 +121,4 @@ export function useChatStreaming({
   )
 
   return { sendMessage, stopStreaming, retryMessage, continueMessage }
-}
-
-/** 判断某条消息是否正在生成 */
-export function useMessageStreaming(messageId: string): boolean {
-  return useMessagesStore((state) => Boolean(state.streaming[messageId]))
 }

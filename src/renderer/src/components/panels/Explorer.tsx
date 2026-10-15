@@ -21,15 +21,22 @@ import { useGlobalSearchStore } from '../../stores/globalSearchStore'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
-import { generateSessionTitleWithOptions } from '../../services/titleService'
-import { currentGeneration } from '../../runtime/generation'
+import { generateSessionTitle } from '../../services/titleService'
 import * as pagesService from '../../services/pagesService'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { Page, Folder } from '@renderer/types/shared'
+import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import { resolveCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
+
+// 模块级常量：内联的 JSX 与箭头函数会让 TreeView 的 treeData useMemo 每次失效
+const PAGE_ICON = <MessageOutlined />
+
+function pageName(page: Page): string {
+  return page.name
+}
 
 export function Explorer(): React.JSX.Element {
   const {
@@ -98,6 +105,15 @@ export function Explorer(): React.JSX.Element {
     }
   }
 
+  const isPageItem = useCallback((item: Page | Folder): item is Page => item.kind === 'page', [])
+
+  const handleUpdateItemName = useCallback(
+    (id: string, name: string): void => {
+      void updatePage(id, { name })
+    },
+    [updatePage]
+  )
+
   const handleCreatePage = async (): Promise<void> => {
     const page = await createPage(resolveCreationTarget(selectedKey, folders, pages))
     openPage(page.id)
@@ -154,14 +170,8 @@ export function Explorer(): React.JSX.Element {
   // AI 生成标题 - 直接在回调中执行生成
   const handleGenerateItemName = useCallback(
     async (pageId: string, options: GenerateOptions): Promise<void> => {
-      const pageMessages = messagesCache[pageId]?.messages || []
-      if (pageMessages.length === 0) return
-
-      const generation = currentGeneration()
-      void pageMessages
-      const result = await generateSessionTitleWithOptions(pageId, options)
-      void result
-      void generation
+      if ((messagesCache[pageId]?.messages.length ?? 0) === 0) return
+      await generateSessionTitle(pageId, options)
     },
     [messagesCache]
   )
@@ -330,7 +340,7 @@ export function Explorer(): React.JSX.Element {
   }, [pendingDragOperation, batchUpdateItemsOrderWithRename])
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
     { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
   ]
 
@@ -377,12 +387,12 @@ export function Explorer(): React.JSX.Element {
         folders={folders}
         selectedId={selectedKey}
         onSelect={handleSelect}
-        itemIcon={<MessageOutlined />}
-        getItemName={(page) => page.name}
+        itemIcon={PAGE_ICON}
+        getItemName={pageName}
         getItemTitleExtra={getItemTitleExtra}
-        isItem={(item): item is Page => (item as Page | Folder).kind === 'page'}
+        isItem={isPageItem}
         batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
-        updateItem={(id, name) => updatePage(id, { name })}
+        updateItem={handleUpdateItemName}
         deleteItem={deletePage}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}
@@ -393,7 +403,7 @@ export function Explorer(): React.JSX.Element {
         onCreateItemInFolder={handleCreatePageInFolder}
         onCreateSubFolder={handleCreateSubFolder}
         createItemLabel="新建对话"
-        createFolderLabel="新建文件夹"
+        createFolderLabel={DEFAULT_FOLDER_NAME}
         getItemLeadingMenuItems={getItemLeadingMenuItems}
         getItemMenuItems={getItemMenuItems}
         getFolderMenuItems={getFolderMenuItems}

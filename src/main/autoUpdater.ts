@@ -2,10 +2,10 @@ import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
-import type { UpdateCheckResult, UpdateStatus } from '../shared/contracts'
-import { isNewerVersion } from '../shared/domain'
+import type { UpdateCheckResult, UpdateStatus } from '@shared/contracts'
+import { isNewerVersion } from '@shared/domain'
 
-export interface UpdaterBridge {
+interface UpdaterBridge {
   check: () => Promise<UpdateCheckResult>
   download: () => Promise<void>
   quitAndInstall: () => void

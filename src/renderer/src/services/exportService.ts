@@ -12,7 +12,7 @@ import type { ExportEditorContext } from '../features/export/types'
 /**
  * Open the export tab with optional context
  */
-export function openExportTab(context?: ExportEditorContext): void {
+function openExportTab(context?: ExportEditorContext): void {
   useTabsStore.getState().openTab({
     id: uuidv4(),
     type: 'export',
@@ -67,40 +67,4 @@ export function exportTableBlock(table: string, pageId?: string): void {
     table,
     pageId
   })
-}
-
-/**
- * Download content as file
- */
-export async function downloadFile(
-  content: string | Blob,
-  filename: string,
-  mimeType: string
-): Promise<void> {
-  const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType })
-
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
-/**
- * Copy content to clipboard
- */
-export async function copyToClipboard(content: string | Blob): Promise<void> {
-  if (content instanceof Blob) {
-    // For images, use clipboard API
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        [content.type]: content
-      })
-    ])
-  } else {
-    await navigator.clipboard.writeText(content)
-  }
 }

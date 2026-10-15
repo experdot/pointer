@@ -4,6 +4,7 @@ import { MessagesSourceSelector } from '../../../../components/editors/ExportEdi
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 import type { LLMConfig, ModelConfig, Topic } from '@renderer/types/shared'
+import { collectSubtreeMessages, getDirectTopicMessages } from '../../messageTraversal'
 
 /**
  * Messages Source Plugin
@@ -123,43 +124,7 @@ function getTopicMessages(
   startMessageId: string,
   endMessageId?: string
 ): import('@renderer/types/shared').ChatMessage[] {
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-
-  // Build path from root to start message
-  const startPath: string[] = []
-  let current = startMessageId
-  while (current) {
-    startPath.unshift(current)
-    const msg = messageMap.get(current)
-    current = msg?.parentMessageId || ''
-  }
-
-  // Collect all messages from start to end (or descendants)
-  const result: import('@renderer/types/shared').ChatMessage[] = []
-  const visited = new Set<string>()
-
-  function collectDescendants(id: string): void {
-    if (visited.has(id)) return
-    visited.add(id)
-
-    const msg = messageMap.get(id)
-    if (msg) {
-      result.push(msg)
-
-      // If we've reached the end message, stop
-      if (endMessageId && id === endMessageId) return
-
-      // Find children
-      for (const m of messages) {
-        if (m.parentMessageId === id) {
-          collectDescendants(m.id)
-        }
-      }
-    }
-  }
-
-  collectDescendants(startMessageId)
-  return result
+  return collectSubtreeMessages(messages, startMessageId, endMessageId)
 }
 
 /**
@@ -298,45 +263,4 @@ function generateMessagesMarkdown(
   }
 
   return lines.join('\n')
-}
-
-/**
- * Get messages directly within a topic (excluding messages that belong to sub-topics)
- */
-function getDirectTopicMessages(
-  messages: import('@renderer/types/shared').ChatMessage[],
-  startMessageId: string,
-  endMessageId: string | undefined,
-  allTopicStartIds: Set<string>
-): import('@renderer/types/shared').ChatMessage[] {
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const result: import('@renderer/types/shared').ChatMessage[] = []
-  const visited = new Set<string>()
-
-  function collect(id: string): void {
-    if (visited.has(id)) return
-    visited.add(id)
-
-    const msg = messageMap.get(id)
-    if (!msg) return
-
-    result.push(msg)
-
-    // Stop at end message
-    if (endMessageId && id === endMessageId) return
-
-    // Find children, but skip if child is another topic's start
-    for (const m of messages) {
-      if (m.parentMessageId === id) {
-        // Skip if this child is the start of another topic
-        if (allTopicStartIds.has(m.id) && m.id !== startMessageId) {
-          continue
-        }
-        collect(m.id)
-      }
-    }
-  }
-
-  collect(startMessageId)
-  return result
 }

@@ -21,8 +21,6 @@ export interface PageTree {
   pages: Page[]
 }
 
-export const EMPTY_PAGE_TREE: PageTree = { folders: [], pages: [] }
-
 /** 同级节点（文件夹 + 页面），按 order 排序 */
 export function childrenOf(tree: PageTree, parentFolderId: string | undefined): TreeNodeBase[] {
   const folders = tree.folders.filter((folder) => folder.parentFolderId === parentFolderId)
@@ -92,15 +90,15 @@ export function isFolderAncestor(
   return false
 }
 
-export function findFolder(tree: PageTree, folderId: string): Folder | undefined {
+function findFolder(tree: PageTree, folderId: string): Folder | undefined {
   return tree.folders.find((folder) => folder.id === folderId)
 }
 
-export function findPage(tree: PageTree, pageId: string): Page | undefined {
+function findPage(tree: PageTree, pageId: string): Page | undefined {
   return tree.pages.find((page) => page.id === pageId)
 }
 
-export function findNode(tree: PageTree, nodeId: string): Folder | Page | undefined {
+function findNode(tree: PageTree, nodeId: string): Folder | Page | undefined {
   return findFolder(tree, nodeId) ?? findPage(tree, nodeId)
 }
 

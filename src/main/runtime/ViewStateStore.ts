@@ -4,8 +4,8 @@
  * 内核把 ViewState 当作不透明文档：只负责持久化，不解释字段含义。
  */
 
-import type { ViewState } from '../../shared/contracts'
-import { defaultViewState } from '../../shared/contracts'
+import type { ViewState } from '@shared/contracts'
+import { defaultViewState } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import { readJson, writeJsonAtomic } from './fsx'
 

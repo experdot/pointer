@@ -5,7 +5,7 @@ import * as pagesService from './pagesService'
 
 // ==================== 类型定义 ====================
 
-export interface NavigationTarget {
+interface NavigationTarget {
   pageId: string
   messageId: string
   /** 是否打开页面（如果未打开） */
@@ -67,7 +67,7 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
 /**
  * 获取包含指定消息的所有折叠 Topic ID
  */
-export function getCollapsedTopicsForMessage(pageId: string, messageId: string): string[] {
+function getCollapsedTopicsForMessage(pageId: string, messageId: string): string[] {
   const record = useMessagesStore.getState().get(pageId)
   if (!record) return []
 

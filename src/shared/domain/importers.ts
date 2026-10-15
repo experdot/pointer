@@ -18,7 +18,7 @@ export interface ImportedConversation {
   leafMessageId?: string
 }
 
-export interface ImportParseResult {
+interface ImportParseResult {
   format: ImportFormat
   conversations: ImportedConversation[]
   errors: string[]

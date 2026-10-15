@@ -3,17 +3,13 @@
  */
 
 import type { Folder, Page } from '@shared/domain'
-import { nameKey, uniqueName } from '@shared/domain'
+import { nameKey } from '@shared/domain'
 import { v4 as uuidv4 } from 'uuid'
 import { refreshTree } from '../runtime/bootstrap'
 import { useFoldersStore } from '../stores/foldersStore'
 import { useMessagesStore } from '../stores/messagesStore'
 import { usePagesStore } from '../stores/pagesStore'
 import { useTabsStore } from '../stores/tabsStore'
-
-export function generateUniqueName(baseName: string, existingNames: readonly string[]): string {
-  return uniqueName(new Set(existingNames.map(nameKey)), baseName)
-}
 
 /**
  * 未指定参照项时，用"当前激活页签对应的会话"作为参照
@@ -61,7 +57,7 @@ export async function deletePage(id: string): Promise<void> {
 }
 
 export async function deletePages(ids: readonly string[]): Promise<void> {
-  await usePagesStore.getState().deleteMany([...ids])
+  await usePagesStore.getState().delete([...ids])
 }
 
 export async function movePage(
@@ -171,18 +167,4 @@ export async function openPage(pageId: string, preview = false): Promise<void> {
     },
     preview
   )
-}
-
-export function getPagesInFolder(folderId: string | undefined): Page[] {
-  return usePagesStore
-    .getState()
-    .findByFolderId(folderId)
-    .sort((a, b) => a.order - b.order)
-}
-
-export function getSubFolders(parentFolderId: string | undefined): Folder[] {
-  return useFoldersStore
-    .getState()
-    .findByParentId(parentFolderId)
-    .sort((a, b) => a.order - b.order)
 }

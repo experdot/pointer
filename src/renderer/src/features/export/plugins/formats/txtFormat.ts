@@ -1,5 +1,6 @@
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
+import { getDirectTopicMessages } from '../../messageTraversal'
 
 /**
  * TXT Format Plugin
@@ -146,44 +147,6 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
   }
 
   return lines.join('\n')
-}
-
-/**
- * Get messages directly within a topic (excluding sub-topics)
- */
-function getDirectTopicMessages(
-  messages: import('@renderer/types/shared').ChatMessage[],
-  startMessageId: string,
-  endMessageId: string | undefined,
-  allTopicStartIds: Set<string>
-): import('@renderer/types/shared').ChatMessage[] {
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const result: import('@renderer/types/shared').ChatMessage[] = []
-  const visited = new Set<string>()
-
-  function collect(id: string): void {
-    if (visited.has(id)) return
-    visited.add(id)
-
-    const msg = messageMap.get(id)
-    if (!msg) return
-
-    result.push(msg)
-
-    if (endMessageId && id === endMessageId) return
-
-    for (const m of messages) {
-      if (m.parentMessageId === id) {
-        if (allTopicStartIds.has(m.id) && m.id !== startMessageId) {
-          continue
-        }
-        collect(m.id)
-      }
-    }
-  }
-
-  collect(startMessageId)
-  return result
 }
 
 /**

@@ -2,7 +2,7 @@
  * 文件系统工具：原子写、目录遍历与安全删除
  */
 
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import {
   access,
@@ -134,7 +134,7 @@ export async function mtimeOf(target: string): Promise<number | null> {
   }
 }
 
-export interface WalkEntry {
+interface WalkEntry {
   absolutePath: string
   /** 相对遍历根目录的路径，使用 / 分隔 */
   relativePath: string
@@ -193,9 +193,4 @@ export async function listDirectories(root: string): Promise<string[]> {
   } catch {
     return []
   }
-}
-
-/** 内容哈希，用于索引层的增量判断 */
-export function contentHash(value: string): string {
-  return createHash('sha1').update(value).digest('hex')
 }

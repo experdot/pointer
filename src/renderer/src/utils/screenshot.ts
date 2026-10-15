@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas'
 
-export interface ScreenshotOptions {
+interface ScreenshotOptions {
   scale?: number
   backgroundColor?: string
 }

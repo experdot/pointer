@@ -4,7 +4,7 @@
  * 设计目标：
  * - 人类可读：正文就是 Markdown，可直接用编辑器打开、纳入 git
  * - 机器可解析：元数据放在 HTML 注释内的 XML 片段里，不会渲染到正文
- * - 可演进：文件头带 version，格式变更时据此判断与迁移
+ * - 可演进：文件头带 version，读侧拒绝 version 大于 PAGE_FILE_FORMAT_VERSION 的文件。
  *
  * 结构：
  *
@@ -31,9 +31,8 @@ import type { Page } from './page'
 
 export const PAGE_FILE_FORMAT_VERSION = 2
 
-export const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
+const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
 export const MESSAGE_HEADER_PREFIX = '<!-- [POINTER-MSG] -->'
-export const MESSAGE_SEPARATOR = '\n\n<!-- ═══════════ -->\n\n'
 const REASONING_OPEN = '<details>\n<summary>💭 Thinking</summary>\n\n'
 const REASONING_CLOSE = '\n\n</details>'
 
@@ -47,14 +46,14 @@ export interface PageFileDocument {
 }
 
 /** 页面元数据（不包含消息），用于工作区扫描 */
-export interface PageMetadata {
+interface PageMetadata {
   page: Page
   topics: Topic[]
   leafMessageId?: string
   selectedMessageId?: string
 }
 
-export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string }
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string }
 
 // ==================== 转义 ====================
 

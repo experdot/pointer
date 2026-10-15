@@ -1,14 +1,15 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { Typography, Drawer, Empty } from 'antd'
-import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
+import {
+  COMPACT_MODE_THRESHOLD,
+  useLayoutStore,
+  type ActivityPanel
+} from '../../../stores/layoutStore'
 import { Explorer } from '../../panels/Explorer'
 import { Search } from '../../panels/Search'
 import './Sidebar.css'
 
 const { Text } = Typography
-
-// 紧凑模式阈值
-const COMPACT_MODE_THRESHOLD = 768
 
 const panelTitles: Record<string, string> = {
   explorer: '资源管理器',

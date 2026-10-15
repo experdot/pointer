@@ -68,7 +68,7 @@ export const FORMAT_SUPPORT: Record<SourceType, FormatType[]> = {
 
 // ==================== Export Options ====================
 
-export interface MessageMetadataOptions {
+interface MessageMetadataOptions {
   showTimestamp: boolean
   showModelName: boolean
   showModelConfig: boolean
@@ -77,7 +77,7 @@ export interface MessageMetadataOptions {
   showReasoningContent: boolean
 }
 
-export const DEFAULT_METADATA_OPTIONS: MessageMetadataOptions = {
+const DEFAULT_METADATA_OPTIONS: MessageMetadataOptions = {
   showTimestamp: true,
   showModelName: false,
   showModelConfig: false,
@@ -213,7 +213,7 @@ export interface EditorPlugin {
 
 // ==================== Option Schema ====================
 
-export interface PreviewOptionSchema {
+interface PreviewOptionSchema {
   key: string
   label: string
   type: 'boolean' | 'select' | 'number' | 'string'
@@ -224,7 +224,7 @@ export interface PreviewOptionSchema {
 
 // ==================== Export State ====================
 
-export interface ExportState {
+interface ExportState {
   // Source configuration
   sourceType: SourceType | null
   sourceData: SourceData | null
@@ -249,7 +249,7 @@ export interface ExportState {
   error: string | null
 }
 
-export interface ExportActions {
+interface ExportActions {
   // Source actions
   setSourceType: (type: SourceType) => void
   setSourceData: (data: SourceData) => void

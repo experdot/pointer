@@ -21,9 +21,6 @@ export interface RuntimePort {
   subscribe(listener: (event: RuntimeEvent) => void): () => void
 }
 
-/** 暴露给渲染进程的全局对象名 */
-export const RUNTIME_BRIDGE_KEY = 'runtime' as const
-
 /** IPC 通道 */
 export const RUNTIME_CHANNELS = {
   query: 'runtime:query',
@@ -41,12 +38,12 @@ export interface RuntimeCommandRequest {
   payload: unknown
 }
 
-export interface RuntimeSuccess<T = unknown> {
+interface RuntimeSuccess<T = unknown> {
   ok: true
   value: T
 }
 
-export interface RuntimeFailure {
+interface RuntimeFailure {
   ok: false
   code: string
   message: string

@@ -46,7 +46,7 @@ export function isMonacoFocused(event?: KeyboardEvent | null): boolean {
   return Boolean(contextElement?.closest(MONACO_SELECTOR))
 }
 
-export function isBlockingOverlayActive(event?: KeyboardEvent | null): boolean {
+function isBlockingOverlayActive(event?: KeyboardEvent | null): boolean {
   const contextElement = getContextElement(event)
   return (
     Boolean(contextElement?.closest(APP_BLOCKING_OVERLAY_SELECTOR)) ||

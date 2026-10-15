@@ -3,7 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import windowStateKeeper from 'electron-window-state'
 import icon from '../../resources/icon.png?asset'
-import type { ForwardedShortcutAction } from '../shared/shortcuts'
+import type { ForwardedShortcutAction } from '@shared/shortcuts'
 
 function resolveForwardedShortcutAction(input: Electron.Input): ForwardedShortcutAction | null {
   if (input.type !== 'keyDown' || input.alt) {

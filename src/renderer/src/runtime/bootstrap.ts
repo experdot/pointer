@@ -249,8 +249,8 @@ function handleEvent(event: RuntimeEvent): void {
     case 'session.changed':
       useSessionStore.getState().setSession(event.payload as SessionSnapshot)
       void refreshWorkspaceScope()
-      useMessagesStore.getState().evictAll()
-      useMessageQueueStore.getState().evictAll()
+      useMessagesStore.getState().reset()
+      useMessageQueueStore.getState().reset()
       // 与迁移前一致：切换账户/工作区后清空易失状态，避免上个上下文的内容泄漏
       useChatUIStore.getState().reset()
       useGlobalSearchStore.getState().reset()
@@ -263,10 +263,6 @@ function handleEvent(event: RuntimeEvent): void {
 
     case 'page.changed':
       usePagesStore.getState().upsert(event.payload.page)
-      break
-
-    case 'folder.changed':
-      useFoldersStore.getState().upsert(event.payload.folder)
       break
 
     case 'conversation.changed':
@@ -359,18 +355,6 @@ export function teardownRuntime(): void {
 
 export async function refreshTree(): Promise<void> {
   applyTree(await query('tree.get', undefined))
-}
-
-export async function refreshSettings(): Promise<void> {
-  const settings = await query('settings.get', undefined)
-  useSettingsStore.setState({ settings, initialized: true })
-}
-
-export const mirrorHelpers = {
-  loadConversation,
-  loadQueue,
-  applyViewState,
-  refreshWorkspaceScope
 }
 
 export type { ChatMessage, Conversation, MessageQueue }

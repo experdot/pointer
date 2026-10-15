@@ -1,5 +1,5 @@
-import type { RuntimePort } from '../shared/contracts'
-import type { ForwardedShortcutAction } from '../shared/shortcuts'
+import type { RuntimePort } from '@shared/contracts'
+import type { ForwardedShortcutAction } from '@shared/shortcuts'
 
 declare global {
   interface Window {

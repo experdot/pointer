@@ -15,10 +15,10 @@ import { useRef, useState, useEffect, useMemo, ReactElement } from 'react'
 import LoadingIcon from './three-dots.svg'
 import { useDebouncedCallback } from 'use-debounce'
 import { command } from '../../../runtime/client'
-import { copyToClipboard } from './utils'
+import { copyToClipboard } from '../../../utils/clipboard'
 import TableViewModal from './TableViewModal'
 
-export function Mermaid(props: { code: string }): React.JSX.Element | null {
+function Mermaid(props: { code: string }): React.JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null)
   const [hasError, setHasError] = useState(false)
 
@@ -58,7 +58,7 @@ export function Mermaid(props: { code: string }): React.JSX.Element | null {
   )
 }
 
-export function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
+function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [tableMarkdown, setTableMarkdown] = useState('')
@@ -191,7 +191,7 @@ export function TableWrapper(props: { children: ReactElement }): React.JSX.Eleme
   )
 }
 
-export function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
+function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
   const ref = useRef<HTMLPreElement>(null)
   const refText = ref.current?.innerText
   const [mermaidCode, setMermaidCode] = useState('')
@@ -367,7 +367,7 @@ function MarkdownContentImpl(props: { content: string }): React.JSX.Element {
   )
 }
 
-export const MarkdownContent = React.memo(MarkdownContentImpl)
+const MarkdownContent = React.memo(MarkdownContentImpl)
 
 interface MarkdownProps {
   content: string

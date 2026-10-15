@@ -13,13 +13,7 @@ import {
   Radio,
   Alert
 } from 'antd'
-import {
-  InboxOutlined,
-  FolderOutlined,
-  FileTextOutlined,
-  SettingOutlined,
-  WarningOutlined
-} from '@ant-design/icons'
+import { InboxOutlined, WarningOutlined } from '@ant-design/icons'
 import type { TreeDataNode, UploadFile } from 'antd'
 import type { ExportData } from './ExportModal'
 import { DateTimeText } from '../../common/DateTimeText'
@@ -29,17 +23,24 @@ import { useMessagesStore } from '../../../stores/messagesStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useTabsStore } from '../../../stores/tabsStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import type { PageRecord, MessagesRecord } from '@renderer/types/shared'
-import type {
-  Folder,
-  ConfigFolder,
-  ConfigItemBase,
-  ConfigTree,
-  LLMConfig,
-  ModelConfig
-} from '@renderer/types/shared'
+import type { MessagesRecord } from '@renderer/types/shared'
+import type { ConfigTree, LLMConfig, ModelConfig } from '@renderer/types/shared'
+import {
+  buildConfigTreeNodes,
+  buildPageTreeNodes,
+  type NodeDecorator
+} from '../../../utils/treeNodes'
 
 const { Text } = Typography
+
+/** 导入数据与本机数据存在同 id 时的标记 */
+function ConflictBadge(): React.JSX.Element {
+  return (
+    <Text type="warning" style={{ marginLeft: 8 }}>
+      <WarningOutlined /> ID冲突
+    </Text>
+  )
+}
 
 /** 文件夹层级深度，用于保证父级先创建 */
 function folderDepth(
@@ -70,143 +71,7 @@ type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 type ConflictStrategy = 'generate-new' | 'skip' | 'overwrite'
 
 // 构建页面树（带冲突检测）
-function buildPagesTree(
-  pages: PageRecord[],
-  folders: Folder[],
-  existingPageIds: Set<string>,
-  existingFolderIds: Set<string>
-): TreeDataNode[] {
-  const folderMap = new Map<string | undefined, TreeDataNode[]>()
-  folderMap.set(undefined, [])
-
-  const folderNodes = new Map<string, TreeDataNode>()
-  folders.forEach((folder) => {
-    const hasConflict = existingFolderIds.has(folder.id)
-    folderNodes.set(folder.id, {
-      key: `folder:${folder.id}`,
-      title: (
-        <span>
-          {folder.name}
-          {hasConflict && (
-            <Text type="warning" style={{ marginLeft: 8 }}>
-              <WarningOutlined /> ID冲突
-            </Text>
-          )}
-        </span>
-      ),
-      icon: <FolderOutlined />,
-      children: []
-    })
-  })
-
-  pages.forEach((page) => {
-    const hasConflict = existingPageIds.has(page.id)
-    const pageNode: TreeDataNode = {
-      key: `page:${page.id}`,
-      title: (
-        <span>
-          {page.name || '未命名对话'}
-          {hasConflict && (
-            <Text type="warning" style={{ marginLeft: 8 }}>
-              <WarningOutlined /> ID冲突
-            </Text>
-          )}
-        </span>
-      ),
-      icon: <FileTextOutlined />,
-      isLeaf: true
-    }
-
-    const parentId = page.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(pageNode)
-    } else {
-      folderMap.get(undefined)!.push(pageNode)
-    }
-  })
-
-  folders.forEach((folder) => {
-    const node = folderNodes.get(folder.id)!
-    const parentId = folder.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(node)
-    } else {
-      folderMap.get(undefined)!.push(node)
-    }
-  })
-
-  return folderMap.get(undefined) || []
-}
-
 // 构建配置树（带冲突检测）
-function buildConfigTree<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  getTitle: (item: T) => string,
-  existingItemIds: Set<string>,
-  existingFolderIds: Set<string>
-): TreeDataNode[] {
-  const folderMap = new Map<string | undefined, TreeDataNode[]>()
-  folderMap.set(undefined, [])
-
-  const folderNodes = new Map<string, TreeDataNode>()
-  tree.folders.forEach((folder: ConfigFolder) => {
-    const hasConflict = existingFolderIds.has(folder.id)
-    folderNodes.set(folder.id, {
-      key: `folder:${folder.id}`,
-      title: (
-        <span>
-          {folder.name}
-          {hasConflict && (
-            <Text type="warning" style={{ marginLeft: 8 }}>
-              <WarningOutlined /> ID冲突
-            </Text>
-          )}
-        </span>
-      ),
-      icon: <FolderOutlined />,
-      children: []
-    })
-  })
-
-  tree.items.forEach((item: T) => {
-    const hasConflict = existingItemIds.has(item.id)
-    const itemNode: TreeDataNode = {
-      key: `item:${item.id}`,
-      title: (
-        <span>
-          {getTitle(item)}
-          {hasConflict && (
-            <Text type="warning" style={{ marginLeft: 8 }}>
-              <WarningOutlined /> ID冲突
-            </Text>
-          )}
-        </span>
-      ),
-      icon: <SettingOutlined />,
-      isLeaf: true
-    }
-
-    const parentId = item.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(itemNode)
-    } else {
-      folderMap.get(undefined)!.push(itemNode)
-    }
-  })
-
-  tree.folders.forEach((folder: ConfigFolder) => {
-    const node = folderNodes.get(folder.id)!
-    const parentId = folder.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(node)
-    } else {
-      folderMap.get(undefined)!.push(node)
-    }
-  })
-
-  return folderMap.get(undefined) || []
-}
-
 // 生成新 ID
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
@@ -252,36 +117,50 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     [existingSettings]
   )
 
+  // 冲突标记：文件夹与条目分别对应各自的 id 集合
+  const decorateChats = useCallback<NodeDecorator>(
+    ({ kind, id }) =>
+      (kind === 'folder' ? existingFolderIds : existingPageIds).has(id) ? <ConflictBadge /> : null,
+    [existingFolderIds, existingPageIds]
+  )
+  const decorateLLM = useCallback<NodeDecorator>(
+    ({ kind, id }) =>
+      (kind === 'folder' ? existingLLMFolderIds : existingLLMIds).has(id) ? (
+        <ConflictBadge />
+      ) : null,
+    [existingLLMFolderIds, existingLLMIds]
+  )
+  const decorateModel = useCallback<NodeDecorator>(
+    ({ kind, id }) =>
+      (kind === 'folder' ? existingModelFolderIds : existingModelIds).has(id) ? (
+        <ConflictBadge />
+      ) : null,
+    [existingModelFolderIds, existingModelIds]
+  )
+
   // 构建树数据
   const chatsTree = useMemo(() => {
     if (!importData?.data.pages) return []
-    return buildPagesTree(
-      importData.data.pages,
-      importData.data.folders || [],
-      existingPageIds,
-      existingFolderIds
-    )
-  }, [importData, existingPageIds, existingFolderIds])
+    return buildPageTreeNodes(importData.data.pages, importData.data.folders || [], decorateChats)
+  }, [importData, decorateChats])
 
   const llmTree = useMemo(() => {
     if (!importData?.data.settings?.llmConfigs) return []
-    return buildConfigTree(
+    return buildConfigTreeNodes(
       importData.data.settings.llmConfigs as ConfigTree<LLMConfig>,
       (item: LLMConfig) => item.name,
-      existingLLMIds,
-      existingLLMFolderIds
+      decorateLLM
     )
-  }, [importData, existingLLMIds, existingLLMFolderIds])
+  }, [importData, decorateLLM])
 
   const modelTree = useMemo(() => {
     if (!importData?.data.settings?.modelConfigs) return []
-    return buildConfigTree(
+    return buildConfigTreeNodes(
       importData.data.settings.modelConfigs as ConfigTree<ModelConfig>,
       (item: ModelConfig) => item.name,
-      existingModelIds,
-      existingModelFolderIds
+      decorateModel
     )
-  }, [importData, existingModelIds, existingModelFolderIds])
+  }, [importData, decorateModel])
 
   // 获取所有 keys
   const getAllKeys = useCallback((tree: TreeDataNode[]): React.Key[] => {
@@ -314,29 +193,22 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       // 初始化选中状态（全选）
       setTimeout(() => {
         if (data.data.pages) {
-          const tree = buildPagesTree(
-            data.data.pages,
-            data.data.folders || [],
-            existingPageIds,
-            existingFolderIds
-          )
+          const tree = buildPageTreeNodes(data.data.pages, data.data.folders || [], decorateChats)
           setCheckedChats(getAllKeys(tree))
         }
         if (data.data.settings?.llmConfigs) {
-          const tree = buildConfigTree(
+          const tree = buildConfigTreeNodes(
             data.data.settings.llmConfigs as ConfigTree<LLMConfig>,
             (item: LLMConfig) => item.name,
-            existingLLMIds,
-            existingLLMFolderIds
+            decorateLLM
           )
           setCheckedLLM(getAllKeys(tree))
         }
         if (data.data.settings?.modelConfigs) {
-          const tree = buildConfigTree(
+          const tree = buildConfigTreeNodes(
             data.data.settings.modelConfigs as ConfigTree<ModelConfig>,
             (item: ModelConfig) => item.name,
-            existingModelIds,
-            existingModelFolderIds
+            decorateModel
           )
           setCheckedModel(getAllKeys(tree))
         }

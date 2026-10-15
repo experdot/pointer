@@ -12,9 +12,10 @@ import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '@renderer/types/shared'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
+import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import './ConfigTree.css'
 
-export interface ConfigTreeProps<T extends ConfigItemBase> {
+interface ConfigTreeProps<T extends ConfigItemBase> {
   items: T[]
   folders: ConfigFolder[]
   selectedId: string | null
@@ -61,7 +62,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   emptyText = '暂无配置',
   addItemText = '新建配置',
   createItemLabel = '新建配置',
-  createFolderLabel = '新建文件夹'
+  createFolderLabel = DEFAULT_FOLDER_NAME
 }: ConfigTreeProps<T>): React.JSX.Element {
   const { showDeleteConfirm } = useConfirmDialog()
   const [multiSelect, setMultiSelect] = useState(false)
@@ -91,6 +92,16 @@ export function ConfigTree<T extends ConfigItemBase>({
       onSelect(folder.id)
     },
     [createFolder, onSelect]
+  )
+
+  // 稳定引用：内联箭头会让 TreeView 的 treeData useMemo 每次失效
+  const getItemName = useCallback((item: T): string => item[itemNameKey] as string, [itemNameKey])
+
+  const handleUpdateItemName = useCallback(
+    (id: string, name: string): void => {
+      updateItem(id, { [itemNameKey]: name } as Partial<T>)
+    },
+    [itemNameKey, updateItem]
   )
 
   const handleToggleMultiSelect = (): void => {
@@ -143,7 +154,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   }
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
     { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
   ]
 
@@ -189,10 +200,10 @@ export function ConfigTree<T extends ConfigItemBase>({
         selectedId={selectedId}
         onSelect={onSelect}
         itemIcon={itemIcon}
-        getItemName={(item) => item[itemNameKey] as string}
+        getItemName={getItemName}
         isItem={isItem}
         batchUpdateItemsOrder={batchUpdateItemsOrder}
-        updateItem={(id, name) => updateItem(id, { [itemNameKey]: name } as Partial<T>)}
+        updateItem={handleUpdateItemName}
         deleteItem={deleteItem}
         updateFolder={(id, name) => updateFolder(id, { name })}
         deleteFolder={deleteFolder}

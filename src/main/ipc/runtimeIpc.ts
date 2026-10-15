@@ -5,8 +5,8 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron'
-import type { RuntimeCommandRequest, RuntimeQueryRequest } from '../../shared/contracts'
-import { RUNTIME_CHANNELS, toFailure } from '../../shared/contracts'
+import type { RuntimeCommandRequest, RuntimeQueryRequest } from '@shared/contracts'
+import { RUNTIME_CHANNELS, toFailure } from '@shared/contracts'
 import type { RuntimeCore } from '../runtime'
 
 export function setupRuntimeIpc(runtime: RuntimeCore): void {

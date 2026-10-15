@@ -8,6 +8,7 @@ import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage, Conversation, MessageDraft, Topic } from '@shared/domain'
 import { emptyConversation } from '@shared/domain'
+import type { MessagePatch } from '@shared/contracts'
 import { command, query } from '../runtime/client'
 
 interface MessagesState {
@@ -15,21 +16,6 @@ interface MessagesState {
   /** messageId -> 是否正在生成 */
   streaming: Record<string, boolean>
 }
-
-type MessagePatch = Partial<
-  Pick<
-    ChatMessage,
-    | 'content'
-    | 'reasoning'
-    | 'title'
-    | 'starred'
-    | 'collapsed'
-    | 'attachments'
-    | 'hasError'
-    | 'llmId'
-    | 'modelConfigId'
-  >
->
 
 interface MessagesActions {
   load: (pageId: string) => Promise<Conversation>
@@ -39,17 +25,9 @@ interface MessagesActions {
   upsertMessage: (pageId: string, message: ChatMessage) => void
   /** 批量追加流式增量（镜像层合并后一次性写入，避免每个分片都触发渲染） */
   applyDeltas: (entries: DeltaBatchEntry[]) => void
-  appendToMessage: (
-    pageId: string,
-    messageId: string,
-    text: string,
-    field: 'content' | 'reasoning'
-  ) => void
   setStreaming: (messageId: string, streaming: boolean) => void
   isStreaming: (messageId: string) => boolean
   evict: (pageId: string) => void
-  evictAll: () => void
-  removeRecord: (pageId: string) => void
   reset: () => void
 
   addMessage: (
@@ -74,7 +52,7 @@ interface MessagesActions {
 
 type MessagesStore = MessagesState & MessagesActions
 
-export interface DeltaBatchEntry {
+interface DeltaBatchEntry {
   pageId: string
   messageId: string
   content: string
@@ -142,28 +120,6 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       }
     }),
 
-  appendToMessage: (pageId, messageId, text, field) =>
-    set((state) => {
-      const current = state.cache[pageId]
-      if (!current) return state
-
-      return {
-        cache: {
-          ...state.cache,
-          [pageId]: {
-            ...current,
-            messages: current.messages.map((message) =>
-              message.id === messageId
-                ? field === 'content'
-                  ? { ...message, content: message.content + text }
-                  : { ...message, reasoning: `${message.reasoning ?? ''}${text}` }
-                : message
-            )
-          }
-        }
-      }
-    }),
-
   applyDeltas: (entries) =>
     set((state) => {
       const cache = { ...state.cache }
@@ -207,10 +163,6 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       delete next[pageId]
       return { cache: next }
     }),
-
-  evictAll: () => set({ cache: {}, streaming: {} }),
-
-  removeRecord: (pageId) => get().evict(pageId),
 
   reset: () => set({ cache: {}, streaming: {} }),
 

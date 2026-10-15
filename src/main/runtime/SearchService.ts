@@ -5,15 +5,15 @@
  * 因此界面上的高亮与命中位置始终与用户输入一致。
  */
 
-import type { SearchMatch, SearchOptions, SearchPageInfo } from '../../shared/domain'
+import type { SearchMatch, SearchOptions, SearchPageInfo } from '@shared/domain'
 import {
   buildSnippet,
   compileMatcher,
   descendantFolderIds,
   groupMatches,
   withinTimeRange
-} from '../../shared/domain'
-import type { WorkspaceSearchResult } from '../../shared/contracts'
+} from '@shared/domain'
+import type { WorkspaceSearchResult } from '@shared/contracts'
 import type { IndexDb } from './IndexDb'
 import type { WorkspaceStore } from './WorkspaceStore'
 

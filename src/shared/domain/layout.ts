@@ -5,26 +5,20 @@
  * 同样的数据必然得到同样的目录与文件名，因此外部改动后重新扫描即可对齐。
  */
 
-import { nameKey } from './common'
+import { compareNodes, nameKey } from './common'
 import { sanitizeFileName, uniquePageFileName, uniqueName } from './naming'
 import type { Folder, Page } from './page'
 
-export interface WorkspaceLayoutInput {
+interface WorkspaceLayoutInput {
   folders: readonly Folder[]
   pages: readonly Page[]
 }
 
-export interface WorkspaceLayout {
+interface WorkspaceLayout {
   /** 文件夹 id 到相对目录路径（根目录为 ''） */
   folderDirs: Map<string, string>
   /** 页面 id 到相对文件路径（使用 / 分隔） */
   pagePaths: Map<string, string>
-}
-
-function sortNodes<T extends { order: number; createdAt: number; id: string }>(nodes: T[]): T[] {
-  return [...nodes].sort(
-    (a, b) => a.order - b.order || a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1)
-  )
 }
 
 export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput): WorkspaceLayout {
@@ -36,9 +30,9 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
     const takenDirs = new Set<string>()
     const takenFiles = new Set<string>()
 
-    const childFolders = sortNodes(
-      folders.filter((folder) => folder.parentFolderId === parentFolderId)
-    )
+    const childFolders = folders
+      .filter((folder) => folder.parentFolderId === parentFolderId)
+      .sort(compareNodes)
     for (const folder of childFolders) {
       const dirName = uniqueName(takenDirs, sanitizeFileName(folder.name))
       takenDirs.add(nameKey(dirName))
@@ -47,7 +41,9 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
       assign(folder.id, dir)
     }
 
-    const childPages = sortNodes(pages.filter((page) => page.parentFolderId === parentFolderId))
+    const childPages = pages
+      .filter((page) => page.parentFolderId === parentFolderId)
+      .sort(compareNodes)
     for (const page of childPages) {
       const fileName = uniquePageFileName(takenFiles, page.name)
       takenFiles.add(nameKey(fileName))

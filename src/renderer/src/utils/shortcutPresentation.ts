@@ -67,21 +67,22 @@ function resolveDisplayPlatform(): DisplayPlatform {
   return cachedDisplayPlatform
 }
 
-export function getDisplayPlatform(): DisplayPlatform {
-  return resolveDisplayPlatform()
-}
-
 export function isMacPlatform(): boolean {
   return resolveDisplayPlatform() === 'darwin'
 }
 
-export function isLinuxPlatform(): boolean {
+function isLinuxPlatform(): boolean {
   return resolveDisplayPlatform() === 'linux'
 }
 
-export function isWindowsPlatform(): boolean {
+function isWindowsPlatform(): boolean {
   return resolveDisplayPlatform() === 'windows'
 }
+
+/** 平台判定结果在各组件里反复取用，这里缓存一次 */
+export const IS_MAC = isMacPlatform()
+export const IS_LINUX = isLinuxPlatform()
+export const IS_WINDOWS = isWindowsPlatform()
 
 export function getShortcutLabel(id: ShortcutLabelId): string {
   const platform = resolveDisplayPlatform()
@@ -143,7 +144,7 @@ export function formatShortcutTooltip(label: string, shortcutId: ShortcutLabelId
   return `${label} (${getShortcutLabel(shortcutId)})`
 }
 
-export function withStandardMenu(
+function withStandardMenu(
   menu: NonNullable<DropdownProps['menu']>
 ): NonNullable<DropdownProps['menu']> {
   return {

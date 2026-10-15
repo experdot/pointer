@@ -53,7 +53,7 @@ export const TOPIC_SEGMENTATION_PROMPT = `分析以下对话，识别出话题�
 3. 一般3-10条消息可能构成一个话题
 4. 直接输出JSON数组，不要有任何其他内容`
 
-export const MAX_PROMPT_CONTENT_LENGTH = 500
+const MAX_PROMPT_CONTENT_LENGTH = 500
 
 export function truncateForPrompt(content: string, maxLength = MAX_PROMPT_CONTENT_LENGTH): string {
   if (content.length <= maxLength) return content
@@ -101,7 +101,7 @@ export function normalizeTitle(raw: string, maxLength = 40): string {
     .slice(0, maxLength)
 }
 
-export interface TopicSegment {
+interface TopicSegment {
   index: number
   topic: string
 }

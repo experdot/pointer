@@ -40,20 +40,6 @@ export function getSelectedText(): string {
   return window.getSelection()?.toString() || ''
 }
 
-// 生成文件 ID
-export function generateFileId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
-}
-
-// 将文件转换为 Base64
-export function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve((reader.result as string).split(',')[1])
-    reader.readAsDataURL(file)
-  })
-}
-
 // 过滤图片文件
 export function filterImageFiles(files: FileList | File[]): File[] {
   return Array.from(files).filter((f) =>

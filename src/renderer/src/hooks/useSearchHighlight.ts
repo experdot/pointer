@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import type { ChatMessage } from '@renderer/types/shared'
 import type { SearchState } from '../stores/chatUIStore'
-import { findAllMatches, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
+import {
+  SEARCH_DEBOUNCE_MS,
+  findAllMatches,
+  type SearchMatch,
+  type SearchOptions
+} from '../utils/searchUtils'
+import {
+  buildTextIndex,
+  createRangeFromFullTextOffset,
+  findOccurrenceOffset
+} from '../utils/highlightRange'
 import { expandTopicsForMessage } from '../services/navigationService'
-
-/** 防抖延迟时间 */
-const DEBOUNCE_DELAY = 500
 
 interface UseSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
@@ -50,7 +57,7 @@ export function useSearchHighlight({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchState.query)
-    }, DEBOUNCE_DELAY)
+    }, SEARCH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
   }, [searchState.query])
@@ -199,51 +206,12 @@ function createRangeForMatch(
   const matchText = messageContent.slice(match.startOffset, match.endOffset)
   if (!matchText) return null
 
-  // 收集所有文本节点
-  const textNodes: Text[] = []
-  const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT, null)
-  let node: Text | null
-  while ((node = walker.nextNode() as Text)) {
-    if (node.textContent) {
-      textNodes.push(node)
-    }
-  }
+  // Markdown 渲染会改变字符位置，按「该消息中的第 N 个命中」定位
+  const { fullText, offsets } = buildTextIndex(contentEl)
+  const offset = findOccurrenceOffset(fullText, matchText, countMatchesBefore(messages, match))
+  if (offset === -1) return null
 
-  // 在文本节点中查找所有匹配位置
-  // 首先拼接所有文本节点的内容
-  let fullText = ''
-  const nodeOffsets: { node: Text; start: number; end: number }[] = []
-  for (const textNode of textNodes) {
-    const text = textNode.textContent ?? ''
-    nodeOffsets.push({
-      node: textNode,
-      start: fullText.length,
-      end: fullText.length + text.length
-    })
-    fullText += text
-  }
-
-  // 找到第 N 个匹配（根据 globalIndex 在该消息中的位置）
-  // 计算这是该消息中的第几个匹配
-  const matchIndexInMessage = countMatchesBefore(messages, match)
-
-  let currentMatchIndex = 0
-  let searchStartIndex = 0
-
-  while (true) {
-    const idx = fullText.indexOf(matchText, searchStartIndex)
-    if (idx === -1) break
-
-    if (currentMatchIndex === matchIndexInMessage) {
-      // 找到了目标匹配，创建 Range
-      return createRangeFromFullTextOffset(nodeOffsets, idx, idx + matchText.length)
-    }
-
-    currentMatchIndex++
-    searchStartIndex = idx + 1
-  }
-
-  return null
+  return createRangeFromFullTextOffset(offsets, offset, offset + matchText.length)
 }
 
 /**
@@ -264,45 +232,4 @@ function countMatchesBefore(messages: ChatMessage[], currentMatch: SearchMatch):
   }
 
   return count
-}
-
-/**
- * 根据拼接文本的偏移量创建 Range
- */
-function createRangeFromFullTextOffset(
-  nodeOffsets: { node: Text; start: number; end: number }[],
-  startOffset: number,
-  endOffset: number
-): Range | null {
-  let startNode: Text | null = null
-  let startLocalOffset = 0
-  let endNode: Text | null = null
-  let endLocalOffset = 0
-
-  for (const { node, start, end } of nodeOffsets) {
-    // 查找起始节点
-    if (!startNode && startOffset >= start && startOffset < end) {
-      startNode = node
-      startLocalOffset = startOffset - start
-    }
-
-    // 查找结束节点
-    if (endOffset > start && endOffset <= end) {
-      endNode = node
-      endLocalOffset = endOffset - start
-    }
-
-    if (startNode && endNode) break
-  }
-
-  if (!startNode || !endNode) return null
-
-  try {
-    const range = document.createRange()
-    range.setStart(startNode, startLocalOffset)
-    range.setEnd(endNode, endLocalOffset)
-    return range
-  } catch {
-    return null
-  }
 }

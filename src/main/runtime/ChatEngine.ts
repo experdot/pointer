@@ -13,7 +13,7 @@ import type {
   ModelParameters,
   ProviderConnection,
   Settings
-} from '../../shared/domain'
+} from '@shared/domain'
 import {
   appendMessage,
   buildIndex,
@@ -22,9 +22,9 @@ import {
   pathToMessage,
   updateMessage,
   updateTopic
-} from '../../shared/domain'
-import type { RuntimeEvent } from '../../shared/contracts'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/domain'
+import type { ChatRequestHandle, RuntimeEvent } from '@shared/contracts'
+import { RuntimeError } from '@shared/contracts'
 import type { SettingsStore } from './SettingsStore'
 import type { WorkspaceStore } from './WorkspaceStore'
 import type { QueueStore } from './QueueStore'
@@ -38,21 +38,16 @@ import {
   buildPrompt,
   normalizeTitle,
   truncateForPrompt
-} from '../../shared/domain'
+} from '@shared/domain'
 
-export interface ChatEngineDeps {
+interface ChatEngineDeps {
   workspace: () => WorkspaceStore | null
   settings: () => SettingsStore | null
   queues: () => QueueStore | null
   emit: (event: RuntimeEvent) => void
 }
 
-export interface ChatRequestHandle {
-  requestId: string
-  messageId: string
-}
-
-export interface SendInput {
+interface SendInput {
   pageId: string
   content: string
   attachments?: AttachmentRef[]

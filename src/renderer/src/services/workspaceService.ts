@@ -8,11 +8,6 @@ import type { WorkspacePathValidation, WorkspaceSummary } from '@shared/domain'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
-export async function initializeWorkspaceSystem(): Promise<void> {
-  // 工作区由内核在启动时打开；此处仅保证镜像已就绪
-  await Promise.resolve()
-}
-
 export async function switchWorkspace(workspaceId: string): Promise<void> {
   useSettingsStore.getState().flush()
   await useWorkspaceStore.getState().switchWorkspace(workspaceId)
@@ -51,16 +46,4 @@ export async function pickWorkspaceDirectory(title?: string): Promise<string | n
 
 export async function openWorkspaceInFileManager(): Promise<void> {
   await useWorkspaceStore.getState().openInFileManager()
-}
-
-export function getCurrentWorkspace(): WorkspaceSummary | null {
-  return useWorkspaceStore.getState().currentWorkspace
-}
-
-export function getAllWorkspaces(): WorkspaceSummary[] {
-  return useWorkspaceStore.getState().getAll()
-}
-
-export function resetWorkspaceSystem(): void {
-  useWorkspaceStore.getState().reset()
 }

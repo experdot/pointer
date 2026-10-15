@@ -2,7 +2,7 @@
  * 工作区领域模型
  */
 
-import type { Diagnostic, Timestamps } from './common'
+import type { Timestamps } from './common'
 
 export type WorkspaceType = 'default' | 'custom'
 
@@ -42,7 +42,7 @@ export interface WorkspacePathValidation {
   error?: string
 }
 
-export interface CreateWorkspaceInput {
+interface CreateWorkspaceInput {
   id: string
   accountId: string
   name: string
@@ -68,35 +68,4 @@ export function toWorkspaceSummary(workspace: Workspace): WorkspaceSummary {
     type: workspace.type,
     path: workspace.path
   }
-}
-
-export function validateWorkspace(workspace: Workspace): Diagnostic[] {
-  const diagnostics: Diagnostic[] = []
-
-  if (!workspace.id) {
-    diagnostics.push({ code: 'workspace.id-required', message: '工作区缺少 id' })
-  }
-  if (!workspace.accountId) {
-    diagnostics.push({
-      code: 'workspace.account-required',
-      message: '工作区必须归属某个账户',
-      entityId: workspace.id
-    })
-  }
-  if (!workspace.name.trim()) {
-    diagnostics.push({
-      code: 'workspace.name-required',
-      message: '工作区名称不能为空',
-      entityId: workspace.id
-    })
-  }
-  if (!workspace.path.trim()) {
-    diagnostics.push({
-      code: 'workspace.path-required',
-      message: '工作区路径不能为空',
-      entityId: workspace.id
-    })
-  }
-
-  return diagnostics
 }

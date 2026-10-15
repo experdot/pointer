@@ -6,8 +6,8 @@
 
 import type { ChatMessage, MessageRole } from './chat'
 
-export type RoleFilter = 'all' | 'user' | 'assistant'
-export type TimeRange = 'all' | 'today' | 'week' | 'month'
+type RoleFilter = 'all' | 'user' | 'assistant'
+type TimeRange = 'all' | 'today' | 'week' | 'month'
 
 export interface SearchOptions {
   matchCase: boolean
@@ -26,14 +26,14 @@ export const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
   timeRange: 'all'
 }
 
-export interface MatchRange {
+interface MatchRange {
   start: number
   end: number
 }
 
-export type Matcher = (text: string) => MatchRange[]
+type Matcher = (text: string) => MatchRange[]
 
-export const MAX_MATCHES_PER_MESSAGE = 100
+const MAX_MATCHES_PER_MESSAGE = 100
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -80,7 +80,7 @@ export function compileMatcher(query: string, options: SearchOptions): Matcher {
   }
 }
 
-export interface Snippet {
+interface Snippet {
   snippet: string
   /** 命中片段在 snippet 中的位置 */
   matchStart: number
@@ -143,7 +143,7 @@ export interface SearchMatch {
   createdAt: number
 }
 
-export interface SearchParams {
+interface SearchParams {
   pageId: string
   messages: readonly ChatMessage[]
   matcher: Matcher

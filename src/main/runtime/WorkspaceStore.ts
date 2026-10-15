@@ -18,9 +18,11 @@ import type {
   Page,
   PageTree,
   Workspace
-} from '../../shared/domain'
+} from '@shared/domain'
 import {
   PAGE_FILE_FORMAT_VERSION,
+  DEFAULT_FOLDER_NAME,
+  DEFAULT_PAGE_NAME,
   addFolder,
   addPage,
   childrenOf,
@@ -44,8 +46,9 @@ import {
   updateNode,
   validateConversation,
   validatePageTree
-} from '../../shared/domain'
-import { RuntimeError } from '../../shared/contracts'
+} from '@shared/domain'
+import { RuntimeError } from '@shared/contracts'
+import type { NodePatch } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
 import {
@@ -67,11 +70,6 @@ import {
 
 interface FoldersFile {
   folders: Folder[]
-}
-
-export interface NodeMetadataPatch {
-  name?: string
-  starred?: boolean
 }
 
 export class WorkspaceStore {
@@ -220,7 +218,7 @@ export class WorkspaceStore {
     const page: Page = {
       id: randomUUID(),
       kind: 'page',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || '新对话'),
+      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_PAGE_NAME),
       starred: input.starred,
       parentFolderId,
       order: nextOrder(this.getTree(), parentFolderId),
@@ -237,7 +235,7 @@ export class WorkspaceStore {
     return { ...page }
   }
 
-  async updatePage(pageId: string, patch: NodeMetadataPatch, at: number): Promise<void> {
+  async updatePage(pageId: string, patch: NodePatch, at: number): Promise<void> {
     const page = this.pages.find((item) => item.id === pageId)
     if (!page) throw new RuntimeError('page.not-found', `页面不存在：${pageId}`)
 
@@ -306,7 +304,7 @@ export class WorkspaceStore {
     const folder: Folder = {
       id: randomUUID(),
       kind: 'folder',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || '新建文件夹'),
+      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_FOLDER_NAME),
       parentFolderId,
       order: nextOrder(this.getTree(), parentFolderId),
       createdAt: at,
@@ -322,7 +320,7 @@ export class WorkspaceStore {
     return { ...folder }
   }
 
-  async updateFolder(folderId: string, patch: NodeMetadataPatch, at: number): Promise<void> {
+  async updateFolder(folderId: string, patch: NodePatch, at: number): Promise<void> {
     const folder = this.folders.find((item) => item.id === folderId)
     if (!folder) throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
     if (patch.name === undefined || patch.name.trim() === folder.name) return

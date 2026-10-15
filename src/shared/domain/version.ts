@@ -12,7 +12,7 @@ interface ParsedVersion {
   prerelease: Array<string | number>
 }
 
-export function parseVersion(value: string): ParsedVersion | null {
+function parseVersion(value: string): ParsedVersion | null {
   const trimmed = value.trim().replace(/^v/i, '')
   const match = trimmed.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+](.*))?$/)
   if (!match) return null

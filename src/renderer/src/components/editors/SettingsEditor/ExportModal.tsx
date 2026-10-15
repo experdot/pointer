@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex } from 'antd'
-import { FolderOutlined, FileTextOutlined, SettingOutlined } from '@ant-design/icons'
 import type { TreeDataNode } from 'antd'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
@@ -8,15 +7,8 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { useViewStateStore } from '../../../stores/viewStateStore'
 import { query } from '../../../runtime/client'
 import type { PageRecord, MessagesRecord, ViewState } from '@renderer/types/shared'
-import type {
-  Folder,
-  Settings,
-  ConfigFolder,
-  ConfigItemBase,
-  ConfigTree,
-  LLMConfig,
-  ModelConfig
-} from '@renderer/types/shared'
+import type { Folder, Settings, LLMConfig, ModelConfig } from '@renderer/types/shared'
+import { buildConfigTreeNodes, buildPageTreeNodes } from '../../../utils/treeNodes'
 
 const { Text } = Typography
 
@@ -41,115 +33,7 @@ interface ExportModalProps {
 type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 
 // 构建页面树
-function buildPagesTree(pages: PageRecord[], folders: Folder[]): TreeDataNode[] {
-  const folderMap = new Map<string | undefined, TreeDataNode[]>()
-
-  // 初始化根节点
-  folderMap.set(undefined, [])
-
-  // 创建文件夹节点
-  folders.forEach((folder) => {
-    const parentId = folder.parentFolderId
-    if (!folderMap.has(parentId)) {
-      folderMap.set(parentId, [])
-    }
-  })
-
-  // 创建文件夹树节点
-  const folderNodes = new Map<string, TreeDataNode>()
-  folders.forEach((folder) => {
-    folderNodes.set(folder.id, {
-      key: `folder:${folder.id}`,
-      title: folder.name,
-      icon: <FolderOutlined />,
-      children: []
-    })
-  })
-
-  // 添加页面到对应文件夹
-  pages.forEach((page) => {
-    const parentId = page.parentFolderId
-    const pageNode: TreeDataNode = {
-      key: `page:${page.id}`,
-      title: page.name || '未命名对话',
-      icon: <FileTextOutlined />,
-      isLeaf: true
-    }
-
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(pageNode)
-    } else {
-      if (!folderMap.has(undefined)) {
-        folderMap.set(undefined, [])
-      }
-      folderMap.get(undefined)!.push(pageNode)
-    }
-  })
-
-  // 构建文件夹层级
-  folders.forEach((folder) => {
-    const node = folderNodes.get(folder.id)!
-    const parentId = folder.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(node)
-    } else {
-      folderMap.get(undefined)!.push(node)
-    }
-  })
-
-  return folderMap.get(undefined) || []
-}
-
 // 构建配置树
-function buildConfigTree<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  getTitle: (item: T) => string
-): TreeDataNode[] {
-  const folderMap = new Map<string | undefined, TreeDataNode[]>()
-  folderMap.set(undefined, [])
-
-  // 创建文件夹节点
-  const folderNodes = new Map<string, TreeDataNode>()
-  tree.folders.forEach((folder: ConfigFolder) => {
-    folderNodes.set(folder.id, {
-      key: `folder:${folder.id}`,
-      title: folder.name,
-      icon: <FolderOutlined />,
-      children: []
-    })
-  })
-
-  // 添加配置项
-  tree.items.forEach((item: T) => {
-    const itemNode: TreeDataNode = {
-      key: `item:${item.id}`,
-      title: getTitle(item),
-      icon: <SettingOutlined />,
-      isLeaf: true
-    }
-
-    const parentId = item.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(itemNode)
-    } else {
-      folderMap.get(undefined)!.push(itemNode)
-    }
-  })
-
-  // 构建文件夹层级
-  tree.folders.forEach((folder: ConfigFolder) => {
-    const node = folderNodes.get(folder.id)!
-    const parentId = folder.parentFolderId
-    if (parentId && folderNodes.has(parentId)) {
-      folderNodes.get(parentId)!.children!.push(node)
-    } else {
-      folderMap.get(undefined)!.push(node)
-    }
-  })
-
-  return folderMap.get(undefined) || []
-}
-
 export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Element {
   const { message } = App.useApp()
   const pages = usePagesStore((s) => s.pages)
@@ -166,13 +50,13 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const [includeUI, setIncludeUI] = useState(false)
 
   // 构建树数据
-  const chatsTree = useMemo(() => buildPagesTree(pages, folders), [pages, folders])
+  const chatsTree = useMemo(() => buildPageTreeNodes(pages, folders), [pages, folders])
   const llmTree = useMemo(
-    () => buildConfigTree(settings.llmConfigs, (item: LLMConfig) => item.name),
+    () => buildConfigTreeNodes(settings.llmConfigs, (item: LLMConfig) => item.name),
     [settings.llmConfigs]
   )
   const modelTree = useMemo(
-    () => buildConfigTree(settings.modelConfigs, (item: ModelConfig) => item.name),
+    () => buildConfigTreeNodes(settings.modelConfigs, (item: ModelConfig) => item.name),
     [settings.modelConfigs]
   )
 

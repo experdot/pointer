@@ -6,19 +6,14 @@
 
 import { useCallback, useMemo } from 'react'
 import type { Folder, Page } from '@renderer/types/shared'
+import { compareNodes } from '@shared/domain'
 import { usePagesStore } from '../stores/pagesStore'
 import { useFoldersStore, type FolderView } from '../stores/foldersStore'
 import * as pagesService from '../services/pagesService'
 
 export type TreeNodeView = FolderView | Page
 
-function sortNodes(nodes: TreeNodeView[]): TreeNodeView[] {
-  return [...nodes].sort(
-    (a, b) => a.order - b.order || a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1)
-  )
-}
-
-export interface UsePagesResult {
+interface UsePagesResult {
   pages: Page[]
   folders: FolderView[]
   rootPages: Page[]
@@ -52,10 +47,10 @@ export function usePages(): UsePagesResult {
 
   const rootItems = useMemo(
     () =>
-      sortNodes([
+      [
         ...folders.filter((folder) => !folder.parentFolderId),
         ...pages.filter((page) => !page.parentFolderId)
-      ]),
+      ].sort(compareNodes),
     [folders, pages]
   )
 
@@ -71,10 +66,10 @@ export function usePages(): UsePagesResult {
 
   const getItemsInFolder = useCallback(
     (folderId: string | undefined) =>
-      sortNodes([
+      [
         ...folders.filter((folder) => folder.parentFolderId === folderId),
         ...pages.filter((page) => page.parentFolderId === folderId)
-      ]),
+      ].sort(compareNodes),
     [folders, pages]
   )
 

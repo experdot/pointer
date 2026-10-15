@@ -6,8 +6,8 @@
  */
 
 import { safeStorage } from 'electron'
-import type { LLMConfig, Settings } from '../../shared/domain'
-import { defaultSettings, validateSettings } from '../../shared/domain'
+import type { LLMConfig, Settings } from '@shared/domain'
+import { defaultSettings, validateSettings } from '@shared/domain'
 import type { PathResolver } from './paths'
 import { readJson, writeJsonAtomic } from './fsx'
 

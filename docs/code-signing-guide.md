@@ -2,7 +2,7 @@
 
 ## 问题说明
 
-当您遇到以下错误时，说明需要配置代码签名：
+遇到下面的错误，说明需要配置代码签名：
 
 ```
 New version X.X.X is not signed by the application owner: publisherNames: experdot
@@ -10,41 +10,39 @@ Status: 2
 StatusMessage: The file is not digitally signed
 ```
 
-## 解决方案
+## 方案一：开发/测试环境——当前已跳过签名校验
 
-### 方案一：开发/测试环境 - 跳过签名验证
+**适用场景**：开发、测试阶段。
 
-**适用场景**：开发、测试阶段
+仓库中与"跳过签名校验"相关的配置共三处，另有一处与打包范围有关：
 
-**已配置项目**：
-
-- `dev-app-update.yml` 中注释了 `publisherName`
-- 主进程中添加了 `allowDowngrade: true`
+| 位置                      | 具体配置                                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `dev-app-update.yml`      | `publisherName` 被注释掉，并设置 `allowDowngrade: true`                                                              |
+| `src/main/autoUpdater.ts` | `is.dev` 时设置 `updateConfigPath` 指向 `dev-app-update.yml`、`forceDevUpdateConfig = true`、`allowDowngrade = true` |
+| `electron-builder.yml`    | `win.verifyUpdateCodeSignature: false`                                                                               |
+| `electron-builder.yml`    | `files` 排除列表包含 `dev-app-update.yml`，因此它不会被打进安装包                                                    |
 
 **使用方法**：
 
 1. 确保在开发环境中运行应用
-2. 应用会自动使用 `dev-app-update.yml` 配置
-3. 更新时将跳过签名验证
+2. 应用会自动使用 `dev-app-update.yml` 作为更新配置
+3. 自动更新检查与下载将跳过签名校验
 
-### 方案二：生产环境 - 配置真实代码签名
+`allowDowngrade` 会让更低版本也触发 `update-available`，内核已用 `isNewerVersion` 过滤，只上报真正更新的版本。以上配置只适用于开发/测试，不要用于正式发布。
 
-**适用场景**：正式发布
+## 方案二：生产环境——配置真实代码签名
 
-#### 步骤1：获取代码签名证书
+**适用场景**：正式发布。
 
-1. **购买证书**（推荐）：
-   - DigiCert
-   - Sectigo (原 Comodo)
-   - GlobalSign
-   - 价格通常在 $100-500/年
+### 步骤 1：获取代码签名证书
 
-2. **免费证书**（测试用）：
-   - 可以创建自签名证书，但用户会看到安全警告
+- **购买证书**（推荐）：DigiCert、Sectigo（原 Comodo）、GlobalSign，价格通常在 $100-500/年
+- **自签名证书**：只能用于测试，用户会看到安全警告，且无法通过更新包的签名校验
 
-#### 步骤2：配置证书
+### 步骤 2：在 `electron-builder.yml` 中配置证书
 
-在 `electron-builder.yml` 中取消注释并配置：
+取消注释并配置文件里预留的 `win` 段：
 
 ```yaml
 win:
@@ -57,19 +55,23 @@ win:
   timestampServer: 'http://timestamp.digicert.com'
 ```
 
-#### 步骤3：设置环境变量
+### 步骤 3：设置环境变量
 
-```bash
+```powershell
 # Windows PowerShell
 $env:WIN_CSC_KEY_PASSWORD="your-certificate-password"
-
-# 或在 GitHub Actions 中设置 secrets
-# WIN_CSC_KEY_PASSWORD
 ```
 
-#### 步骤4：更新构建脚本
+### 步骤 4：同步恢复签名校验
 
-如果使用 GitHub Actions，需要上传证书文件或使用加密的证书：
+启用正式签名后，必须同时把下面两项恢复，否则更新包签名依然不会被校验：
+
+1. 把 `electron-builder.yml` 中 `win.verifyUpdateCodeSignature` 从 `false` 改回 `true`（或移除该行）
+2. 在发布使用的更新配置里启用 `publisherName`（当前只有 `dev-app-update.yml` 中出现，且处于注释状态）
+
+### 步骤 5（可选）：在 CI 中注入证书
+
+仓库当前的发布工作流**未接入**这一步，`.github/workflows/release.yml` 只在 `windows-latest` 上构建并发布。若要在 CI 中签名，需要自行添加类似步骤：
 
 ```yaml
 # .github/workflows/release.yml
@@ -80,7 +82,7 @@ $env:WIN_CSC_KEY_PASSWORD="your-certificate-password"
     WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 ```
 
-### 方案三：创建自签名证书（仅用于测试）
+## 方案三：创建自签名证书（仅用于测试）
 
 ```powershell
 # 创建自签名证书
@@ -96,15 +98,14 @@ Export-PfxCertificate -cert $cert -FilePath "certificate.p12" -Password $pwd
 
 ### 开发环境
 
-- ✅ 当前配置已经跳过签名验证
-- ✅ 可以正常进行自动更新测试
-- ⚠️ 用户可能会看到安全警告
+- 当前配置已经跳过签名校验，可以正常进行自动更新测试
+- 用户可能会看到系统安全警告
 
 ### 生产环境
 
-- ❌ 必须配置真实的代码签名证书
-- ❌ 自签名证书会导致用户看到安全警告
-- ✅ 正式证书提供最佳用户体验
+- 必须配置真实的代码签名证书
+- 自签名证书会导致用户看到安全警告，并且无法通过更新包的签名校验
+- 启用签名后务必同步恢复 `verifyUpdateCodeSignature` 与 `publisherName`
 
 ## 测试验证
 
@@ -117,8 +118,10 @@ pnpm run build:win
 2. **检查签名**：
 
 ```powershell
-Get-AuthenticodeSignature "dist\pointer-1.0.0-preview.8-setup.exe"
+Get-AuthenticodeSignature "dist\pointer-<版本>-setup.exe"
 ```
+
+产物命名来自 `electron-builder.yml` 的 `nsis.artifactName: ${name}-${version}-setup.${ext}`，当前版本（2.0.0-preview.1）对应 `dist\pointer-2.0.0-preview.1-setup.exe`。
 
 3. **发布测试**：
 
@@ -131,9 +134,10 @@ pnpm run release
 ### 常见错误
 
 1. **证书路径错误**：确保证书文件路径正确
-2. **密码错误**：检查环境变量中的证书密码
+2. **密码错误**：检查环境变量 `WIN_CSC_KEY_PASSWORD`
 3. **证书过期**：检查证书有效期
 4. **权限问题**：确保构建环境有访问证书的权限
+5. **签名后更新仍报未签名**：检查是否已恢复 `verifyUpdateCodeSignature` 与 `publisherName`
 
 ### 验证签名
 
@@ -147,7 +151,7 @@ Get-PfxCertificate -FilePath "certificate.p12"
 
 ## 总结
 
-- **当前状态**：已配置开发环境跳过签名验证
+- **当前状态**：开发环境已跳过签名校验
 - **短期方案**：继续使用当前配置进行开发测试
-- **长期方案**：购买并配置正式代码签名证书
+- **长期方案**：购买并配置正式代码签名证书，并同步恢复签名校验
 - **用户体验**：正式签名证书能提供最佳的用户信任度

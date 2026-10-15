@@ -11,18 +11,18 @@ export interface GenerateOptions {
   modelConfigId?: string
 }
 
-export interface UseChatTitlesOptions {
+interface UseChatTitlesOptions {
   pageId: string
   messages: ChatMessage[]
   currentPath: ChatMessage[]
 }
 
-export interface BatchProgress {
+interface BatchProgress {
   current: number
   total: number
 }
 
-export interface UseChatTitlesResult {
+interface UseChatTitlesResult {
   updateTitle: (messageId: string, title: string) => void
   deleteTitle: (messageId: string) => void
   generateTitle: (messageId: string, options?: GenerateOptions) => Promise<void>

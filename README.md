@@ -20,51 +20,53 @@
 
 ## Overview
 
-Pointer is a cross-platform desktop AI chat client built with Electron, React 19, and TypeScript. It connects to various AI model APIs (OpenAI, Claude, DeepSeek, etc.) and provides advanced conversation management with a focus on knowledge organization and deep thinking workflows.
+Pointer is a cross-platform desktop AI chat client built with Electron 35, React 19 and TypeScript. It talks to any OpenAI-compatible API (OpenAI, DeepSeek, compatible gateways) and centers on two things: conversation branches kept as a tree, and data you can read yourself — every conversation is a Markdown file inside a workspace folder.
+
+The kernel runs in the main process and is the single source of truth: it owns persistence, the SQLite index, sessions, AI streaming, search and attachments. The renderer holds view state plus a mirror of kernel state fed by events, and never touches files or paths. See [docs/architecture.md](docs/architecture.md) for the layering, data flow and storage layout.
 
 ## Features
 
-### Multi-Model Support
+### Models
 
-- Configure multiple llm configurations (OpenAI GPT, DeepSeek, etc.)
-- Switch between models seamlessly during conversations
+- Configure multiple LLMs (base URL, API key, model name) and reusable model parameter configs (system prompt, temperature, top-p)
+- Pick the LLM per message, so a conversation can mix models
+- Streaming responses with reasoning content when the provider reports it
 
-### Conversation Branch Management
+### Conversation branches
 
-- Tree-structured message history with version control
-- Create and switch between conversation branches
-- Maintain context inheritance across branches
-- Navigate conversation history with ease
+- Tree-structured message history: regenerate or continue creates sibling branches
+- Switch branches and inherit context along the selected path
+- Outline and topics for long conversations, plus in-conversation search
 
-### Knowledge Organization
+### Knowledge organization
 
-- Folder-based hierarchical organization
-- Message bookmarking and tagging
-- Parallel tab workflow for multiple conversations
-- Global search with keyword highlighting
+- Folder hierarchy that maps to real directories on disk
+- Starred pages and a multi-tab workspace for parallel conversations
+- Workspace-wide search with keyword highlighting, filtered by role, time range and folder
+- Message queue per conversation: queued prompts are sent automatically while the conversation is idle
 
-### Data Management
+### Data management
 
-- Import data from ChatGPT and DeepSeek exports
-- Export conversations for backup
-- Local data storage with privacy focus
-- Batch operations and drag-and-drop sorting
+- Import ChatGPT (OpenAI export), DeepSeek and Pointer data
+- Export through a source × format matrix (messages, text snippet, table block, code block → Markdown, TXT, HTML, CSV) with preview, editing and screenshot copy
+- Multiple accounts and workspaces, each workspace an ordinary folder that can be synced or committed
+- All data stays local
 
 ## Installation
 
 ### Download
 
-Download the latest release for your platform from the [Releases](https://github.com/experdot/pointer/releases) page:
+CI publishes a Windows installer on the [Releases](https://github.com/experdot/pointer/releases) page:
 
-- **Windows**: `.exe` installer
-- **macOS**: `.dmg` installer
-- **Linux**: `.AppImage` or `.deb` package
+- **Windows**: `pointer-<version>-setup.exe`
 
-### Build from Source
+macOS and Linux packages are configured but not published automatically yet: `pnpm build:mac` and `pnpm build:linux` produce them locally, while the release workflow currently builds Windows only.
+
+### Build from source
 
 Requirements:
 
-- Node.js 18+
+- Node.js >= 22.12 (required by Vitest 5, which runs the test suite; the app itself runs on the Node bundled with Electron 35)
 - pnpm
 
 ```bash
@@ -77,59 +79,86 @@ pnpm install
 
 # Run in development mode
 pnpm dev
+```
 
-# Build for your platform
-pnpm build:win    # Windows
-pnpm build:mac    # macOS
-pnpm build:linux  # Linux
+## Development
+
+```bash
+pnpm dev            # development server with hot reload
+pnpm start          # run the production build locally
+pnpm build          # type check + build
+pnpm build:win      # Windows build
+pnpm build:mac      # macOS build
+pnpm build:linux    # Linux build
+pnpm build:unpack   # build without packaging
+pnpm lint           # ESLint (warnings fail the run)
+pnpm format         # Prettier
+pnpm typecheck      # type check main + renderer
+pnpm test           # unit tests (domain + renderer mirror)
+pnpm smoke:kernel   # boot the kernel in a temp dir and verify the query/command/event chain
+pnpm release        # build and publish to GitHub Releases
 ```
 
 ## Configuration
 
-1. Launch the application
-2. Open Settings
-3. Add a new AI model configuration:
-   - **Name**: Display name for the configuration
-   - **API Endpoint**: The API URL (e.g., `https://api.openai.com/v1`)
-   - **API Key**: Your access token
-   - **Model**: Model identifier (e.g., `gpt-4o`, `claude-3-5-sonnet`)
-4. Set as default and test the connection
+1. Launch the application and open Settings
+2. Add an LLM configuration under "LLM 配置":
+   - **Name**: display name for the configuration
+   - **API endpoint**: an OpenAI-compatible base URL (e.g. `https://api.openai.com/v1`)
+   - **API key**: your access token
+   - **Model**: model identifier (e.g. `gpt-4o`, `deepseek-chat`)
+3. Optionally add a model parameter config (system prompt, temperature, top-p) and set the defaults
+4. Test the connection from the same panel
 
-## Tech Stack
+## Data and privacy
+
+- Application data (accounts, session, per-account settings) lives in the Electron user data directory.
+- Every workspace is an ordinary folder: pages are `<folder>/<page>.pointer.md` — Markdown you can open in any editor or commit to git — while kernel-private data lives in `.pointer/` (folder metadata, view state, SQLite index, attachments, message queues).
+- The SQLite index is derived data: delete it and it is rebuilt by rescanning the workspace.
+- Edits made to page files outside the app are detected and reflected in the UI.
+- Custom workspace directories are supported, so conversations can live in a folder you already back up or sync.
+
+## Project structure
+
+```
+src/
+├── main/                 # Electron main process
+│   ├── index.ts          # window, kernel assembly, IPC wiring
+│   ├── runtime/          # kernel: persistence, SQLite index, sessions, AI streaming, search
+│   ├── ipc/              # runtimeIpc.ts (renderer entry), windowIpc.ts
+│   ├── runtimeHost.ts    # dialogs and system integration injected into the kernel
+│   └── autoUpdater.ts
+├── preload/              # context bridge: runtime / electronWindow / shortcuts
+├── renderer/src/         # React UI (components, stores, services, hooks, runtime mirror)
+└── shared/
+    ├── domain/           # pure entities, invariants and algorithms
+    └── contracts/        # RuntimePort: queries, commands, events
+```
+
+## Tech stack
 
 | Category  | Technologies                                                     |
 | --------- | ---------------------------------------------------------------- |
 | Frontend  | React 19, TypeScript, Ant Design                                 |
 | Desktop   | Electron 35, electron-vite                                       |
-| State     | Zustand, Immer                                                   |
+| State     | Zustand (Immer middleware in the update store)                   |
+| Storage   | `.pointer.md` files, node:sqlite index (FTS5, trigram tokenizer) |
 | Build     | Vite, Electron Builder                                           |
 | Editor    | Monaco Editor                                                    |
-| Rendering | react-markdown (streaming markdown), Shiki (syntax highlighting) |
+| Rendering | react-markdown (streaming), Shiki, KaTeX, Mermaid                |
+| Updates   | electron-updater (GitHub Releases)                               |
 
-## Project Structure
+## Documentation
 
-```
-src/
-├── main/              # Electron main process
-│   ├── aiHandler.ts     # AI API request handling
-│   ├── ipcHandlers.ts   # IPC communication
-│   └── autoUpdater.ts   # Auto-update logic
-├── preload/           # Preload scripts (context bridge)
-└── renderer/          # React application
-    └── src/
-        ├── components/    # UI components
-        ├── services/      # Business logic
-        ├── stores/        # Zustand state management
-        ├── hooks/         # Custom React hooks
-        ├── features/      # Feature modules
-        └── utils/         # Utility functions
-```
+- [Architecture](docs/architecture.md) — layering, data flow, contracts, storage layout
+- [Auto-update guide](docs/auto-update-guide.md)（中文）
+- [Windows code signing guide](docs/code-signing-guide.md)（中文）
 
 ## Contributing
 
-1. Fork the repository
+1. Fork this repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the coding standards (TypeScript, ESLint, Prettier)
+3. Follow the code style (TypeScript, ESLint, Prettier) and run `pnpm lint && pnpm typecheck && pnpm test` before committing
 4. Commit using conventional commits format
 5. Open a Pull Request
 

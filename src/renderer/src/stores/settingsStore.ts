@@ -6,14 +6,7 @@
  */
 
 import { create } from 'zustand'
-import type {
-  ConfigFolder,
-  ConfigItemBase,
-  ConfigTree,
-  LLMConfig,
-  ModelConfig,
-  Settings
-} from '@shared/domain'
+import type { ConfigFolder, ConfigTree, LLMConfig, ModelConfig, Settings } from '@shared/domain'
 import {
   addConfigFolder,
   addConfigItem,
@@ -21,7 +14,6 @@ import {
   batchUpdateConfigItems,
   clearConfigFolder,
   defaultSettings,
-  emptyConfigTree,
   removeConfigFolder,
   removeConfigItem,
   updateConfigFolder,
@@ -183,7 +175,3 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     }
   }
 })
-
-/** 供纯逻辑复用的空树构造 */
-export const createEmptyConfigTree = <T extends ConfigItemBase>(): ConfigTree<T> =>
-  emptyConfigTree<T>()

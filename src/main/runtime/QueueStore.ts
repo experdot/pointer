@@ -2,7 +2,7 @@
  * 消息队列存储（每个会话一个文件）
  */
 
-import type { MessageQueue, QueueItem } from '../../shared/domain'
+import type { MessageQueue, QueueItem } from '@shared/domain'
 import {
   emptyQueue,
   enqueue,
@@ -11,7 +11,7 @@ import {
   shiftItem,
   updateItem,
   clear
-} from '../../shared/domain'
+} from '@shared/domain'
 import type { PathResolver } from './paths'
 import { readJson, removePath, writeJsonAtomic } from './fsx'
 
