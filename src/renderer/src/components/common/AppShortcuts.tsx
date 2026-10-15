@@ -5,13 +5,10 @@ import {
   dispatchForwardedShortcutAction,
   type AppShortcutAction
 } from '../../services/shortcutService'
-import { isLinuxPlatform, isMacPlatform, isWindowsPlatform } from '../../utils/shortcutPresentation'
+import { IS_LINUX, IS_MAC, IS_WINDOWS } from '../../utils/shortcutPresentation'
 import { isMonacoFocused, shouldIgnoreAppShortcuts } from '../../utils/shortcutGuards'
 
 // 与 VS Code 默认键位保持一致：Windows/Linux 走 win/linux 绑定，macOS 走 mac 绑定
-const IS_MAC = isMacPlatform()
-const IS_WINDOWS = isWindowsPlatform()
-const IS_LINUX = isLinuxPlatform()
 
 const appShortcutOptions = {
   enableOnFormTags: true as const,

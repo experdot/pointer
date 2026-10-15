@@ -15,13 +15,12 @@ import {
 import { AIGeneratePopover, type GenerateOptions } from './AIGeneratePopover'
 import { useConfirmDialog } from './ConfirmDialog'
 import {
+  IS_MAC,
   getShortcutLabel,
-  getStandardDropdownProps,
-  isMacPlatform
+  getStandardDropdownProps
 } from '../../utils/shortcutPresentation'
+import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import './TreeView.css'
-
-const IS_MAC = isMacPlatform()
 
 // ==================== 类型定义 ====================
 
@@ -708,7 +707,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
           ? [
               {
                 key: 'createFolder',
-                label: createFolderLabel || '新建文件夹',
+                label: createFolderLabel || DEFAULT_FOLDER_NAME,
                 icon: <FolderAddOutlined />,
                 onClick: ({ domEvent }) => {
                   domEvent.stopPropagation()

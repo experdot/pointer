@@ -21,6 +21,8 @@ import type {
 } from '@shared/domain'
 import {
   PAGE_FILE_FORMAT_VERSION,
+  DEFAULT_FOLDER_NAME,
+  DEFAULT_PAGE_NAME,
   addFolder,
   addPage,
   childrenOf,
@@ -220,7 +222,7 @@ export class WorkspaceStore {
     const page: Page = {
       id: randomUUID(),
       kind: 'page',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || '新对话'),
+      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_PAGE_NAME),
       starred: input.starred,
       parentFolderId,
       order: nextOrder(this.getTree(), parentFolderId),
@@ -306,7 +308,7 @@ export class WorkspaceStore {
     const folder: Folder = {
       id: randomUUID(),
       kind: 'folder',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || '新建文件夹'),
+      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_FOLDER_NAME),
       parentFolderId,
       order: nextOrder(this.getTree(), parentFolderId),
       createdAt: at,

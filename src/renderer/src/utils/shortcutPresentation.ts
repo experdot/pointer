@@ -79,6 +79,11 @@ export function isWindowsPlatform(): boolean {
   return resolveDisplayPlatform() === 'windows'
 }
 
+/** 平台判定结果在各组件里反复取用，这里缓存一次 */
+export const IS_MAC = isMacPlatform()
+export const IS_LINUX = isLinuxPlatform()
+export const IS_WINDOWS = isWindowsPlatform()
+
 export function getShortcutLabel(id: ShortcutLabelId): string {
   const platform = resolveDisplayPlatform()
   const isMac = platform === 'darwin'

@@ -5,7 +5,7 @@ import { useViewStateStore } from './viewStateStore'
 export type { ActivityPanel, LayoutState }
 
 // 紧凑模式阈值
-const COMPACT_MODE_THRESHOLD = 768
+export const COMPACT_MODE_THRESHOLD = 768
 
 interface LayoutStateInternal extends LayoutState {
   minSidebarWidth: number

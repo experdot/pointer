@@ -7,6 +7,7 @@
 import { useCallback, useRef } from 'react'
 import { App } from 'antd'
 import type { AttachmentRef, ChatMessage, Conversation } from '@shared/domain'
+import { isDefaultPageName } from '@shared/domain'
 import { command, errorMessage } from '../runtime/client'
 import { useMessagesStore } from '../stores/messagesStore'
 import { usePagesStore } from '../stores/pagesStore'
@@ -51,7 +52,7 @@ export function useChatStreaming({
 
       try {
         const currentPage = usePagesStore.getState().getById(pageId)
-        const isDefaultName = currentPage ? /^新对话(?: \(\d+\))?$/.test(currentPage.name) : false
+        const isDefaultName = currentPage ? isDefaultPageName(currentPage.name) : false
         if (isFirstMessage && isDefaultName && content.trim()) {
           const title =
             content.slice(0, DEFAULT_SESSION_TITLE_PREVIEW_LENGTH) +

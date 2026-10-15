@@ -12,6 +12,7 @@ import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '@renderer/types/shared'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
+import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import './ConfigTree.css'
 
 export interface ConfigTreeProps<T extends ConfigItemBase> {
@@ -61,7 +62,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   emptyText = '暂无配置',
   addItemText = '新建配置',
   createItemLabel = '新建配置',
-  createFolderLabel = '新建文件夹'
+  createFolderLabel = DEFAULT_FOLDER_NAME
 }: ConfigTreeProps<T>): React.JSX.Element {
   const { showDeleteConfirm } = useConfirmDialog()
   const [multiSelect, setMultiSelect] = useState(false)
@@ -143,7 +144,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   }
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
     { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
   ]
 

@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import type { ChatMessage } from '@renderer/types/shared'
 import type { SearchState } from '../stores/chatUIStore'
-import { findAllMatches, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
+import {
+  SEARCH_DEBOUNCE_MS,
+  findAllMatches,
+  type SearchMatch,
+  type SearchOptions
+} from '../utils/searchUtils'
 import {
   buildTextIndex,
   createRangeFromFullTextOffset,
   findOccurrenceOffset
 } from '../utils/highlightRange'
 import { expandTopicsForMessage } from '../services/navigationService'
-
-/** 防抖延迟时间 */
-const DEBOUNCE_DELAY = 500
 
 interface UseSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
@@ -55,7 +57,7 @@ export function useSearchHighlight({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchState.query)
-    }, DEBOUNCE_DELAY)
+    }, SEARCH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
   }, [searchState.query])

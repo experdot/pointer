@@ -28,6 +28,7 @@ import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { Page, Folder } from '@renderer/types/shared'
+import { DEFAULT_FOLDER_NAME } from '@shared/domain'
 import { resolveCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
 
@@ -330,7 +331,7 @@ export function Explorer(): React.JSX.Element {
   }, [pendingDragOperation, batchUpdateItemsOrderWithRename])
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: '新建文件夹', icon: <FolderOutlined /> },
+    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
     { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
   ]
 
@@ -393,7 +394,7 @@ export function Explorer(): React.JSX.Element {
         onCreateItemInFolder={handleCreatePageInFolder}
         onCreateSubFolder={handleCreateSubFolder}
         createItemLabel="新建对话"
-        createFolderLabel="新建文件夹"
+        createFolderLabel={DEFAULT_FOLDER_NAME}
         getItemLeadingMenuItems={getItemLeadingMenuItems}
         getItemMenuItems={getItemMenuItems}
         getFolderMenuItems={getFolderMenuItems}

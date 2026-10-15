@@ -2,6 +2,9 @@ import type { ChatMessage } from '@renderer/types/shared'
 import { DEFAULT_SEARCH_OPTIONS, compileMatcher } from '@shared/domain'
 import type { SearchOptions as DomainSearchOptions } from '@shared/domain'
 
+/** 会话内查找与全局搜索共用的输入防抖延迟 */
+export const SEARCH_DEBOUNCE_MS = 500
+
 export interface SearchMatch {
   messageId: string
   startOffset: number
