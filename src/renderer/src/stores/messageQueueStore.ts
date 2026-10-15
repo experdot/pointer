@@ -26,47 +26,72 @@ interface MessageQueueActions {
 
 type MessageQueueStore = MessageQueueState & MessageQueueActions
 
-export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
-  cache: {},
+export const useMessageQueueStore = create<MessageQueueStore>((set, get) => {
+  /**
+   * 未命中页面的空队列缓存
+   *
+   * 每次返回新建的空队列会让下游 `useMemo(..., [queue.items])` 每帧都失效，
+   * 因此同一 pageId 始终返回同一实例，随 evict/reset 一起清理。
+   */
+  const emptyQueues = new Map<string, MessageQueue>()
 
-  setQueue: (queue) =>
-    set((state) => ({
-      cache: { ...state.cache, [queue.pageId]: queue }
-    })),
+  return {
+    cache: {},
 
-  getQueue: (pageId) => get().cache[pageId] ?? emptyQueue(pageId),
+    setQueue: (queue) =>
+      set((state) => ({
+        cache: { ...state.cache, [queue.pageId]: queue }
+      })),
 
-  evict: (pageId) =>
-    set((state) => {
-      if (!(pageId in state.cache)) return state
-      const next = { ...state.cache }
-      delete next[pageId]
-      return { cache: next }
-    }),
+    getQueue: (pageId) => {
+      const cached = get().cache[pageId]
+      if (cached) return cached
 
-  addItem: async (pageId, content) => {
-    await command('queue.add', { pageId, content })
-  },
+      const existing = emptyQueues.get(pageId)
+      if (existing) return existing
 
-  updateItem: async (pageId, itemId, content) => {
-    await command('queue.update', { pageId, itemId, content })
-  },
+      const created = emptyQueue(pageId)
+      emptyQueues.set(pageId, created)
+      return created
+    },
 
-  removeItem: async (pageId, itemId) => {
-    await command('queue.remove', { pageId, itemId })
-  },
+    evict: (pageId) => {
+      emptyQueues.delete(pageId)
+      set((state) => {
+        if (!(pageId in state.cache)) return state
+        const next = { ...state.cache }
+        delete next[pageId]
+        return { cache: next }
+      })
+    },
 
-  clearQueue: async (pageId) => {
-    await command('queue.clear', { pageId })
-  },
+    addItem: async (pageId, content) => {
+      await command('queue.add', { pageId, content })
+    },
 
-  pause: async (pageId) => {
-    await command('queue.setPaused', { pageId, paused: true })
-  },
+    updateItem: async (pageId, itemId, content) => {
+      await command('queue.update', { pageId, itemId, content })
+    },
 
-  resume: async (pageId) => {
-    await command('queue.setPaused', { pageId, paused: false })
-  },
+    removeItem: async (pageId, itemId) => {
+      await command('queue.remove', { pageId, itemId })
+    },
 
-  reset: () => set({ cache: {} })
-}))
+    clearQueue: async (pageId) => {
+      await command('queue.clear', { pageId })
+    },
+
+    pause: async (pageId) => {
+      await command('queue.setPaused', { pageId, paused: true })
+    },
+
+    resume: async (pageId) => {
+      await command('queue.setPaused', { pageId, paused: false })
+    },
+
+    reset: () => {
+      emptyQueues.clear()
+      set({ cache: {} })
+    }
+  }
+})
