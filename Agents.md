@@ -4,9 +4,11 @@ This file provides guidance to coding agent when working with code in this repos
 
 ## Project Overview
 
-Pointer is a cross-platform desktop AI chat application built with Electron, React 19, and TypeScript. It features tree-structured conversation branches, multi-model support (OpenAI, Claude, DeepSeek, etc.), and a VSCode-like interface with tabs, sidebar, and activity bar.
+Pointer is a cross-platform desktop AI chat application built with Electron, React 19, and TypeScript. It features tree-structured conversation branches, multi-model support through any OpenAI-compatible API (OpenAI, DeepSeek, compatible gateways), and a VSCode-like interface with tabs, sidebar, and activity bar.
 
 ## Commands
+
+Requires Node.js >= 22.12 (Vitest 5 runs the test suite) and pnpm.
 
 ```bash
 # Development
@@ -34,21 +36,22 @@ pnpm release:draft    # Build for release testing (no publish)
 
 ## Architecture
 
-### Three-Tier Electron Structure
+### Layered Structure (Domain / Contracts / Kernel / Presentation + Preload bridge)
 
 - **Domain** (`src/shared/domain/`): pure TypeScript entities, invariants and algorithms
   (message tree, topics, workspace layout, `.pointer.md` codec, importers). No Electron, no IO.
 - **Contracts** (`src/shared/contracts/`): the single `RuntimePort` surface — queries, commands, events.
 - **Kernel** (`src/main/runtime/`): system of record. Owns persistence (atomic writes), the SQLite
-  index, sessions, AI streaming, search, attachments and secrets. Exposed to the renderer only
-  through `src/main/ipc/runtimeIpc.ts`.
+  index, sessions, AI streaming, search, attachments, settings and API keys (stored in plaintext in
+  the account's `settings.json`; the encrypted `secrets.json` is read only once for migration).
+  Exposed to the renderer only through `src/main/ipc/runtimeIpc.ts`.
 - **Presentation** (`src/renderer/src/`): React UI holding view state plus a mirror of kernel state
   fed by events. It never touches paths, files or the filesystem.
 - **Preload** (`src/preload/`): exposes `window.runtime` (query/command/subscribe),
   `window.electronWindow` and `window.shortcuts` only.
 
 Data flow: UI → `services/*` → `stores/*` → `runtime/client` → kernel command → kernel event →
-mirror store → UI. See `docs/architecture.md` for the rationale and migration status.
+mirror store → UI. See `docs/architecture.md` for the layering, data flow and storage layout.
 
 ### Renderer Organization
 
@@ -82,10 +85,20 @@ features/       # Feature modules (export plugins, etc.)
 
 ## Code Style
 
-- Single quotes, no semicolons, 100 char line width
+- Single quotes, no semicolons, no trailing commas, 100 char line width, LF line endings
+  (see `.prettierrc.yaml`)
 - Prefer Ant Design components and patterns
 - Decompose into small, focused components
-- Chinese language context in some documentation
+- Documentation language: `docs/` and `README.zh-CN.md` are Chinese; `README.md` and `AGENTS.md`
+  are English; code comments are Chinese
+
+## Documentation
+
+| File                         | Purpose                                             |
+| ---------------------------- | --------------------------------------------------- |
+| `docs/architecture.md`       | Layering, data flow, contracts, storage layout      |
+| `docs/auto-update-guide.md`  | Auto-update behavior, commands/events, release flow |
+| `docs/code-signing-guide.md` | Windows code signing, dev signature-check bypass    |
 
 ## Key Files
 
