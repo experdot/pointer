@@ -23,7 +23,7 @@ import {
   updateMessage,
   updateTopic
 } from '@shared/domain'
-import type { RuntimeEvent } from '@shared/contracts'
+import type { ChatRequestHandle, RuntimeEvent } from '@shared/contracts'
 import { RuntimeError } from '@shared/contracts'
 import type { SettingsStore } from './SettingsStore'
 import type { WorkspaceStore } from './WorkspaceStore'
@@ -45,11 +45,6 @@ interface ChatEngineDeps {
   settings: () => SettingsStore | null
   queues: () => QueueStore | null
   emit: (event: RuntimeEvent) => void
-}
-
-export interface ChatRequestHandle {
-  requestId: string
-  messageId: string
 }
 
 interface SendInput {

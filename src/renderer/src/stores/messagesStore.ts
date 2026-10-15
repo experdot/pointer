@@ -8,6 +8,7 @@ import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage, Conversation, MessageDraft, Topic } from '@shared/domain'
 import { emptyConversation } from '@shared/domain'
+import type { MessagePatch } from '@shared/contracts'
 import { command, query } from '../runtime/client'
 
 interface MessagesState {
@@ -15,21 +16,6 @@ interface MessagesState {
   /** messageId -> 是否正在生成 */
   streaming: Record<string, boolean>
 }
-
-type MessagePatch = Partial<
-  Pick<
-    ChatMessage,
-    | 'content'
-    | 'reasoning'
-    | 'title'
-    | 'starred'
-    | 'collapsed'
-    | 'attachments'
-    | 'hasError'
-    | 'llmId'
-    | 'modelConfigId'
-  >
->
 
 interface MessagesActions {
   load: (pageId: string) => Promise<Conversation>

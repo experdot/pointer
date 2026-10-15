@@ -36,7 +36,7 @@ export type MessagePatch = Partial<
   >
 >
 
-interface NodePatch {
+export interface NodePatch {
   name?: string
   starred?: boolean
 }

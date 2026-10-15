@@ -48,6 +48,7 @@ import {
   validatePageTree
 } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
+import type { NodePatch } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
 import {
@@ -69,11 +70,6 @@ import {
 
 interface FoldersFile {
   folders: Folder[]
-}
-
-interface NodeMetadataPatch {
-  name?: string
-  starred?: boolean
 }
 
 export class WorkspaceStore {
@@ -239,7 +235,7 @@ export class WorkspaceStore {
     return { ...page }
   }
 
-  async updatePage(pageId: string, patch: NodeMetadataPatch, at: number): Promise<void> {
+  async updatePage(pageId: string, patch: NodePatch, at: number): Promise<void> {
     const page = this.pages.find((item) => item.id === pageId)
     if (!page) throw new RuntimeError('page.not-found', `页面不存在：${pageId}`)
 
@@ -324,7 +320,7 @@ export class WorkspaceStore {
     return { ...folder }
   }
 
-  async updateFolder(folderId: string, patch: NodeMetadataPatch, at: number): Promise<void> {
+  async updateFolder(folderId: string, patch: NodePatch, at: number): Promise<void> {
     const folder = this.folders.find((item) => item.id === folderId)
     if (!folder) throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
     if (patch.name === undefined || patch.name.trim() === folder.name) return

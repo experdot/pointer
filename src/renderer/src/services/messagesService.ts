@@ -15,24 +15,10 @@ import {
   getMessageTopicInfo,
   pathToMessage
 } from '@shared/domain'
+import type { MessagePatch } from '@shared/contracts'
 import { useMessagesStore } from '../stores/messagesStore'
 
 export type { OutlineNode, TopicGroup } from '@shared/domain'
-
-export type MessagePatch = Partial<
-  Pick<
-    ChatMessage,
-    | 'content'
-    | 'reasoning'
-    | 'title'
-    | 'starred'
-    | 'collapsed'
-    | 'attachments'
-    | 'hasError'
-    | 'llmId'
-    | 'modelConfigId'
-  >
->
 
 export async function addMessage(
   pageId: string,
