@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { App } from 'antd'
 import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
@@ -61,12 +61,15 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     smartSegmentation
   } = useChat({ pageId })
 
-  // 流式状态来自内核镜像
-  const streamingMap = useMessagesStore((state) => state.streaming)
-  const isStreaming = useMemo(
-    () => currentPath.some((message) => Boolean(streamingMap[message.id])),
-    [currentPath, streamingMap]
+  // 流式状态来自内核镜像。只订阅「当前分支上正在流式的消息 id」，
+  // 别处页签的输出不再牵动这个编辑器的重渲染。
+  const streamingIdKey = useMessagesStore((state) =>
+    currentPath
+      .filter((message) => state.streaming[message.id])
+      .map((message) => message.id)
+      .join(',')
   )
+  const isStreaming = streamingIdKey.length > 0
 
   // 消息队列
   const {
@@ -188,9 +191,10 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   )
 
   const handleCollapseAll = useCallback(() => {
-    const nonStreamingIds = currentPath.filter((m) => !streamingMap[m.id]).map((m) => m.id)
+    const { streaming } = useMessagesStore.getState()
+    const nonStreamingIds = currentPath.filter((m) => !streaming[m.id]).map((m) => m.id)
     setMessagesCollapsed(pageId, nonStreamingIds, true)
-  }, [pageId, currentPath, streamingMap])
+  }, [pageId, currentPath])
 
   const handleExpandAll = useCallback(() => {
     const ids = currentPath.map((m) => m.id)

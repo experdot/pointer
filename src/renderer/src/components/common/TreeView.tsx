@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import React, { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Input, Empty, Tree, Dropdown, Button, Tooltip } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
 import {
@@ -125,7 +125,7 @@ interface TreeNodeTitleProps<TItem extends ItemLike, TFolder extends FolderLike>
   createItemLabel?: string
 }
 
-const TreeNodeTitle = <TItem extends ItemLike, TFolder extends FolderLike>({
+const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>({
   id,
   title,
   isHighlighted,
@@ -192,6 +192,15 @@ const TreeNodeTitle = <TItem extends ItemLike, TFolder extends FolderLike>({
     </Dropdown>
   )
 }
+
+/**
+ * memo 包裹：节点对象与回调都稳定时跳过标题子树的重渲染
+ *
+ * 与上一轮移掉的那层 memo 不同，这里的前置条件已经成立——`treeData` 在树数据
+ * 未变时是稳定引用，`getContextMenuItems` 由 ref 转成稳定引用。泛型调用签名
+ * 靠断言保留，调用方写法不变。
+ */
+const TreeNodeTitle = memo(TreeNodeTitleInner) as typeof TreeNodeTitleInner
 
 // ==================== 编辑输入框组件 ====================
 
@@ -335,7 +344,7 @@ function TreeViewEditInput({
 
 // ==================== 组件实现 ====================
 
-export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
+function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   items,
   folders,
   selectedId,
@@ -372,6 +381,12 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [activeTreeKey, setActiveTreeKey] = useState<string | null>(selectedId)
+
+  // 确认类回调在用户点「确定」时才读选中态：用 ref 镜像既避免陈旧闭包，也让回调保持稳定
+  const activeTreeKeyRef = useRef(activeTreeKey)
+  activeTreeKeyRef.current = activeTreeKey
+  const selectedIdRef = useRef(selectedId)
+  selectedIdRef.current = selectedId
 
   // 虚拟滚动：监听容器高度变化
   const containerRef = useRef<HTMLDivElement>(null)
@@ -537,16 +552,16 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
       showDeleteConfirm({
         title: `删除 "${getItemName(item)}"`,
         onOk: () => {
-          if (activeTreeKey === item.id) {
+          if (activeTreeKeyRef.current === item.id) {
             setActiveTreeKey(null)
           }
 
           deleteItem(item.id)
-          if (selectedId === item.id) onSelect(null)
+          if (selectedIdRef.current === item.id) onSelect(null)
         }
       })
     },
-    [activeTreeKey, deleteItem, getItemName, onSelect, selectedId, showDeleteConfirm]
+    [deleteItem, getItemName, onSelect, showDeleteConfirm]
   )
 
   const handleDeleteFolder = useCallback(
@@ -555,16 +570,16 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
         title: `删除文件夹 "${getFolderName(folder)}"`,
         content: '将同时删除文件夹内的所有项目',
         onOk: () => {
-          if (activeTreeKey === folder.id) {
+          if (activeTreeKeyRef.current === folder.id) {
             setActiveTreeKey(null)
           }
 
           deleteFolder(folder.id)
-          if (selectedId === folder.id) onSelect(null)
+          if (selectedIdRef.current === folder.id) onSelect(null)
         }
       })
     },
-    [activeTreeKey, deleteFolder, getFolderName, onSelect, selectedId, showDeleteConfirm]
+    [deleteFolder, getFolderName, onSelect, showDeleteConfirm]
   )
 
   const deleteByKey = useCallback(
@@ -587,15 +602,18 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     [folders, handleDeleteFolder, handleDeleteItem, items]
   )
 
-  const handleClearFolder = (folder: TFolder): void => {
-    showDeleteConfirm({
-      title: `清空文件夹 "${getFolderName(folder)}"`,
-      content: '将删除文件夹内的所有项目，但保留文件夹',
-      onOk: () => {
-        clearFolder?.(folder.id)
-      }
-    })
-  }
+  const handleClearFolder = useCallback(
+    (folder: TFolder): void => {
+      showDeleteConfirm({
+        title: `清空文件夹 "${getFolderName(folder)}"`,
+        content: '将删除文件夹内的所有项目，但保留文件夹',
+        onOk: () => {
+          clearFolder?.(folder.id)
+        }
+      })
+    },
+    [clearFolder, getFolderName, showDeleteConfirm]
+  )
 
   const handleExpand: TreeProps['onExpand'] = (keys) => {
     const newExpanded = keys.filter((k) => !expandedKeys.includes(k as string))
@@ -686,7 +704,7 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 右键菜单 ====================
 
-  const getContextMenuItems = (node: TreeNodeData<TItem, TFolder>): MenuProps['items'] => {
+  const buildContextMenuItems = (node: TreeNodeData<TItem, TFolder>): MenuProps['items'] => {
     if (node.isFolder) {
       const folder = node.data as TFolder
       const customItems = getFolderMenuItems?.(folder) || []
@@ -791,6 +809,21 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 标题渲染 ====================
 
+  /**
+   * 稳定引用的菜单构造器
+   *
+   * 构造器每帧都会重建，直接传下去会让节点标题的 memo 永远命中不了；用 ref 把
+   * 最新实现转成稳定引用后，`TreeNodeTitle` 才能在菜单未变化时跳过重渲染。
+   * 与「补齐依赖数组」相比，这种做法不会因为以后新增依赖而悄悄失效。
+   */
+  const buildContextMenuItemsRef = useRef(buildContextMenuItems)
+  buildContextMenuItemsRef.current = buildContextMenuItems
+  const getContextMenuItems = useCallback(
+    (node: TreeNodeData<TItem, TFolder>): MenuProps['items'] =>
+      buildContextMenuItemsRef.current(node),
+    []
+  )
+
   const titleRender = (node: TreeDataNode): React.ReactNode => {
     const treeNode = node as TreeNodeData<TItem, TFolder>
     const id = node.key as string
@@ -857,3 +890,11 @@ export function TreeView<TItem extends ItemLike, TFolder extends FolderLike>({
     </div>
   )
 }
+
+/**
+ * props 稳定时跳过整棵树的渲染
+ *
+ * 泛型调用签名靠断言保留（调用方写法不变）。只有消费端把 props 都稳定化之后
+ * 这个 memo 才会命中——`Explorer` 里剩下的内联回调就是为此改成 useCallback 的。
+ */
+export const TreeView = memo(TreeViewInner) as typeof TreeViewInner
