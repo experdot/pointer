@@ -59,11 +59,13 @@ export function Explorer(): React.JSX.Element {
     toggleStarPage
   } = usePages()
 
-  const { tabs, activeTabId } = useTabsStore()
-  const activePageId = tabs.find((t) => t.id === activeTabId)?.dataId
+  // 只订阅「当前激活页」，页签标题/预览态/置顶态变化不再让侧边栏整棵树重渲染
+  const activePageId = useTabsStore(
+    (state) => state.tabs.find((tab) => tab.id === state.activeTabId)?.dataId
+  )
   const { showDeleteConfirm } = useConfirmDialog()
-  const { setActivePanel } = useLayoutStore()
-  const { setOptions: setSearchOptions } = useGlobalSearchStore()
+  const setActivePanel = useLayoutStore((state) => state.setActivePanel)
+  const setSearchOptions = useGlobalSearchStore((state) => state.setOptions)
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [multiSelect, setMultiSelect] = useState(false)
@@ -81,29 +83,33 @@ export function Explorer(): React.JSX.Element {
     conflictNames: string[]
   } | null>(null)
 
-  const messagesCache = useMessagesStore((state) => state.cache)
-
   useEffect(() => {
     if (activePageId) {
       setSelectedKey(activePageId)
     }
   }, [activePageId])
 
-  const handleSelect = (id: string | null): void => {
-    setSelectedKey(id)
-    if (id) {
-      const page = pages.find((p) => p.id === id)
-      if (page) {
-        openPage(id, true)
+  const handleSelect = useCallback(
+    (id: string | null): void => {
+      setSelectedKey(id)
+      if (id) {
+        const page = pages.find((p) => p.id === id)
+        if (page) {
+          openPage(id, true)
+        }
       }
-    }
-  }
+    },
+    [pages, openPage]
+  )
 
-  const handleDoubleClick = (id: string, isFolder: boolean): void => {
-    if (!isFolder) {
-      openPage(id, false)
-    }
-  }
+  const handleDoubleClick = useCallback(
+    (id: string, isFolder: boolean): void => {
+      if (!isFolder) {
+        openPage(id, false)
+      }
+    },
+    [openPage]
+  )
 
   const isPageItem = useCallback((item: Page | Folder): item is Page => item.kind === 'page', [])
 
@@ -124,15 +130,28 @@ export function Explorer(): React.JSX.Element {
     setSelectedKey(folder.id)
   }
 
-  const handleCreatePageInFolder = async (folderId: string): Promise<void> => {
-    const page = await createPage({ parentFolderId: folderId })
-    openPage(page.id)
-  }
+  const handleCreatePageInFolder = useCallback(
+    async (folderId: string): Promise<void> => {
+      const page = await createPage({ parentFolderId: folderId })
+      openPage(page.id)
+    },
+    [createPage, openPage]
+  )
 
-  const handleCreateSubFolder = async (parentFolderId: string): Promise<void> => {
-    const folder = await createFolder({ parentFolderId })
-    setSelectedKey(folder.id)
-  }
+  const handleCreateSubFolder = useCallback(
+    async (parentFolderId: string): Promise<void> => {
+      const folder = await createFolder({ parentFolderId })
+      setSelectedKey(folder.id)
+    },
+    [createFolder]
+  )
+
+  const handleUpdateFolderName = useCallback(
+    (id: string, name: string): void => {
+      void updateFolder(id, { name })
+    },
+    [updateFolder]
+  )
 
   const handleToggleMultiSelect = (): void => {
     setMultiSelect(!multiSelect)
@@ -170,10 +189,12 @@ export function Explorer(): React.JSX.Element {
   // AI 生成标题 - 直接在回调中执行生成
   const handleGenerateItemName = useCallback(
     async (pageId: string, options: GenerateOptions): Promise<void> => {
-      if ((messagesCache[pageId]?.messages.length ?? 0) === 0) return
+      // 即时读取会话缓存：订阅它会让侧边栏跟着任何会话变化重渲染
+      const messages = useMessagesStore.getState().cache[pageId]?.messages ?? []
+      if (messages.length === 0) return
       await generateSessionTitle(pageId, options)
     },
-    [messagesCache]
+    []
   )
 
   // 右键菜单 - 星标（置顶，后接分割线）
@@ -394,7 +415,7 @@ export function Explorer(): React.JSX.Element {
         batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
         updateItem={handleUpdateItemName}
         deleteItem={deletePage}
-        updateFolder={(id, name) => updateFolder(id, { name })}
+        updateFolder={handleUpdateFolderName}
         deleteFolder={deleteFolder}
         clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}

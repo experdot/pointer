@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
-import type { QueueItem } from '@renderer/types/shared'
-import type { AttachmentRef } from '@renderer/types/shared'
+import type { AttachmentRef, MessageQueue, QueueItem } from '@renderer/types/shared'
+
+/** 未加载页面的兜底空队列：只需要一个稳定引用，本 hook 只消费 items / paused */
+const EMPTY_QUEUE: MessageQueue = { pageId: '', items: [], paused: false }
 
 interface UseMessageQueueOptions {
   pageId: string
@@ -36,10 +38,15 @@ export function useMessageQueue({
   isStreaming,
   onSendMessage
 }: UseMessageQueueOptions): UseMessageQueueResult {
-  const { getQueue, addItem, removeItem, updateItem, clearQueue, pause, resume } =
-    useMessageQueueStore()
+  // 只订阅本页队列：别的会话的队列变化不再重渲染这个编辑器
+  const queue = useMessageQueueStore((state) => state.cache[pageId]) ?? EMPTY_QUEUE
+  const addItem = useMessageQueueStore((state) => state.addItem)
+  const removeItem = useMessageQueueStore((state) => state.removeItem)
+  const updateItem = useMessageQueueStore((state) => state.updateItem)
+  const clearQueue = useMessageQueueStore((state) => state.clearQueue)
+  const pause = useMessageQueueStore((state) => state.pause)
+  const resume = useMessageQueueStore((state) => state.resume)
 
-  const queue = getQueue(pageId)
   const items = useMemo(() => queue.items, [queue.items])
   const count = items.length
   const isPaused = queue.paused

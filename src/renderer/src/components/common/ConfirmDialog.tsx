@@ -1,5 +1,6 @@
 import { App } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
+import { useCallback, useMemo, useRef } from 'react'
 
 interface ConfirmDialogOptions {
   title: string
@@ -21,11 +22,14 @@ export function useConfirmDialog(): {
   }) => void
 } {
   const { modal } = App.useApp()
+  // 用 ref 持有 modal：返回的函数保持稳定引用，依赖它们的回调与 memo 才不会被击穿
+  const modalRef = useRef(modal)
+  modalRef.current = modal
 
-  const showConfirmDialog = (options: ConfirmDialogOptions): void => {
+  const showConfirmDialog = useCallback((options: ConfirmDialogOptions): void => {
     const { title, content, okText = '确定', cancelText = '取消', danger, onOk, onCancel } = options
 
-    modal.confirm({
+    modalRef.current.confirm({
       title,
       content,
       icon: <ExclamationCircleOutlined />,
@@ -35,21 +39,27 @@ export function useConfirmDialog(): {
       onOk,
       onCancel
     })
-  }
+  }, [])
 
-  const showDeleteConfirm = (options: {
-    title?: string
-    content?: React.ReactNode
-    onOk: () => void | Promise<void>
-  }): void => {
-    showConfirmDialog({
-      title: options.title || '确认删除',
-      content: options.content || '此操作不可撤销，确定要删除吗？',
-      okText: '删除',
-      danger: true,
-      onOk: options.onOk
-    })
-  }
+  const showDeleteConfirm = useCallback(
+    (options: {
+      title?: string
+      content?: React.ReactNode
+      onOk: () => void | Promise<void>
+    }): void => {
+      showConfirmDialog({
+        title: options.title || '确认删除',
+        content: options.content || '此操作不可撤销，确定要删除吗？',
+        okText: '删除',
+        danger: true,
+        onOk: options.onOk
+      })
+    },
+    [showConfirmDialog]
+  )
 
-  return { showConfirmDialog, showDeleteConfirm }
+  return useMemo(
+    () => ({ showConfirmDialog, showDeleteConfirm }),
+    [showConfirmDialog, showDeleteConfirm]
+  )
 }

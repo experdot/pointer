@@ -97,9 +97,6 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const lastScrollTop = useRef(0)
   const prevPageId = useRef(pageId)
 
-  // 流式状态由镜像 store 驱动，内容已随 chat.delta 写入消息本体
-  const streamingMap = useMessagesStore((state) => state.streaming)
-
   // 预计算 childrenMap: O(N) 一次性构建，后续查找 O(1)
   // 使用 allMessages 而非 messages，因为需要知道所有分支的信息
   const childrenMap = useMemo(() => {
@@ -149,6 +146,20 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   const visibleMessages = useMemo(
     () => filterMessagesByTopicCollapse(messages, topicGroups),
     [messages, topicGroups]
+  )
+
+  // 流式状态由镜像 store 驱动，内容已随 chat.delta 写入消息本体。
+  // 只订阅「本列表可见消息里正在流式的 id」（拼成字符串按值比较），
+  // 其它页签或其它分支的输出不会牵动这个列表重渲染。
+  const streamingIdKey = useMessagesStore((state) =>
+    visibleMessages
+      .filter((message) => state.streaming[message.id])
+      .map((message) => message.id)
+      .join(',')
+  )
+  const streamingIds = useMemo(
+    () => new Set(streamingIdKey ? streamingIdKey.split(',') : []),
+    [streamingIdKey]
   )
 
   // 分组的 callbacks - 使用 useMemo 避免每次渲染创建新对象
@@ -367,7 +378,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
         const siblings = childrenMap.get(message.parentMessageId) ?? []
 
         // 检查是否是正在 streaming 的消息
-        const streaming = Boolean(streamingMap[message.id])
+        const streaming = streamingIds.has(message.id)
 
         // Topic 消息数量（仅 Topic 起始消息有）
         const topicMessageCount = topicMessageCountMap.get(message.id)

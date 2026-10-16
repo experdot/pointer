@@ -57,8 +57,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   },
   ref
 ) {
-  const { getState, setInputContent, clearPendingAttachments } = useChatUIStore()
-  const content = getState(pageId).inputContent
+  // 只订阅本页的输入内容与需要的 action：在别的页签打字不再重渲染这个输入框
+  const content = useChatUIStore((state) => state.getState(pageId).inputContent)
+  const setInputContent = useChatUIStore((state) => state.setInputContent)
+  const clearPendingAttachments = useChatUIStore((state) => state.clearPendingAttachments)
   const { pendingAttachments, addAttachments, addAttachmentsFromSelector, removeAttachment } =
     useAttachment(pageId)
   const textAreaRef = useRef<TextAreaRef>(null)
