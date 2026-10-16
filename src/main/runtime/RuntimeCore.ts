@@ -801,12 +801,15 @@ export class RuntimeCore {
 
     let importedPages = 0
     let importedMessages = 0
+    // 新页面默认落到最前面，这里以「上一个已导入的页面」为参照，保持导入顺序
+    let previousPageId: string | undefined
 
     for (const imported of selected) {
       const page = await workspace.createPage(
-        { name: imported.title, parentFolderId: folderId },
+        { name: imported.title, parentFolderId: folderId, afterNodeId: previousPageId },
         imported.createdAt
       )
+      previousPageId = page.id
 
       const conversation: Conversation = {
         pageId: page.id,

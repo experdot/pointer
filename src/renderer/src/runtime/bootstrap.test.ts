@@ -469,7 +469,12 @@ describe('展示层镜像', () => {
     }
   })
 
-  it('未指定参照时新建对话以当前打开的会话为基准', async () => {
+  it('未指定参照时新建对话落在当前打开会话所在文件夹的最前面', async () => {
+    currentTree = {
+      folders: [{ id: 'folder-1', kind: 'folder', name: '分组', order: 0, createdAt: 1 }],
+      pages: [{ ...page, parentFolderId: 'folder-1' }]
+    }
+
     const { bootstrapRuntime } = await import('./bootstrap')
     const pagesService = await import('../services/pagesService')
 
@@ -480,6 +485,6 @@ describe('展示层镜像', () => {
     await pagesService.createPage({ name: '新对话' })
 
     expect(commands.map((entry) => entry.name)).toEqual(['page.create'])
-    expect(commands[0].payload).toMatchObject({ name: '新对话', afterNodeId: 'page-1' })
+    expect(commands[0].payload).toMatchObject({ name: '新对话', parentFolderId: 'folder-1' })
   })
 })

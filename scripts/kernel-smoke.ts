@@ -58,11 +58,10 @@ async function run(): Promise<void> {
     }
     check('页面树包含新建节点', tree.folders.length === 1 && tree.pages.length === 1)
 
-    // 回归：工具栏「新建」以选中项为参照，插入到同一层级的它之后
+    // 回归：新建对话固定落到所在文件夹的最前面
     const sibling = (await runtime.command('page.create', {
       name: '第二个对话',
-      parentFolderId: folder.id,
-      afterNodeId: page.id
+      parentFolderId: folder.id
     })) as { id: string }
 
     const treeAfterInsert = (await runtime.query('tree.get', undefined)) as {
@@ -72,9 +71,28 @@ async function run(): Promise<void> {
       .filter((item) => item.parentFolderId === folder.id)
       .sort((a, b) => a.order - b.order)
     check(
-      '新建页面插入到选中项之后且同层',
-      folderPages.map((item) => item.name).join(',') === '首个对话,第二个对话',
+      '新建对话插到所在文件夹最前面',
+      folderPages.map((item) => item.name).join(',') === '第二个对话,首个对话',
       folderPages.map((item) => `${item.name}@${item.order}`).join(' | ')
+    )
+
+    // 回归：显式 afterNodeId 参照（导入等场景）仍插入到参照项之后
+    const third = (await runtime.command('page.create', {
+      name: '第三个对话',
+      parentFolderId: folder.id,
+      afterNodeId: sibling.id
+    })) as { id: string }
+
+    const treeAfterRef = (await runtime.query('tree.get', undefined)) as {
+      pages: Array<{ id: string; name: string; parentFolderId?: string; order: number }>
+    }
+    const folderPagesRef = treeAfterRef.pages
+      .filter((item) => item.parentFolderId === folder.id)
+      .sort((a, b) => a.order - b.order)
+    check(
+      'afterNodeId 参照插入到其后',
+      folderPagesRef.map((item) => item.name).join(',') === '第二个对话,第三个对话,首个对话',
+      folderPagesRef.map((item) => `${item.name}@${item.order}`).join(' | ')
     )
 
     // 回归：没有参照项时新建内容插到最前面（旧实现的 prepareInsertPosition 语义）
@@ -91,7 +109,7 @@ async function run(): Promise<void> {
     await runtime.command('page.delete', { pageIds: [firstRoot.id, secondRoot.id] })
 
     // 清理，保持后续断言的数量假设
-    await runtime.command('page.delete', { pageIds: [sibling.id] })
+    await runtime.command('page.delete', { pageIds: [sibling.id, third.id] })
 
     // 回归 R2：星标/改名必须落盘，并且重新打开工作区（等价于目录重扫）后不被磁盘状态打回
     await runtime.command('page.update', { pageId: page.id, patch: { starred: true } })

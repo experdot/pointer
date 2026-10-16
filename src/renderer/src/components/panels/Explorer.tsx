@@ -28,7 +28,7 @@ import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { Page, Folder } from '@renderer/types/shared'
 import { DEFAULT_FOLDER_NAME } from '@shared/domain'
-import { resolveCreationTarget } from '../../utils/creationTarget'
+import { resolveFolderCreationTarget, resolvePageCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
 
 // 模块级常量：内联的 JSX 与箭头函数会让 TreeView 的 treeData useMemo 每次失效
@@ -121,12 +121,12 @@ export function Explorer(): React.JSX.Element {
   )
 
   const handleCreatePage = async (): Promise<void> => {
-    const page = await createPage(resolveCreationTarget(selectedKey, folders, pages))
+    const page = await createPage(resolvePageCreationTarget(selectedKey, folders, pages))
     openPage(page.id)
   }
 
   const handleCreateFolder = async (): Promise<void> => {
-    const folder = await createFolder(resolveCreationTarget(selectedKey, folders, pages))
+    const folder = await createFolder(resolveFolderCreationTarget(selectedKey, folders, pages))
     setSelectedKey(folder.id)
   }
 

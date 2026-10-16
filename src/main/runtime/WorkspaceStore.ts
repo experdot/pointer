@@ -211,7 +211,12 @@ export class WorkspaceStore {
   // ==================== 页面与文件夹变更 ====================
 
   async createPage(
-    input: { name?: string; parentFolderId?: string; afterNodeId?: string; starred?: boolean },
+    input: {
+      name?: string
+      parentFolderId?: string
+      afterNodeId?: string
+      starred?: boolean
+    },
     at: number
   ): Promise<Page> {
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
@@ -227,9 +232,17 @@ export class WorkspaceStore {
     }
 
     this.pages = addPage(this.getTree(), page).pages
-    const before = this.pages
-    await this.applyInsertPosition(page.id, input.afterNodeId, parentFolderId, at)
-    await this.persistPageMetadataDiff(before)
+    const pagesBefore = this.pages
+    const foldersBefore = this.folders
+    if (input.afterNodeId) {
+      // 显式参照（导入等场景）：插到该同级节点之后，保持备份中的顺序
+      await this.applyInsertPosition(page.id, input.afterNodeId, parentFolderId, at)
+    } else {
+      // v1 策略：新建对话固定落到目标层级（父文件夹或根目录）最前面
+      this.moveToFront(page.id, parentFolderId, at)
+    }
+    await this.persistFoldersDiff(foldersBefore)
+    await this.persistPageMetadataDiff(pagesBefore)
     await this.applyLayout()
     await this.writeConversation(emptyConversation(page.id))
     return { ...page }
@@ -552,10 +565,9 @@ export class WorkspaceStore {
   /**
    * 计算并应用新建节点的位置
    *
-   * 与迁移前的 prepareInsertPosition 对齐：
    * - 有参照项（afterNodeId）→ 插到该同级节点之后，后续同级整体下移
    * - 只给了父文件夹 → 追加到该文件夹末尾
-   * - 都没有 → 插到根目录最前面（旧实现在无参照时 order = 0 并下移同级）
+   * - 都没有 → 插到根目录最前面
    */
   private async applyInsertPosition(
     nodeId: string,
@@ -590,6 +602,15 @@ export class WorkspaceStore {
     this.pages = moved.pages
   }
 
+  /** 新建对话固定落到目标层级最前面（对齐 v1 release 分支的 min(order) - 1000 语义） */
+  private moveToFront(nodeId: string, parentFolderId: string | undefined, at: number): void {
+    const tree = this.getTree()
+    const siblings = childrenOf(tree, parentFolderId).filter((item) => item.id !== nodeId)
+    const moved = moveNode(tree, nodeId, parentFolderId, siblings[0]?.id, at)
+    this.folders = moved.folders
+    this.pages = moved.pages
+  }
+
   private async ensureStructure(): Promise<void> {
     await ensureDir(this.path)
     await ensureDir(this.paths.pointerDir(this.path))
@@ -606,6 +627,26 @@ export class WorkspaceStore {
     await writeJsonAtomic(this.paths.foldersFile(this.path), {
       folders: this.folders
     } satisfies FoldersFile)
+  }
+
+  /**
+   * 把顺序发生变化的文件夹元数据写回 folders.json
+   *
+   * 在同级插入节点会重排后续兄弟的 order（文件夹也在内），不写回的话
+   * folders.json 会与内存状态漂移，重开工作区后顺序被打回旧值。
+   */
+  private async persistFoldersDiff(before: readonly Folder[]): Promise<void> {
+    const previous = new Map(before.map((folder) => [folder.id, folder]))
+    const changed = this.folders.some((folder) => {
+      const old = previous.get(folder.id)
+      return (
+        !old ||
+        old.name !== folder.name ||
+        old.order !== folder.order ||
+        old.parentFolderId !== folder.parentFolderId
+      )
+    })
+    if (changed) await this.persistFolders()
   }
 
   /** 扫描磁盘；返回页面结构是否发生变化 */

@@ -14,15 +14,26 @@ import { useTabsStore } from '../stores/tabsStore'
 /**
  * 未指定参照项时，用"当前激活页签对应的会话"作为参照
  *
- * 与迁移前的 prepareInsertPosition 一致：没有选中项时以当前打开的会话为基准，
- * 新建的内容紧随其后；完全无参照时才落到根目录最前面（由内核处理）。
+ * 新建对话放进当前会话所在的文件夹（由内核落在该层级最前面）；
+ * 新建文件夹沿用迁移前的「紧随其后」；完全无参照时才落到默认位置。
  */
-function referenceFromActiveTab(): { parentFolderId?: string; afterNodeId?: string } {
+function activeTabPage(): Page | undefined {
   const tabsStore = useTabsStore.getState()
   const tab = tabsStore.tabs.find((item) => item.id === tabsStore.activeTabId)
-  if (!tab || tab.type !== 'chat' || !tab.dataId) return {}
+  if (!tab || tab.type !== 'chat' || !tab.dataId) return undefined
 
-  const page = usePagesStore.getState().getById(tab.dataId)
+  return usePagesStore.getState().getById(tab.dataId)
+}
+
+function pageReferenceFromActiveTab(): { parentFolderId?: string } {
+  const page = activeTabPage()
+  if (!page) return {}
+
+  return { parentFolderId: page.parentFolderId }
+}
+
+function folderReferenceFromActiveTab(): { parentFolderId?: string; afterNodeId?: string } {
+  const page = activeTabPage()
   if (!page) return {}
 
   return { parentFolderId: page.parentFolderId, afterNodeId: page.id }
@@ -35,7 +46,7 @@ export async function createPage(input?: {
   starred?: boolean
 }): Promise<Page> {
   const hasReference = Boolean(input?.parentFolderId || input?.afterNodeId)
-  const target = hasReference ? input : { ...input, ...referenceFromActiveTab() }
+  const target = hasReference ? input : { ...input, ...pageReferenceFromActiveTab() }
   return usePagesStore.getState().create(target)
 }
 
@@ -106,7 +117,7 @@ export async function createFolder(input?: {
   afterNodeId?: string
 }): Promise<Folder> {
   const hasReference = Boolean(input?.parentFolderId || input?.afterNodeId)
-  const target = hasReference ? input : { ...input, ...referenceFromActiveTab() }
+  const target = hasReference ? input : { ...input, ...folderReferenceFromActiveTab() }
   return useFoldersStore.getState().create(target)
 }
 

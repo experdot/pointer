@@ -98,7 +98,7 @@ workspaces/<accountId>/default/    默认工作区
 ```bash
 pnpm lint          # ESLint（warning 也视为失败）
 pnpm typecheck     # 主进程 + 渲染进程类型检查
-pnpm test          # 14 个测试文件、116 个用例（领域层 + 镜像层契约）
-pnpm smoke:kernel  # 在临时目录启动完整内核，验证查询/命令/事件链路，共 22 项检查
+pnpm test          # 16 个测试文件、141 个用例（领域层 + 镜像层契约）
+pnpm smoke:kernel  # 在临时目录启动完整内核，验证查询/命令/事件链路，共 23 项检查
 pnpm build         # 类型检查 + electron-vite 构建
 ```
