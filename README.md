@@ -20,9 +20,11 @@
 
 ## Overview
 
-Pointer is a cross-platform desktop AI chat client built with Electron 35, React 19 and TypeScript. It talks to any OpenAI-compatible API (OpenAI, DeepSeek, compatible gateways) and centers on two things: conversation branches kept as a tree, and data you can read yourself — every conversation is a Markdown file inside a workspace folder.
+Pointer is a desktop AI chat app built around security and privacy. Choose your models, explore different ideas through conversation branches, and keep long conversations easy to organize, revisit, and continue. Chat history is stored locally as Markdown, making it easy to read, back up, and move while keeping you in control of your data.
 
-The kernel runs in the main process and is the single source of truth: it owns persistence, the SQLite index, sessions, AI streaming, search and attachments. The renderer holds view state plus a mirror of kernel state fed by events, and never touches files or paths. See [docs/architecture.md](docs/architecture.md) for the layering, data flow and storage layout.
+Pointer offers a clean experience with no telemetry, activity tracking, or automatic error reporting. Model requests go directly to the service you configure.
+
+Pointer does not support MCP, include built-in web search, or process audio and video. These boundaries reduce additional data sharing and complexity, keeping the focus on smooth, in-depth text conversations.
 
 ## Features
 
