@@ -19,6 +19,7 @@ import {
   updateConfigFolder,
   updateConfigItem
 } from '@shared/domain'
+import type { SettingsSnapshot } from '@shared/contracts'
 import { command, query } from '../runtime/client'
 
 interface SettingsState {
@@ -59,7 +60,8 @@ interface SettingsActions {
   ) => void
 
   /** 立即把待写入的设置提交给内核（切换账户/工作区前、窗口关闭前调用） */
-  flush: () => void
+  flush: () => Promise<void>
+  accept: (snapshot: SettingsSnapshot) => void
   reset: () => void
 }
 
@@ -69,40 +71,70 @@ type SettingsStore = SettingsState & SettingsActions
 const SETTINGS_WRITE_DELAY = 300
 
 export const useSettingsStore = create<SettingsStore>((set, get) => {
-  /**
-   * 待写入的设置文档
-   *
-   * 迁移前的设置写入有 300ms 去抖；迁移后每个按键都直接走
-   * "命令 → 内核写盘（fsync） → 事件回推"，输入时明显卡顿。
-   * 这里恢复去抖：内存立即更新，落盘合并到一次。
-   */
-  let pending: Settings | null = null
+  let revision = 0
+  let generation = 0
+  let confirmed: Settings = defaultSettings()
+  let pending: Array<{ id: string; apply: (settings: Settings) => Settings }> = []
   let timer: ReturnType<typeof setTimeout> | null = null
+  let inFlight: Promise<void> | null = null
 
-  const flush = (): void => {
+  const accept = (snapshot: SettingsSnapshot): void => {
+    if (snapshot.revision < revision) return
+    revision = snapshot.revision
+    confirmed = snapshot.settings
+    const acknowledged = pending.findIndex((item) => item.id === snapshot.mutationId)
+    if (acknowledged >= 0) pending = pending.slice(acknowledged + 1)
+    set({
+      settings: pending.reduce((value, item) => item.apply(value), confirmed),
+      initialized: true
+    })
+  }
+
+  const flush = async (): Promise<void> => {
     if (timer) {
       clearTimeout(timer)
       timer = null
     }
-    const next = pending
-    pending = null
-    if (!next) return
-
-    void command('settings.replace', { settings: next }).catch((error) => {
-      console.warn('[settings] 保存失败：', error)
-    })
-  }
-
-  /** 乐观更新内存状态，落盘去抖合并 */
-  const commit = (settings: Settings): void => {
-    set({ settings, initialized: true })
-    pending = settings
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(flush, SETTINGS_WRITE_DELAY)
+    if (inFlight) {
+      await inFlight
+      return flush()
+    }
+    if (!pending.length) return
+    const epoch = generation
+    const batch = [...pending]
+    const mutationId = batch.at(-1)!.id
+    inFlight = (async () => {
+      try {
+        const snapshot = await command('settings.replace', {
+          settings: batch.reduce((value, item) => item.apply(value), confirmed),
+          baseRevision: revision,
+          mutationId
+        })
+        if (epoch === generation) accept(snapshot)
+      } catch (error) {
+        const conflict = error as { code?: string; details?: SettingsSnapshot }
+        if (epoch === generation && conflict.code === 'settings.conflict' && conflict.details)
+          accept(conflict.details)
+        else throw error
+      }
+    })()
+    try {
+      await inFlight
+    } finally {
+      inFlight = null
+    }
+    if (epoch === generation && pending.length) await flush()
   }
 
   const mutate = (mutator: (settings: Settings, at: number) => Settings): void => {
-    commit(mutator(get().settings, Date.now()))
+    const at = Date.now()
+    const apply = (settings: Settings): Settings => mutator(settings, at)
+    pending.push({ id: crypto.randomUUID(), apply })
+    set({ settings: apply(get().settings), initialized: true })
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      void flush().catch((error) => console.warn('[settings] 保存失败，保留待保存修改：', error))
+    }, SETTINGS_WRITE_DELAY)
   }
 
   const mutateLlmTree = (
@@ -122,8 +154,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     initialized: false,
 
     init: async () => {
-      const settings = await query('settings.get', undefined)
-      set({ settings, initialized: true })
+      accept(await query('settings.get', undefined))
     },
 
     setFontSize: (fontSize) => mutate((settings) => ({ ...settings, fontSize })),
@@ -164,10 +195,14 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
       mutateModelTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
 
     flush,
+    accept,
 
     reset: () => {
       // 丢弃待写入内容，避免上一个账户的设置写到新账户
-      pending = null
+      generation++
+      pending = []
+      confirmed = defaultSettings()
+      revision = 0
       if (timer) {
         clearTimeout(timer)
         timer = null

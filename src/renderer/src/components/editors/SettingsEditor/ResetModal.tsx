@@ -1,12 +1,9 @@
 import React, { useState } from 'react'
-import { Modal, Checkbox, Space, Typography, Alert } from 'antd'
+import { App, Modal, Checkbox, Space, Typography, Alert } from 'antd'
+import { command } from '../../../runtime/client'
+import { useViewStateStore } from '../../../stores/viewStateStore'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../../stores/settingsStore'
-import { usePagesStore } from '../../../stores/pagesStore'
-import { useFoldersStore } from '../../../stores/foldersStore'
-import { useMessagesStore } from '../../../stores/messagesStore'
-import { useTabsStore } from '../../../stores/tabsStore'
-import { useLayoutStore } from '../../../stores/layoutStore'
 
 const { Text } = Typography
 
@@ -21,12 +18,12 @@ const RESET_OPTIONS: Array<{ value: ResetType; label: string; description: strin
   {
     value: 'conversations',
     label: '对话数据',
-    description: '所有聊天对话和消息记录'
+    description: '当前工作区的聊天对话、消息和队列'
   },
   {
     value: 'folders',
     label: '文件夹',
-    description: '对话的文件夹组织结构'
+    description: '移除文件夹，将对话提升到根目录'
   },
   {
     value: 'tabs',
@@ -47,27 +44,22 @@ const RESET_OPTIONS: Array<{ value: ResetType; label: string; description: strin
 
 export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Element {
   const [selected, setSelected] = useState<ResetType[]>([])
+  const [resetting, setResetting] = useState(false)
+  const { message } = App.useApp()
 
   const handleReset = async (): Promise<void> => {
-    if (selected.includes('conversations')) {
-      await usePagesStore.getState().reset()
-      useMessagesStore.getState().reset()
+    setResetting(true)
+    try {
+      await useSettingsStore.getState().flush()
+      await useViewStateStore.getState().flush()
+      await command('data.reset', { targets: selected })
+      setSelected([])
+      onClose()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setResetting(false)
     }
-    if (selected.includes('folders')) {
-      await useFoldersStore.getState().reset()
-    }
-    if (selected.includes('tabs')) {
-      await useTabsStore.getState().reset()
-    }
-    if (selected.includes('settings')) {
-      await useSettingsStore.getState().reset()
-    }
-    if (selected.includes('layout')) {
-      await useLayoutStore.getState().reset()
-    }
-
-    setSelected([])
-    onClose()
   }
 
   const handleClose = (): void => {
@@ -89,6 +81,7 @@ export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Elemen
       open={open}
       onCancel={handleClose}
       onOk={handleReset}
+      confirmLoading={resetting}
       okText="确定重置"
       okType="danger"
       okButtonProps={{ disabled: selected.length === 0 }}

@@ -9,6 +9,7 @@ import {
   DeleteOutlined
 } from '@ant-design/icons'
 import { useWorkspaceStore } from '../../../stores/workspaceStore'
+import { useSavedAction } from '../../../hooks/useSavedAction'
 import {
   switchWorkspace,
   openFolderAsWorkspace,
@@ -31,15 +32,15 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
   const [showWorkspaceList, setShowWorkspaceList] = useState(false)
   const [switching, setSwitching] = useState(false)
   const { message, modal } = App.useApp()
+  const runSaved = useSavedAction()
 
   const handleSwitchWorkspace = async (workspaceId: string): Promise<void> => {
     if (workspaceId === currentWorkspaceId || switching) return
     setSwitching(true)
     try {
-      await switchWorkspace(workspaceId)
-      onClose()
+      if (await runSaved(() => switchWorkspace(workspaceId))) onClose()
     } catch (error) {
-      message.error('切换工作区失败')
+      message.error(error instanceof Error ? error.message : '切换工作区失败')
       console.error('Failed to switch workspace:', error)
     } finally {
       setSwitching(false)
@@ -53,7 +54,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
       if (!selectedPath) return
 
       try {
-        await openFolderAsWorkspace(selectedPath)
+        if (!(await runSaved(() => openFolderAsWorkspace(selectedPath)))) return
       } catch (error) {
         const validation = await validateWorkspacePath(selectedPath).catch(() => null)
         if (validation?.repairable) {
@@ -64,9 +65,8 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             cancelText: '取消',
             onOk: async () => {
               try {
-                await repairWorkspacePath(selectedPath)
-                await openFolderAsWorkspace(selectedPath)
-                onClose()
+                if (!(await runSaved(() => repairWorkspacePath(selectedPath)))) return
+                if (await runSaved(() => openFolderAsWorkspace(selectedPath))) onClose()
               } catch (repairError) {
                 const repairMessage =
                   repairError instanceof Error ? repairError.message : '修复工作区失败'
@@ -125,8 +125,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
       cancelText: '取消',
       onOk: async () => {
         try {
-          await deleteWorkspace(workspace.id)
-          message.success('工作区已移除')
+          if (await runSaved(() => deleteWorkspace(workspace.id))) message.success('工作区已移除')
         } catch (error) {
           message.error('移除工作区失败')
           console.error('Failed to delete workspace:', error)

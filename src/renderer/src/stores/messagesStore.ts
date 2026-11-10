@@ -13,6 +13,8 @@ import { command, query } from '../runtime/client'
 
 interface MessagesState {
   cache: Record<string, Conversation>
+  snapshots: Record<string, Conversation>
+  live: Record<string, { pageId: string; requestId: string; message: ChatMessage; error?: string }>
   /** messageId -> 是否正在生成 */
   streaming: Record<string, boolean>
 }
@@ -22,7 +24,9 @@ interface MessagesActions {
   get: (pageId: string) => Conversation | undefined
   has: (pageId: string) => boolean
   setConversation: (conversation: Conversation) => void
-  upsertMessage: (pageId: string, message: ChatMessage) => void
+  upsertMessage: (pageId: string, message: ChatMessage, requestId?: string) => void
+  finishRequest: (requestId: string) => void
+  saveFailed: (pageId: string, requestId: string, message: ChatMessage, error: string) => void
   /** 批量追加流式增量（镜像层合并后一次性写入，避免每个分片都触发渲染） */
   applyDeltas: (entries: DeltaBatchEntry[]) => void
   setStreaming: (messageId: string, streaming: boolean) => void
@@ -61,6 +65,8 @@ interface DeltaBatchEntry {
 
 export const useMessagesStore = create<MessagesStore>((set, get) => ({
   cache: {},
+  snapshots: {},
+  live: {},
   streaming: {},
 
   load: async (pageId) => {
@@ -68,8 +74,8 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     if (cached) return cached
 
     const conversation = await query('conversation.get', { pageId })
-    set((state) => ({ cache: { ...state.cache, [pageId]: conversation } }))
-    return conversation
+    get().setConversation(conversation)
+    return get().cache[pageId]
   },
 
   get: (pageId) => get().cache[pageId],
@@ -78,26 +84,31 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
 
   setConversation: (conversation) =>
     set((state) => {
-      // 会话被权威数据替换时，丢弃已不存在消息的生成标记，避免标记泄漏
-      const ids = new Set(conversation.messages.map((message) => message.id))
-      const streaming = Object.fromEntries(
-        Object.entries(state.streaming).filter(([messageId]) => ids.has(messageId))
+      const overlays = Object.values(state.live).filter(
+        (item) => item.pageId === conversation.pageId
       )
-
+      const ids = new Set(overlays.map((item) => item.message.id))
+      const merged = {
+        ...conversation,
+        messages: [
+          ...conversation.messages.filter((message) => !ids.has(message.id)),
+          ...overlays.map((item) => item.message)
+        ]
+      }
+      if (overlays.length) merged.leafMessageId = overlays.at(-1)!.message.id
       return {
-        cache: { ...state.cache, [conversation.pageId]: conversation },
-        streaming
+        snapshots: { ...state.snapshots, [conversation.pageId]: conversation },
+        cache: { ...state.cache, [conversation.pageId]: merged }
       }
     }),
 
   /**
    * 写入单条消息
    *
-   * 只有「空的助手消息」才是生成占位（可能是本端发起，也可能是内核队列触发），
-   * 用户消息与已有内容的消息不参与生成标记——标记的清除只由 chat.completed /
-   * chat.failed / chat.aborted 驱动。
+   * 只有带 requestId 的消息才是生成占位；普通空消息不参与生成标记。
+   * 标记的清除由请求终态驱动。
    */
-  upsertMessage: (pageId, message) =>
+  upsertMessage: (pageId, message, requestId) =>
     set((state) => {
       const current = state.cache[pageId] ?? emptyConversation(pageId)
       const exists = current.messages.some((item) => item.id === message.id)
@@ -105,9 +116,15 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
         ? current.messages.map((item) => (item.id === message.id ? message : item))
         : [...current.messages, message]
 
-      const isPlaceholder = message.role === 'assistant' && !message.content && !message.hasError
+      const isPlaceholder = Boolean(requestId)
 
       return {
+        live: isPlaceholder
+          ? {
+              ...state.live,
+              [requestId ?? message.id]: { pageId, requestId: requestId ?? message.id, message }
+            }
+          : state.live,
         cache: {
           ...state.cache,
           [pageId]: {
@@ -123,6 +140,7 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
   applyDeltas: (entries) =>
     set((state) => {
       const cache = { ...state.cache }
+      const live = { ...state.live }
       let changed = false
 
       for (const entry of entries) {
@@ -142,10 +160,34 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
         })
 
         cache[entry.pageId] = { ...conversation, messages }
+        for (const [id, item] of Object.entries(live)) {
+          if (item.pageId === entry.pageId && item.message.id === entry.messageId)
+            live[id] = {
+              ...item,
+              message: messages.find((message) => message.id === entry.messageId)!
+            }
+        }
       }
 
-      return changed ? { cache } : state
+      return changed ? { cache, live } : state
     }),
+
+  finishRequest: (requestId) =>
+    set((state) => {
+      const live = { ...state.live }
+      const streaming = { ...state.streaming }
+      const item = live[requestId]
+      if (item) delete streaming[item.message.id]
+      delete live[requestId]
+      return { live, streaming }
+    }),
+  saveFailed: (pageId, requestId, message, error) => {
+    get().upsertMessage(pageId, message, requestId)
+    set((state) => ({
+      live: { ...state.live, [requestId]: { pageId, requestId, message, error } }
+    }))
+    get().setStreaming(message.id, false)
+  },
 
   setStreaming: (messageId, streaming) =>
     set((state) => {
@@ -161,10 +203,17 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
     set((state) => {
       const next = { ...state.cache }
       delete next[pageId]
-      return { cache: next }
+      const live = Object.fromEntries(
+        Object.entries(state.live).filter(([, item]) => item.pageId !== pageId)
+      )
+      const snapshots = { ...state.snapshots }
+      delete snapshots[pageId]
+      const streaming = { ...state.streaming }
+      for (const message of state.cache[pageId]?.messages ?? []) delete streaming[message.id]
+      return { cache: next, snapshots, live, streaming }
     }),
 
-  reset: () => set({ cache: {}, streaming: {} }),
+  reset: () => set({ cache: {}, snapshots: {}, live: {}, streaming: {} }),
 
   addMessage: async (pageId, draft) => {
     const message = await command('conversation.append', {

@@ -8,6 +8,11 @@
 import { nameKey } from './common'
 
 const PAGE_FILE_EXTENSION = '.pointer.md'
+const RESERVED_DIRECTORIES = new Set(['.pointer', '.git', '.hg', '.svn'])
+
+export function isReservedDirectory(name: string): boolean {
+  return RESERVED_DIRECTORIES.has(name.normalize('NFC').trim().toLowerCase())
+}
 export const MAX_FILE_BASE_LENGTH = 80
 
 /** 新建页面与文件夹的默认名称（内核创建时使用，展示层据此判断"尚未改名"） */

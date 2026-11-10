@@ -25,6 +25,7 @@
  */
 
 import { join } from 'node:path'
+import { assertSafeId, assertWithin } from './pathSafety'
 
 const POINTER_DIR = '.pointer'
 
@@ -84,7 +85,11 @@ export class PathResolver {
   }
 
   queueFile(workspacePath: string, pageId: string): string {
-    return join(this.queuesDir(workspacePath), `${pageId}.json`)
+    assertSafeId(pageId)
+    const root = this.queuesDir(workspacePath)
+    const target = join(root, `${pageId}.json`)
+    assertWithin(root, target)
+    return target
   }
 
   /** 页面文件位于工作区根目录，文件夹层级映射为真实目录 */

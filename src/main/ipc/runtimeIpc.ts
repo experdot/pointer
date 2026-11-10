@@ -5,14 +5,47 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron'
+import { randomUUID } from 'node:crypto'
 import type { RuntimeCommandRequest, RuntimeQueryRequest } from '@shared/contracts'
 import { RUNTIME_CHANNELS, toFailure } from '@shared/contracts'
 import type { RuntimeCore } from '../runtime'
 
 export function setupRuntimeIpc(runtime: RuntimeCore): void {
+  runtime.setFlushHandler(async () => {
+    await Promise.all(
+      BrowserWindow.getAllWindows()
+        .filter((window) => !window.isDestroyed())
+        .map(
+          (window) =>
+            new Promise<void>((resolve, reject) => {
+              const id = randomUUID()
+              const cleanup = (): void => {
+                clearTimeout(timer)
+                ipcMain.removeListener(RUNTIME_CHANNELS.flushed, listener)
+              }
+              const listener = (
+                event: Electron.IpcMainEvent,
+                reply: { id: string; ok: boolean; message?: string }
+              ): void => {
+                if (event.sender !== window.webContents || reply.id !== id) return
+                cleanup()
+                if (reply.ok) resolve()
+                else reject(new Error(reply.message ?? '界面状态保存失败'))
+              }
+              const timer = setTimeout(() => {
+                cleanup()
+                reject(new Error('等待界面保存超时'))
+              }, 15000)
+              ipcMain.on(RUNTIME_CHANNELS.flushed, listener)
+              window.webContents.send(RUNTIME_CHANNELS.flush, id)
+            })
+        )
+    )
+  })
   ipcMain.handle(RUNTIME_CHANNELS.query, async (_event, request: RuntimeQueryRequest) => {
     try {
-      return { ok: true, value: await runtime.query(request.name, request.payload) }
+      const value = await runtime.query(request.name, request.payload, request.scopeId ?? null)
+      return { ok: true, scopeId: runtime.getScopeId(), value }
     } catch (error) {
       return toFailure(error)
     }
@@ -20,7 +53,8 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
 
   ipcMain.handle(RUNTIME_CHANNELS.command, async (_event, request: RuntimeCommandRequest) => {
     try {
-      return { ok: true, value: await runtime.command(request.name, request.payload) }
+      const value = await runtime.command(request.name, request.payload, request.scopeId ?? null)
+      return { ok: true, scopeId: runtime.getScopeId(), value }
     } catch (error) {
       return toFailure(error)
     }

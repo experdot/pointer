@@ -9,7 +9,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 export async function switchWorkspace(workspaceId: string): Promise<void> {
-  useSettingsStore.getState().flush()
+  await useSettingsStore.getState().flush()
   await useWorkspaceStore.getState().switchWorkspace(workspaceId)
 }
 
@@ -17,7 +17,7 @@ export async function openFolderAsWorkspace(
   dirPath: string,
   name?: string
 ): Promise<WorkspaceSummary> {
-  useSettingsStore.getState().flush()
+  await useSettingsStore.getState().flush()
   const validation = await useWorkspaceStore.getState().validatePath(dirPath)
   if (!validation.valid) {
     throw new Error(validation.error ?? '目录不可用')

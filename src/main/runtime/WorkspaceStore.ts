@@ -31,6 +31,7 @@ import {
   directoryOfRelativePath,
   emptyConversation,
   isPageFileName,
+  isReservedDirectory,
   moveNode,
   nameKey,
   nextOrder,
@@ -52,6 +53,8 @@ import { RuntimeError } from '@shared/contracts'
 import type { NodePatch } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
+import { SerialExecutor } from './SerialExecutor'
+import { assertRegularPath, assertSafeId, assertWithin } from './pathSafety'
 import {
   ensureDir,
   isDirectory,
@@ -74,6 +77,40 @@ interface FoldersFile {
 }
 
 export class WorkspaceStore {
+  private readonly writes = new SerialExecutor()
+  run<T>(operation: () => Promise<T> | T): Promise<T> {
+    return this.writes.run(async () => {
+      const before = {
+        folders: this.folders,
+        pages: this.pages,
+        pagePaths: new Map(this.pagePaths),
+        pageMtimes: new Map(this.pageMtimes),
+        folderDirs: new Map(this.folderDirs),
+        conversationCache: new Map(this.conversationCache)
+      }
+      try {
+        return await operation()
+      } catch (error) {
+        Object.assign(this, before)
+        throw error
+      }
+    })
+  }
+  idle(): Promise<void> {
+    return this.writes.idle()
+  }
+
+  mutateConversation<T>(
+    pageId: string,
+    change: (current: Conversation) => { conversation: Conversation; result: T }
+  ): Promise<T> {
+    return this.run(async () => {
+      if (!this.getPage(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
+      const next = change(await this.readConversation(pageId))
+      await this.writeConversation(next.conversation)
+      return next.result
+    })
+  }
   private folders: Folder[] = []
   private pages: Page[] = []
   /** pageId -> 相对工作区根目录的页面文件路径 */
@@ -179,6 +216,10 @@ export class WorkspaceStore {
   }
 
   async writeConversation(conversation: Conversation): Promise<void> {
+    for (const message of conversation.messages) {
+      for (const attachment of message.attachments ?? [])
+        this.resolveAttachmentPath(attachment.relativePath)
+    }
     const page = this.pages.find((item) => item.id === conversation.pageId)
     if (!page) {
       throw new RuntimeError('page.not-found', `页面不存在：${conversation.pageId}`)
@@ -212,6 +253,7 @@ export class WorkspaceStore {
 
   async createPage(
     input: {
+      id?: string
       name?: string
       parentFolderId?: string
       afterNodeId?: string
@@ -220,8 +262,13 @@ export class WorkspaceStore {
     at: number
   ): Promise<Page> {
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
+    if (input.id) {
+      assertSafeId(input.id)
+      if (this.getPage(input.id) || this.getFolder(input.id))
+        throw new RuntimeError('page.id-conflict', '标识已存在')
+    }
     const page: Page = {
-      id: randomUUID(),
+      id: input.id ?? randomUUID(),
       kind: 'page',
       name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_PAGE_NAME),
       starred: input.starred,
@@ -307,15 +354,31 @@ export class WorkspaceStore {
     }
 
     this.pages = removePagesInTree(this.getTree(), existing).pages
+    for (const pageId of existing) this.conversationCache.delete(pageId)
+  }
+
+  async clearConversations(): Promise<void> {
+    await this.deletePages(this.pageIds())
+    const root = this.paths.queuesDir(this.path)
+    for (const file of await walkFiles(root, { include: (name) => name.endsWith('.json') })) {
+      assertWithin(root, file.absolutePath)
+      await removePath(file.absolutePath)
+    }
   }
 
   async createFolder(
-    input: { name?: string; parentFolderId?: string; afterNodeId?: string },
+    input: { id?: string; name?: string; parentFolderId?: string; afterNodeId?: string },
     at: number
   ): Promise<Folder> {
+    this.assertFolderName(input.name ?? DEFAULT_FOLDER_NAME)
+    if (input.id) {
+      assertSafeId(input.id)
+      if (this.getPage(input.id) || this.getFolder(input.id))
+        throw new RuntimeError('folder.id-conflict', '标识已存在')
+    }
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
     const folder: Folder = {
-      id: randomUUID(),
+      id: input.id ?? randomUUID(),
       kind: 'folder',
       name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_FOLDER_NAME),
       parentFolderId,
@@ -334,6 +397,7 @@ export class WorkspaceStore {
   }
 
   async updateFolder(folderId: string, patch: NodePatch, at: number): Promise<void> {
+    if (patch.name !== undefined) this.assertFolderName(patch.name)
     const folder = this.folders.find((item) => item.id === folderId)
     if (!folder) throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
     if (patch.name === undefined || patch.name.trim() === folder.name) return
@@ -385,15 +449,38 @@ export class WorkspaceStore {
     for (const folderId of folderIds) {
       tree = removeFolderInTree(tree, folderId, mode, at)
     }
+    if (mode === 'promote') {
+      const previous = new Map(
+        [...this.folders, ...this.pages].map((node) => [node.id, node.parentFolderId])
+      )
+      const names = new Map<string | undefined, Set<string>>()
+      const renamed = new Map<string, string>()
+      const nodes = [...tree.folders, ...tree.pages].sort(
+        (a, b) =>
+          Number(previous.get(a.id) !== a.parentFolderId) -
+          Number(previous.get(b.id) !== b.parentFolderId)
+      )
+      for (const node of nodes) {
+        const taken = names.get(node.parentFolderId) ?? new Set<string>()
+        const name = uniqueName(taken, node.name)
+        taken.add(nameKey(name))
+        names.set(node.parentFolderId, taken)
+        renamed.set(node.id, name)
+      }
+      tree = {
+        folders: tree.folders.map((node) => ({ ...node, name: renamed.get(node.id)! })),
+        pages: tree.pages.map((node) => ({ ...node, name: renamed.get(node.id)! }))
+      }
+    }
 
     const remaining = new Set(tree.pages.map((page) => page.id))
     const removedPageIds = before.filter((pageId) => !remaining.has(pageId))
 
     const pagesBefore = this.pages
+    await this.deletePages(removedPageIds)
     this.folders = tree.folders
     this.pages = tree.pages
     await this.persistFolders()
-    await this.deletePages(removedPageIds)
     // promote 模式下被提升的页面 parentFolderId 变了，同样要落盘
     await this.persistPageMetadataDiff(pagesBefore)
     await this.applyLayout()
@@ -412,10 +499,10 @@ export class WorkspaceStore {
       .map((page) => page.id)
       .filter((pageId) => !remaining.has(pageId))
 
+    await this.deletePages(removedPageIds)
     this.folders = tree.folders
     this.pages = tree.pages
     await this.persistFolders()
-    await this.deletePages(removedPageIds)
     await this.applyLayout()
     await this.syncIndex()
     return removedPageIds
@@ -425,29 +512,29 @@ export class WorkspaceStore {
 
   /** 对比文件 mtime 与内存记录，返回内容发生变化的页面 id */
   async detectExternalChanges(): Promise<string[]> {
-    const changed: string[] = []
-
-    for (const page of this.pages) {
-      const relativePath = this.pagePaths.get(page.id)
-      if (!relativePath) continue
-      const mtime = await mtimeOf(this.absPath(relativePath))
-      if (mtime === null || this.pageMtimes.get(page.id) !== mtime) {
-        changed.push(page.id)
-      }
+    const previous = new Map(this.pageMtimes)
+    const paths = new Map(this.pagePaths)
+    const oldTree = JSON.stringify(this.getTree())
+    await this.loadFolders()
+    await this.scanFromDisk()
+    const changed = new Set<string>()
+    for (const id of new Set([...previous.keys(), ...this.pageMtimes.keys()])) {
+      if (previous.get(id) !== this.pageMtimes.get(id) || paths.get(id) !== this.pagePaths.get(id))
+        changed.add(id)
     }
-
-    if (changed.length === 0) {
-      const structureChanged = await this.scanFromDisk()
-      if (structureChanged) changed.push(...this.pageIds())
-    }
-
-    return changed
+    // 空文件夹变更也需要广播树事件。
+    if (oldTree !== JSON.stringify(this.getTree()) && !changed.size) changed.add('')
+    return [...changed]
   }
 
   /** 外部改动后重新读取磁盘并同步索引 */
   async reload(changedPageIds: readonly string[]): Promise<void> {
     await this.scanFromDisk()
     await this.applyLayout()
+    this.index.retainPages(new Set(this.pageIds()))
+    for (const id of this.conversationCache.keys()) {
+      if (!this.getPage(id)) this.conversationCache.delete(id)
+    }
 
     for (const pageId of changedPageIds) {
       if (!this.pages.some((page) => page.id === pageId)) continue
@@ -458,11 +545,21 @@ export class WorkspaceStore {
   // ==================== 附件 ====================
 
   resolveAttachmentPath(relativePath: string): string {
-    const normalized = relativePath.replace(/\\/g, '/').replace(/^\/+/, '')
-    if (normalized.split('/').includes('..')) {
+    const normalized = relativePath.replace(/\\/g, '/')
+    const parts = normalized.split('/')
+    if (parts.length !== 3 || parts[0] !== '.pointer' || parts[1] !== 'attachments') {
       throw new RuntimeError('attachment.invalid-path', `非法附件路径：${relativePath}`)
     }
-    return this.absPath(normalized)
+    assertSafeId(parts[2])
+    const target = this.absPath(normalized)
+    assertWithin(this.paths.attachmentsDir(this.path), target)
+    return target
+  }
+
+  async validateAttachmentPath(relativePath: string, missing = false): Promise<string> {
+    const target = this.resolveAttachmentPath(relativePath)
+    await assertRegularPath(this.path, target, missing)
+    return target
   }
 
   async importAttachments(
@@ -477,6 +574,7 @@ export class WorkspaceStore {
       const id = randomUUID()
       const fileName = `${id}-${sanitizeFileName(file.name)}`
       const buffer = Buffer.from(file.dataBase64, 'base64')
+      await this.validateAttachmentPath(this.paths.attachmentRelativePath(fileName), true)
       await writeBinaryAtomic(join(attachmentsDir, fileName), buffer)
 
       results.push({
@@ -494,13 +592,15 @@ export class WorkspaceStore {
 
   /** 删除附件文件 */
   async deleteAttachment(relativePath: string): Promise<void> {
-    const target = this.resolveAttachmentPath(relativePath)
+    const target = await this.validateAttachmentPath(relativePath, true)
     await removePath(target)
   }
 
   /** 读取附件并编码为 data URL，供模型请求内联图片 */
   async readAttachmentAsDataUrl(attachment: AttachmentRef): Promise<string | null> {
-    const buffer = await readBinary(this.resolveAttachmentPath(attachment.relativePath))
+    const buffer = await readBinary(
+      await this.validateAttachmentPath(attachment.relativePath, true)
+    )
     if (!buffer) return null
     return `data:${attachment.mimeType};base64,${buffer.toString('base64')}`
   }
@@ -671,6 +771,7 @@ export class WorkspaceStore {
       if (text === null) continue
       const parsed = parsePageMetadata(text)
       if (!parsed.ok) continue
+      assertSafeId(parsed.value.page.id)
       if (pagePaths.has(parsed.value.page.id)) continue
 
       pages.push({ ...parsed.value.page, parentFolderId: folderId })
@@ -815,7 +916,7 @@ export class WorkspaceStore {
     const result: string[] = []
 
     for (const name of names) {
-      if (name.startsWith('.')) continue
+      if (isReservedDirectory(name)) continue
       const dir = parentDir ? `${parentDir}/${name}` : name
       result.push(dir, ...(await this.collectDirectories(dir)))
     }
@@ -909,6 +1010,12 @@ export class WorkspaceStore {
       throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
     }
     return folderId
+  }
+
+  private assertFolderName(name: string): void {
+    if (isReservedDirectory(sanitizeFileName(name))) {
+      throw new RuntimeError('folder.reserved-name', '该名称保留给系统目录')
+    }
   }
 
   /** 同级节点（文件夹与页面）共享名称空间，避免界面上出现同名条目 */

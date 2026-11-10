@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { App } from 'antd'
+import { Alert, App, Button } from 'antd'
+import { command, errorMessage } from '../../../runtime/client'
 import { useChat } from '../../../hooks/useChat'
 import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
@@ -70,6 +71,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       .join(',')
   )
   const isStreaming = streamingIdKey.length > 0
+  const live = useMessagesStore((state) => state.live)
+  const unsaved = Object.values(live).filter((item) => item.pageId === pageId && item.error)
 
   // 消息队列
   const {
@@ -238,6 +241,26 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
 
   return (
     <div className="chat-editor">
+      {unsaved.map((item) => (
+        <Alert
+          key={item.requestId}
+          type="error"
+          showIcon
+          message="回答尚未保存"
+          description={item.error}
+          action={
+            <Button
+              onClick={() => {
+                void command('chat.retrySave', { requestId: item.requestId }).catch((error) =>
+                  notify.error(errorMessage(error))
+                )
+              }}
+            >
+              重试保存
+            </Button>
+          }
+        />
+      ))}
       <Header
         page={page}
         onGenerate={async (options) => {

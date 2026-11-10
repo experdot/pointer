@@ -43,6 +43,7 @@ import {
 interface ChatEngineDeps {
   workspace: () => WorkspaceStore | null
   settings: () => SettingsStore | null
+  scope: () => string | null
   queues: () => QueueStore | null
   emit: (event: RuntimeEvent) => void
 }
@@ -51,12 +52,14 @@ interface SendInput {
   pageId: string
   content: string
   attachments?: AttachmentRef[]
-  parentMessageId?: string
+  parentMessageId?: string | null
   llmId?: string
   modelConfigId?: string
 }
 
 interface ActiveRequest {
+  workspace: WorkspaceStore
+  scopeId: string | null
   requestId: string
   pageId: string
   messageId: string
@@ -76,58 +79,85 @@ type ResolvedConfig = {
 
 export class ChatEngine {
   private readonly active = new Map<string, ActiveRequest>()
+  private readonly auxiliary = new Map<AbortController, Promise<void>>()
+  private readonly unsaved = new Map<string, { request: ActiveRequest; terminal: RuntimeEvent }>()
+  private suspended = false
 
   constructor(private readonly deps: ChatEngineDeps) {}
 
+  suspend(): void {
+    this.suspended = true
+  }
+  resume(): void {
+    this.suspended = false
+  }
+
+  assertSaved(): void {
+    if (this.unsaved.size)
+      throw new RuntimeError('chat.unsaved', '回答尚未保存，请重试保存后再切换或关闭', [
+        ...this.unsaved.keys()
+      ])
+  }
+
   isPageBusy(pageId: string): boolean {
-    return [...this.active.values()].some((request) => request.pageId === pageId)
+    return (
+      [...this.active.values()].some((request) => request.pageId === pageId) ||
+      [...this.unsaved.values()].some(({ request }) => request.pageId === pageId)
+    )
   }
 
-  /**
-   * 中止全部生成并等待收尾落盘
-   *
-   * 切换账户/工作区前必须调用：否则收尾时会写到新打开的上下文里，
-   * 迁移前的切换事务同样是"先停止活动任务再切换"。
-   */
   async abortAll(): Promise<void> {
-    const pending = [...this.active.values()]
-    if (pending.length === 0) return
-
-    for (const request of pending) request.controller.abort()
-    await Promise.all(pending.map((request) => request.finished))
+    const active = [...this.active.values()]
+    const auxiliary = [...this.auxiliary.entries()]
+    for (const request of active) request.controller.abort()
+    for (const [controller] of auxiliary) controller.abort()
+    await Promise.all([
+      ...active.map((request) => request.finished),
+      ...auxiliary.map(([, finished]) => finished)
+    ])
   }
 
-  async stop(requestId: string): Promise<void> {
+  async stop(requestId: string): Promise<boolean> {
     const request = this.active.get(requestId)
-    if (!request) return
+    if (!request) return false
     request.controller.abort()
+    return true
   }
 
-  /**
-   * 按页面中止生成
-   *
-   * 覆盖内核侧发起的生成（例如消息队列自动发送）：渲染进程没有请求句柄，
-   * 但同样需要能停止当前页面的输出。
-   */
   async stopPage(pageId: string): Promise<void> {
     for (const request of this.active.values()) {
       if (request.pageId === pageId) request.controller.abort()
     }
   }
 
+  private assertReady(workspace: WorkspaceStore, pageId?: string): void {
+    if (this.suspended || workspace !== this.deps.workspace())
+      throw new RuntimeError('runtime.stale-scope', '当前工作区正在关闭')
+    if (pageId && !workspace.getPage(pageId)) throw new RuntimeError('page.not-found', '目标不存在')
+    if (pageId && this.isPageBusy(pageId))
+      throw new RuntimeError('chat.busy', '此页面已有生成或尚未保存的回答')
+  }
+
   async send(input: SendInput): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    const at = Date.now()
+    return workspace.run(() => this.sendInside(workspace, input))
+  }
+
+  /** 准入、读取和用户消息写入在同一事务内；模型流不占用写队列。 */
+  private async sendInside(
+    workspace: WorkspaceStore,
+    input: SendInput
+  ): Promise<ChatRequestHandle> {
+    this.assertReady(workspace, input.pageId)
     let conversation = await workspace.readConversation(input.pageId)
-
-    const requestedParent =
-      input.parentMessageId && conversation.messages.some((m) => m.id === input.parentMessageId)
-        ? input.parentMessageId
-        : conversation.leafMessageId
-
-    let userMessage: ChatMessage | undefined
-    const hasContent = input.content.trim().length > 0 || (input.attachments?.length ?? 0) > 0
-    if (hasContent) {
+    let parentMessageId =
+      input.parentMessageId === null
+        ? undefined
+        : (input.parentMessageId ?? conversation.leafMessageId)
+    if (parentMessageId && !conversation.messages.some((message) => message.id === parentMessageId))
+      throw new RuntimeError('chat.message-not-found', '目标消息不存在')
+    let user: ChatMessage | undefined
+    if (input.content.trim() || input.attachments?.length) {
       const appended = appendMessage(
         conversation,
         {
@@ -135,29 +165,17 @@ export class ChatEngine {
           role: 'user',
           content: input.content,
           attachments: input.attachments,
-          parentMessageId: requestedParent
+          parentMessageId
         },
-        at
+        Date.now()
       )
       conversation = appended.conversation
-      userMessage = appended.message
-      await workspace.writeConversation(conversation)
-      this.emit('conversation.message', { pageId: input.pageId, message: userMessage })
+      user = appended.message
+      parentMessageId = user.id
     }
-
-    const parentForAssistant = userMessage?.id ?? requestedParent
-
-    return this.startGeneration({
-      pageId: input.pageId,
-      parentMessageId: parentForAssistant,
-      conversation,
-      llmId: input.llmId,
-      modelConfigId: input.modelConfigId,
-      at
-    })
+    return this.startGeneration(workspace, conversation, parentMessageId, input, user)
   }
 
-  /** 重新生成：以目标助手消息为参照，在其父节点下创建新的分支 */
   async regenerate(input: {
     pageId: string
     messageId: string
@@ -165,24 +183,18 @@ export class ChatEngine {
     modelConfigId?: string
   }): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.readConversation(input.pageId)
-    const message = conversation.messages.find((item) => item.id === input.messageId)
-    if (!message) {
-      throw new RuntimeError('chat.message-not-found', `消息不存在：${input.messageId}`)
-    }
-
-    const at = Date.now()
-    return this.startGeneration({
-      pageId: input.pageId,
-      parentMessageId: message.parentMessageId,
-      conversation,
-      llmId: input.llmId ?? message.llmId,
-      modelConfigId: input.modelConfigId ?? message.modelConfigId,
-      at
+    return workspace.run(async () => {
+      this.assertReady(workspace, input.pageId)
+      const conversation = await workspace.readConversation(input.pageId)
+      const message = conversation.messages.find((item) => item.id === input.messageId)
+      if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
+      return this.startGeneration(workspace, conversation, message.parentMessageId, {
+        llmId: input.llmId ?? message.llmId,
+        modelConfigId: input.modelConfigId ?? message.modelConfigId
+      })
     })
   }
 
-  /** 继续：针对某条用户消息重新生成回答（同样产生新分支） */
   async continueFromUserMessage(input: {
     pageId: string
     messageId?: string
@@ -190,288 +202,184 @@ export class ChatEngine {
     modelConfigId?: string
   }): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.readConversation(input.pageId)
-
-    const targetId = input.messageId ?? conversation.leafMessageId
-    const message = conversation.messages.find((item) => item.id === targetId)
-    if (!message) {
-      throw new RuntimeError('chat.message-not-found', `消息不存在：${String(targetId)}`)
-    }
-
-    const parentMessageId = message.role === 'user' ? message.id : message.parentMessageId
-    const at = Date.now()
-    return this.startGeneration({
-      pageId: input.pageId,
-      parentMessageId,
-      conversation,
-      llmId: input.llmId ?? message.llmId,
-      modelConfigId: input.modelConfigId ?? message.modelConfigId,
-      at
+    return workspace.run(async () => {
+      this.assertReady(workspace, input.pageId)
+      const conversation = await workspace.readConversation(input.pageId)
+      const message = conversation.messages.find(
+        (item) => item.id === (input.messageId ?? conversation.leafMessageId)
+      )
+      if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
+      return this.startGeneration(
+        workspace,
+        conversation,
+        message.role === 'user' ? message.id : message.parentMessageId,
+        {
+          llmId: input.llmId ?? message.llmId,
+          modelConfigId: input.modelConfigId ?? message.modelConfigId
+        }
+      )
     })
   }
 
-  // ==================== 内部实现 ====================
-
-  private async startGeneration(input: {
-    pageId: string
-    parentMessageId?: string
-    conversation: Conversation
-    llmId?: string
-    modelConfigId?: string
-    at: number
-  }): Promise<ChatRequestHandle> {
-    let config: ResolvedConfig
-    try {
-      config = this.resolveConfig(input.llmId, input.modelConfigId)
-    } catch (error) {
-      // 启动前失败（缺少 LLM 配置 / API Key）：先落一条带原因的错误消息，再抛给界面提示
-      await this.persistConfigFailure(input, error)
-      throw error
+  private async startGeneration(
+    workspace: WorkspaceStore,
+    conversation: Conversation,
+    parentMessageId: string | undefined,
+    input: { llmId?: string; modelConfigId?: string },
+    user?: ChatMessage
+  ): Promise<ChatRequestHandle> {
+    const config = this.resolveConfig(input.llmId, input.modelConfigId)
+    const providerMessages = await this.buildProviderMessages(
+      workspace,
+      conversation,
+      parentMessageId
+    )
+    this.assertReady(workspace, conversation.pageId)
+    if (user) {
+      await workspace.writeConversation(conversation)
+      this.emit('conversation.message', { pageId: conversation.pageId, message: user })
     }
-
-    const appended = appendMessage(
-      input.conversation,
+    const assistant = appendMessage(
+      conversation,
       {
         id: randomUUID(),
         role: 'assistant',
         content: '',
-        parentMessageId: input.parentMessageId,
+        parentMessageId,
         llmId: config.llmId,
         modelConfigId: config.modelConfigId
       },
-      input.at
-    )
-
-    const assistant = appended.message
-    const requestId = randomUUID()
-    const controller = new AbortController()
+      Date.now()
+    ).message
     let markFinished = (): void => undefined
     const finished = new Promise<void>((resolve) => {
       markFinished = resolve
     })
-    this.active.set(requestId, {
-      requestId,
-      pageId: input.pageId,
+    const request: ActiveRequest = {
+      workspace,
+      scopeId: this.deps.scope(),
+      requestId: randomUUID(),
+      pageId: conversation.pageId,
       messageId: assistant.id,
-      controller,
+      controller: new AbortController(),
       assistant,
       finished,
       markFinished
-    })
-
-    // 助手占位消息先推送给界面，不落盘
-    this.emit('conversation.message', { pageId: input.pageId, message: assistant })
-
-    const providerMessages = await this.buildProviderMessages(
-      input.conversation,
-      input.parentMessageId
-    )
-
-    void this.runStream({
-      requestId,
-      pageId: input.pageId,
-      assistant,
-      config,
-      providerMessages,
-      signal: controller.signal
-    })
-
-    return { requestId, messageId: assistant.id }
-  }
-
-  /**
-   * 启动前失败：与迁移前一致，把失败原因写入一条助手消息，
-   * 保证用户在会话里能看到原因（异常仍向上抛，供界面 toast）。
-   */
-  private async persistConfigFailure(
-    input: { pageId: string; parentMessageId?: string; conversation: Conversation; at: number },
-    error: unknown
-  ): Promise<void> {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error('[runtime] 生成失败：', message)
-
-    const workspace = this.deps.workspace()
-    if (!workspace) return
-
-    try {
-      const appended = appendMessage(
-        input.conversation,
-        {
-          id: randomUUID(),
-          role: 'assistant',
-          content: `**错误:** ${message}`,
-          parentMessageId: input.parentMessageId,
-          hasError: true
-        },
-        input.at
-      )
-      await workspace.writeConversation(appended.conversation)
-      this.emit('conversation.message', { pageId: input.pageId, message: appended.message })
-      this.emit('chat.failed', {
-        requestId: randomUUID(),
-        pageId: input.pageId,
-        messageId: appended.message.id,
-        error: message
-      })
-    } catch (writeError) {
-      console.error('[runtime] 写入错误消息失败：', writeError)
     }
+    this.active.set(request.requestId, request)
+    if (this.suspended) request.controller.abort()
+    this.emit(
+      'conversation.message',
+      { pageId: request.pageId, message: assistant, requestId: request.requestId },
+      request.scopeId
+    )
+    void this.runStream(request, config, providerMessages)
+    return { requestId: request.requestId, messageId: assistant.id }
   }
 
-  private async runStream(input: {
-    requestId: string
-    pageId: string
-    assistant: ChatMessage
-    config: ResolvedConfig
-    providerMessages: ProviderMessage[]
-    signal: AbortSignal
-  }): Promise<void> {
-    const { requestId, pageId, assistant, signal } = input
+  private async save(request: ActiveRequest): Promise<void> {
+    const { workspace, assistant, pageId } = request
+    await workspace.run(async () => {
+      if (!workspace.getPage(pageId)) return
+      const current = await workspace.readConversation(pageId)
+      const next = current.messages.some((message) => message.id === assistant.id)
+        ? updateMessage(current, assistant.id, assistant, Date.now())
+        : appendMessage(current, assistant, assistant.createdAt).conversation
+      await workspace.writeConversation(next)
+    })
+  }
 
-    /** 收尾：广播终态事件、释放请求并检查队列（不写盘） */
-    const finish = (event: RuntimeEvent): void => {
-      this.emit(event.type, event.payload as never)
-      const request = this.active.get(requestId)
-      request?.markFinished()
+  async retrySave(requestId: string): Promise<void> {
+    const failed = this.unsaved.get(requestId)
+    if (!failed) return
+    await this.save(failed.request)
+    this.unsaved.delete(requestId)
+    this.deps.emit(failed.terminal)
+    void this.drain(failed.request.pageId)
+  }
+
+  async retryAllSaves(): Promise<void> {
+    for (const id of this.unsaved.keys()) await this.retrySave(id)
+  }
+
+  private async runStream(
+    request: ActiveRequest,
+    config: ResolvedConfig,
+    providerMessages: ProviderMessage[]
+  ): Promise<void> {
+    const { requestId, pageId, assistant, controller, scopeId } = request
+    const payload = { requestId, pageId, messageId: assistant.id }
+    let terminal: RuntimeEvent = { type: 'chat.completed', payload, scopeId }
+    try {
+      controller.signal.throwIfAborted()
+      await streamChat(config.connection, config.parameters, providerMessages, controller.signal, {
+        onDelta: (text) => {
+          assistant.content += text
+          this.emit('chat.delta', { ...payload, text }, scopeId)
+        },
+        onReasoning: (text) => {
+          assistant.reasoning = (assistant.reasoning ?? '') + text
+          this.emit('chat.reasoning', { ...payload, text }, scopeId)
+        }
+      })
+      if (controller.signal.aborted) terminal = { type: 'chat.aborted', payload, scopeId }
+    } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted)
+        terminal = { type: 'chat.aborted', payload, scopeId }
+      else {
+        const message = error instanceof Error ? error.message : String(error)
+        assistant.hasError = true
+        assistant.content += `${assistant.content ? '\n\n---\n\n' : ''}**错误:** ${message}`
+        terminal = { type: 'chat.failed', payload: { ...payload, error: message }, scopeId }
+      }
+    }
+    try {
+      // 已删除的页面不重新创建，无输出的中止不留下空白回答。
+      if (
+        request.workspace.getPage(pageId) &&
+        (assistant.content || assistant.reasoning || terminal.type !== 'chat.aborted')
+      )
+        await this.save(request)
+      this.deps.emit(terminal)
+    } catch (error) {
+      this.unsaved.set(requestId, { request, terminal })
+      this.emit(
+        'chat.saveFailed',
+        {
+          ...payload,
+          message: { ...assistant },
+          error: error instanceof Error ? error.message : String(error)
+        },
+        scopeId
+      )
+    } finally {
       this.active.delete(requestId)
+      request.markFinished()
       void this.drain(pageId)
     }
-
-    const finalize = async (patch: Partial<ChatMessage>, event: RuntimeEvent): Promise<void> => {
-      const workspace = this.deps.workspace()
-      if (!workspace) {
-        finish(event)
-        return
-      }
-
-      try {
-        const current = await workspace.readConversation(pageId)
-        const now = Date.now()
-        const existing = current.messages.some((message) => message.id === assistant.id)
-        const next = existing
-          ? updateMessage(current, assistant.id, patch, now)
-          : appendMessage(
-              current,
-              {
-                id: assistant.id,
-                role: 'assistant',
-                content: patch.content ?? '',
-                reasoning: patch.reasoning,
-                parentMessageId: assistant.parentMessageId,
-                llmId: assistant.llmId,
-                modelConfigId: assistant.modelConfigId,
-                hasError: patch.hasError
-              },
-              now
-            ).conversation
-        await workspace.writeConversation(next)
-      } catch (error) {
-        console.error('[runtime] 保存助手消息失败：', error)
-      }
-
-      finish(event)
-    }
-
-    try {
-      const streamed = await streamChat(
-        input.config.connection,
-        input.config.parameters,
-        input.providerMessages,
-        signal,
-        {
-          onDelta: (text) => {
-            assistant.content += text
-            this.emit('chat.delta', { requestId, pageId, messageId: assistant.id, text })
-          },
-          onReasoning: (text) => {
-            assistant.reasoning = `${assistant.reasoning ?? ''}${text}`
-            this.emit('chat.reasoning', { requestId, pageId, messageId: assistant.id, text })
-          }
-        }
-      )
-
-      const content = streamed.content
-      const reasoning = assistant.reasoning ?? streamed.reasoning
-
-      if (signal.aborted) {
-        const event: RuntimeEvent = {
-          type: 'chat.aborted',
-          payload: { requestId, pageId, messageId: assistant.id }
-        }
-        if (!content) {
-          // 与迁移前一致：没有任何正文输出就被停止的占位消息直接移除，不落盘
-          finish(event)
-          return
-        }
-        await finalize({ content, reasoning }, event)
-        return
-      }
-
-      await finalize(
-        { content, reasoning, hasError: false },
-        { type: 'chat.completed', payload: { requestId, pageId, messageId: assistant.id } }
-      )
-    } catch (error) {
-      if (isAbortError(error) || signal.aborted) {
-        const event: RuntimeEvent = {
-          type: 'chat.aborted',
-          payload: { requestId, pageId, messageId: assistant.id }
-        }
-        if (!assistant.content) {
-          finish(event)
-          return
-        }
-        await finalize({ content: assistant.content, reasoning: assistant.reasoning }, event)
-        return
-      }
-
-      const message = error instanceof Error ? error.message : String(error)
-      console.error('[runtime] 生成失败：', message)
-      // 与迁移前一致：把失败原因并入消息内容，用户可直接看到
-      const errorContent = assistant.content
-        ? `${assistant.content}\n\n---\n\n**错误:** ${message}`
-        : `**错误:** ${message}`
-      await finalize(
-        { content: errorContent, reasoning: assistant.reasoning, hasError: true },
-        {
-          type: 'chat.failed',
-          payload: { requestId, pageId, messageId: assistant.id, error: message }
-        }
-      )
-    }
   }
 
-  /** 把路径上的消息转换为供应商请求格式，附件按图片内联 */
   private async buildProviderMessages(
+    workspace: WorkspaceStore,
     conversation: Conversation,
     leafMessageId: string | undefined
   ): Promise<ProviderMessage[]> {
-    const workspace = this.requireWorkspace()
-    const index = buildIndex(conversation.messages)
-    const path = pathToMessage(index, leafMessageId)
-
+    const path = pathToMessage(buildIndex(conversation.messages), leafMessageId)
     const messages: ProviderMessage[] = []
     for (const message of path) {
       if (message.role === 'assistant' && !message.content.trim()) continue
-
-      const attachments = message.attachments ?? []
-      if (attachments.length === 0) {
-        messages.push({ role: message.role, content: message.content })
-        continue
-      }
-
-      const parts: ProviderMessage['content'] = []
-      if (message.content.trim()) {
-        parts.push({ type: 'text', text: message.content })
-      }
-      for (const attachment of attachments) {
+      const parts: Exclude<ProviderMessage['content'], string> = []
+      if (message.content.trim()) parts.push({ type: 'text', text: message.content })
+      for (const attachment of message.attachments ?? []) {
         if (!attachment.mimeType.startsWith('image/')) continue
         const data = await workspace.readAttachmentAsDataUrl(attachment)
         if (data) parts.push({ type: 'image_url', image_url: { url: data } })
       }
-      messages.push({ role: message.role, content: parts.length > 0 ? parts : message.content })
+      messages.push({
+        role: message.role,
+        content: parts.length > 1 ? parts : message.content || parts
+      })
     }
-
     return messages
   }
 
@@ -516,17 +424,30 @@ export class ChatEngine {
     llmId?: string
     modelConfigId?: string
   }): Promise<{ content: string; reasoning?: string }> {
+    if (this.suspended) throw new RuntimeError('runtime.closing', '工作区或目标已变化')
     const config = this.resolveConfig(input.llmId, input.modelConfigId)
     const controller = new AbortController()
-    const { content, reasoning: reasoningText } = await streamChat(
-      config.connection,
-      config.parameters,
-      [{ role: 'user', content: input.prompt }],
-      controller.signal,
-      { onDelta: () => undefined, onReasoning: () => undefined }
+    let resolveFinished = (): void => undefined
+    this.auxiliary.set(
+      controller,
+      new Promise<void>((resolve) => {
+        resolveFinished = resolve
+      })
     )
-
-    return { content: content.trim(), reasoning: reasoningText || undefined }
+    try {
+      const result = await streamChat(
+        config.connection,
+        config.parameters,
+        [{ role: 'user', content: input.prompt }],
+        controller.signal,
+        { onDelta: () => undefined, onReasoning: () => undefined }
+      )
+      if (controller.signal.aborted) throw new RuntimeError('chat.aborted', '目标不存在')
+      return { content: result.content.trim(), reasoning: result.reasoning || undefined }
+    } finally {
+      this.auxiliary.delete(controller)
+      resolveFinished()
+    }
   }
 
   async generateMessageTitle(input: {
@@ -537,7 +458,9 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.readConversation(input.pageId)
+    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    if (workspace !== this.deps.workspace() || this.suspended)
+      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const message = conversation.messages.find((item) => item.id === input.messageId)
     if (!message) {
       throw new RuntimeError('chat.message-not-found', `消息不存在：${input.messageId}`)
@@ -554,8 +477,18 @@ export class ChatEngine {
     const title = normalizeTitle(content, 15)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
-    const next = updateMessage(conversation, message.id, { title }, Date.now())
-    await workspace.writeConversation(next)
+    await workspace.mutateConversation(input.pageId, (current) => {
+      if (
+        workspace !== this.deps.workspace() ||
+        this.suspended ||
+        !current.messages.some((item) => item.id === message.id)
+      )
+        throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+      return {
+        conversation: updateMessage(current, message.id, { title }, Date.now()),
+        result: undefined
+      }
+    })
     this.emit('conversation.changed', { pageId: input.pageId })
     return title
   }
@@ -568,7 +501,9 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.readConversation(input.pageId)
+    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    if (workspace !== this.deps.workspace() || this.suspended)
+      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const topic = conversation.topics.find((item) => item.id === input.topicId)
     if (!topic) {
       throw new RuntimeError('topic.not-found', `Topic 不存在：${input.topicId}`)
@@ -597,8 +532,18 @@ export class ChatEngine {
     const name = normalizeTitle(generated, 15)
     if (!name) throw new RuntimeError('chat.title-empty', '模型未返回有效话题名称')
 
-    const next = updateTopic(conversation, topic.id, { name }, Date.now())
-    await workspace.writeConversation(next)
+    await workspace.mutateConversation(input.pageId, (current) => {
+      if (
+        workspace !== this.deps.workspace() ||
+        this.suspended ||
+        !current.topics.some((item) => item.id === topic.id)
+      )
+        throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+      return {
+        conversation: updateTopic(current, topic.id, { name }, Date.now()),
+        result: undefined
+      }
+    })
     this.emit('conversation.changed', { pageId: input.pageId })
     return name
   }
@@ -610,7 +555,9 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.readConversation(input.pageId)
+    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    if (workspace !== this.deps.workspace() || this.suspended)
+      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const path = currentPath(conversation)
     const content = path
       .slice(0, 10)
@@ -631,7 +578,11 @@ export class ChatEngine {
     const title = normalizeTitle(generated, 20)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
-    await workspace.updatePage(input.pageId, { name: title }, Date.now())
+    await workspace.run(async () => {
+      if (workspace !== this.deps.workspace() || this.suspended)
+        throw new RuntimeError('runtime.stale-scope', '目标消息不存在')
+      await workspace.updatePage(input.pageId, { name: title }, Date.now())
+    })
     const page = workspace.getPage(input.pageId)
     if (page) this.emit('page.changed', { page })
     return title
@@ -643,26 +594,30 @@ export class ChatEngine {
   async drain(pageId: string): Promise<void> {
     const queues = this.deps.queues()
     const workspace = this.deps.workspace()
-    if (!queues || !workspace) return
-
-    const queue = await queues.get(pageId)
-    if (queue.paused || queue.items.length === 0) return
-    if (this.isPageBusy(pageId)) return
-
-    const { item } = await queues.shift(pageId)
-    if (!item) return
-
-    this.emit('queue.changed', { pageId })
-
+    if (!queues || !workspace || this.suspended) return
     try {
-      await this.send({ pageId, content: item.content })
+      await workspace.run(async () => {
+        if (
+          this.suspended ||
+          this.isPageBusy(pageId) ||
+          workspace !== this.deps.workspace() ||
+          !workspace.getPage(pageId)
+        )
+          return
+        const queue = await queues.get(pageId)
+        const item = queue.items[0]
+        if (queue.paused || !item) return
+        await this.sendInside(workspace, { pageId, content: item.content })
+        await queues.remove(pageId, item.id)
+        this.emit('queue.changed', { pageId })
+      })
     } catch (error) {
-      console.error('[runtime] 队列消息发送失败：', error)
+      console.warn('[runtime] 队列启动失败，已保留队列项', error)
     }
   }
 
-  private emit(type: RuntimeEvent['type'], payload: unknown): void {
-    this.deps.emit({ type, payload } as RuntimeEvent)
+  private emit(type: RuntimeEvent['type'], payload: unknown, scopeId = this.deps.scope()): void {
+    this.deps.emit({ type, payload, scopeId } as RuntimeEvent)
   }
 
   private requireWorkspace(): WorkspaceStore {

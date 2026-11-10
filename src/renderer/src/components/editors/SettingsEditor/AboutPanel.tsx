@@ -13,6 +13,7 @@ import { DateTimeText } from '../../common/DateTimeText'
 import { useUpdateStore } from '../../../stores/updateStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { command, query } from '../../../runtime/client'
+import { useSavedAction } from '../../../hooks/useSavedAction'
 
 const { Text, Paragraph, Link } = Typography
 
@@ -20,6 +21,7 @@ export function AboutPanel(): React.JSX.Element {
   const updateStore = useUpdateStore()
   const { settings, setAutoCheckUpdate } = useSettingsStore()
   const { message, modal } = App.useApp()
+  const runSaved = useSavedAction()
 
   const autoCheckUpdate = settings.autoCheckUpdate ?? true
 
@@ -100,10 +102,10 @@ export function AboutPanel(): React.JSX.Element {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await command('app.quitAndInstall', undefined)
+          await runSaved(() => command('app.quitAndInstall', undefined))
         } catch (err) {
           console.error('Install update failed:', err)
-          message.error('安装更新失败')
+          message.error(err instanceof Error ? err.message : '安装更新失败')
         }
       }
     })

@@ -66,8 +66,8 @@ macOS 与 Linux 的打包配置已经就绪，但尚未纳入自动发布：`pnp
 
 环境要求：
 
-- Node.js >= 22.12（运行测试套件的 Vitest 5 有此要求；应用本身运行在 Electron 35 自带的 Node 上）
-- pnpm
+- Node.js 22（>= 22.12，`.nvmrc` 固定 22.16.0）（运行测试套件的 Vitest 5 有此要求；应用本身运行在 Electron 35 自带的 Node 上）
+- pnpm 10.26.2（由 `packageManager` 固定）
 
 ```bash
 # 克隆仓库
@@ -75,7 +75,7 @@ git clone https://github.com/experdot/pointer.git
 cd pointer
 
 # 安装依赖
-pnpm install
+pnpm install --frozen-lockfile
 
 # 开发模式运行
 pnpm dev

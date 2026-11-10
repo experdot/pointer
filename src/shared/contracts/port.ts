@@ -12,34 +12,42 @@ import type { RuntimeQueryName, RuntimeQueryPayload, RuntimeQueryResult } from '
 export interface RuntimePort {
   query<K extends RuntimeQueryName>(
     name: K,
-    payload: RuntimeQueryPayload<K>
+    payload: RuntimeQueryPayload<K>,
+    scopeId?: string | null
   ): Promise<RuntimeQueryResult<K>>
   command<K extends RuntimeCommandName>(
     name: K,
-    payload: RuntimeCommandPayload<K>
+    payload: RuntimeCommandPayload<K>,
+    scopeId?: string | null
   ): Promise<RuntimeCommandResult<K>>
   subscribe(listener: (event: RuntimeEvent) => void): () => void
+  onFlush?(handler: () => Promise<void>): () => void
 }
 
 /** IPC 通道 */
 export const RUNTIME_CHANNELS = {
   query: 'runtime:query',
   command: 'runtime:command',
-  event: 'runtime:event'
+  event: 'runtime:event',
+  flush: 'runtime:flush',
+  flushed: 'runtime:flushed'
 } as const
 
 export interface RuntimeQueryRequest {
+  scopeId?: string | null
   name: RuntimeQueryName
   payload: unknown
 }
 
 export interface RuntimeCommandRequest {
+  scopeId?: string | null
   name: RuntimeCommandName
   payload: unknown
 }
 
 interface RuntimeSuccess<T = unknown> {
   ok: true
+  scopeId: string | null
   value: T
 }
 

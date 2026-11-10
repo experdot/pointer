@@ -1,44 +1,38 @@
-/**
- * 极简 CSV 解析（支持双引号包裹与 "" 转义）
- *
- * 导出编辑器与表格预览共用；空内容返回一个只有默认列名的空表。
- */
-
+/** CSV 状态机遍历完整输入，保留引号内换行、空格和尾部空列。 */
 interface ParsedCsv {
   headers: string[]
   rows: string[][]
 }
 
 export function parseCsv(csv: string): ParsedCsv {
-  const lines = csv.trim().split('\n')
-  if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
-    return { headers: ['Column 1'], rows: [] }
+  const text = csv.replace(/^\uFEFF/, '')
+  if (!text) return { headers: ['Column 1'], rows: [] }
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') {
+        cell += '"'
+        i++
+      } else if (quoted || cell.length === 0) quoted = !quoted
+      else cell += char
+    } else if (char === ',' && !quoted) {
+      row.push(cell)
+      cell = ''
+    } else if ((char === '\r' || char === '\n') && !quoted) {
+      row.push(cell)
+      rows.push(row)
+      row = []
+      cell = ''
+      if (char === '\r' && text[i + 1] === '\n') i++
+    } else cell += char
   }
-
-  const parseRow = (line: string): string[] => {
-    const cells: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = !inQuotes
-        }
-      } else if (char === ',' && !inQuotes) {
-        cells.push(current)
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    cells.push(current)
-    return cells
+  if (cell.length || row.length || !/[\r\n]$/.test(text)) {
+    row.push(cell)
+    rows.push(row)
   }
-
-  return { headers: parseRow(lines[0]), rows: lines.slice(1).map(parseRow) }
+  return { headers: rows[0] ?? ['Column 1'], rows: rows.slice(1) }
 }

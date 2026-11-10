@@ -179,7 +179,7 @@ interface RuntimeCommandMap {
       pageId: string
       content: string
       attachments?: AttachmentRef[]
-      parentMessageId?: string
+      parentMessageId?: string | null
       llmId?: string
       modelConfigId?: string
     }
@@ -195,6 +195,7 @@ interface RuntimeCommandMap {
   }
   /** 中止生成：优先按 requestId，其次按页面中止该页面正在进行的请求 */
   'chat.stop': { payload: { requestId?: string; pageId?: string }; result: void }
+  'chat.retrySave': { payload: { requestId: string }; result: void }
   'chat.generateTitle': {
     payload: {
       pageId: string
@@ -218,7 +219,15 @@ interface RuntimeCommandMap {
   'queue.setPaused': { payload: { pageId: string; paused: boolean }; result: void }
 
   // 设置与密钥
-  'settings.replace': { payload: { settings: Settings }; result: void }
+  'settings.replace': {
+    payload: { settings: Settings; baseRevision?: number; mutationId?: string }
+    result: import('./queries').SettingsSnapshot
+  }
+
+  'data.reset': {
+    payload: { targets: Array<'conversations' | 'folders' | 'settings' | 'tabs' | 'layout'> }
+    result: void
+  }
 
   // 展示层状态
   'viewState.replace': { payload: { viewState: ViewState }; result: void }
@@ -245,6 +254,10 @@ interface RuntimeCommandMap {
   }
   'dialog.pickImages': { payload: { multiple?: boolean }; result: PickedImage[] }
   'library.import': { payload: ImportSource; result: ImportResult }
+  'backup.restore': {
+    payload: import('./backup').BackupRestoreInput
+    result: import('./backup').BackupRestoreResult
+  }
 
   // 更新
   'app.checkUpdate': { payload: void; result: UpdateCheckResult }

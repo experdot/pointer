@@ -207,7 +207,8 @@ async function run(): Promise<void> {
         defaultLLMId: 'llm-1'
       }
     })
-    const stored = (await runtime.query('settings.get', undefined)) as {
+    const stored = ((await runtime.query('settings.get', undefined)) as { settings: unknown })
+      .settings as {
       llmConfigs: { items: Array<{ id: string; apiKey?: string }> }
     }
     check('设置写回并保存明文 API Key', stored.llmConfigs.items[0]?.apiKey === 'sk-smoke')
@@ -239,7 +240,8 @@ async function run(): Promise<void> {
         }
       }
     })
-    const afterDraft = (await runtime.query('settings.get', undefined)) as {
+    const afterDraft = ((await runtime.query('settings.get', undefined)) as { settings: unknown })
+      .settings as {
       llmConfigs: { items: Array<{ id: string; name: string }> }
     }
     check(
@@ -254,7 +256,8 @@ async function run(): Promise<void> {
     }
     check('展示层状态有默认值', viewState.layout.activePanel === 'explorer')
 
-    // 消息队列
+    // 消息队列：暂停后验证持久化，避免自动出队影响断言。
+    await runtime.command('queue.setPaused', { pageId: page.id, paused: true })
     await runtime.command('queue.add', { pageId: page.id, content: '队列消息' })
     const queue = (await runtime.query('queue.get', { pageId: page.id })) as { items: unknown[] }
     check('消息队列写入成功', queue.items.length === 1)
@@ -321,7 +324,7 @@ async function run(): Promise<void> {
     const workspaces = (await runtime.query('workspaces.list', undefined)) as unknown[]
     check('工作区列表包含三个工作区', workspaces.length === 3, `count=${workspaces.length}`)
   } finally {
-    runtime.dispose()
+    await runtime.dispose()
     await rm(appDataPath, { recursive: true, force: true }).catch(() => undefined)
   }
 }

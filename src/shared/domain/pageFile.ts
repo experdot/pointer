@@ -287,7 +287,7 @@ export function replacePageMetadata(
   if (!PAGE_BLOCK_PATTERN.test(fileText)) {
     return `${block}\n\n${fileText}`
   }
-  return fileText.replace(PAGE_BLOCK_PATTERN, block)
+  return fileText.replace(PAGE_BLOCK_PATTERN, () => block)
 }
 
 // ==================== 解析 ====================

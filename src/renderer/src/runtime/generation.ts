@@ -9,5 +9,5 @@ import { useSessionStore } from '../stores/sessionStore'
 
 export function currentGeneration(): string {
   const session = useSessionStore.getState()
-  return `${session.accountId ?? ''}::${session.workspaceId ?? ''}`
+  return session.scopeId ?? ''
 }

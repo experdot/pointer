@@ -1,3 +1,4 @@
+import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 
 /**
@@ -34,23 +35,7 @@ export const csvFormatPlugin: FormatPlugin = {
  * Convert markdown table to CSV format
  */
 function markdownTableToCsv(markdown: string): string {
-  const lines = markdown.trim().split('\n')
-  const rows: string[][] = []
-
-  for (const line of lines) {
-    // Skip separator lines (e.g., |---|---|)
-    if (/^[\s|:-]+$/.test(line)) continue
-
-    // Parse table row
-    const cells = line
-      .split('|')
-      .map((cell) => cell.trim())
-      .filter((cell) => cell.length > 0)
-
-    if (cells.length > 0) {
-      rows.push(cells)
-    }
-  }
+  const rows = parseMarkdownTable(markdown)
 
   // Convert to CSV
   const csvLines = rows.map((row) => {

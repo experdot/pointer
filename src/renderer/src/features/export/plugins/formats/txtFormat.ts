@@ -1,3 +1,4 @@
+import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 import { getDirectTopicMessages } from '../../messageTraversal'
@@ -182,23 +183,7 @@ function stripMarkdown(text: string): string {
  * Convert markdown table to plain text table
  */
 function convertMarkdownTableToText(markdown: string): string {
-  const lines = markdown.trim().split('\n')
-  const result: string[] = []
-
-  for (const line of lines) {
-    // Skip separator lines
-    if (/^[\s|:-]+$/.test(line)) continue
-
-    // Convert table row to plain text
-    const cells = line
-      .split('|')
-      .map((cell) => cell.trim())
-      .filter((cell) => cell.length > 0)
-
-    if (cells.length > 0) {
-      result.push(cells.join('\t'))
-    }
-  }
-
-  return result.join('\n')
+  return parseMarkdownTable(markdown)
+    .map((row) => row.join('\t'))
+    .join('\n')
 }

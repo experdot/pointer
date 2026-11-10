@@ -4,13 +4,14 @@
 
 import { create } from 'zustand'
 import type { MessageQueue } from '@shared/domain'
-import { command } from '../runtime/client'
+import { command, query } from '../runtime/client'
 
 interface MessageQueueState {
   cache: Record<string, MessageQueue>
 }
 
 interface MessageQueueActions {
+  load: (pageId: string) => Promise<void>
   setQueue: (queue: MessageQueue) => void
   evict: (pageId: string) => void
   addItem: (pageId: string, content: string) => Promise<void>
@@ -24,8 +25,11 @@ interface MessageQueueActions {
 
 type MessageQueueStore = MessageQueueState & MessageQueueActions
 
-export const useMessageQueueStore = create<MessageQueueStore>((set) => ({
+export const useMessageQueueStore = create<MessageQueueStore>((set, get) => ({
   cache: {},
+  load: async (pageId) => {
+    get().setQueue(await query('queue.get', { pageId }))
+  },
 
   setQueue: (queue) =>
     set((state) => ({

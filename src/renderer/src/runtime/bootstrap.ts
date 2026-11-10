@@ -5,15 +5,9 @@
  * 所有写操作都通过 store/service 发出命令，内核回推事件后界面才更新。
  */
 
-import type { ChatMessage, Conversation, MessageQueue, Page, Settings } from '@shared/domain'
-import type {
-  PageTreeSnapshot,
-  RuntimeEvent,
-  SessionSnapshot,
-  UpdateStatus,
-  ViewState
-} from '@shared/contracts'
-import { query, subscribe } from './client'
+import type { ChatMessage, Conversation, MessageQueue, Page } from '@shared/domain'
+import type { PageTreeSnapshot, RuntimeEvent, UpdateStatus, ViewState } from '@shared/contracts'
+import { onFlush, query, resetQueries, subscribe } from './client'
 import { useAccountStore } from '../stores/accountStore'
 import { useChatUIStore } from '../stores/chatUIStore'
 import { useFoldersStore } from '../stores/foldersStore'
@@ -32,6 +26,11 @@ import { useWorkspaceStore } from '../stores/workspaceStore'
 
 let started = false
 let unsubscribe: (() => void) | null = null
+let unsubscribeFlush: (() => void) | null = null
+let refreshing = false
+let refreshSerial = 0
+let bufferedEvents: RuntimeEvent[] = []
+let refreshPromise: Promise<void> = Promise.resolve()
 
 /**
  * 流式增量缓冲
@@ -46,6 +45,7 @@ const LONG_MESSAGE_THRESHOLD = 3000
 const CLOSED_MESSAGE_LIMIT = 500
 
 interface PendingDelta {
+  messageId: string
   pageId: string
   content: string
   reasoning: string
@@ -61,13 +61,16 @@ let deltaTimer: ReturnType<typeof setTimeout> | null = null
 function bufferDelta(
   pageId: string,
   messageId: string,
+  requestId: string,
   field: 'content' | 'reasoning',
   text: string
 ): void {
-  if (closedMessages.has(messageId)) return
+  const key = `${pageId}:${requestId}:${messageId}`
+  if (closedMessages.has(key)) return
 
-  const entry = pendingDeltas.get(messageId) ?? {
+  const entry = pendingDeltas.get(key) ?? {
     pageId,
+    messageId,
     content: '',
     reasoning: '',
     totalLength: lengthOfMessage(pageId, messageId)
@@ -78,7 +81,7 @@ function bufferDelta(
     entry.reasoning += text
   }
   entry.totalLength += text.length
-  pendingDeltas.set(messageId, entry)
+  pendingDeltas.set(key, entry)
 
   if (!deltaTimer) {
     const delay =
@@ -101,8 +104,8 @@ function flushDeltas(): void {
   }
   if (pendingDeltas.size === 0) return
 
-  const entries = [...pendingDeltas.entries()].map(([messageId, value]) => ({
-    messageId,
+  const entries = [...pendingDeltas.values()].map((value) => ({
+    messageId: value.messageId,
     pageId: value.pageId,
     content: value.content,
     reasoning: value.reasoning
@@ -112,9 +115,9 @@ function flushDeltas(): void {
 }
 
 /** 生成结束时先落地缓冲，再让权威内容覆盖 */
-function closeMessage(messageId: string): void {
+function closeMessage(pageId: string, messageId: string, requestId: string): void {
   flushDeltas()
-  closedMessages.add(messageId)
+  closedMessages.add(`${pageId}:${requestId}:${messageId}`)
   if (closedMessages.size > CLOSED_MESSAGE_LIMIT) {
     const oldest = closedMessages.values().next().value
     if (oldest !== undefined) closedMessages.delete(oldest)
@@ -194,6 +197,8 @@ function applyViewState(viewState: ViewState): void {
 
 async function refreshWorkspaceScope(): Promise<void> {
   const session = useSessionStore.getState()
+  const serial = ++refreshSerial
+  refreshing = true
   const [tree, settings, viewState, workspaces, accounts] = await Promise.all([
     query('tree.get', undefined),
     query('settings.get', undefined),
@@ -202,6 +207,8 @@ async function refreshWorkspaceScope(): Promise<void> {
     query('accounts.list', undefined)
   ])
 
+  if (serial !== refreshSerial || session.scopeId !== useSessionStore.getState().scopeId) return
+
   // 账户列表与"当前账户/当前工作区"必须跟着会话一起刷新，
   // 否则切换账户后头像、名称与工作区卡片仍停在旧账户
   useAccountStore.setState({
@@ -209,7 +216,7 @@ async function refreshWorkspaceScope(): Promise<void> {
     currentAccountId: session.accountId,
     initialized: true
   })
-  useSettingsStore.setState({ settings, initialized: true })
+  useSettingsStore.getState().accept(settings)
   // 先恢复目标工作区的展示层状态，再对齐页面树：
   // 否则清理过期页签时会把旧工作区的页签写进新工作区的 view-state
   applyViewState(viewState)
@@ -220,6 +227,11 @@ async function refreshWorkspaceScope(): Promise<void> {
     currentWorkspace: workspaces.find((item) => item.id === session.workspaceId) ?? null,
     initialized: true
   })
+  refreshing = false
+  useSessionStore.setState({ initialized: true, error: null })
+  const queued = bufferedEvents
+  bufferedEvents = []
+  for (const event of queued) handleEvent(event)
 }
 
 async function loadConversation(pageId: string): Promise<void> {
@@ -241,21 +253,66 @@ async function loadQueue(pageId: string): Promise<void> {
 }
 
 function handleEvent(event: RuntimeEvent): void {
+  if (
+    event.type !== 'session.changed' &&
+    event.type !== 'accounts.changed' &&
+    event.type !== 'app.updateStatus' &&
+    event.scopeId !== useSessionStore.getState().scopeId
+  )
+    return
+  if (refreshing && event.type !== 'session.changed') {
+    bufferedEvents.push(event)
+    return
+  }
   switch (event.type) {
     case 'accounts.changed':
       useAccountStore.setState({ accounts: event.payload, initialized: true })
       break
 
-    case 'session.changed':
-      useSessionStore.getState().setSession(event.payload as SessionSnapshot)
-      void refreshWorkspaceScope()
-      useMessagesStore.getState().reset()
-      useMessageQueueStore.getState().reset()
-      // 与迁移前一致：切换账户/工作区后清空易失状态，避免上个上下文的内容泄漏
-      useChatUIStore.getState().reset()
-      useGlobalSearchStore.getState().reset()
-      useNavigationStore.getState().reset()
+    case 'session.changed': {
+      const changed = event.payload.scopeId !== useSessionStore.getState().scopeId
+      if (changed) {
+        if (deltaTimer) clearTimeout(deltaTimer)
+        deltaTimer = null
+        pendingDeltas.clear()
+        closedMessages.clear()
+        bufferedEvents = []
+        resetQueries()
+        useMessagesStore.getState().reset()
+        useMessageQueueStore.getState().reset()
+        useChatUIStore.getState().reset()
+        useGlobalSearchStore.getState().reset()
+        useNavigationStore.getState().reset()
+        useSettingsStore.getState().reset()
+        useViewStateStore.getState().reset()
+        usePagesStore.getState().reset()
+        useFoldersStore.getState().reset()
+        useWorkspaceStore.getState().reset()
+        useTabsStore.setState({
+          tabs: [],
+          activeTabId: null,
+          history: [],
+          historyIndex: -1,
+          initialized: false
+        })
+        void useLayoutStore.getState().reset()
+      }
+      useSessionStore.getState().setSession(event.payload)
+      if (changed) useSessionStore.setState({ initialized: false })
+      refreshPromise = refreshWorkspaceScope().catch((error) => {
+        if (
+          !['runtime.stale-scope', 'runtime.stale-response'].includes(
+            (error as { code?: string }).code ?? ''
+          )
+        ) {
+          console.warn('[mirror] 刷新失败：', error)
+          useSessionStore.setState({
+            error: error instanceof Error ? error.message : String(error)
+          })
+        }
+      })
       break
+    }
 
     case 'tree.changed':
       applyTree(event.payload as PageTreeSnapshot)
@@ -270,28 +327,60 @@ function handleEvent(event: RuntimeEvent): void {
       break
 
     case 'conversation.message':
-      useMessagesStore.getState().upsertMessage(event.payload.pageId, event.payload.message)
+      useMessagesStore
+        .getState()
+        .upsertMessage(event.payload.pageId, event.payload.message, event.payload.requestId)
       break
 
     case 'chat.delta':
-      bufferDelta(event.payload.pageId, event.payload.messageId, 'content', event.payload.text)
+      bufferDelta(
+        event.payload.pageId,
+        event.payload.messageId,
+        event.payload.requestId,
+        'content',
+        event.payload.text
+      )
       break
 
     case 'chat.reasoning':
-      bufferDelta(event.payload.pageId, event.payload.messageId, 'reasoning', event.payload.text)
+      bufferDelta(
+        event.payload.pageId,
+        event.payload.messageId,
+        event.payload.requestId,
+        'reasoning',
+        event.payload.text
+      )
       break
 
     case 'chat.completed':
     case 'chat.aborted':
-      closeMessage(event.payload.messageId)
+      closeMessage(event.payload.pageId, event.payload.messageId, event.payload.requestId)
+      useMessagesStore.getState().finishRequest(event.payload.requestId)
       useMessagesStore.getState().setStreaming(event.payload.messageId, false)
       void loadConversation(event.payload.pageId)
       break
 
     case 'chat.failed':
-      closeMessage(event.payload.messageId)
+      closeMessage(event.payload.pageId, event.payload.messageId, event.payload.requestId)
+      useMessagesStore.getState().finishRequest(event.payload.requestId)
       useMessagesStore.getState().setStreaming(event.payload.messageId, false)
       void loadConversation(event.payload.pageId)
+      break
+
+    case 'chat.saveFailed':
+      closeMessage(event.payload.pageId, event.payload.messageId, event.payload.requestId)
+      useMessagesStore
+        .getState()
+        .saveFailed(
+          event.payload.pageId,
+          event.payload.requestId,
+          event.payload.message,
+          event.payload.error
+        )
+      break
+
+    case 'viewState.changed':
+      applyViewState(event.payload)
       break
 
     case 'queue.changed':
@@ -299,7 +388,7 @@ function handleEvent(event: RuntimeEvent): void {
       break
 
     case 'settings.changed':
-      useSettingsStore.setState({ settings: event.payload as Settings, initialized: true })
+      useSettingsStore.getState().accept(event.payload)
       break
 
     case 'workspace.externalChange':
@@ -316,38 +405,43 @@ export async function bootstrapRuntime(): Promise<void> {
   if (started) return
   started = true
 
-  const [session, accounts, workspaces] = await Promise.all([
-    query('session.get', undefined),
-    query('accounts.list', undefined),
-    query('workspaces.list', undefined)
-  ])
-
-  useSessionStore.getState().setSession(session)
-  useAccountStore.setState({
-    accounts,
-    currentAccountId: session.accountId,
-    initialized: true
+  let initializing = true
+  const events: RuntimeEvent[] = []
+  unsubscribe = subscribe((event) => {
+    if (initializing) events.push(event)
+    else handleEvent(event)
   })
-  useWorkspaceStore.setState({
-    workspaces,
-    currentWorkspaceId: session.workspaceId,
-    currentWorkspace: workspaces.find((item) => item.id === session.workspaceId) ?? null,
-    initialized: true
+  unsubscribeFlush = onFlush(async () => {
+    await useSettingsStore.getState().flush()
+    await useViewStateStore.getState().flush()
   })
-
-  await refreshWorkspaceScope()
-  unsubscribe = subscribe(handleEvent)
-
-  // 关闭窗口前把去抖中的设置写盘
-  window.addEventListener('beforeunload', () => {
-    useSettingsStore.getState().flush()
-  })
+  try {
+    const session = await query('session.get', undefined)
+    initializing = false
+    handleEvent({ type: 'session.changed', payload: session, scopeId: session.scopeId })
+    for (const event of events) handleEvent(event)
+    for (;;) {
+      const pending = refreshPromise
+      await pending
+      if (pending === refreshPromise) break
+    }
+  } catch (error) {
+    teardownRuntime()
+    throw error
+  }
 }
 
 export function teardownRuntime(): void {
-  flushDeltas()
+  if (deltaTimer) clearTimeout(deltaTimer)
+  deltaTimer = null
   pendingDeltas.clear()
   closedMessages.clear()
+  bufferedEvents = []
+  refreshing = false
+  refreshSerial++
+  resetQueries()
+  unsubscribeFlush?.()
+  unsubscribeFlush = null
   unsubscribe?.()
   unsubscribe = null
   started = false

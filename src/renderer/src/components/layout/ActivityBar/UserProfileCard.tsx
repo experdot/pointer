@@ -21,6 +21,7 @@ import {
   ExperimentOutlined
 } from '@ant-design/icons'
 import { useAccountStore, getDefaultAccountId } from '../../../stores/accountStore'
+import { useSavedAction } from '../../../hooks/useSavedAction'
 import {
   switchAccount,
   createAccount,
@@ -71,15 +72,15 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const [avatarHovered, setAvatarHovered] = useState(false)
   const [switching, setSwitching] = useState(false)
   const { message } = App.useApp()
+  const runSaved = useSavedAction()
 
   const handleSwitchAccount = async (accountId: string): Promise<void> => {
     if (accountId === currentAccountId || switching) return
     setSwitching(true)
     try {
-      await switchAccount(accountId)
-      onClose()
-    } catch {
-      message.error('切换账户失败')
+      if (await runSaved(() => switchAccount(accountId))) onClose()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '切换账户失败')
     } finally {
       setSwitching(false)
     }
@@ -90,11 +91,9 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     if (!name || switching) return
     setSwitching(true)
     try {
-      const account = await createAccount(name)
-      await switchAccount(account.id)
-      onClose()
-    } catch {
-      message.error('创建账户失败')
+      if (await runSaved(() => createAccount(name))) onClose()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '创建账户失败')
     } finally {
       setSwitching(false)
     }
@@ -104,10 +103,9 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     if (switching) return
     setSwitching(true)
     try {
-      await logout()
-      onClose()
-    } catch {
-      message.error('退出登录失败')
+      if (await runSaved(logout)) onClose()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '退出登录失败')
     } finally {
       setSwitching(false)
     }

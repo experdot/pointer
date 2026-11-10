@@ -8,12 +8,12 @@ import { useSettingsStore } from '../stores/settingsStore'
 
 export async function switchAccount(accountId: string): Promise<void> {
   // 切换前先把待写入的设置落盘，避免写到新账户名下
-  useSettingsStore.getState().flush()
+  await useSettingsStore.getState().flush()
   await useAccountStore.getState().setCurrentAccountId(accountId)
 }
 
 export async function createAccount(name: string, avatar?: string): Promise<Account> {
-  useSettingsStore.getState().flush()
+  await useSettingsStore.getState().flush()
   return useAccountStore.getState().create({ name, avatar })
 }
 

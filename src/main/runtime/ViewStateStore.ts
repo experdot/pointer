@@ -34,7 +34,7 @@ export class ViewStateStore {
   }
 
   async replace(state: ViewState): Promise<void> {
+    await writeJsonAtomic(this.paths.viewStateFile(this.workspacePath), state)
     this.state = { ...state }
-    await writeJsonAtomic(this.paths.viewStateFile(this.workspacePath), this.state)
   }
 }

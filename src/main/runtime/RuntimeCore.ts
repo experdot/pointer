@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 import type { ChatMessage, Conversation, SearchOptions, Settings, Workspace } from '@shared/domain'
 import {
   appendMessage,
+  defaultSettings,
   createTopic,
   deleteMessage,
   deleteTopic,
@@ -35,7 +36,8 @@ import type {
   ViewState,
   WorkspaceSearchResult
 } from '@shared/contracts'
-import { RuntimeError } from '@shared/contracts'
+import { RuntimeError, defaultViewState } from '@shared/contracts'
+import { SerialExecutor } from './SerialExecutor'
 import { AccountStore } from './AccountStore'
 import { ChatEngine } from './ChatEngine'
 import { IndexDb } from './IndexDb'
@@ -48,6 +50,7 @@ import { WorkspaceRegistry } from './WorkspaceRegistry'
 import { WorkspaceStore } from './WorkspaceStore'
 import { listModels, testConnection as testProviderConnection } from './providers'
 import { readBinary } from './fsx'
+import { restoreBackup } from './BackupRestorer'
 
 export interface RuntimeHost {
   getVersion(): string
@@ -74,6 +77,11 @@ export interface RuntimeCoreOptions {
 }
 
 export class RuntimeCore {
+  private scopeId: string | null = null
+  private readonly lifecycle = new SerialExecutor()
+  private transitioning = false
+  private closingRequested = false
+  private flushRenderer: (() => Promise<void>) | null = null
   private readonly paths: PathResolver
   private readonly accounts: AccountStore
   private readonly chat: ChatEngine
@@ -99,6 +107,7 @@ export class RuntimeCore {
       workspace: () => this.workspace,
       settings: () => this.settingsStore,
       queues: () => this.queues,
+      scope: () => this.scopeId,
       emit: (event) => this.dispatchEvent(event)
     })
   }
@@ -115,17 +124,65 @@ export class RuntimeCore {
     await this.openAccount(accountId, session.workspaceId ?? undefined)
   }
 
-  dispose(): void {
-    this.stopWatcher()
-    this.workspace?.close()
-    this.index?.close()
-    this.workspace = null
-    this.index = null
+  async dispose(): Promise<void> {
+    await this.prepareClose()
+    await this.closeWorkspace()
     this.listeners.clear()
+  }
+
+  setFlushHandler(handler: () => Promise<void>): void {
+    this.flushRenderer = handler
+  }
+
+  resume(): void {
+    this.closingRequested = false
+    this.transitioning = false
+    this.chat.resume()
+  }
+  retrySaves(): Promise<void> {
+    return this.chat.retryAllSaves()
+  }
+
+  async prepareClose(): Promise<void> {
+    this.closingRequested = true
+    try {
+      await this.lifecycle.run(() => this.quiesce())
+    } catch (error) {
+      this.closingRequested = false
+      throw error
+    }
+  }
+
+  private async quiesce(): Promise<void> {
+    this.transitioning = true
+    this.chat.suspend()
+    try {
+      await this.chat.abortAll()
+      await this.flushRenderer?.()
+      await this.workspace?.idle()
+      // 准入任务可能正在保存用户消息；待其退出写队列后再收拢一次新登记的请求。
+      await this.chat.abortAll()
+      await this.settingsStore?.idle()
+      this.chat.assertSaved()
+    } catch (error) {
+      this.transitioning = false
+      this.chat.resume()
+      throw error
+    }
+  }
+
+  private assertScope(scopeId?: string | null): void {
+    if (scopeId !== undefined && scopeId !== this.scopeId) {
+      throw new RuntimeError('runtime.stale-scope', '工作区已切换，请重试')
+    }
   }
 
   setUpdater(updater: RuntimeUpdater): void {
     this.updater = updater
+  }
+
+  getScopeId(): string | null {
+    return this.scopeId
   }
 
   subscribe(listener: (event: RuntimeEvent) => void): () => void {
@@ -140,7 +197,22 @@ export class RuntimeCore {
 
   // ==================== 查询 ====================
 
-  async query(name: string, payload: unknown): Promise<unknown> {
+  async query(name: string, payload: unknown, scopeId?: string | null): Promise<unknown> {
+    if (name !== 'session.get') this.assertScope(scopeId)
+    const workspace = this.workspace
+    const read = async (): Promise<unknown> => {
+      if (name !== 'session.get') this.assertScope(scopeId)
+      const result = await this.executeQuery(name, payload)
+      if (name !== 'session.get') this.assertScope(scopeId)
+      return result
+    }
+    return workspace &&
+      /^(tree\.|conversation\.|queue\.|search\.|attachment\.|viewState\.)/.test(name)
+      ? workspace.run(read)
+      : read()
+  }
+
+  private async executeQuery(name: string, payload: unknown): Promise<unknown> {
     switch (name) {
       case 'session.get':
         return this.snapshot()
@@ -153,7 +225,7 @@ export class RuntimeCore {
       case 'conversation.get':
         return this.requireWorkspace().readConversation(readPageId(payload))
       case 'settings.get':
-        return this.requireSettings().get()
+        return this.requireSettings().snapshot()
       case 'viewState.get':
         return this.requireViewState().get()
       case 'queue.get':
@@ -177,7 +249,54 @@ export class RuntimeCore {
 
   // ==================== 命令 ====================
 
-  async command(name: string, payload: unknown): Promise<unknown> {
+  async command(name: string, payload: unknown, scopeId?: string | null): Promise<unknown> {
+    this.assertScope(scopeId)
+    if (
+      this.closingRequested &&
+      !['settings.replace', 'viewState.replace', 'chat.stop', 'chat.retrySave'].includes(name)
+    )
+      throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+    const restoreOrReset = name === 'data.reset' || name === 'backup.restore'
+    const transition =
+      restoreOrReset ||
+      /^(session\.|account\.|workspace\.(create|delete|rename|repairPath)$)/.test(name)
+    if (transition)
+      return this.lifecycle.run(async () => {
+        this.assertScope(scopeId)
+        if (this.closingRequested)
+          throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+        await this.quiesce()
+        try {
+          return await (restoreOrReset
+            ? this.requireWorkspace().run(() => this.executeCommand(name, payload))
+            : this.executeCommand(name, payload))
+        } finally {
+          this.transitioning = false
+          if (!this.closingRequested) this.chat.resume()
+        }
+      })
+    if (
+      this.transitioning &&
+      !['settings.replace', 'viewState.replace', 'chat.stop', 'chat.retrySave'].includes(name)
+    ) {
+      throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+    }
+    const workspace = this.workspace
+    const write = async (): Promise<unknown> => {
+      this.assertScope(scopeId)
+      if (workspace !== this.workspace)
+        throw new RuntimeError('runtime.stale-scope', '工作区已切换')
+      return this.executeCommand(name, payload)
+    }
+    return workspace &&
+      /^(page\.|folder\.|conversation\.|topic\.|queue\.|viewState\.|attachment\.|library\.|backup\.)/.test(
+        name
+      )
+      ? workspace.run(write)
+      : write()
+  }
+
+  private async executeCommand(name: string, payload: unknown): Promise<unknown> {
     switch (name) {
       // 会话
       case 'session.selectAccount':
@@ -419,12 +538,14 @@ export class RuntimeCore {
       }
       case 'chat.stop': {
         const input = payload as { requestId?: string; pageId?: string }
-        if (input.requestId) return this.chat.stop(input.requestId)
+        if (input.requestId && (await this.chat.stop(input.requestId))) return undefined
         if (input.pageId) return this.chat.stopPage(input.pageId)
         return undefined
       }
       case 'chat.generateTitle':
         return this.generateTitle(payload)
+      case 'chat.retrySave':
+        return this.chat.retrySave(readString(payload, 'requestId'))
       case 'ai.generateText': {
         const input = payload as { prompt: string; llmId?: string; modelConfigId?: string }
         return this.chat.generateText(input)
@@ -471,10 +592,42 @@ export class RuntimeCore {
 
       // 设置
       case 'settings.replace': {
+        const scopeId = this.scopeId
+        const input = payload as RuntimeCommandPayload<'settings.replace'>
         const settings = await this.requireSettings().replace(
-          (payload as { settings: Settings }).settings
+          input.settings,
+          input.baseRevision,
+          input.mutationId
         )
-        this.emit('settings.changed', settings)
+        this.dispatchEvent({ type: 'settings.changed', payload: settings, scopeId })
+        return settings
+      }
+
+      case 'data.reset': {
+        const { targets } = payload as RuntimeCommandPayload<'data.reset'>
+        const workspace = this.requireWorkspace()
+        if (targets.includes('conversations')) await workspace.clearConversations()
+        if (targets.includes('folders'))
+          await workspace.deleteFolders(
+            workspace.getTree().folders.map((folder) => folder.id),
+            'promote',
+            Date.now()
+          )
+        if (targets.includes('settings'))
+          this.emit('settings.changed', await this.requireSettings().replace(defaultSettings()))
+        const defaults = defaultViewState()
+        const viewState = this.requireViewState().get()
+        if (targets.includes('tabs'))
+          Object.assign(viewState, {
+            tabs: defaults.tabs,
+            activeTabId: defaults.activeTabId,
+            history: defaults.history,
+            historyIndex: defaults.historyIndex
+          })
+        if (targets.includes('layout')) viewState.layout = defaults.layout
+        await this.requireViewState().replace(viewState)
+        this.emit('viewState.changed', viewState)
+        this.emitTreeChanged()
         return undefined
       }
 
@@ -488,6 +641,8 @@ export class RuntimeCore {
           pageId: string
           files: Array<{ name: string; mimeType: string; dataBase64: string }>
         }
+        if (!this.requireWorkspace().getPage(input.pageId))
+          throw new RuntimeError('page.not-found', '页面不存在')
         return this.requireWorkspace().importAttachments(input.files, Date.now())
       }
       case 'attachment.delete':
@@ -510,6 +665,20 @@ export class RuntimeCore {
         )
       case 'library.import':
         return this.importLibrary(payload as ImportSource)
+      case 'backup.restore': {
+        const result = await restoreBackup(
+          this.requireWorkspace(),
+          this.requireSettings(),
+          this.requireViewState(),
+          payload as RuntimeCommandPayload<'backup.restore'>
+        )
+        this.emitTreeChanged()
+        this.emit('settings.changed', this.requireSettings().snapshot())
+        this.emit('viewState.changed', this.requireViewState().get())
+        for (const pageId of Object.values(result.ids.pages))
+          this.emit('conversation.changed', { pageId })
+        return result
+      }
 
       // 更新
       case 'app.checkUpdate':
@@ -517,7 +686,15 @@ export class RuntimeCore {
       case 'app.downloadUpdate':
         return this.updater?.download()
       case 'app.quitAndInstall':
-        this.updater?.quitAndInstall()
+        if (!this.updater || this.updateStatus.state !== 'downloaded')
+          throw new RuntimeError('app.update-not-ready', '更新尚未下载完成')
+        await this.prepareClose()
+        try {
+          this.updater.quitAndInstall()
+        } catch (error) {
+          this.resume()
+          throw error
+        }
         return undefined
 
       default:
@@ -561,27 +738,27 @@ export class RuntimeCore {
 
   private async openWorkspace(workspace: Workspace): Promise<void> {
     // 切换工作区前先停止正在进行的生成并等待其落盘，避免写进新上下文
-    await this.chat.abortAll()
     await this.closeWorkspace()
 
     const index = IndexDb.open(this.paths.indexFile(workspace.path))
     const store = new WorkspaceStore(this.paths, workspace, index)
+    const viewState = new ViewStateStore(this.paths, workspace.path)
 
     try {
       await store.open()
+      await viewState.load()
     } catch (error) {
+      store.close()
       index.close()
       throw error
     }
 
-    const viewState = new ViewStateStore(this.paths, workspace.path)
-    await viewState.load()
-
     this.index = index
     this.workspace = store
     this.viewState = viewState
-    this.queues = new QueueStore(this.paths, workspace.path)
+    this.queues = new QueueStore(this.paths, workspace.path, (id) => Boolean(store.getPage(id)))
     this.search = new SearchService(index, store)
+    this.scopeId = randomUUID()
 
     this.startWatcher(workspace.path)
     this.emit('session.changed', this.snapshot())
@@ -589,6 +766,10 @@ export class RuntimeCore {
   }
 
   private async closeWorkspace(): Promise<void> {
+    await this.chat.abortAll()
+    this.chat.assertSaved()
+    await this.workspace?.idle()
+    await this.settingsStore?.idle()
     this.stopWatcher()
     this.workspace?.close()
     this.index?.close()
@@ -609,6 +790,7 @@ export class RuntimeCore {
   private snapshot(): SessionSnapshot {
     const workspace = this.registry?.getCurrent() ?? null
     return {
+      scopeId: this.scopeId,
       accountId: this.accounts.getCurrentId(),
       workspaceId: workspace?.id ?? null,
       workspacePath: workspace?.path ?? null
@@ -659,12 +841,15 @@ export class RuntimeCore {
     if (!workspace) return
 
     try {
-      const changed = await workspace.detectExternalChanges()
-      if (changed.length === 0) return
+      await workspace.run(async () => {
+        if (workspace !== this.workspace || this.transitioning) return
+        const changed = await workspace.detectExternalChanges()
+        if (changed.length === 0) return
 
-      await workspace.reload(changed)
-      this.emit('tree.changed', workspace.getTree())
-      this.emit('workspace.externalChange', { pageIds: changed })
+        await workspace.reload(changed)
+        this.emit('tree.changed', workspace.getTree())
+        this.emit('workspace.externalChange', { pageIds: changed })
+      })
     } catch (error) {
       console.warn('[runtime] 处理外部改动失败：', error)
     }
@@ -762,7 +947,7 @@ export class RuntimeCore {
   private async readAttachment(payload: unknown): Promise<AttachmentContent> {
     const relativePath = readString(payload, 'relativePath')
     const workspace = this.requireWorkspace()
-    const absolutePath = workspace.resolveAttachmentPath(relativePath)
+    const absolutePath = await workspace.validateAttachmentPath(relativePath, true)
     const buffer = await readBinary(absolutePath)
     if (!buffer) {
       throw new RuntimeError('attachment.not-found', `附件不存在：${relativePath}`)
@@ -850,6 +1035,7 @@ export class RuntimeCore {
   // ==================== 工具方法 ====================
 
   private dispatchEvent(event: RuntimeEvent): void {
+    event = { ...event, scopeId: event.scopeId ?? this.scopeId }
     for (const listener of this.listeners) {
       try {
         listener(event)

@@ -14,16 +14,19 @@ import {
 } from '@shared/domain'
 import type { PathResolver } from './paths'
 import { readJson, removePath, writeJsonAtomic } from './fsx'
+import { RuntimeError } from '@shared/contracts'
 
 export class QueueStore {
   constructor(
     private readonly paths: PathResolver,
-    private readonly workspacePath: string
+    private readonly workspacePath: string,
+    private readonly pageExists: (pageId: string) => boolean
   ) {}
 
   async get(pageId: string): Promise<MessageQueue> {
+    if (!this.pageExists(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
     const file = await readJson<MessageQueue>(this.paths.queueFile(this.workspacePath, pageId))
-    return file ?? emptyQueue(pageId)
+    return file ? { ...file, pageId } : emptyQueue(pageId)
   }
 
   async add(pageId: string, item: Omit<QueueItem, 'order'>): Promise<MessageQueue> {
@@ -67,6 +70,7 @@ export class QueueStore {
   }
 
   private async save(queue: MessageQueue): Promise<void> {
+    if (!this.pageExists(queue.pageId)) throw new RuntimeError('page.not-found', '页面不存在')
     await writeJsonAtomic(this.paths.queueFile(this.workspacePath, queue.pageId), queue)
   }
 }

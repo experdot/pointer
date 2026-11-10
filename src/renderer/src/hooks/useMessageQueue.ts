@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
 import type { AttachmentRef, MessageQueue, QueueItem } from '@renderer/types/shared'
 
@@ -46,6 +46,15 @@ export function useMessageQueue({
   const clearQueue = useMessageQueueStore((state) => state.clearQueue)
   const pause = useMessageQueueStore((state) => state.pause)
   const resume = useMessageQueueStore((state) => state.resume)
+  useEffect(() => {
+    void useMessageQueueStore
+      .getState()
+      .load(pageId)
+      .catch((error) => {
+        if (!String((error as { code?: string }).code).startsWith('runtime.stale'))
+          console.warn('读取队列失败：', error)
+      })
+  }, [pageId])
 
   const items = useMemo(() => queue.items, [queue.items])
   const count = items.length

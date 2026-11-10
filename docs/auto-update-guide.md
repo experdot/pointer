@@ -120,3 +120,7 @@ macOS 与 Linux 产物需要本地执行 `pnpm build:mac` / `pnpm build:linux`�
 - **下载失败**：重新点击「下载更新」；必要时清理 `pointer-updater` 更新缓存目录后重试
 - **安装失败**：确认应用有足够权限，临时关闭杀毒软件干扰，或手动下载安装包覆盖安装
 - **开发环境提示有新版本但版本号更低**：这是 `allowDowngrade` 的副作用，已被 `isNewerVersion` 过滤，以界面上报的版本号为准
+
+## 关闭与保存屏障
+
+更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`，只有 lint、typecheck、test、smoke:kernel、build 全部通过才进入发布。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。

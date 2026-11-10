@@ -2,6 +2,11 @@
   "name": "pointer",
   "version": "2.0.0-preview.1",
   "private": true,
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=22.12.0 <23",
+    "pnpm": "10.26.2"
+  },
   "description": "A secure AI chat app crafted for deep thinkers",
   "main": "./out/main/index.js",
   "author": "experdot@foxmail.com",
@@ -47,7 +52,9 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
+    "remark-parse": "11.0.0",
     "shiki": "^3.21.0",
+    "unified": "11.0.5",
     "use-debounce": "^10.0.1",
     "uuid": "^10.0.0",
     "zustand": "^5.0.6"

@@ -49,6 +49,7 @@ async function describeHttpError(response: Response): Promise<string> {
 }
 
 interface ChatCompletionChunk {
+  error?: { message?: string } | string
   choices?: Array<{
     delta?: { content?: string; reasoning_content?: string; reasoning?: string }
   }>
@@ -93,16 +94,30 @@ export async function streamChat(
 
   let content = ''
   let reasoning = ''
+  let ended = false
 
   const parser = createParser({
     onEvent: (event) => {
-      if (event.data === '[DONE]') return
+      if (ended) return
+      if (event.data.trim() === '[DONE]') {
+        ended = true
+        return
+      }
 
       let chunk: ChatCompletionChunk
       try {
         chunk = JSON.parse(event.data) as ChatCompletionChunk
       } catch {
+        if (event.event === 'error') throw new RuntimeError('ai.stream-error', event.data)
         return
+      }
+
+      if (event.event === 'error' || chunk.error) {
+        const error = chunk.error
+        throw new RuntimeError(
+          'ai.stream-error',
+          typeof error === 'string' ? error : (error?.message ?? event.data)
+        )
       }
 
       const delta = chunk.choices?.[0]?.delta
@@ -127,12 +142,20 @@ export async function streamChat(
       const { done, value } = await reader.read()
       if (done) break
       parser.feed(decoder.decode(value, { stream: true }))
+      if (ended) {
+        await reader.cancel()
+        break
+      }
     }
+    parser.feed(decoder.decode() + '\n\n')
   } catch (error) {
     if (isAbortError(error)) {
       return { content, reasoning }
     }
     throw error
+  } finally {
+    await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
   }
 
   return { content, reasoning }

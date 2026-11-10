@@ -9,9 +9,11 @@ import { App, Button, Progress } from 'antd'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useUpdateStore } from '../../stores/updateStore'
 import { command } from '../../runtime/client'
+import { useSavedAction } from '../../hooks/useSavedAction'
 
 export function UpdateNotification(): React.JSX.Element | null {
   const { notification } = App.useApp()
+  const runSaved = useSavedAction()
   const autoCheckUpdate = useSettingsStore((state) => state.settings.autoCheckUpdate ?? true)
   const updateAvailable = useUpdateStore((state) => state.updateAvailable)
   const updateVersion = useUpdateStore((state) => state.updateInfo?.version)
@@ -43,7 +45,9 @@ export function UpdateNotification(): React.JSX.Element | null {
           type="primary"
           size="small"
           onClick={() => {
-            void command('app.downloadUpdate', undefined)
+            void command('app.downloadUpdate', undefined).catch((error) => {
+              notification.error({ message: '下载失败', description: String(error) })
+            })
           }}
         >
           下载更新
@@ -63,7 +67,9 @@ export function UpdateNotification(): React.JSX.Element | null {
           type="primary"
           size="small"
           onClick={() => {
-            void command('app.quitAndInstall', undefined)
+            void runSaved(() => command('app.quitAndInstall', undefined)).catch((error) => {
+              notification.error({ message: '安装失败', description: String(error) })
+            })
           }}
         >
           立即重启
@@ -71,7 +77,7 @@ export function UpdateNotification(): React.JSX.Element | null {
       ),
       duration: 0
     })
-  }, [notification, updateDownloaded])
+  }, [notification, updateDownloaded, runSaved])
 
   useEffect(() => {
     if (!updateError) return

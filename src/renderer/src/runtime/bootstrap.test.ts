@@ -20,6 +20,7 @@ import { defaultSettings } from '@shared/domain'
 
 type Listener = (event: RuntimeEvent) => void
 
+let scopeId = 'scope-1'
 const listeners = new Set<Listener>()
 const commands: Array<{ name: string; payload: unknown }> = []
 
@@ -53,7 +54,12 @@ function fakePort(): void {
     query: vi.fn(async (name: string) => {
       switch (name) {
         case 'session.get':
-          return { accountId: 'acc-1', workspaceId: 'ws-1', workspacePath: '/tmp/ws' }
+          return {
+            scopeId: 'scope-1',
+            accountId: 'acc-1',
+            workspaceId: 'ws-1',
+            workspacePath: '/tmp/ws'
+          }
         case 'accounts.list':
           return currentAccounts
         case 'workspaces.list':
@@ -61,7 +67,7 @@ function fakePort(): void {
         case 'tree.get':
           return currentTree
         case 'settings.get':
-          return settings
+          return { settings, revision: 0 }
         case 'viewState.get':
           return currentViewState
         case 'conversation.get':
@@ -74,6 +80,7 @@ function fakePort(): void {
     }),
     command: vi.fn(async (name: string, payload: unknown) => {
       commands.push({ name, payload })
+      if (name === 'settings.replace') return { ...(payload as object), revision: 1 }
       return undefined
     }),
     subscribe: (listener: Listener) => {
@@ -90,17 +97,21 @@ function fakePort(): void {
 }
 
 function emit(event: RuntimeEvent): void {
-  for (const listener of listeners) listener(event)
+  if (event.type === 'session.changed') scopeId = event.payload.scopeId ?? ''
+  for (const listener of listeners) listener({ ...event, scopeId: event.scopeId ?? scopeId })
 }
 
 describe('展示层镜像', () => {
   beforeEach(async () => {
+    scopeId = 'scope-1'
     listeners.clear()
     commands.length = 0
     currentViewState = viewState
     currentTree = tree
     currentAccounts = [{ id: 'acc-1', name: '默认账户', createdAt: 1 }]
     fakePort()
+    const { useSessionStore } = await import('../stores/sessionStore')
+    useSessionStore.getState().reset()
 
     const { teardownRuntime } = await import('./bootstrap')
     teardownRuntime()
@@ -165,7 +176,8 @@ describe('展示层镜像', () => {
             createdAt: 2,
             branchIndex: 0,
             parentMessageId: 'm1'
-          }
+          },
+          requestId: 'r1'
         }
       })
       expect(useMessagesStore.getState().isStreaming('m2')).toBe(true)
@@ -202,7 +214,7 @@ describe('展示层镜像', () => {
     }
   })
 
-  it('会话被权威数据替换时丢弃已消失消息的生成标记', async () => {
+  it('[R14] 单页快照不会清理其他请求的生成标记', async () => {
     const { bootstrapRuntime } = await import('./bootstrap')
     const { useMessagesStore } = await import('../stores/messagesStore')
 
@@ -210,7 +222,7 @@ describe('展示层镜像', () => {
     useMessagesStore.getState().setStreaming('ghost', true)
     useMessagesStore.getState().setConversation(conversation)
 
-    expect(useMessagesStore.getState().isStreaming('ghost')).toBe(false)
+    expect(useMessagesStore.getState().isStreaming('ghost')).toBe(true)
   })
 
   it('同一时间窗内的分片合并为一次写入且不丢字', async () => {
@@ -235,7 +247,8 @@ describe('展示层镜像', () => {
             createdAt: 9,
             branchIndex: 0,
             parentMessageId: 'm1'
-          }
+          },
+          requestId: 'r9'
         }
       })
 
@@ -389,7 +402,12 @@ describe('展示层镜像', () => {
 
     emit({
       type: 'session.changed',
-      payload: { accountId: 'acc-1', workspaceId: 'ws-2', workspacePath: '/tmp/ws2' }
+      payload: {
+        scopeId: 'scope-2',
+        accountId: 'acc-1',
+        workspaceId: 'ws-2',
+        workspacePath: '/tmp/ws2'
+      }
     })
     await Promise.resolve()
     await Promise.resolve()
@@ -418,7 +436,12 @@ describe('展示层镜像', () => {
     ]
     emit({
       type: 'session.changed',
-      payload: { accountId: 'acc-2', workspaceId: 'ws-2', workspacePath: '/tmp/ws2' }
+      payload: {
+        scopeId: 'scope-2',
+        accountId: 'acc-2',
+        workspaceId: 'ws-2',
+        workspacePath: '/tmp/ws2'
+      }
     })
     await Promise.resolve()
     await Promise.resolve()
@@ -462,7 +485,7 @@ describe('展示层镜像', () => {
       // flush 立即提交
       commands.length = 0
       useSettingsStore.getState().setFontSize('large')
-      useSettingsStore.getState().flush()
+      await useSettingsStore.getState().flush()
       expect(commands.map((entry) => entry.name)).toEqual(['settings.replace'])
     } finally {
       vi.useRealTimers()

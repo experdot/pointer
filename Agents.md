@@ -8,7 +8,7 @@ Pointer is a cross-platform desktop AI chat application built with Electron, Rea
 
 ## Commands
 
-Requires Node.js >= 22.12 (Vitest 5 runs the test suite) and pnpm.
+Requires Node.js 22 >= 22.12 (`.nvmrc`: 22.16.0) and pnpm 10.26.2. Install with `pnpm install --frozen-lockfile`. Vitest 5 runs domain, kernel, and renderer mirror tests.
 
 ```bash
 # Development
@@ -19,7 +19,7 @@ pnpm start            # Run preview mode
 pnpm lint             # Run ESLint
 pnpm format           # Run Prettier
 pnpm typecheck        # Type check both main and renderer processes
-pnpm test             # Run unit tests (domain + renderer mirror)
+pnpm test             # Run tests (domain + SQLite kernel + renderer mirror)
 pnpm smoke:kernel     # Boot the kernel in a temp dir and verify the full command/query chain
 
 # Building

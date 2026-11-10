@@ -66,8 +66,8 @@ macOS and Linux packages are configured but not published automatically yet: `pn
 
 Requirements:
 
-- Node.js >= 22.12 (required by Vitest 5, which runs the test suite; the app itself runs on the Node bundled with Electron 35)
-- pnpm
+- Node.js 22 (>= 22.12; `.nvmrc` pins 22.16.0) (required by Vitest 5, which runs the test suite; the app itself runs on the Node bundled with Electron 35)
+- pnpm 10.26.2 (pinned in `packageManager`)
 
 ```bash
 # Clone the repository
@@ -75,7 +75,7 @@ git clone https://github.com/experdot/pointer.git
 cd pointer
 
 # Install dependencies
-pnpm install
+pnpm install --frozen-lockfile
 
 # Run in development mode
 pnpm dev

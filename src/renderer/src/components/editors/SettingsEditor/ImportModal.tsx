@@ -19,11 +19,10 @@ import type { ExportData } from './ExportModal'
 import { DateTimeText } from '../../common/DateTimeText'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
-import { useMessagesStore } from '../../../stores/messagesStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
-import { useTabsStore } from '../../../stores/tabsStore'
-import { useLayoutStore } from '../../../stores/layoutStore'
-import type { MessagesRecord } from '@renderer/types/shared'
+import { command } from '../../../runtime/client'
+import { useViewStateStore } from '../../../stores/viewStateStore'
+import type { BackupRestoreResult } from '@shared/contracts'
 import type { ConfigTree, LLMConfig, ModelConfig } from '@renderer/types/shared'
 import {
   buildConfigTreeNodes,
@@ -42,24 +41,6 @@ function ConflictBadge(): React.JSX.Element {
   )
 }
 
-/** 文件夹层级深度，用于保证父级先创建 */
-function folderDepth(
-  folder: { id: string; parentFolderId?: string },
-  all: ReadonlyArray<{ id: string; parentFolderId?: string }>
-): number {
-  let depth = 0
-  let current: string | undefined = folder.parentFolderId
-  const visited = new Set<string>([folder.id])
-
-  while (current) {
-    if (visited.has(current)) break
-    visited.add(current)
-    depth += 1
-    current = all.find((item) => item.id === current)?.parentFolderId
-  }
-
-  return depth
-}
 const { Dragger } = Upload
 
 interface ImportModalProps {
@@ -70,13 +51,6 @@ interface ImportModalProps {
 type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 type ConflictStrategy = 'generate-new' | 'skip' | 'overwrite'
 
-// 构建页面树（带冲突检测）
-// 构建配置树（带冲突检测）
-// 生成新 ID
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
-}
-
 export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Element {
   const { message } = App.useApp()
   const existingPages = usePagesStore((s) => s.pages)
@@ -86,6 +60,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   const [importData, setImportData] = useState<ExportData | null>(null)
   const [activeTab, setActiveTab] = useState<TabKey>('chats')
   const [importing, setImporting] = useState(false)
+  const [restoreResult, setRestoreResult] = useState<BackupRestoreResult | null>(null)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>('generate-new')
 
   // 各 Tab 的选中状态
@@ -189,6 +164,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       }
 
       setImportData(data)
+      setRestoreResult(null)
 
       // 初始化选中状态（全选）
       setTimeout(() => {
@@ -257,195 +233,36 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
   const stats = getStats()
   const hasSelection =
-    stats.pageIds.length > 0 || stats.llmIds.length > 0 || stats.modelIds.length > 0 || includeUI
+    checkedChats.length > 0 || checkedLLM.length > 0 || checkedModel.length > 0 || includeUI
 
-  // 处理 ID 冲突
-  const resolveId = <T extends { id: string }>(
-    item: T,
-    existingIds: Set<string>,
-    idMap: Map<string, string>
-  ): T => {
-    if (!existingIds.has(item.id)) {
-      return item
-    }
-
-    switch (conflictStrategy) {
-      case 'generate-new': {
-        const newId = generateId()
-        idMap.set(item.id, newId)
-        return { ...item, id: newId }
-      }
-      case 'skip':
-        return item // 会在后续过滤掉
-      case 'overwrite':
-        return item
-    }
-  }
-
-  // 导入数据
   const handleImport = async (): Promise<void> => {
-    if (!importData) return
-
+    if (!importData || restoreResult) return
     setImporting(true)
     try {
-      const folderIdMap = new Map<string, string>()
-      const pageIdMap = new Map<string, string>()
-      /** 每个父文件夹下最后创建的页面，用于按顺序串联插入 */
-      const lastPageByParent = new Map<string, string>()
-
-      // 导入文件夹
-      if (stats.folderIds.length > 0 && importData.data.folders) {
-        const foldersToImport = importData.data.folders
-          .filter((f) => stats.folderIds.includes(f.id))
-          // 父文件夹必须先建，否则子文件夹的 parentFolderId 无法重映射
-          .sort(
-            (a, b) =>
-              folderDepth(a, importData.data.folders ?? []) -
-              folderDepth(b, importData.data.folders ?? [])
-          )
-
-        for (const folder of foldersToImport) {
-          if (conflictStrategy === 'skip' && existingFolderIds.has(folder.id)) {
-            continue
-          }
-
-          const resolved = resolveId(folder, existingFolderIds, folderIdMap)
-
-          // 更新 parentFolderId
-          if (resolved.parentFolderId && folderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = folderIdMap.get(resolved.parentFolderId)
-          }
-
-          await useFoldersStore.getState().create(resolved)
-        }
-      }
-
-      // 导入页面和消息
-      if (stats.pageIds.length > 0 && importData.data.pages) {
-        const pagesToImport = importData.data.pages
-          .filter((p) => stats.pageIds.includes(p.id))
-          // 按（所属文件夹, 顺序）创建，保证同级顺序与备份一致
-          .sort(
-            (a, b) =>
-              (a.parentFolderId ?? '').localeCompare(b.parentFolderId ?? '') ||
-              (a.order ?? 0) - (b.order ?? 0)
-          )
-
-        for (const page of pagesToImport) {
-          if (conflictStrategy === 'skip' && existingPageIds.has(page.id)) {
-            continue
-          }
-
-          const resolved = resolveId(page, existingPageIds, pageIdMap)
-
-          // 更新 parentFolderId
-          if (resolved.parentFolderId && folderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = folderIdMap.get(resolved.parentFolderId)
-          }
-
-          // 用"上一个已创建的兄弟"作为参照，保证导入后同级顺序与备份一致
-          // （内核在无参照时会把新节点插到最前面）
-          const previousSibling = lastPageByParent.get(resolved.parentFolderId ?? '')
-          const created = await usePagesStore.getState().create({
-            name: resolved.name,
-            parentFolderId: resolved.parentFolderId,
-            afterNodeId: previousSibling,
-            starred: page.starred
-          })
-          lastPageByParent.set(resolved.parentFolderId ?? '', created.id)
-
-          // 导入消息
-          const messagesRecord = importData.data.messages?.find((m) => m.pageId === page.id)
-          if (messagesRecord) {
-            const newRecord: MessagesRecord = {
-              ...messagesRecord,
-              pageId: resolved.id
-            }
-            await useMessagesStore.getState().replaceConversation(resolved.id, newRecord)
-          }
-        }
-      }
-
-      // 导入 LLM 配置
-      if (stats.llmIds.length > 0 && importData.data.settings?.llmConfigs) {
-        const llmFolderIdMap = new Map<string, string>()
-        const llmFolderIds = checkedLLM
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
-        // 导入文件夹
-        for (const folder of importData.data.settings.llmConfigs.folders) {
-          if (!llmFolderIds.includes(folder.id)) continue
-          if (conflictStrategy === 'skip' && existingLLMFolderIds.has(folder.id)) continue
-
-          const resolved = resolveId(folder, existingLLMFolderIds, llmFolderIdMap)
-          if (resolved.parentFolderId && llmFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = llmFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addLLMConfigFolder(resolved)
-        }
-
-        // 导入配置项
-        for (const item of importData.data.settings.llmConfigs.items) {
-          if (!stats.llmIds.includes(item.id)) continue
-          if (conflictStrategy === 'skip' && existingLLMIds.has(item.id)) continue
-
-          const resolved = resolveId(item, existingLLMIds, new Map())
-          if (resolved.parentFolderId && llmFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = llmFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addLLMConfig(resolved)
-        }
-      }
-
-      // 导入模型配置
-      if (stats.modelIds.length > 0 && importData.data.settings?.modelConfigs) {
-        const modelFolderIdMap = new Map<string, string>()
-        const modelFolderIds = checkedModel
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
-        for (const folder of importData.data.settings.modelConfigs.folders) {
-          if (!modelFolderIds.includes(folder.id)) continue
-          if (conflictStrategy === 'skip' && existingModelFolderIds.has(folder.id)) continue
-
-          const resolved = resolveId(folder, existingModelFolderIds, modelFolderIdMap)
-          if (resolved.parentFolderId && modelFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = modelFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addModelConfigFolder(resolved)
-        }
-
-        for (const item of importData.data.settings.modelConfigs.items) {
-          if (!stats.modelIds.includes(item.id)) continue
-          if (conflictStrategy === 'skip' && existingModelIds.has(item.id)) continue
-
-          const resolved = resolveId(item, existingModelIds, new Map())
-          if (resolved.parentFolderId && modelFolderIdMap.has(resolved.parentFolderId)) {
-            resolved.parentFolderId = modelFolderIdMap.get(resolved.parentFolderId)
-          }
-          useSettingsStore.getState().addModelConfig(resolved)
-        }
-      }
-
-      // 导入界面状态
-      if (includeUI && importData.data.viewState) {
-        const state = importData.data.viewState
-        for (const tab of state.tabs) {
-          if (!useTabsStore.getState().tabs.some((existing) => existing.id === tab.id)) {
-            useTabsStore.getState().openTab(tab)
-          }
-        }
-        const layoutState = useLayoutStore.getState()
-        layoutState.setSidebarWidth(state.layout.sidebarWidth)
-        layoutState.setSidebarVisible(state.layout.sidebarVisible)
-        layoutState.setActivePanel(state.layout.activePanel)
-      }
-
-      message.success('导入成功')
-      handleClose()
+      await useSettingsStore.getState().flush()
+      await useViewStateStore.getState().flush()
+      const folderIds = (keys: React.Key[]): string[] =>
+        keys
+          .map(String)
+          .filter((key) => key.startsWith('folder:'))
+          .map((key) => key.slice(7))
+      const result = await command('backup.restore', {
+        backup: importData,
+        selection: {
+          pages: stats.pageIds,
+          folders: stats.folderIds,
+          llm: stats.llmIds,
+          llmFolders: folderIds(checkedLLM),
+          models: stats.modelIds,
+          modelFolders: folderIds(checkedModel),
+          ui: includeUI
+        },
+        strategy: conflictStrategy
+      })
+      setRestoreResult(result)
+      if (!result.error) message.success('导入完成')
     } catch (error) {
-      message.error('导入失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      message.error('导入失败：' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setImporting(false)
     }
@@ -453,6 +270,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
   const handleClose = (): void => {
     setImportData(null)
+    setRestoreResult(null)
     setCheckedChats([])
     setCheckedLLM([])
     setCheckedModel([])
@@ -564,7 +382,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             type="primary"
             onClick={handleImport}
             loading={importing}
-            disabled={!hasSelection}
+            disabled={!hasSelection || Boolean(restoreResult)}
           >
             导入选中项
           </Button>
@@ -572,6 +390,14 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       }
     >
       <Flex vertical gap={12}>
+        {restoreResult && (
+          <Alert
+            type={restoreResult.error ? 'error' : 'success'}
+            showIcon
+            message={restoreResult.error ? `导入已停止：${restoreResult.error}` : '导入完成'}
+            description={`已完成 ${restoreResult.counts.pages} 个对话、${restoreResult.counts.folders} 个文件夹、${restoreResult.counts.configs} 个配置，跳过 ${restoreResult.counts.skipped} 项。${restoreResult.warnings.join('；')}`}
+          />
+        )}
         <Alert
           type="info"
           showIcon

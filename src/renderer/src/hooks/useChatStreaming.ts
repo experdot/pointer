@@ -4,19 +4,18 @@
  * 只负责发起命令与维护请求句柄；流式内容与最终结果由内核事件写入镜像。
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { App } from 'antd'
 import type { AttachmentRef, ChatMessage, Conversation } from '@shared/domain'
 import { isDefaultPageName } from '@shared/domain'
 import { command, errorMessage } from '../runtime/client'
-import { useMessagesStore } from '../stores/messagesStore'
 import { usePagesStore } from '../stores/pagesStore'
 import * as pagesService from '../services/pagesService'
 
 const DEFAULT_SESSION_TITLE_PREVIEW_LENGTH = 30
 
 export interface SendMessageOptions {
-  parentId?: string
+  parentId?: string | null
   attachments?: AttachmentRef[]
   createBranch?: boolean
   llmId?: string
@@ -38,16 +37,13 @@ interface UseChatStreamingResult {
 
 export function useChatStreaming({
   pageId,
-  record,
   messages
 }: UseChatStreamingOptions): UseChatStreamingResult {
-  /** pageId -> 当前请求 id */
-  const requests = useRef(new Map<string, string>())
   const { message: messageApi } = App.useApp()
 
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
-      const parentMessageId = options?.createBranch ? options.parentId : record?.leafMessageId
+      const parentMessageId = options?.createBranch ? (options.parentId ?? null) : undefined
       const isFirstMessage = messages.length === 0
 
       try {
@@ -60,7 +56,7 @@ export function useChatStreaming({
           await pagesService.updatePage(pageId, { name: title })
         }
 
-        const handle = await command('chat.send', {
+        await command('chat.send', {
           pageId,
           content,
           attachments: options?.attachments,
@@ -68,36 +64,28 @@ export function useChatStreaming({
           llmId: options?.llmId,
           modelConfigId: options?.modelConfigId
         })
-
-        requests.current.set(pageId, handle.requestId)
-        // 生成标记只打在本次请求的助手消息上
-        useMessagesStore.getState().setStreaming(handle.messageId, true)
       } catch (error) {
         console.error('发送消息失败：', error)
         messageApi.error(`发送失败：${errorMessage(error)}`)
       }
     },
-    [messageApi, pageId, record?.leafMessageId, messages.length]
+    [messageApi, pageId, messages.length]
   )
 
   const stopStreaming = useCallback(async () => {
-    const requestId = requests.current.get(pageId)
-    requests.current.delete(pageId)
     // 同时带上页面：即使这一轮生成由内核（消息队列）发起，也能停下
-    await command('chat.stop', { requestId, pageId })
+    await command('chat.stop', { pageId })
   }, [pageId])
 
   const retryMessage = useCallback(
     async (messageId: string, llmId?: string, modelConfigId?: string) => {
       try {
-        const handle = await command('chat.regenerate', {
+        await command('chat.regenerate', {
           pageId,
           messageId,
           llmId,
           modelConfigId
         })
-        requests.current.set(pageId, handle.requestId)
-        useMessagesStore.getState().setStreaming(handle.messageId, true)
       } catch (error) {
         console.error('重新生成失败：', error)
         messageApi.error(`重新生成失败：${errorMessage(error)}`)
@@ -109,9 +97,7 @@ export function useChatStreaming({
   const continueMessage = useCallback(
     async (messageId: string) => {
       try {
-        const handle = await command('chat.continue', { pageId, messageId })
-        requests.current.set(pageId, handle.requestId)
-        useMessagesStore.getState().setStreaming(handle.messageId, true)
+        await command('chat.continue', { pageId, messageId })
       } catch (error) {
         console.error('继续生成失败：', error)
         messageApi.error(`继续生成失败：${errorMessage(error)}`)

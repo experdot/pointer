@@ -17,37 +17,46 @@ import {
   unlink
 } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
+import { isReservedDirectory } from '@shared/domain'
+
+function missing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException).code === 'ENOENT'
+}
 
 export async function pathExists(target: string): Promise<boolean> {
   try {
     await access(target, constants.F_OK)
     return true
-  } catch {
-    return false
+  } catch (error) {
+    if (missing(error)) return false
+    throw error
   }
 }
 
 export async function isDirectory(target: string): Promise<boolean> {
   try {
     return (await stat(target)).isDirectory()
-  } catch {
-    return false
+  } catch (error) {
+    if (missing(error)) return false
+    throw error
   }
 }
 
 export async function readText(target: string): Promise<string | null> {
   try {
     return await readFile(target, 'utf8')
-  } catch {
-    return null
+  } catch (error) {
+    if (missing(error)) return null
+    throw error
   }
 }
 
 export async function readBinary(target: string): Promise<Buffer | null> {
   try {
     return await readFile(target)
-  } catch {
-    return null
+  } catch (error) {
+    if (missing(error)) return null
+    throw error
   }
 }
 
@@ -56,8 +65,9 @@ export async function readJson<T>(target: string): Promise<T | null> {
   if (text === null) return null
   try {
     return JSON.parse(text) as T
-  } catch {
-    return null
+  } catch (error) {
+    if (missing(error)) return null
+    throw error
   }
 }
 
@@ -69,41 +79,28 @@ export async function ensureDir(target: string): Promise<void> {
  * 原子写：先写临时文件并 fsync，再重命名覆盖目标
  */
 export async function writeTextAtomic(target: string, content: string): Promise<void> {
-  await ensureDir(dirname(target))
-  const tempPath = `${target}.tmp-${randomUUID()}`
-  const handle = await open(tempPath, 'w')
-  try {
-    await handle.writeFile(content, 'utf8')
-    await handle.sync()
-  } finally {
-    await handle.close()
-  }
-
-  try {
-    await rename(tempPath, target)
-  } catch (error) {
-    await unlink(tempPath).catch(() => undefined)
-    throw error
-  }
+  await writeAtomic(target, content)
 }
 
 export async function writeJsonAtomic(target: string, value: unknown): Promise<void> {
   await writeTextAtomic(target, `${JSON.stringify(value, null, 2)}\n`)
 }
 
-/** 原子写入二进制内容 */
 export async function writeBinaryAtomic(target: string, content: Uint8Array): Promise<void> {
+  await writeAtomic(target, content)
+}
+
+async function writeAtomic(target: string, content: string | Uint8Array): Promise<void> {
   await ensureDir(dirname(target))
   const tempPath = `${target}.tmp-${randomUUID()}`
-  const handle = await open(tempPath, 'w')
   try {
-    await handle.writeFile(content)
-    await handle.sync()
-  } finally {
-    await handle.close()
-  }
-
-  try {
+    const handle = await open(tempPath, 'wx')
+    try {
+      await handle.writeFile(content)
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
     await rename(tempPath, target)
   } catch (error) {
     await unlink(tempPath).catch(() => undefined)
@@ -112,25 +109,27 @@ export async function writeBinaryAtomic(target: string, content: Uint8Array): Pr
 }
 
 export async function removePath(target: string, recursive = false): Promise<void> {
-  await rm(target, { recursive, force: true }).catch(() => undefined)
+  await rm(target, { recursive, force: true })
 }
 
 export async function movePath(from: string, to: string): Promise<void> {
   await ensureDir(dirname(to))
   try {
     await rename(from, to)
-  } catch {
-    // 跨卷或目标已存在时退化为复制 + 删除
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
+    // 只有跨卷移动退化为复制后删除；权限或磁盘错误直接传递。
     await copyFile(from, to)
-    await unlink(from).catch(() => undefined)
+    await unlink(from)
   }
 }
 
 export async function mtimeOf(target: string): Promise<number | null> {
   try {
     return (await stat(target)).mtimeMs
-  } catch {
-    return null
+  } catch (error) {
+    if (missing(error)) return null
+    throw error
   }
 }
 
@@ -143,7 +142,7 @@ interface WalkEntry {
 }
 
 /**
- * 递归遍历目录；跳过隐藏目录与内核私有目录
+ * 递归遍历目录；只跳过明确保留的系统目录
  */
 export async function walkFiles(
   root: string,
@@ -154,10 +153,13 @@ export async function walkFiles(
 ): Promise<WalkEntry[]> {
   const results: WalkEntry[] = []
   const include = options.include ?? (() => true)
-  const skipDirectory = options.skipDirectory ?? ((name: string) => name.startsWith('.'))
+  const skipDirectory = options.skipDirectory ?? isReservedDirectory
 
   async function walk(current: string): Promise<void> {
-    const entries = await readdir(current, { withFileTypes: true }).catch(() => null)
+    const entries = await readdir(current, { withFileTypes: true }).catch((error) => {
+      if (missing(error)) return null
+      throw error
+    })
     if (!entries) return
 
     for (const entry of entries) {
@@ -169,7 +171,10 @@ export async function walkFiles(
       }
       if (!entry.isFile() || !include(entry.name)) continue
 
-      const info = await stat(absolutePath).catch(() => null)
+      const info = await stat(absolutePath).catch((error) => {
+        if (missing(error)) return null
+        throw error
+      })
       if (!info) continue
 
       results.push({
@@ -190,7 +195,8 @@ export async function listDirectories(root: string): Promise<string[]> {
   try {
     const entries = await readdir(root, { withFileTypes: true })
     return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
-  } catch {
-    return []
+  } catch (error) {
+    if (missing(error)) return []
+    throw error
   }
 }

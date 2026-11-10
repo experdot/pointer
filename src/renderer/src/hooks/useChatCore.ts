@@ -41,8 +41,12 @@ export function useChatCore({ pageId }: UseChatCoreOptions): UseChatCoreResult {
   const isLoading = !record
 
   useEffect(() => {
-    if (!record && pageId) void load(pageId)
-  }, [pageId, record, load])
+    if (!record && pageId && page)
+      void load(pageId).catch((error) => {
+        if (!String((error as { code?: string }).code).startsWith('runtime.stale'))
+          console.warn('读取会话失败：', error)
+      })
+  }, [pageId, page, record, load])
 
   const currentPath = useMemo(() => {
     if (!record) return []

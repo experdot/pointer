@@ -14,6 +14,14 @@ import type {
   RuntimeQueryPayload,
   RuntimeQueryResult
 } from '@shared/contracts'
+import { RuntimeError } from '@shared/contracts'
+import { useSessionStore } from '../stores/sessionStore'
+
+const queries = new Map<string, number>()
+let sequence = 0
+export function resetQueries(): void {
+  queries.clear()
+}
 
 function port(): RuntimePort {
   const runtime = window.runtime
@@ -23,22 +31,45 @@ function port(): RuntimePort {
   return runtime
 }
 
-export function query<K extends RuntimeQueryName>(
+export async function query<K extends RuntimeQueryName>(
   name: K,
   payload: RuntimeQueryPayload<K>
 ): Promise<RuntimeQueryResult<K>> {
-  return port().query(name, payload)
+  const scopeId = useSessionStore.getState().scopeId
+  const key = `${scopeId}:${name}:${JSON.stringify(payload)}`
+  const serial = ++sequence
+  queries.set(key, serial)
+  const result = await port().query(name, payload, scopeId)
+  if (
+    name !== 'session.get' &&
+    (scopeId !== useSessionStore.getState().scopeId || queries.get(key) !== serial)
+  ) {
+    throw new RuntimeError('runtime.stale-response', '已忽略过期查询')
+  }
+  return result
 }
 
-export function command<K extends RuntimeCommandName>(
+export async function command<K extends RuntimeCommandName>(
   name: K,
   payload: RuntimeCommandPayload<K>
 ): Promise<RuntimeCommandResult<K>> {
-  return port().command(name, payload)
+  const scopeId = useSessionStore.getState().scopeId
+  const result = await port().command(name, payload, scopeId)
+  if (
+    !/^(session\.|account\.|workspace\.)/.test(name) &&
+    scopeId !== useSessionStore.getState().scopeId
+  ) {
+    throw new RuntimeError('runtime.stale-response', '已忽略过期命令结果')
+  }
+  return result
 }
 
 export function subscribe(listener: Parameters<RuntimePort['subscribe']>[0]): () => void {
   return port().subscribe(listener)
+}
+
+export function onFlush(handler: () => Promise<void>): () => void {
+  return port().onFlush?.(handler) ?? (() => undefined)
 }
 
 export function errorMessage(error: unknown): string {

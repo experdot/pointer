@@ -1,3 +1,4 @@
+import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 
@@ -66,24 +67,7 @@ function escapeHtml(text: string): string {
  * Convert markdown table to HTML table
  */
 function markdownTableToHtml(markdown: string): string {
-  const lines = markdown.trim().split('\n')
-  const rows: string[][] = []
-
-  for (const line of lines) {
-    // Skip separator lines
-    if (/^[\s|:-]+$/.test(line)) {
-      continue
-    }
-
-    const cells = line
-      .split('|')
-      .map((cell) => cell.trim())
-      .filter((cell) => cell.length > 0)
-
-    if (cells.length > 0) {
-      rows.push(cells)
-    }
-  }
+  const rows = parseMarkdownTable(markdown)
 
   if (rows.length === 0) return ''
 

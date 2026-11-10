@@ -6,24 +6,14 @@ import { useFoldersStore } from '../../../stores/foldersStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useViewStateStore } from '../../../stores/viewStateStore'
 import { query } from '../../../runtime/client'
-import type { PageRecord, MessagesRecord, ViewState } from '@renderer/types/shared'
-import type { Folder, Settings, LLMConfig, ModelConfig } from '@renderer/types/shared'
+import type { MessagesRecord } from '@renderer/types/shared'
+import type { LLMConfig, ModelConfig } from '@renderer/types/shared'
 import { buildConfigTreeNodes, buildPageTreeNodes } from '../../../utils/treeNodes'
 
 const { Text } = Typography
 
-// 导出数据格式
-export interface ExportData {
-  version: string
-  exportedAt: number
-  data: {
-    pages?: PageRecord[]
-    folders?: Folder[]
-    messages?: MessagesRecord[]
-    settings?: Partial<Settings>
-    viewState?: ViewState
-  }
-}
+export type { BackupData as ExportData } from '@shared/contracts'
+import type { BackupData as ExportData } from '@shared/contracts'
 
 interface ExportModalProps {
   open: boolean

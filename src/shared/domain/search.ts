@@ -74,7 +74,8 @@ export function compileMatcher(query: string, options: SearchMatchOptions): Matc
 
     while ((match = regex.exec(text)) !== null) {
       if (match[0].length === 0) {
-        regex.lastIndex++
+        const point = text.codePointAt(regex.lastIndex)
+        regex.lastIndex += point !== undefined && point > 0xffff ? 2 : 1
         continue
       }
       ranges.push({ start: match.index, end: match.index + match[0].length })

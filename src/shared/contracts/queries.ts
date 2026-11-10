@@ -16,9 +16,16 @@ import type {
 import type { ViewState } from './viewState'
 
 export interface SessionSnapshot {
+  scopeId: string | null
   accountId: string | null
   workspaceId: string | null
   workspacePath: string | null
+}
+
+export interface SettingsSnapshot {
+  settings: Settings
+  revision: number
+  mutationId?: string
 }
 
 export interface PageTreeSnapshot {
@@ -65,7 +72,7 @@ interface RuntimeQueryMap {
   'workspaces.list': { payload: void; result: WorkspaceSummary[] }
   'tree.get': { payload: void; result: PageTreeSnapshot }
   'conversation.get': { payload: { pageId: string }; result: Conversation }
-  'settings.get': { payload: void; result: Settings }
+  'settings.get': { payload: void; result: SettingsSnapshot }
   'viewState.get': { payload: void; result: ViewState }
   'queue.get': { payload: { pageId: string }; result: MessageQueue }
   'search.workspace': {

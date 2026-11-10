@@ -15,22 +15,51 @@ interface ViewStateStore {
   setViewState: (state: ViewState) => void
   /** 局部更新并持久化 */
   patch: (patch: Partial<ViewState>) => void
+  flush: () => Promise<void>
   reset: () => void
 }
 
-export const useViewStateStore = create<ViewStateStore>((set, get) => ({
-  viewState: defaultViewState(),
-  initialized: false,
+export const useViewStateStore = create<ViewStateStore>((set, get) => {
+  let pending: ViewState | null = null
+  let inFlight: Promise<void> | null = null
+  let generation = 0
+  const flush = async (): Promise<void> => {
+    if (inFlight) {
+      await inFlight
+      return flush()
+    }
+    const next = pending
+    if (!next) return
+    const epoch = generation
+    inFlight = command('viewState.replace', { viewState: next })
+    try {
+      await inFlight
+      if (epoch === generation && pending === next) pending = null
+    } finally {
+      inFlight = null
+    }
+    if (epoch === generation && pending) await flush()
+  }
+  return {
+    viewState: defaultViewState(),
+    initialized: false,
 
-  setViewState: (state) => set({ viewState: state, initialized: true }),
+    setViewState: (state) => set({ viewState: pending ?? state, initialized: true }),
 
-  patch: (patch) => {
-    const next: ViewState = { ...get().viewState, ...patch }
-    set({ viewState: next })
-    void command('viewState.replace', { viewState: next }).catch((error) => {
-      console.warn('[view-state] 保存失败：', error)
-    })
-  },
+    patch: (patch) => {
+      const next: ViewState = { ...get().viewState, ...patch }
+      set({ viewState: next })
+      pending = next
+      void flush().catch((error) => {
+        console.warn('[view-state] 保存失败：', error)
+      })
+    },
 
-  reset: () => set({ viewState: defaultViewState(), initialized: false })
-}))
+    flush,
+    reset: () => {
+      generation++
+      pending = null
+      set({ viewState: defaultViewState(), initialized: false })
+    }
+  }
+})

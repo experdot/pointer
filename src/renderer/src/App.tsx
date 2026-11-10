@@ -19,6 +19,7 @@ function AppContent(): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const initialized = useSessionStore((state) => state.initialized)
+  const sessionError = useSessionStore((state) => state.error)
 
   useEffect(() => {
     bootstrapRuntime()
@@ -28,7 +29,7 @@ function AppContent(): React.JSX.Element {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading || !initialized) {
+  if (!error && !sessionError && (loading || !initialized)) {
     return (
       <div
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
@@ -38,12 +39,12 @@ function AppContent(): React.JSX.Element {
     )
   }
 
-  if (error) {
+  if (error || sessionError) {
     return (
       <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}
       >
-        内核启动失败：{error}
+        内核加载失败：{error ?? sessionError}
       </div>
     )
   }
