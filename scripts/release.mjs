@@ -66,8 +66,8 @@ export function verifyRelease({ cwd = process.cwd(), tag, sha } = {}) {
   return { ...info, sha: head }
 }
 
-export async function prepareDraft({ github, owner, repo, release }) {
-  const { tag, version, prerelease } = releaseInfo(release.tag, release.version)
+async function verifyRemoteTag({ github, owner, repo, release }) {
+  const { tag } = releaseInfo(release.tag, release.version)
   // 上传前重新核对远端 tag，避免在校验期间被移动或删除的 tag 上发布。
   const ref = await github.rest.git.getRef({ owner, repo, ref: `tags/${tag}` })
   let object = ref.data.object
@@ -81,7 +81,11 @@ export async function prepareDraft({ github, owner, repo, release }) {
   if (object.type !== 'commit' || object.sha !== release.sha) {
     throw new Error('远端 tag 与已校验的发布提交不一致')
   }
+}
 
+export async function prepareDraft({ github, owner, repo, release }) {
+  const { tag, version, prerelease } = releaseInfo(release.tag, release.version)
+  await verifyRemoteTag({ github, owner, repo, release })
   const releases = await github.paginate(github.rest.repos.listReleases, {
     owner,
     repo,
@@ -99,6 +103,53 @@ export async function prepareDraft({ github, owner, repo, release }) {
         name: `Pointer ${version}`
       })
   return result.data
+}
+
+export async function verifyDraft({ github, owner, repo, release, releaseId }) {
+  if (!Number.isSafeInteger(releaseId) || releaseId <= 0) throw new Error('缺少有效的共享草稿 ID')
+  const { tag, prerelease } = releaseInfo(release.tag, release.version)
+  await verifyRemoteTag({ github, owner, repo, release })
+  const { data: draft } = await github.rest.repos.getRelease({ owner, repo, release_id: releaseId })
+  if (!draft.draft) throw new Error('Release 已公开，不能继续上传')
+  if (draft.tag_name !== tag || draft.prerelease !== prerelease) {
+    throw new Error('共享草稿的 tag 或预发布类型不一致')
+  }
+  return draft
+}
+
+export function requiredReleaseAssets(version) {
+  releaseInfo(`v${version}`, version)
+  const prefix = `pointer-${version}`
+  return [
+    `${prefix}-setup.exe`,
+    `${prefix}-setup.exe.blockmap`,
+    'latest.yml',
+    ...['x64', 'arm64'].flatMap((arch) => [
+      `${prefix}-mac-${arch}.dmg`,
+      `${prefix}-mac-${arch}.zip`
+    ]),
+    'latest-mac.yml',
+    `${prefix}-linux-x86_64.AppImage`,
+    `${prefix}-linux-amd64.deb`,
+    'latest-linux.yml'
+  ]
+}
+
+export async function verifyReleaseAssets(options) {
+  const draft = await verifyDraft(options)
+  const { github, owner, repo, release, releaseId } = options
+  const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+    owner,
+    repo,
+    release_id: releaseId,
+    per_page: 100
+  })
+  const missing = requiredReleaseAssets(release.version).filter(
+    (name) =>
+      !assets.some((asset) => asset.name === name && asset.state === 'uploaded' && asset.size > 0)
+  )
+  if (missing.length) throw new Error(`共享草稿缺少完整产物：${missing.join(', ')}`)
+  return draft
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

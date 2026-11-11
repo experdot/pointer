@@ -30,6 +30,12 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  target:
+    - dmg
+    - zip
+  artifactName: ${name}-${version}-mac-${arch}.${ext}
+  # CI 先提供无需 Apple 签名凭据的测试包；正式签名时需移除此设置。
+  identity: null
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -37,14 +43,12 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: experdot
+  artifactName: ${name}-${version}-linux-${arch}.${ext}
+  maintainer: experdot <experdot@foxmail.com>
   category: Utility
 snap:
   publish:
@@ -55,8 +59,6 @@ snap:
     - home
     - network
     - removable-media
-appImage:
-  artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
   provider: github

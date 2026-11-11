@@ -2,7 +2,7 @@
 
 Pointer 采用 `main` 日常开发、`release/<主版本.次版本>` 稳定版本、Git tag 确定发布提交、CI 上传 GitHub Release 草稿、安装验收后公开发布的流程。没有并行开发下一版本的需求时，可以直接从已通过校验的 `main` 提交打 tag。
 
-本文中的 `release/2.0` 和 `2.0.0-preview.2` 是示例。操作时使用实际维护的版本系列和尚未发布的版本号。工作流会校验版本与 tag，固定源码提交并复用经过桌面测试的构建产物。
+本文中的 `release/2.0` 和 `2.0.0-preview.2` 是示例。操作时使用实际维护的版本系列和尚未发布的版本号。工作流会校验版本与 tag，固定源码提交并复用各平台校验和构建后的产物，其中 Windows 额外经过真实桌面端到端测试。
 
 ## 分支、tag 与 Release
 
@@ -20,8 +20,11 @@ flowchart LR
     A[main 日常开发] --> B[release/2.0 稳定版本]
     B --> C[提交版本号并通过 CI]
     C --> D[推送版本 tag]
-    D --> E[CI 校验、打包、上传草稿]
-    E --> F[安装验收后公开发布]
+    D --> E[三平台校验与构建]
+    E --> F[创建一个共享草稿]
+    F --> G[三平台打包并上传]
+    G --> H[检查全部附件]
+    H --> I[安装验收后公开发布]
 ```
 
 ## 版本约定
@@ -71,7 +74,7 @@ git push -u origin release/2.0
 发布前需要通过 [测试指南](testing.md) 中的完整校验。远端执行情况以 GitHub Actions 为准：
 
 - Windows：lint、类型检查、发布脚本回归、覆盖率门槛、压力测试、内核 smoke、生产构建和 Electron 桌面测试；构建包括体积预算检查。
-- Linux/macOS：发布脚本回归、快速测试和压力测试。
+- Linux/macOS：发布脚本回归、快速测试和压力测试；发布工作流调用时还执行类型检查、生产构建及体积预算检查。
 
 `ci.yml` 自动校验 PR、`main` 和 `release/**` 分支推送。需要手动重跑时，进入 Actions → Validate → Run workflow，选择目标分支。打 tag 前确认校验对应的提交与待发布提交一致。
 
@@ -101,14 +104,28 @@ git push origin v2.0.0-preview.2
 当前 [release.yml](../.github/workflows/release.yml) 监听 `v*` tag 推送，按以下顺序执行：
 
 1. `prepare` 解析已存在的 tag，校验该提交中的 `package.json.version` 与 tag 一致，并输出固定的提交 SHA。tag 推送事件还会核对该 SHA 与触发事件一致。
-2. `validate` 把该 SHA 传给复用的 [ci.yml](../.github/workflows/ci.yml)，所有平台检出同一份源码。Windows 桌面测试通过后，将 `out/main`、`out/preload` 和 `out/renderer` 保存为 `release-build` artifact。
-3. `publish` 等待全部校验通过，检出同一 SHA、安装冻结锁文件中的依赖，下载已经通过测试的构建产物并检查体积预算，直接打包而不重新编译。
-4. 上传前再次检查版本、tag、SHA 和工作区，并向 GitHub 核对远端 tag 未被移动。创建或更新草稿时根据版本号设置 Pre-release 标记；已公开的版本会拒绝覆盖。
-5. 使用工作流提供的 `GITHUB_TOKEN` 上传 Windows 产物。只有发布 job 拥有 `contents: write` 权限；同一 tag 的发布任务串行执行。
+2. `validate` 把该 SHA 传给复用的 [ci.yml](../.github/workflows/ci.yml)，所有平台检出同一份源码。Windows 桌面测试通过后上传 `release-build-windows`；Linux/macOS 完成测试与构建后分别上传 `release-build-linux` 和 `release-build-macos`。每份 artifact 都包含本平台的 `out/main`、`out/preload` 和 `out/renderer`。
+3. `draft` 等待全部校验通过，只创建或更新一次共享草稿，输出其 ID，并按版本设置 Pre-release 标记。已公开的版本拒绝覆盖。
+4. `publish` 矩阵在各自系统中检出同一 SHA、安装冻结依赖、下载本平台构建产物，检查体积预算后直接打包，不重复编译。上传前再次核对 tag、SHA、干净工作区、远端 tag 与共享草稿 ID/类型，然后使用工作流提供的 `GITHUB_TOKEN` 上传。
+5. `verify-assets` 等待三个打包任务全部成功，读取同一草稿 ID 的附件，确认 11 项核心产物均已上传且非零字节，并在 Actions Summary 提供草稿链接。不会自动公开 Release。
+
+同一 tag 的工作流串行执行；一次工作流内部的三平台打包并行执行，某个平台失败不会取消其他平台。校验 job 使用只读权限，只有访问草稿与上传产物的 jobs 使用 `contents: write`。
 
 `electron-builder.yml` 显式指定 `publish.releaseType: draft`，CI 上传步骤同时设置 `EP_DRAFT=true`。**上传完成不等于版本已公开。** 草稿发布选项见 [electron-builder 发布说明](https://www.electron.build/docs/publish/)。
 
-自动发布目前只产出 Windows 安装包。Linux/macOS 的 CI 校验通过不代表已经生成这两个平台的安装包。
+### 平台与产物
+
+| 平台    | CI 环境          | 架构       | 核心产物                                                                                     |
+| ------- | ---------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| Windows | `windows-latest` | x64        | `pointer-<版本>-setup.exe`、对应 `.blockmap`、`latest.yml`                                   |
+| macOS   | `macos-15`       | x64、arm64 | 每种架构的 `pointer-<版本>-mac-<架构>.dmg` 与 `.zip`，以及共享的 `latest-mac.yml`            |
+| Linux   | `ubuntu-22.04`   | x64        | `pointer-<版本>-linux-x86_64.AppImage`、`pointer-<版本>-linux-amd64.deb`、`latest-linux.yml` |
+
+macOS 的 Intel 与 Apple Silicon 安装包在同一个 electron-builder 调用中生成，文件名包含架构，更新元数据统一合并，避免独立 jobs 覆盖同名元数据。Linux 的 `x86_64` 与 `amd64` 是对应包格式对 x64 架构的命名。Linux job 安装 `libarchive-tools`、`libfuse2` 和 `libcrypt1`，当前只上传 AppImage/deb；Snap Store 不在本流程内。
+
+macOS 目前提供**未签名、未公证的测试包**：`mac.identity: null`、`mac.notarize: false`，CI 关闭签名身份自动发现，无需 Apple 证书、账号或公证 Secrets。Gatekeeper 可能阻止安装或启动；这些包不支持 macOS 自动更新，需要手动下载安装后续测试版本。生成 ZIP 和更新元数据不代表自动更新已可用。
+
+以后提供正式 macOS 分发包时，需接入 Developer ID 签名和 Apple 公证凭据，移除 `identity: null`、调整 CI 的身份发现设置并启用公证，再验证实际安装和更新。Windows/Linux 的发布类型不受 macOS 测试包性质改变；Release 说明中应明确注明 macOS 包的限制。
 
 ### 手动触发已有 tag
 
@@ -121,8 +138,8 @@ git push origin v2.0.0-preview.2
 在 GitHub → Releases 打开对应草稿：
 
 1. 核对 tag、版本号和发布提交，补充本次更新说明。
-2. 确认 `pointer-<版本>-setup.exe`、对应 `.blockmap` 及更新元数据（如 `latest.yml`）上传完整，元数据引用的文件名和版本正确。
-3. 用本次产物验证安装与启动，并在测试账户或备份副本上验证旧版本升级、数据保留及核心聊天流程。
+2. 确认三个平台的安装包、macOS 双架构、Windows `.blockmap` 及三个平台的更新元数据齐全，元数据引用的文件名和版本正确。以 `verify-assets` 成功为自动化附件检查依据。
+3. 分别用本次产物验证安装与启动，并在测试账户或备份副本上验证数据保留及核心聊天流程。Windows/Linux 按实际安装格式验证升级；macOS 当前验证手动安装测试包，不能把它记为已通过签名和自动更新验收。
 4. 核对 CI 自动设置的 **Pre-release** 标记：含预发布标识的版本为预发布，正式版本为普通 Release。本地直接上传的草稿需手动核对该标记。
 5. 验收通过后点击 **Publish release**。公开后核对下载链接，并验证目标用户版本的更新检查能发现预期版本；预发布与正式版的更新行为需分别确认。
 
@@ -138,7 +155,8 @@ Windows 签名配置见 [代码签名指南](code-signing-guide.md)。当前构�
 
 ## 失败重试与紧急修复
 
-- 安装依赖、网络或上传出现临时失败，源码与版本未变化时，可以重新运行同一 tag 的失败工作流。重跑会保留已有草稿的标题与更新说明，校正发布类型，再上传产物。`release-build` 保留 7 天；产物过期后需重跑全部 jobs，重新校验和构建。确认草稿产物完整后再公开。
+- 安装依赖、网络或上传出现临时失败，源码与版本未变化时，可以重新运行同一 tag 的失败 jobs。已成功平台的附件保留，失败平台重传到同一草稿，最终检查三平台的完整附件。重跑草稿准备阶段也会保留已有标题与更新说明。
+- `release-build-windows`、`release-build-macos`、`release-build-linux` 保留 7 天；产物过期后需重跑全部 jobs，重新校验和构建。某个平台失败时草稿可能只包含部分附件，需等全部打包任务和 `verify-assets` 成功后再公开。
 - 如果必须修改源码、依赖或工作流，提交修复并使用新版本、新 tag 再发布；旧 tag 保留原提交。丢弃已被替代的未公开草稿，避免误发布。
 - 正式版发生问题时，从对应维护分支或已发布 tag 建立修复分支，完成修复及回归，更新补丁版本并重复上述流程。例如 `2.0.0` 的修复发布为 `2.0.1`，同时把修复同步回 `main`。
 - 应用当前只接受更高版本作为更新。需要撤回某项变更时，将回退后的代码以更高版本发布，不依赖旧版本号自动降级。
@@ -147,11 +165,13 @@ Windows 签名配置见 [代码签名指南](code-signing-guide.md)。当前构�
 
 | 命令或入口                                     | 当前行为                                                                                               |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 推送 `v*` tag                                  | 触发完整校验，通过后执行 Windows 打包上传                                                              |
+| 推送 `v*` tag                                  | 触发三平台校验、构建、打包与同一草稿上传，最后检查附件完整性                                           |
 | Actions → Build and Release → Run workflow     | 必须填写已有版本 tag；解析固定 SHA 后走相同的校验、打包和草稿上传流程                                  |
 | `pnpm check:release`                           | 校验当前版本 tag 存在、指向 HEAD、版本一致且工作区干净；CI 还核对预期 SHA                              |
 | `pnpm release`                                 | 本地校验 tag、构建并上传 Windows 草稿，需要发布凭据；不单独执行完整 CI 测试或自动设置 Pre-release 标记 |
 | `pnpm release:upload`                          | 校验 tag 后直接打包已有构建产物并上传 Windows 草稿；发布 CI 使用该命令避免重复编译                     |
+| `pnpm release:upload:mac`                      | 在 macOS 上校验 tag 并打包已有产物，上传 x64/arm64 的未签名、未公证 DMG/ZIP 测试包                     |
+| `pnpm release:upload:linux`                    | 在 Linux 上校验 tag 并打包已有产物，上传 x64 的 AppImage/deb                                           |
 | `pnpm package:local`                           | 使用 `--publish=never`，构建并本地打包，不上传，也不创建 GitHub 草稿；替代原 `release:draft`           |
 | `pnpm test:release`                            | 验证 tag、版本与提交约束、CLI 错误退出以及草稿创建、重试和公开版本保护                                 |
 | `pnpm build:win` / `build:mac` / `build:linux` | 对应平台的构建打包入口，不能代替发布前的完整校验                                                       |
@@ -166,5 +186,6 @@ Windows 签名配置见 [代码签名指南](code-signing-guide.md)。当前构�
 | tag 与版本一致性 | 准备阶段及上传前检查 tag、版本、提交；打包工作区必须干净                |
 | 手动发布入口     | 必填已有 tag，校验与发布 jobs 均检出解析后的固定 SHA                    |
 | 草稿与发布类型   | 显式 Draft；CI 自动设置 Pre-release；验收后手动公开，已公开版本拒绝覆盖 |
-| 重复构建         | 通过 artifact 复用 Windows 桌面测试通过的产物，打包上传不再运行编译     |
+| 重复构建         | 每个平台复用本平台已校验的构建产物，打包上传不再运行编译                |
+| 共享草稿与多平台 | 只创建一次草稿；上传前核对相同 ID；三平台成功后检查 11 项核心附件       |
 | 本地脚本命名     | `package:local` 明确只在本地打包；`release:upload` 明确使用已有产物     |

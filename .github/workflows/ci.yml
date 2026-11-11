@@ -12,7 +12,7 @@ on:
         type: string
         default: ''
       upload_build:
-        description: Save the production build tested on Windows for release packaging
+        description: Save each platform's validated production build for release packaging
         required: false
         type: boolean
         default: false
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ inputs.upload_build }}
         with:
-          name: release-build
+          name: release-build-windows
           overwrite: true
           path: |
             out/main/
@@ -70,7 +70,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: macos-15
+            platform: macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -87,3 +91,17 @@ jobs:
       - run: pnpm test:release
       - run: pnpm test
       - run: pnpm test:stress
+      - run: pnpm build
+        if: ${{ inputs.upload_build }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload_build }}
+        with:
+          name: release-build-${{ matrix.platform }}
+          overwrite: true
+          path: |
+            out/main/
+            out/preload/
+            out/renderer/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

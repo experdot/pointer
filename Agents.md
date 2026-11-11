@@ -33,7 +33,9 @@ pnpm build:unpack     # Build without packaging (for testing)
 # Release
 pnpm check:release    # Verify the version tag, commit and clean working tree
 pnpm release          # Verify tag, build and upload a Windows release draft
-pnpm release:upload   # Verify tag, package existing output and upload (used by release CI)
+pnpm release:upload   # Verify tag, package existing Windows output and upload
+pnpm release:upload:mac # Upload unsigned macOS x64/arm64 test packages (macOS host)
+pnpm release:upload:linux # Upload Linux x64 AppImage/deb packages (Linux host)
 pnpm package:local    # Build and package locally without uploading
 ```
 

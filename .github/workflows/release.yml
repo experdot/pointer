@@ -44,15 +44,61 @@ jobs:
       ref: ${{ needs.prepare.outputs.sha }}
       upload_build: true
 
-  publish:
+  draft:
     needs: [prepare, validate]
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Prepare shared draft release
+        id: draft
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const { join } = require('node:path')
+            const moduleUrl = pathToFileURL(join(process.env.GITHUB_WORKSPACE, 'scripts/release.mjs'))
+            const { verifyRelease, prepareDraft } = await import(moduleUrl.href)
+            const release = verifyRelease({ tag: process.env.RELEASE_TAG, sha: process.env.RELEASE_SHA })
+            const draft = await prepareDraft({ github, ...context.repo, release })
+            core.setOutput('id', draft.id)
+            core.info(`Shared draft ready: ${draft.html_url}`)
+
+  publish:
+    needs: [prepare, validate, draft]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            script: release:upload
+          - os: macos-15
+            platform: macos
+            script: release:upload:mac
+          - os: ubuntu-22.04
+            platform: linux
+            script: release:upload:linux
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
-
+      RELEASE_ID: ${{ needs.draft.outputs.id }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -74,31 +120,68 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Download tested production build
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libarchive-tools libfuse2 libcrypt1
+
+      - name: Download validated platform build
         uses: actions/download-artifact@v4
         with:
-          name: release-build
+          name: release-build-${{ matrix.platform }}
           path: out
 
       - run: pnpm check:bundle
 
-      - name: Prepare draft release
+      - name: Verify shared draft before upload
         uses: actions/github-script@v7
         with:
           script: |
             const { pathToFileURL } = require('node:url')
             const { join } = require('node:path')
             const moduleUrl = pathToFileURL(join(process.env.GITHUB_WORKSPACE, 'scripts/release.mjs'))
-            const { verifyRelease, prepareDraft } = await import(moduleUrl.href)
+            const { verifyRelease, verifyDraft } = await import(moduleUrl.href)
             const release = verifyRelease({
               tag: process.env.RELEASE_TAG,
               sha: process.env.RELEASE_SHA
             })
-            const draft = await prepareDraft({ github, ...context.repo, release })
-            core.info(`Draft ready: ${draft.html_url}`)
+            await verifyDraft({ github, ...context.repo, release, releaseId: Number(process.env.RELEASE_ID) })
 
-      - name: Package and upload tested build
-        run: pnpm release:upload
+      - name: Package and upload platform build
+        run: pnpm ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EP_DRAFT: 'true'
+
+  verify-assets:
+    needs: [prepare, draft, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+      RELEASE_ID: ${{ needs.draft.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - name: Verify all platform assets are in the same draft
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const { join } = require('node:path')
+            const moduleUrl = pathToFileURL(join(process.env.GITHUB_WORKSPACE, 'scripts/release.mjs'))
+            const { verifyRelease, verifyReleaseAssets } = await import(moduleUrl.href)
+            const release = verifyRelease({ tag: process.env.RELEASE_TAG, sha: process.env.RELEASE_SHA })
+            const draft = await verifyReleaseAssets({
+              github, ...context.repo, release, releaseId: Number(process.env.RELEASE_ID)
+            })
+            await core.summary
+              .addHeading('Release draft ready for review')
+              .addLink(release.tag, draft.html_url)
+              .addRaw('\n\nWindows x64, Linux x64, and macOS x64/arm64 assets are complete. macOS packages are unsigned and not notarized test builds. The release remains a draft.\n')
+              .write()

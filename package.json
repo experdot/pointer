@@ -39,7 +39,9 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "release": "pnpm check:release && pnpm build && pnpm release:upload",
-    "release:upload": "pnpm check:release && electron-builder --win --publish=always",
+    "release:upload": "pnpm check:release && electron-builder --win nsis --x64 --publish=always",
+    "release:upload:mac": "pnpm check:release && electron-builder --mac dmg zip --x64 --arm64 --publish=always",
+    "release:upload:linux": "pnpm check:release && electron-builder --linux AppImage deb --x64 --publish=always",
     "package:local": "pnpm build && electron-builder --publish=never"
   },
   "dependencies": {

@@ -58,11 +58,13 @@ Pointer does not support MCP, include built-in web search, or process audio and 
 
 ### Download
 
-CI publishes a Windows installer on the [Releases](https://github.com/experdot/pointer/releases) page:
+The release workflow uploads all three platforms to one draft. After review and publication, packages are available on the [Releases](https://github.com/experdot/pointer/releases) page:
 
 - **Windows**: `pointer-<version>-setup.exe`
+- **macOS**: `pointer-<version>-mac-<arch>.dmg` and `.zip`, for Intel (`x64`) and Apple Silicon (`arm64`)
+- **Linux**: `pointer-<version>-linux-x86_64.AppImage` and `pointer-<version>-linux-amd64.deb`
 
-macOS and Linux packages are configured but not published automatically yet: `pnpm build:mac` and `pnpm build:linux` produce them locally, while the release workflow currently builds Windows only.
+macOS packages are currently unsigned, non-notarized **test builds** that require no Apple signing credentials in CI. Gatekeeper may block installation or launch, and macOS automatic updates are not supported for these builds. Install later test builds manually. See the [release guide](docs/release-guide.md) for platform coverage and validation requirements.
 
 ### Build from source
 

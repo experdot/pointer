@@ -2,10 +2,19 @@ import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { createRequire } from 'node:module'
 import { join, resolve, sep } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { prepareDraft, releaseInfo, resolveRelease, verifyRelease } from './release.mjs'
+import {
+  prepareDraft,
+  releaseInfo,
+  requiredReleaseAssets,
+  resolveRelease,
+  verifyDraft,
+  verifyRelease,
+  verifyReleaseAssets
+} from './release.mjs'
 
 const script = fileURLToPath(new URL('./release.mjs', import.meta.url))
 
@@ -285,4 +294,136 @@ test('远端 tag 缺失或 API 出错时中止，不创建草稿', async () => {
     /404/
   )
   assert.deepEqual(writes, [])
+})
+
+function sharedDraftFixture() {
+  const release = { ...releaseInfo('v2.0.0-preview.2', '2.0.0-preview.2'), sha: 'a'.repeat(40) }
+  const draft = {
+    id: 42,
+    tag_name: release.tag,
+    draft: true,
+    prerelease: true,
+    html_url: 'draft-url'
+  }
+  const { github, writes } = githubFixture({ existing: draft })
+  const reads = []
+  const assets = requiredReleaseAssets(release.version).map((name) => ({
+    name,
+    state: 'uploaded',
+    size: 1024
+  }))
+  github.rest.repos.getRelease = async (args) => {
+    reads.push(args.release_id)
+    return { data: draft }
+  }
+  github.rest.repos.listReleaseAssets = () => {}
+  github.paginate = async (method, args) => {
+    assert.equal(method, github.rest.repos.listReleaseAssets)
+    reads.push(args.release_id)
+    return assets
+  }
+  return {
+    draft,
+    assets,
+    writes,
+    reads,
+    options: { github, owner: 'owner', repo: 'repo', release, releaseId: 42 }
+  }
+}
+
+test('三个平台只核对同一个草稿，不并发创建或修改 Release', async () => {
+  const { options, draft, writes, reads } = sharedDraftFixture()
+  const results = await Promise.all([
+    verifyDraft(options),
+    verifyDraft(options),
+    verifyDraft(options)
+  ])
+  assert.ok(results.every((result) => result === draft))
+  assert.deepEqual(reads, [42, 42, 42])
+  assert.deepEqual(writes, [])
+})
+
+test('三平台、macOS 双架构及更新元数据齐全才通过验收', async () => {
+  const { options, draft, reads, writes, assets } = sharedDraftFixture()
+  assert.equal(new Set(assets.map((asset) => asset.name)).size, 11)
+  assert.equal(await verifyReleaseAssets(options), draft)
+  assert.deepEqual(reads, [42, 42])
+  assert.deepEqual(writes, [])
+  assert.equal(draft.draft, true)
+})
+
+for (const suffix of [
+  '-setup.exe',
+  '-mac-arm64.zip',
+  '-mac-x64.dmg',
+  '-linux-amd64.deb',
+  'latest-linux.yml'
+]) {
+  test(`共享草稿缺少 ${suffix} 时发布验收失败`, async () => {
+    const { options, assets, writes } = sharedDraftFixture()
+    const index = assets.findIndex((asset) => asset.name.endsWith(suffix))
+    assert.ok(index >= 0)
+    assets.splice(index, 1)
+    await assert.rejects(verifyReleaseAssets(options), /缺少完整产物/)
+    assert.deepEqual(writes, [])
+  })
+}
+
+test('不接受尚未上传完成或零字节的附件', async () => {
+  for (const patch of [{ state: 'new' }, { size: 0 }]) {
+    const { options, assets } = sharedDraftFixture()
+    Object.assign(assets[0], patch)
+    await assert.rejects(verifyReleaseAssets(options), /缺少完整产物/)
+  }
+})
+
+test('拒绝错误草稿、错误发布类型或已经被公开的草稿', async () => {
+  for (const patch of [{ tag_name: 'v9.0.0' }, { prerelease: false }, { draft: false }]) {
+    const { options, draft, writes } = sharedDraftFixture()
+    Object.assign(draft, patch)
+    await assert.rejects(verifyDraft(options), /已公开|不一致/)
+    assert.deepEqual(writes, [])
+  }
+  const { options, reads } = sharedDraftFixture()
+  await assert.rejects(verifyDraft({ ...options, releaseId: NaN }), /草稿 ID/)
+  assert.deepEqual(reads, [])
+})
+
+test('草稿验收的文件名与当前 electron-builder 的实际架构命名一致', async () => {
+  const require = createRequire(import.meta.url)
+  const { getConfig, validateConfiguration } = require('app-builder-lib/out/util/config/config')
+  const { expandMacro } = require('app-builder-lib/out/util/macroExpander')
+  const { Arch, getArtifactArchName } = require('builder-util')
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const config = await getConfig(root)
+  await validateConfiguration(config, { isEnabled: false })
+  const { name } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const version = '2.0.0-preview.2'
+  const targets = [
+    ['win', 'nsis', 'exe', Arch.x64],
+    ['mac', 'dmg', 'dmg', Arch.x64],
+    ['mac', 'dmg', 'dmg', Arch.arm64],
+    ['mac', 'zip', 'zip', Arch.x64],
+    ['mac', 'zip', 'zip', Arch.arm64],
+    ['linux', 'appImage', 'AppImage', Arch.x64],
+    ['linux', 'deb', 'deb', Arch.x64]
+  ]
+  const names = targets.map(([platform, target, ext, arch]) =>
+    expandMacro(
+      config[target]?.artifactName ?? config[platform].artifactName,
+      getArtifactArchName(arch, ext),
+      { name, version },
+      { ext }
+    )
+  )
+  assert.equal(new Set(names).size, names.length)
+  assert.deepEqual(
+    requiredReleaseAssets(version)
+      .filter((name) => !name.endsWith('.yml') && !name.endsWith('.blockmap'))
+      .sort(),
+    names.sort()
+  )
+  assert.equal(config.mac.identity, null)
+  assert.equal(config.mac.notarize, false)
+  assert.ok(!config.linux.target.includes('snap'))
 })

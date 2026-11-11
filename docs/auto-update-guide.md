@@ -101,17 +101,18 @@ publish:
 ## 安全说明（当前状态）
 
 - 传输走 HTTPS（GitHub Releases）。
-- **开发环境会跳过签名校验**，来源有三处：`dev-app-update.yml` 中 `publisherName` 被注释掉且 `allowDowngrade: true`；`autoUpdater.ts` 在 `is.dev` 时设置 `updateConfigPath` / `forceDevUpdateConfig` / `allowDowngrade`；`electron-builder.yml` 中 `verifyUpdateCodeSignature: false`。
-- 因此"更新包会自动验证数字签名"当前并不成立，它只是启用正式签名后的目标行为。生产签名配置与恢复签名校验的注意事项见 [code-signing-guide.md](code-signing-guide.md)。
+- Windows 当前配置为 `win.verifyUpdateCodeSignature: false`，并非只影响开发环境；正式签名与恢复更新签名校验见 [code-signing-guide.md](code-signing-guide.md)。
+- 开发环境读取 `dev-app-update.yml` 并启用 `forceDevUpdateConfig`、`allowDowngrade`。允许降级影响版本选择，不等于关闭签名校验；内核另用 `isNewerVersion` 过滤低版本。
+- macOS 当前使用 `identity: null`、`notarize: false` 生成无需 Apple 凭据的测试包，不支持签名依赖的自动更新。发布 ZIP 与更新元数据用于保持产物完整，不能替代有效签名。正式接入要求见 [Electron 签名说明](https://www.electronjs.org/docs/latest/tutorial/code-signing)。
 - 安装前有二次确认弹窗，并提示保存当前工作。
 
 ## 发布流程
 
 分支准备、版本号、tag、CI、草稿验收与正式发布的完整步骤统一维护在 [发布指南](release-guide.md)。
 
-规范入口是推送与 `package.json.version` 对应的 `v*` tag。发布工作流固定 tag 对应的提交，通过校验后使用桌面测试通过的构建产物生成 Windows 安装包，并上传到 GitHub Release 草稿。CI 根据版本号自动设置 Pre-release 标记，验收后再公开发布。
+规范入口是推送与 `package.json.version` 对应的 `v*` tag。发布工作流固定该提交，各平台校验并构建后只创建一次共享草稿，再分别打包、上传 Windows x64、macOS x64/arm64 与 Linux x64 产物。CI 根据版本号自动设置 Pre-release 标记，全部附件检查通过后仍保留草稿，由维护者验收并公开。
 
-安装包名为 `pointer-<版本>-setup.exe`，对应 `.blockmap` 和更新元数据（如 `latest.yml`）应一起发布。macOS 与 Linux 尚未纳入自动打包发布。
+Windows 提供 `.exe` 和 `.blockmap`；macOS 每个架构提供 `.dmg` 与 `.zip`；Linux 提供 `.AppImage` 和 `.deb`。对应更新元数据为 `latest.yml`、`latest-mac.yml` 和 `latest-linux.yml`。macOS 双架构在同一任务中生成，合并写入一份更新元数据。具体文件名见发布指南；当前不自动发布 Snap Store。
 
 `pnpm release` 会校验 tag、提交和工作区，构建并上传 Windows 草稿；本地直接上传时需自行核对 Pre-release 标记。`pnpm package:local` 使用 `--publish=never`，仅本地打包，不创建 GitHub 草稿，替代原 `release:draft` 命令。
 
@@ -124,4 +125,4 @@ publish:
 
 ## 关闭与保存屏障
 
-更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`：Windows 执行 lint、类型检查、覆盖率测试、压力测试、内核 smoke 和 Electron 桌面测试；Linux/macOS 执行快速测试与压力测试。全部通过后才进入发布。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。
+更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`：Windows 执行 lint、类型检查、覆盖率测试、压力测试、内核 smoke 和 Electron 桌面测试；Linux/macOS 执行快速测试、压力测试及发布所需的生产构建。三个平台均执行发布脚本回归，全部通过后才创建草稿并打包上传。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。

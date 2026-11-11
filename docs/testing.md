@@ -113,11 +113,12 @@ V8 初始全量基线为语句 39.07%、分支 34.01%、函数 32.35%、行 39.5
 - 构建预算：主入口 850000 B，preload 16000 B，renderer 入口 14500000 B，renderer 全部 JS 42000000 B。当前约为 758 KB / 3 KB / 13.23 MB / 37.75 MB。
 - `coverage/` 提供 HTML、LCOV 和 JSON 汇总；`playwright-report/` 提供桌面报告；`test-results/` 保留失败截图、trace，以及富文本和表格 PNG 示例。运行新的桌面套件会清理上一轮桌面产物。
 - Windows CI 执行完整链路并始终上传报告；Linux/macOS CI 执行快速测试和压力测试。三个平台均执行 `test:release`。PR、`main` 和 `release/**` 推送触发校验，也可通过 `workflow_dispatch` 手动触发。
-- 发布工作流将同一个提交 SHA 传入各平台校验。Windows 桌面测试通过后上传 `release-build`，发布任务下载该产物打包，避免重复编译；该产物保留 7 天。
+- 发布工作流将同一个提交 SHA 传入各平台校验。Windows 桌面测试通过后上传 `release-build-windows`；Linux/macOS 完成快速测试、压力测试及生产构建后分别上传 `release-build-linux`、`release-build-macos`。各平台打包任务复用本平台的构建产物，保留 7 天。
+- 发布回归还覆盖共享草稿的并发读取、错误草稿/发布类型、三平台产物和 macOS 双架构缺失、未完成或零字节附件，并使用当前 electron-builder 校验配置及实际架构文件名。所有 GitHub API 均模拟，不上传真实产物。
 
 ### 验证边界
 
-- 本次实际执行环境为 Windows；Linux/macOS 工作流已配置，尚未在远端运行。未发布安装包或更新到真实用户设备。
+- 本文记录的本地执行环境为 Windows。Linux/macOS 校验及打包工作流已配置，实际成功状态以远端 Actions 为准；本地不能代替这两个平台的安装验收。真实 Electron 桌面端到端测试当前仅在 Windows 执行。
 - 原生保存/关闭对话框在桌面测试中提供确定的返回值；文件写入、preload、窗口关闭和重启仍走真实应用链路。模型请求使用本地 HTTP/SSE 服务。
 - 进程中断恢复测试覆盖真实子进程退出，不代表已经验证断电、硬件缓存损坏或所有网络盘语义。
 - 队列提交后、请求发出前发生进程崩溃时不会自动重发；本轮不实现网络请求的崩溃后恰好一次执行。

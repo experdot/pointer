@@ -58,11 +58,13 @@ Pointer 不支持 MCP，不内置联网搜索，也不提供音频、视频处�
 
 ### 下载
 
-CI 会在 [Releases](https://github.com/experdot/pointer/releases) 页面发布 Windows 安装包：
+发布工作流将三个平台的产物上传到同一个草稿；验收并公开后，可从 [Releases](https://github.com/experdot/pointer/releases) 下载：
 
 - **Windows**：`pointer-<版本>-setup.exe`
+- **macOS**：`pointer-<版本>-mac-<架构>.dmg` 和 `.zip`，分别支持 Intel（`x64`）和 Apple Silicon（`arm64`）
+- **Linux**：`pointer-<版本>-linux-x86_64.AppImage` 和 `pointer-<版本>-linux-amd64.deb`
 
-macOS 与 Linux 的打包配置已经就绪，但尚未纳入自动发布：`pnpm build:mac`、`pnpm build:linux` 可在本地生成，当前发布工作流只构建 Windows。
+macOS 当前提供未签名、未公证的**测试包**，CI 无需 Apple 签名凭据。系统 Gatekeeper 可能阻止安装或启动，这些测试包不支持 macOS 自动更新；后续测试版本需要手动下载安装。平台范围与验收要求见 [发布指南](docs/release-guide.md)。
 
 ### 从源码构建
 
