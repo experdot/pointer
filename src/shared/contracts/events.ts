@@ -5,11 +5,12 @@
  * 流式过程使用细粒度增量（chat.delta），避免展示层做写合并。
  */
 
-import type { Account, ChatMessage, Page } from '../domain'
+import type { Account, ChatMessage, Page, WorkspaceSummary } from '../domain'
 import type { PageTreeSnapshot, SessionSnapshot, SettingsSnapshot, UpdateStatus } from './queries'
 
 interface RuntimeEventMap {
   'accounts.changed': Account[]
+  'workspaces.changed': WorkspaceSummary[]
   'session.changed': SessionSnapshot
   'tree.changed': PageTreeSnapshot
   'conversation.changed': { pageId: string }

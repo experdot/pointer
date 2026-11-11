@@ -149,17 +149,22 @@ export function toggleFolderExpanded(id: string): void {
   useFoldersStore.getState().toggleExpanded(id)
 }
 
-export async function openPage(pageId: string, preview = false): Promise<void> {
+export async function openPage(
+  pageId: string,
+  preview = false,
+  isCurrent: () => boolean = () => true
+): Promise<void> {
   let page = usePagesStore.getState().getById(pageId)
   if (!page) {
     // 页面可能刚由内核创建、tree.changed 还没到达镜像，这里主动刷新一次
     await refreshTree()
     page = usePagesStore.getState().getById(pageId)
   }
-  if (!page) return
+  if (!page || !isCurrent()) return
 
   // 迁移前行为：打开页面前预加载消息
   await useMessagesStore.getState().load(pageId)
+  if (!isCurrent()) return
 
   const tabsStore = useTabsStore.getState()
   const existingTab = tabsStore.tabs.find((tab) => tab.type === 'chat' && tab.dataId === pageId)

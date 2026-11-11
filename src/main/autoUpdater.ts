@@ -60,26 +60,49 @@ export function setupAutoUpdater(report?: (status: UpdateStatus) => void): Updat
     report?.({ state: 'error', message: error.message })
   })
 
-  return {
-    check: async () => {
-      report?.({ state: 'checking' })
-      try {
-        const result = await autoUpdater.checkForUpdates()
-        const version = result?.updateInfo?.version
-        const available = Boolean(version && isNewerVersion(version, app.getVersion()))
+  let checking: Promise<UpdateCheckResult> | null = null
+  let downloading: Promise<void> | null = null
+  const check = async (): Promise<UpdateCheckResult> => {
+    report?.({ state: 'checking' })
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      const version = result?.updateInfo?.version
+      const available = Boolean(version && isNewerVersion(version, app.getVersion()))
 
-        report?.(available ? { state: 'available', version } : { state: 'idle' })
-        return { available, version }
-      } catch (error) {
-        report?.({
-          state: 'error',
-          message: error instanceof Error ? error.message : String(error)
-        })
-        return { available: false }
-      }
+      report?.(available ? { state: 'available', version } : { state: 'idle' })
+      return { available, version }
+    } catch (error) {
+      report?.({
+        state: 'error',
+        message: error instanceof Error ? error.message : String(error)
+      })
+      return { available: false }
+    }
+  }
+
+  return {
+    check: () => {
+      checking ??= check().finally(() => {
+        checking = null
+      })
+      return checking
     },
-    download: async () => {
-      await autoUpdater.downloadUpdate()
+    download: () => {
+      downloading ??= (async () => {
+        report?.({ state: 'downloading', percent: 0 })
+        try {
+          await autoUpdater.downloadUpdate()
+        } catch (error) {
+          report?.({
+            state: 'error',
+            message: error instanceof Error ? error.message : String(error)
+          })
+          throw error
+        }
+      })().finally(() => {
+        downloading = null
+      })
+      return downloading
     },
     quitAndInstall: () => autoUpdater.quitAndInstall()
   }

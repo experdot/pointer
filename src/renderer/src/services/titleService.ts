@@ -127,6 +127,8 @@ export async function analyzeTopicSegments(
     })
     .join('\n\n')
 
+  let created = 0
+  let segments: Array<{ index: number; topic: string }> = []
   try {
     const { content } = await command('ai.generateText', {
       prompt: applySegmentationRequirements(
@@ -137,12 +139,23 @@ export async function analyzeTopicSegments(
       modelConfigId: options.modelConfigId
     })
 
-    const segments = parseTopicSegments(content)
+    const seen = new Set<number>()
+    segments = parseTopicSegments(content)
+      .filter((segment) => {
+        if (
+          !Number.isInteger(segment.index) ||
+          segment.index >= currentPath.length ||
+          seen.has(segment.index)
+        )
+          return false
+        seen.add(segment.index)
+        return true
+      })
+      .sort((a, b) => a.index - b.index)
     if (segments.length === 0) {
       return { success: false, created: 0, segments: [], error: '模型未返回可用分段' }
     }
 
-    let created = 0
     for (const segment of segments) {
       const startMessage = currentPath[segment.index]
       if (!startMessage) continue
@@ -158,8 +171,8 @@ export async function analyzeTopicSegments(
   } catch (error) {
     return {
       success: false,
-      created: 0,
-      segments: [],
+      created,
+      segments,
       error: error instanceof Error ? error.message : String(error)
     }
   }

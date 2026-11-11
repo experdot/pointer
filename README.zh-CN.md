@@ -96,10 +96,15 @@ pnpm build:unpack   # 只构建，不打包
 pnpm lint           # ESLint（出现 warning 也会失败）
 pnpm format         # Prettier
 pnpm typecheck      # 主进程 + 渲染进程类型检查
-pnpm test           # 单元测试（领域层 + 渲染进程镜像）
+pnpm test           # 领域、内核、IPC、镜像和 React DOM 测试
+pnpm test:coverage  # 全量源码覆盖率及回退门槛
+pnpm test:stress    # 大树、固定种子输入和落盘预算
+pnpm test:e2e       # 生产构建 + 真实 Electron 桌面场景
 pnpm smoke:kernel   # 在临时目录启动内核，验证查询/命令/事件链路
 pnpm release        # 构建并发布到 GitHub Releases
 ```
+
+测试范围、隔离约束和验证记录见 [docs/testing.md](docs/testing.md)。
 
 ## 配置
 

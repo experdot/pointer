@@ -31,25 +31,38 @@ export function useDraftField(externalValue: string, commit: (next: string) => v
   commitRef.current = commit
   const valueRef = useRef(value)
   valueRef.current = value
+  const committedRef = useRef(externalValue)
+  const commitValue = useCallback((next: string) => {
+    if (next === committedRef.current) return
+    committedRef.current = next
+    commitRef.current(next)
+  }, [])
 
   // 只有不在编辑中时才跟随外部值（内核回推、切换到另一个配置等）
   useEffect(() => {
     if (!editing.current && !composing.current) {
+      valueRef.current = externalValue
+      committedRef.current = externalValue
       setValue(externalValue)
     }
   }, [externalValue])
 
-  const change = useCallback((next: string) => {
-    setValue(next)
-    // 组词过程不提交，等 compositionend 再提交完整文本
-    if (!composing.current) commitRef.current(next)
-  }, [])
+  const change = useCallback(
+    (next: string) => {
+      valueRef.current = next
+      setValue(next)
+      // 组词过程不提交，等 compositionend 再提交完整文本
+      if (!composing.current) commitValue(next)
+    },
+    [commitValue]
+  )
 
   const handlers: DraftFieldHandlers = {
     onFocus: () => {
       editing.current = true
     },
     onBlur: () => {
+      commitValue(valueRef.current)
       editing.current = false
       composing.current = false
     },
@@ -59,11 +72,10 @@ export function useDraftField(externalValue: string, commit: (next: string) => v
     onCompositionEnd: (event) => {
       composing.current = false
       // 部分浏览器组词结束后不再触发 change，这里补一次提交，避免拼音结果丢失
-      const next = event?.currentTarget?.value
-      if (typeof next === 'string' && next !== valueRef.current) {
-        setValue(next)
-        commitRef.current(next)
-      }
+      const next = event?.currentTarget?.value ?? valueRef.current
+      valueRef.current = next
+      setValue(next)
+      commitValue(next)
     }
   }
 

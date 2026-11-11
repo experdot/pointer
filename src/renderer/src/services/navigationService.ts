@@ -2,6 +2,7 @@ import { useMessagesStore } from '../stores/messagesStore'
 import { useNavigationStore } from '../stores/navigationStore'
 import * as messagesService from './messagesService'
 import * as pagesService from './pagesService'
+import { currentGeneration } from '../runtime/generation'
 
 // ==================== 类型定义 ====================
 
@@ -27,14 +28,19 @@ let navigationVersion = 0
  */
 export async function navigateToMessage(target: NavigationTarget): Promise<void> {
   const { pageId, messageId, openPage = false, instant = true, requestScroll = true } = target
+  const version = ++navigationVersion
+  const generation = currentGeneration()
+  const active = (): boolean => version === navigationVersion && generation === currentGeneration()
 
   // Step 1: 打开页面（如果需要）
   if (openPage) {
-    await pagesService.openPage(pageId, true)
+    await pagesService.openPage(pageId, true, active)
+    if (!active()) return
   }
 
   // Step 2: 确保消息数据已加载
   const record = await useMessagesStore.getState().load(pageId)
+  if (!active() || !record.messages.some((message) => message.id === messageId)) return
 
   // Step 3: 检查消息是否在当前路径中
   const currentPath = messagesService.getMessagePath(record.messages, record.leafMessageId)
@@ -44,16 +50,17 @@ export async function navigateToMessage(target: NavigationTarget): Promise<void>
   // 如果消息已在当前路径，切换分支会导致分支被重置到第一个子分支
   if (!isInCurrentPath) {
     await messagesService.switchBranch(pageId, messageId)
+    if (!active()) return
   }
 
   // Step 5: 展开包含目标消息的折叠 Topic
   await expandTopicsForMessage(pageId, messageId)
+  if (!active()) return
 
   // Step 6: 请求 UI 执行滚动
   if (requestScroll) {
-    navigationVersion++
     useNavigationStore.getState().requestNavigation({
-      version: navigationVersion,
+      version,
       pageId,
       messageId,
       instant,

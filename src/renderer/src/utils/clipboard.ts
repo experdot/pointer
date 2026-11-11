@@ -9,18 +9,19 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text)
     return true
   } catch {
+    const previousFocus = document.activeElement
     const textArea = document.createElement('textarea')
     textArea.value = text
     document.body.appendChild(textArea)
     textArea.focus()
     textArea.select()
     try {
-      document.execCommand('copy')
-      return true
+      return document.execCommand('copy')
     } catch {
       return false
     } finally {
       document.body.removeChild(textArea)
+      if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true })
     }
   }
 }

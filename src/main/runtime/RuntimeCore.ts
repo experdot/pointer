@@ -47,6 +47,7 @@ import { SearchService } from './SearchService'
 import { SettingsStore } from './SettingsStore'
 import { ViewStateStore } from './ViewStateStore'
 import { WorkspaceRegistry } from './WorkspaceRegistry'
+import { WorkspaceLease } from './WorkspaceLease'
 import { WorkspaceStore } from './WorkspaceStore'
 import { listModels, testConnection as testProviderConnection } from './providers'
 import { readBinary } from './fsx'
@@ -90,6 +91,7 @@ export class RuntimeCore {
   private settingsStore: SettingsStore | null = null
   private registry: WorkspaceRegistry | null = null
   private workspace: WorkspaceStore | null = null
+  private workspaceLease: WorkspaceLease | null = null
   private index: IndexDb | null = null
   private viewState: ViewStateStore | null = null
   private queues: QueueStore | null = null
@@ -206,8 +208,7 @@ export class RuntimeCore {
       if (name !== 'session.get') this.assertScope(scopeId)
       return result
     }
-    return workspace &&
-      /^(tree\.|conversation\.|queue\.|search\.|attachment\.|viewState\.)/.test(name)
+    return workspace && /^(tree\.|conversation\.|queue\.|attachment\.|viewState\.)/.test(name)
       ? workspace.run(read)
       : read()
   }
@@ -232,6 +233,10 @@ export class RuntimeCore {
         return this.requireQueues().get(readPageId(payload))
       case 'search.workspace':
         return this.runSearch(payload)
+      case 'search.messages':
+        return this.requireSearch().messages(
+          payload as import('@shared/contracts').MessageSearchRequest
+        )
       case 'ai.models':
         return this.listModels(readLlmId(payload))
       case 'ai.test':
@@ -267,7 +272,7 @@ export class RuntimeCore {
           throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
         await this.quiesce()
         try {
-          return await (restoreOrReset
+          return await (name === 'data.reset'
             ? this.requireWorkspace().run(() => this.executeCommand(name, payload))
             : this.executeCommand(name, payload))
         } finally {
@@ -308,7 +313,12 @@ export class RuntimeCore {
       case 'account.create': {
         const input = payload as { name: string; avatar?: string }
         const account = await this.accounts.create(input)
-        await this.openAccount(account.id)
+        try {
+          await this.openAccount(account.id)
+        } catch (error) {
+          await this.accounts.remove(account.id)
+          throw error
+        }
         return account
       }
       case 'account.update': {
@@ -320,20 +330,34 @@ export class RuntimeCore {
         }
         return undefined
       }
-      case 'account.delete':
-        await this.accounts.remove(readString(payload, 'accountId'))
-        await this.openAccount(this.requireCurrentAccountId(), undefined)
+      case 'account.delete': {
+        const accountId = readString(payload, 'accountId')
+        const accounts = this.accounts.list()
+        if (!accounts.some((item) => item.id === accountId))
+          throw new RuntimeError('account.not-found', '账户不存在')
+        if (accounts.length <= 1)
+          throw new RuntimeError('account.last-account', '至少需要保留一个账户')
+        if (accountId === this.accounts.getCurrentId())
+          await this.openAccount(accounts.find((item) => item.id !== accountId)!.id)
+        await this.accounts.remove(accountId)
         this.emit('accounts.changed', this.accounts.list())
         return undefined
+      }
 
       // 工作区
       case 'workspace.create': {
         const input = payload as { name: string; type: 'default' | 'custom'; path?: string }
         const registry = this.requireRegistry()
+        const registeredIds = new Set(registry.list().map((item) => item.id))
         const dirPath = input.path ?? this.paths.defaultWorkspacePath(registry.account)
         const workspace = await registry.create({ name: input.name, dirPath }, Date.now())
-        await this.openWorkspace(workspace)
-        await this.persistSession()
+        try {
+          await this.openWorkspace(workspace)
+        } catch (error) {
+          if (!registeredIds.has(workspace.id)) await registry.remove(workspace.id)
+          throw error
+        }
+        this.emit('workspaces.changed', registry.list())
         return workspace
       }
       case 'workspace.validatePath':
@@ -350,22 +374,30 @@ export class RuntimeCore {
         if (this.registry?.getCurrentId() === workspace.id) {
           this.emit('session.changed', this.snapshot())
         }
+        this.emit('workspaces.changed', this.requireRegistry().list())
         return undefined
       }
       case 'workspace.delete': {
         const workspaceId = readString(payload, 'workspaceId')
-        const wasCurrent = this.registry?.getCurrentId() === workspaceId
-        if (wasCurrent) await this.closeWorkspace()
-        await this.requireRegistry().remove(workspaceId)
-        if (wasCurrent) {
-          const next = await this.requireRegistry().ensureDefault(Date.now())
-          await this.openWorkspace(next)
-          await this.persistSession()
-        }
+        const registry = this.requireRegistry()
+        if (!registry.getById(workspaceId))
+          throw new RuntimeError('workspace.not-found', '工作区不存在')
+        if (registry.list().length <= 1)
+          throw new RuntimeError('workspace.last-workspace', '至少需要保留一个工作区')
+        if (registry.getCurrentId() === workspaceId)
+          await this.selectWorkspace(registry.list().find((item) => item.id !== workspaceId)!.id)
+        await registry.remove(workspaceId)
+        this.emit('workspaces.changed', registry.list())
         return undefined
       }
-      case 'workspace.openInFileManager':
-        return this.options.host.openInFileManager(this.requireWorkspace().path)
+      case 'workspace.openInFileManager': {
+        const id = (payload as { workspaceId?: string } | undefined)?.workspaceId
+        const workspace = id
+          ? this.requireRegistry().getById(id)
+          : this.requireRegistry().getCurrent()
+        if (!workspace) throw new RuntimeError('workspace.not-found', '工作区不存在')
+        return this.options.host.openInFileManager(workspace.path)
+      }
       case 'workspace.pickDirectory':
         return this.options.host.pickDirectory((payload as { title?: string } | undefined)?.title)
 
@@ -467,6 +499,7 @@ export class RuntimeCore {
           throw new RuntimeError('page.not-found', `页面不存在：${input.pageId}`)
         }
         await workspace.writeConversation({ ...input.conversation, pageId: input.pageId })
+        this.chat.abortMissingParents(input.pageId, input.conversation)
         this.emit('conversation.changed', { pageId: input.pageId })
         return undefined
       }
@@ -555,14 +588,15 @@ export class RuntimeCore {
       case 'queue.add': {
         const input = payload as { pageId: string; content: string }
         const at = Date.now()
+        const id = randomUUID()
         await this.requireQueues().add(input.pageId, {
-          id: randomUUID(),
+          id,
           content: input.content,
           createdAt: at
         })
         this.emit('queue.changed', { pageId: input.pageId })
         void this.chat.drain(input.pageId)
-        return input.pageId
+        return id
       }
       case 'queue.update': {
         const input = payload as { pageId: string; itemId: string; content: string }
@@ -705,25 +739,20 @@ export class RuntimeCore {
   // ==================== 会话管理 ====================
 
   private async openAccount(accountId: string, preferredWorkspaceId?: string): Promise<void> {
-    await this.closeWorkspace()
-
-    await this.accounts.setCurrent(accountId)
+    if (!this.accounts.getById(accountId)) throw new RuntimeError('account.not-found', '账户不存在')
     const settingsStore = new SettingsStore(this.paths, accountId)
     await settingsStore.load(accountId)
-    this.settingsStore = settingsStore
 
     const registry = new WorkspaceRegistry(this.paths, accountId)
     await registry.load(accountId)
-    this.registry = registry
 
     const preferred = preferredWorkspaceId ? registry.getById(preferredWorkspaceId) : undefined
     const workspace =
-      preferred && (await this.isUsable(preferred))
-        ? await registry.setCurrent(preferred.id)
+      preferred && (await registry.validatePath(preferred.path)).valid
+        ? preferred
         : await registry.ensureDefault(Date.now())
 
-    await this.openWorkspace(workspace)
-    await this.persistSession()
+    await this.openWorkspace(workspace, { registry, settingsStore })
   }
 
   private async selectAccount(accountId: string): Promise<void> {
@@ -731,32 +760,83 @@ export class RuntimeCore {
   }
 
   private async selectWorkspace(workspaceId: string): Promise<void> {
-    const workspace = await this.requireRegistry().setCurrent(workspaceId)
+    const workspace = this.requireRegistry().getById(workspaceId)
+    if (!workspace) throw new RuntimeError('workspace.not-found', '工作区不存在')
     await this.openWorkspace(workspace)
-    await this.persistSession()
   }
 
-  private async openWorkspace(workspace: Workspace): Promise<void> {
-    // 切换工作区前先停止正在进行的生成并等待其落盘，避免写进新上下文
-    await this.closeWorkspace()
-
-    const index = IndexDb.open(this.paths.indexFile(workspace.path))
-    const store = new WorkspaceStore(this.paths, workspace, index)
+  private async openWorkspace(
+    workspace: Workspace,
+    account = { registry: this.requireRegistry(), settingsStore: this.requireSettings() }
+  ): Promise<void> {
+    // 先完整打开候选工作区，再发布新会话；候选损坏时原工作区仍然可用。
+    const reuseLease = this.workspace?.path === workspace.path
+    const lease = reuseLease
+      ? this.workspaceLease!
+      : await WorkspaceLease.acquire(this.paths.pointerDir(workspace.path))
+    let index: IndexDb | undefined
+    let store: WorkspaceStore | undefined
     const viewState = new ViewStateStore(this.paths, workspace.path)
-
+    const previousWorkspaceId = account.registry.getCurrentId()
+    const previousAccountId = this.accounts.getCurrentId()
+    const previousSession = this.accounts.getSession()
     try {
+      index = IndexDb.open(this.paths.indexFile(workspace.path))
+      store = new WorkspaceStore(this.paths, workspace, index)
       await store.open()
       await viewState.load()
+      await account.registry.setCurrent(workspace.id)
+      await this.accounts.setCurrent(account.registry.account)
+      await this.accounts.setSession({
+        accountId: account.registry.account,
+        workspaceId: workspace.id
+      })
+      if (reuseLease) this.workspaceLease = null
+      await this.closeWorkspace()
     } catch (error) {
-      store.close()
-      index.close()
+      store?.close()
+      index?.close()
+      if (!reuseLease) await lease.release()
+      else this.workspaceLease = lease
+      const failures: unknown[] = []
+      const restores = [
+        async () => {
+          if (previousWorkspaceId && account.registry.getCurrentId() !== previousWorkspaceId)
+            await account.registry.setCurrent(previousWorkspaceId)
+        },
+        async () => {
+          if (previousAccountId && this.accounts.getCurrentId() !== previousAccountId)
+            await this.accounts.setCurrent(previousAccountId)
+        },
+        async () => {
+          if (JSON.stringify(this.accounts.getSession()) !== JSON.stringify(previousSession))
+            await this.accounts.setSession(previousSession)
+        }
+      ]
+      for (const restore of restores) {
+        try {
+          await restore()
+        } catch (failure) {
+          failures.push(failure)
+        }
+      }
+      if (failures.length)
+        throw new AggregateError([error, ...failures], '会话切换失败且选择记录恢复失败')
       throw error
     }
 
+    this.registry = account.registry
+    this.settingsStore = account.settingsStore
+    this.workspaceLease = lease
     this.index = index
     this.workspace = store
     this.viewState = viewState
-    this.queues = new QueueStore(this.paths, workspace.path, (id) => Boolean(store.getPage(id)))
+    this.queues = new QueueStore(
+      this.paths,
+      workspace.path,
+      (id) => Boolean(store.getPage(id)),
+      (path, value) => store.writeJson(path, value)
+    )
     this.search = new SearchService(index, store)
     this.scopeId = randomUUID()
 
@@ -768,23 +848,19 @@ export class RuntimeCore {
   private async closeWorkspace(): Promise<void> {
     await this.chat.abortAll()
     this.chat.assertSaved()
+    await this.search?.dispose()
     await this.workspace?.idle()
     await this.settingsStore?.idle()
     this.stopWatcher()
     this.workspace?.close()
     this.index?.close()
+    await this.workspaceLease?.release()
+    this.workspaceLease = null
     this.workspace = null
     this.index = null
     this.viewState = null
     this.queues = null
     this.search = null
-  }
-
-  private async persistSession(): Promise<void> {
-    await this.accounts.setSession({
-      accountId: this.accounts.getCurrentId(),
-      workspaceId: this.registry?.getCurrentId() ?? null
-    })
   }
 
   private snapshot(): SessionSnapshot {
@@ -795,17 +871,6 @@ export class RuntimeCore {
       workspaceId: workspace?.id ?? null,
       workspacePath: workspace?.path ?? null
     }
-  }
-
-  private async isUsable(workspace: Workspace): Promise<boolean> {
-    const validation = await this.requireRegistry().validatePath(workspace.path)
-    return validation.valid && !validation.lockedByAccountId
-  }
-
-  private requireCurrentAccountId(): string {
-    const accountId = this.accounts.getCurrentId()
-    if (!accountId) throw new RuntimeError('account.unavailable', '当前没有可用账户')
-    return accountId
   }
 
   // ==================== 文件变更监听 ====================
@@ -881,6 +946,7 @@ export class RuntimeCore {
     const conversation = await workspace.readConversation(input.pageId)
     const next = mutate(conversation, input, Date.now())
     await workspace.writeConversation(next)
+    this.chat.abortMissingParents(input.pageId, next)
     this.emit('conversation.changed', { pageId: input.pageId })
     return undefined
   }
@@ -921,7 +987,7 @@ export class RuntimeCore {
     }
   }
 
-  private runSearch(payload: unknown): WorkspaceSearchResult {
+  private runSearch(payload: unknown): Promise<WorkspaceSearchResult> {
     const input = payload as { query: string; options: SearchOptions }
     return this.requireSearch().search(input.query, input.options)
   }
@@ -972,7 +1038,7 @@ export class RuntimeCore {
     const format = input.source === 'chatgpt' ? 'openai' : input.source
     const parsed = parseImport(payload, format, Date.now())
     const selected =
-      input.ids && input.ids.length > 0
+      input.ids !== undefined
         ? parsed.conversations.filter((conversation) => input.ids?.includes(conversation.id))
         : parsed.conversations
 
@@ -1046,7 +1112,13 @@ export class RuntimeCore {
   }
 
   private emit(type: RuntimeEvent['type'], payload: unknown): void {
-    this.dispatchEvent({ type, payload } as RuntimeEvent)
+    const event = { type, payload, scopeId: this.scopeId } as RuntimeEvent
+    if (
+      this.workspace &&
+      /^(tree\.|page\.|conversation\.|queue\.|workspace.externalChange)/.test(type)
+    )
+      this.workspace.afterCommit(() => this.dispatchEvent(event))
+    else this.dispatchEvent(event)
   }
 
   private emitTreeChanged(): void {

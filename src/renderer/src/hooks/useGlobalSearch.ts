@@ -38,7 +38,17 @@ export function useGlobalSearch(): UseGlobalSearchResult {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
-    abortControllerRef.current = new AbortController()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+    const isCurrent = (): boolean => {
+      const current = useGlobalSearchStore.getState()
+      return (
+        !controller.signal.aborted &&
+        generation === currentGeneration() &&
+        current.query === query &&
+        current.options === options
+      )
+    }
 
     if (!query.trim()) {
       setResults([], 0)
@@ -50,20 +60,18 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
     try {
       const result = await runtimeQuery('search.workspace', { query, options })
-      if (generation !== currentGeneration()) {
+      if (!isCurrent()) {
         return
       }
       setResults(result.groups, result.total)
     } catch (error) {
+      if (!isCurrent()) return
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Global search error:', error)
       }
-      if (generation !== currentGeneration()) {
-        return
-      }
       setResults([], 0)
     } finally {
-      if (generation === currentGeneration()) {
+      if (isCurrent()) {
         setSearching(false)
       }
     }
@@ -71,20 +79,25 @@ export function useGlobalSearch(): UseGlobalSearchResult {
 
   // 防抖搜索
   useEffect(() => {
+    abortControllerRef.current?.abort()
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
     }
 
-    debounceRef.current = setTimeout(() => {
-      executeSearch()
-    }, SEARCH_DEBOUNCE_MS)
+    if (!query.trim()) void executeSearch()
+    else
+      debounceRef.current = setTimeout(() => {
+        void executeSearch()
+      }, SEARCH_DEBOUNCE_MS)
 
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current)
       }
+      abortControllerRef.current?.abort()
+      setSearching(false)
     }
-  }, [executeSearch])
+  }, [executeSearch, query, setSearching])
 
   // 立即搜索（由 searchTrigger 触发）
   useEffect(() => {

@@ -67,6 +67,7 @@ export function useChatStreaming({
       } catch (error) {
         console.error('发送消息失败：', error)
         messageApi.error(`发送失败：${errorMessage(error)}`)
+        throw error
       }
     },
     [messageApi, pageId, messages.length]

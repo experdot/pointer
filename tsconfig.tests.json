@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.web.json",
+  "include": ["tests/**/*.ts", "playwright.config.ts", "vitest.config.ts", "src/preload/index.d.ts"],
+  "compilerOptions": {
+    "types": ["node", "electron-vite/node"]
+  }
+}

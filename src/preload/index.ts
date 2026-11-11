@@ -23,19 +23,18 @@ import type { ForwardedShortcutAction } from '@shared/shortcuts'
 function unwrap<T>(response: RuntimeResponse<T>, expectedScope?: string | null): T {
   if (response.ok) {
     if (expectedScope !== undefined && response.scopeId !== expectedScope) {
-      const error = new Error('已忽略过期响应') as Error & { code: string }
-      error.name = 'RuntimeError'
-      error.code = 'runtime.stale-response'
-      throw error
+      throw { name: 'RuntimeError', code: 'runtime.stale-response', message: '已忽略过期响应' }
     }
     return response.value
   }
 
-  const error = new Error(response.message) as Error & { code: string; details?: unknown }
-  error.name = 'RuntimeError'
-  error.code = response.code
-  error.details = response.details
-  throw error
+  // contextBridge 会丢弃 Error 的自定义属性，使用普通数据跨桥后在客户端重建 Error。
+  throw {
+    name: 'RuntimeError',
+    code: response.code,
+    message: response.message,
+    details: response.details
+  }
 }
 
 const runtime: RuntimePort = {

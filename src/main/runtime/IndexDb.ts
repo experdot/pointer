@@ -265,7 +265,7 @@ export class IndexDb {
    * 检索候选消息
    * 索引只用于缩小范围，精确匹配（大小写/整词/正则）由领域层匹配器完成
    */
-  searchCandidates(query: string, useFts: boolean, limit = 2000): MessageCandidate[] {
+  searchCandidates(query: string, useFts: boolean, limit = -1): MessageCandidate[] {
     const trimmed = query.trim()
     if (!trimmed) return []
 
@@ -282,7 +282,7 @@ export class IndexDb {
   }
 
   /** 全量候选（正则检索等无法利用索引的场景） */
-  allMessages(limit = 20000): MessageCandidate[] {
+  allMessages(limit = -1): MessageCandidate[] {
     try {
       const rows = this.allMessagesQuery.all(limit) as unknown as MessageRow[]
       return rows.map(toCandidate)

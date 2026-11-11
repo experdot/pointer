@@ -62,7 +62,7 @@ export type FormatType = 'markdown' | 'txt' | 'html' | 'csv'
 export const FORMAT_SUPPORT: Record<SourceType, FormatType[]> = {
   messages: ['markdown', 'txt', 'html'],
   'text-snippet': ['markdown', 'txt', 'html'],
-  'table-block': ['markdown', 'csv', 'html'],
+  'table-block': ['markdown', 'txt', 'html', 'csv'],
   'code-block': ['markdown', 'txt', 'html']
 }
 

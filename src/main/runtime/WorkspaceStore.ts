@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type {
   AttachmentRef,
@@ -54,11 +55,11 @@ import type { NodePatch } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
 import { SerialExecutor } from './SerialExecutor'
+import { WorkspaceTransaction } from './WorkspaceTransaction'
 import { assertRegularPath, assertSafeId, assertWithin } from './pathSafety'
 import {
   ensureDir,
   isDirectory,
-  listDirectories,
   mtimeOf,
   movePath,
   pathExists,
@@ -78,8 +79,13 @@ interface FoldersFile {
 
 export class WorkspaceStore {
   private readonly writes = new SerialExecutor()
+  private transaction: WorkspaceTransaction | null = null
+  private committedCallbacks: Array<() => void> | null = null
+  private recoveryRequired = false
   run<T>(operation: () => Promise<T> | T): Promise<T> {
     return this.writes.run(async () => {
+      if (this.recoveryRequired)
+        throw new RuntimeError('workspace.recovery-required', '文件恢复未完成，请重新打开工作区')
       const before = {
         folders: this.folders,
         pages: this.pages,
@@ -88,16 +94,63 @@ export class WorkspaceStore {
         folderDirs: new Map(this.folderDirs),
         conversationCache: new Map(this.conversationCache)
       }
+      const transaction = new WorkspaceTransaction(this.path)
+      this.transaction = transaction
+      const callbacks: Array<() => void> = []
+      this.committedCallbacks = callbacks
       try {
-        return await operation()
+        const result = await operation()
+        await transaction.commit()
+        this.transaction = null
+        this.committedCallbacks = null
+        for (const callback of callbacks) {
+          try {
+            callback()
+          } catch (error) {
+            console.error('[runtime] 提交后通知失败', error)
+          }
+        }
+        return result
       } catch (error) {
+        const failures: unknown[] = []
+        try {
+          await transaction.rollback()
+        } catch (failure) {
+          this.recoveryRequired = true
+          failures.push(failure)
+        }
         Object.assign(this, before)
+        if (transaction.changed) {
+          try {
+            await this.syncIndex()
+          } catch (failure) {
+            failures.push(failure)
+          }
+        }
+        if (failures.length)
+          throw new AggregateError(
+            [error, ...failures],
+            '操作失败且部分文件恢复失败，请保留工作区并重试',
+            { cause: error }
+          )
         throw error
+      } finally {
+        this.transaction = null
+        this.committedCallbacks = null
       }
     })
   }
   idle(): Promise<void> {
     return this.writes.idle()
+  }
+
+  afterCommit(callback: () => void): void {
+    if (this.committedCallbacks) this.committedCallbacks.push(callback)
+    else callback()
+  }
+
+  async writeJson(path: string, value: unknown): Promise<void> {
+    await this.trackWrite(path, () => writeJsonAtomic(path, value))
   }
 
   mutateConversation<T>(
@@ -134,10 +187,13 @@ export class WorkspaceStore {
 
   async open(): Promise<void> {
     await this.ensureStructure()
-    await this.loadFolders()
-    await this.scanFromDisk()
-    await this.applyLayout()
-    await this.syncIndex()
+    await WorkspaceTransaction.recover(this.path)
+    await this.run(async () => {
+      await this.loadFolders()
+      await this.scanFromDisk()
+      await this.applyLayout()
+      await this.syncIndex()
+    })
   }
 
   close(): void {
@@ -240,7 +296,7 @@ export class WorkspaceStore {
     })
 
     const absolutePath = this.absPath(relativePath)
-    await writeTextAtomic(absolutePath, content)
+    await this.trackWrite(absolutePath, () => writeTextAtomic(absolutePath, content))
 
     const mtime = (await mtimeOf(absolutePath)) ?? Date.now()
     this.pageMtimes.set(page.id, mtime)
@@ -346,8 +402,12 @@ export class WorkspaceStore {
 
     for (const pageId of existing) {
       const relativePath = this.pagePaths.get(pageId)
-      if (relativePath) await removePath(this.absPath(relativePath))
-      await removePath(this.paths.queueFile(this.path, pageId))
+      if (relativePath)
+        await this.trackWrite(this.absPath(relativePath), () =>
+          removePath(this.absPath(relativePath))
+        )
+      const queueFile = this.paths.queueFile(this.path, pageId)
+      await this.trackWrite(queueFile, () => removePath(queueFile))
       this.index.removePage(pageId)
       this.pagePaths.delete(pageId)
       this.pageMtimes.delete(pageId)
@@ -571,11 +631,28 @@ export class WorkspaceStore {
 
     const results: AttachmentRef[] = []
     for (const file of files) {
+      const extensions: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/gif': 'gif',
+        'image/webp': 'webp'
+      }
+      const extension = extensions[file.mimeType]
+      if (!extension)
+        throw new RuntimeError('attachment.invalid-type', '仅支持 PNG、JPEG、GIF 和 WebP 图片')
+      if (file.dataBase64.length > Math.ceil((10 * 1024 * 1024) / 3) * 4)
+        throw new RuntimeError('attachment.too-large', '附件不能超过 10 MB')
       const id = randomUUID()
-      const fileName = `${id}-${sanitizeFileName(file.name)}`
+      const fileName = `${id}-${sanitizeFileName(file.name)}.${extension}`
       const buffer = Buffer.from(file.dataBase64, 'base64')
+      if (!file.dataBase64 || buffer.toString('base64') !== file.dataBase64)
+        throw new RuntimeError('attachment.invalid-data', '附件内容不是有效的 Base64')
+      if (buffer.byteLength > 10 * 1024 * 1024)
+        throw new RuntimeError('attachment.too-large', '附件不能超过 10 MB')
       await this.validateAttachmentPath(this.paths.attachmentRelativePath(fileName), true)
-      await writeBinaryAtomic(join(attachmentsDir, fileName), buffer)
+      const target = join(attachmentsDir, fileName)
+      await this.transaction?.capture(target)
+      await writeBinaryAtomic(target, buffer)
 
       results.push({
         id,
@@ -593,6 +670,7 @@ export class WorkspaceStore {
   /** 删除附件文件 */
   async deleteAttachment(relativePath: string): Promise<void> {
     const target = await this.validateAttachmentPath(relativePath, true)
+    await this.transaction?.capture(target)
     await removePath(target)
   }
 
@@ -654,7 +732,7 @@ export class WorkspaceStore {
       selectedMessageId: conversation.selectedMessageId
     })
 
-    await writeTextAtomic(absolutePath, next)
+    await this.trackWrite(absolutePath, () => writeTextAtomic(absolutePath, next))
 
     const mtime = (await mtimeOf(absolutePath)) ?? Date.now()
     this.pageMtimes.set(pageId, mtime)
@@ -724,9 +802,24 @@ export class WorkspaceStore {
   }
 
   private async persistFolders(): Promise<void> {
-    await writeJsonAtomic(this.paths.foldersFile(this.path), {
-      folders: this.folders
-    } satisfies FoldersFile)
+    const path = this.paths.foldersFile(this.path)
+    await this.trackWrite(path, () =>
+      writeJsonAtomic(path, {
+        folders: this.folders
+      } satisfies FoldersFile)
+    )
+  }
+
+  /** 为一个命令中的多次文件变更保留撤销内容，避免只回滚内存而留下半完成磁盘状态。 */
+  private async trackWrite(path: string, write: () => Promise<void>): Promise<void> {
+    await this.transaction?.capture(path)
+    await write()
+  }
+
+  private async trackMove(from: string, to: string): Promise<void> {
+    await this.transaction?.capture(from)
+    await this.transaction?.capture(to)
+    await movePath(from, to)
   }
 
   /**
@@ -856,72 +949,66 @@ export class WorkspaceStore {
   /** 对齐磁盘布局：移动页面文件并清理空目录 */
   private async applyLayout(): Promise<void> {
     const layout = computeWorkspaceLayout({ folders: this.folders, pages: this.pages })
+    const previousDirectories = new Set(this.folderDirs.values())
     this.folderDirs = layout.folderDirs
 
     for (const dir of new Set(layout.folderDirs.values())) {
+      if (!(await isDirectory(this.absPath(dir))))
+        await this.transaction?.capture(this.absPath(dir), 'directory')
       await ensureDir(this.absPath(dir))
     }
 
-    let pending = this.pages.filter((page) => {
+    const pending = this.pages.filter((page) => {
       const desired = layout.pagePaths.get(page.id)
       return desired !== undefined && this.pagePaths.get(page.id) !== desired
     })
 
-    // 目标位置可能被另一个待移动的页面占用，多轮尝试直到收敛
-    for (let pass = 0; pass < 3 && pending.length > 0; pass++) {
-      const remaining: Page[] = []
-
+    // 先腾空所有源位置，交换路径或循环移动也不会互相覆盖。
+    const staging = join(this.paths.pointerDir(this.path), `layout-${randomUUID()}`)
+    const staged = new Map<string, string>()
+    if (pending.length) {
+      await this.transaction?.capture(staging, 'directory')
+      await ensureDir(staging)
       for (const page of pending) {
-        const desired = layout.pagePaths.get(page.id)
-        if (!desired) continue
-
-        const toAbs = this.absPath(desired)
-        if (await pathExists(toAbs)) {
-          remaining.push(page)
-          continue
-        }
-
         const from = this.pagePaths.get(page.id)
-        if (from) {
-          const fromAbs = this.absPath(from)
-          if (await pathExists(fromAbs)) await movePath(fromAbs, toAbs)
-        }
+        if (!from || !(await pathExists(this.absPath(from)))) continue
+        const temporary = join(staging, page.id)
+        await this.trackMove(this.absPath(from), temporary)
+        staged.set(page.id, temporary)
+      }
+      for (const page of pending) {
+        const desired = layout.pagePaths.get(page.id)!
+        const target = this.absPath(desired)
+        if (await pathExists(target))
+          throw new RuntimeError('workspace.path-conflict', `目标文件已存在：${desired}`)
+        const temporary = staged.get(page.id)
+        if (temporary) await this.trackMove(temporary, target)
         this.pagePaths.set(page.id, desired)
       }
-
-      pending = remaining
+      await this.removeEmptyDirectory(staging)
     }
 
-    await this.pruneEmptyDirectories(new Set(layout.folderDirs.values()))
+    await this.pruneEmptyDirectories(previousDirectories, new Set(layout.folderDirs.values()))
   }
 
-  private async pruneEmptyDirectories(keep: ReadonlySet<string>): Promise<void> {
-    const directories = await this.collectDirectories('')
+  private async pruneEmptyDirectories(
+    previous: ReadonlySet<string>,
+    keep: ReadonlySet<string>
+  ): Promise<void> {
+    // 只清理由本工作区元数据曾经管理的目录，不能扫描并删除用户的无关空目录。
+    const directories = [...previous]
     directories.sort((a, b) => b.split('/').length - a.split('/').length)
-
     for (const dir of directories) {
       if (keep.has(dir)) continue
-      const absolute = this.absPath(dir)
-      const files = await walkFiles(absolute)
-      const subdirs = await listDirectories(absolute)
-      if (files.length === 0 && subdirs.length === 0) {
-        await removePath(absolute, true)
-      }
+      await this.transaction?.capture(this.absPath(dir), 'directory')
+      await this.removeEmptyDirectory(this.absPath(dir))
     }
   }
 
-  private async collectDirectories(parentDir: string): Promise<string[]> {
-    const absolute = parentDir ? this.absPath(parentDir) : this.path
-    const names = await listDirectories(absolute)
-    const result: string[] = []
-
-    for (const name of names) {
-      if (isReservedDirectory(name)) continue
-      const dir = parentDir ? `${parentDir}/${name}` : name
-      result.push(dir, ...(await this.collectDirectories(dir)))
-    }
-
-    return result
+  private async removeEmptyDirectory(path: string): Promise<void> {
+    await rmdir(path).catch((error: NodeJS.ErrnoException) => {
+      if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code ?? '')) throw error
+    })
   }
 
   /** 索引同步：仅重新解析变化过的页面 */

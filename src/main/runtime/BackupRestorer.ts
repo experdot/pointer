@@ -188,7 +188,15 @@ export async function restoreBackup(
       if (defaultLLM && result.ids.llm[defaultLLM]) next.defaultLLMId = result.ids.llm[defaultLLM]
       if (defaultModel && result.ids.models[defaultModel])
         next.defaultModelConfigId = result.ids.models[defaultModel]
-      await settingsStore.replace(next)
+      try {
+        await settingsStore.replace(next)
+      } catch (error) {
+        result.ids.llm = map()
+        result.ids.models = map()
+        result.ids.llmFolders = map()
+        result.ids.modelFolders = map()
+        throw error
+      }
       result.counts.configs =
         llm.filter(
           (item) =>
@@ -220,21 +228,24 @@ export async function restoreBackup(
       const parentFolderId = parent(folder.parentFolderId, result.ids.folders, (id) =>
         Boolean(workspace.getFolder(id))
       )
-      if (existing && strategy === 'overwrite') {
-        await workspace.moveFolder(existing.id, parentFolderId, undefined, Date.now())
-        await workspace.updateFolder(existing.id, { name: folder.name }, Date.now())
-        result.ids.folders[folder.id] = existing.id
-      } else {
-        const created = await workspace.createFolder(
-          {
-            id: existing || workspace.getPage(folder.id) ? undefined : folder.id,
-            name: folder.name,
-            parentFolderId
-          },
-          folder.createdAt
-        )
-        result.ids.folders[folder.id] = created.id
-      }
+      const restoredId = await workspace.run(async () => {
+        if (existing && strategy === 'overwrite') {
+          await workspace.moveFolder(existing.id, parentFolderId, undefined, Date.now())
+          await workspace.updateFolder(existing.id, { name: folder.name }, Date.now())
+          return existing.id
+        } else {
+          const created = await workspace.createFolder(
+            {
+              id: existing || workspace.getPage(folder.id) ? undefined : folder.id,
+              name: folder.name,
+              parentFolderId
+            },
+            folder.createdAt
+          )
+          return created.id
+        }
+      })
+      result.ids.folders[folder.id] = restoredId
       result.counts.folders++
     }
     const lastSibling = new Map<string, string>()
@@ -248,45 +259,48 @@ export async function restoreBackup(
       const parentFolderId = parent(page.parentFolderId, result.ids.folders, (id) =>
         Boolean(workspace.getFolder(id))
       )
-      let id: string
-      if (existing && strategy === 'overwrite') {
-        id = existing.id
-        await workspace.movePage(id, parentFolderId, undefined, Date.now())
-        await workspace.updatePage(
-          id,
-          { name: page.name, starred: page.starred ?? false },
-          Date.now()
-        )
-      } else {
-        id = (
-          await workspace.createPage(
-            {
-              id: existing || workspace.getFolder(page.id) ? undefined : page.id,
-              name: page.name,
-              starred: page.starred,
-              parentFolderId,
-              afterNodeId: lastSibling.get(parentFolderId ?? '')
-            },
-            page.createdAt
+      const restoredId = await workspace.run(async () => {
+        let id: string
+        if (existing && strategy === 'overwrite') {
+          id = existing.id
+          await workspace.movePage(id, parentFolderId, undefined, Date.now())
+          await workspace.updatePage(
+            id,
+            { name: page.name, starred: page.starred ?? false },
+            Date.now()
           )
-        ).id
-      }
-      result.ids.pages[page.id] = id
-      lastSibling.set(parentFolderId ?? '', id)
-      const record = records.get(page.id) ?? emptyConversation(id)
-      await workspace.writeConversation({
-        ...record,
-        pageId: id,
-        messages: record.messages.map((message) => ({
-          ...message,
-          llmId: message.llmId ? (result.ids.llm[message.llmId] ?? message.llmId) : undefined,
-          modelConfigId: message.modelConfigId
-            ? (result.ids.models[message.modelConfigId] ?? message.modelConfigId)
-            : undefined
-        }))
+        } else {
+          id = (
+            await workspace.createPage(
+              {
+                id: existing || workspace.getFolder(page.id) ? undefined : page.id,
+                name: page.name,
+                starred: page.starred,
+                parentFolderId,
+                afterNodeId: lastSibling.get(parentFolderId ?? '')
+              },
+              page.createdAt
+            )
+          ).id
+        }
+        const record = records.get(page.id) ?? emptyConversation(id)
+        await workspace.writeConversation({
+          ...record,
+          pageId: id,
+          messages: record.messages.map((message) => ({
+            ...message,
+            llmId: message.llmId ? (result.ids.llm[message.llmId] ?? message.llmId) : undefined,
+            modelConfigId: message.modelConfigId
+              ? (result.ids.models[message.modelConfigId] ?? message.modelConfigId)
+              : undefined
+          }))
+        })
+        return id
       })
+      result.ids.pages[page.id] = restoredId
+      lastSibling.set(parentFolderId ?? '', restoredId)
       result.counts.pages++
-      result.counts.messages += record.messages.length
+      result.counts.messages += records.get(page.id)?.messages.length ?? 0
     }
     if (selection.ui && data.viewState) {
       const old = viewStore.get()

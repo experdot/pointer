@@ -6,7 +6,7 @@
 
 import { app, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
-import { basename, dirname, extname } from 'node:path'
+import { basename, extname } from 'node:path'
 import type { RuntimeHost } from './runtime'
 
 export function createRuntimeHost(): RuntimeHost {
@@ -73,8 +73,8 @@ export function createRuntimeHost(): RuntimeHost {
     },
 
     async openInFileManager(targetPath) {
-      const error = await shell.openPath(dirname(targetPath))
-      if (error) console.warn('[runtime] 打开文件管理器失败：', error)
+      const error = await shell.openPath(targetPath)
+      if (error) throw new Error(`打开文件管理器失败：${error}`)
     }
   }
 }

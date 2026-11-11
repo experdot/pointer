@@ -8,43 +8,70 @@
 import type { SearchMatch, SearchOptions, SearchPageInfo } from '@shared/domain'
 import {
   buildSnippet,
-  compileMatcher,
+  DEFAULT_SEARCH_OPTIONS,
   descendantFolderIds,
   groupMatches,
   withinTimeRange
 } from '@shared/domain'
-import type { WorkspaceSearchResult } from '@shared/contracts'
+import type {
+  MessageSearchMatch,
+  MessageSearchRequest,
+  WorkspaceSearchResult
+} from '@shared/contracts'
+import { SearchExecutor } from './SearchExecutor'
 import type { IndexDb } from './IndexDb'
 import type { WorkspaceStore } from './WorkspaceStore'
 
 const FTS_MIN_QUERY_LENGTH = 3
 
 export class SearchService {
+  private readonly executor = new SearchExecutor()
+
   constructor(
     private readonly index: IndexDb,
     private readonly workspace: WorkspaceStore
   ) {}
 
-  search(query: string, options: SearchOptions): WorkspaceSearchResult {
+  async search(query: string, options: SearchOptions): Promise<WorkspaceSearchResult> {
     const trimmed = query.trim()
     if (!trimmed) return { groups: [], total: 0 }
 
-    const matcher = compileMatcher(trimmed, options)
-    const now = Date.now()
-    const allowedPages = this.resolveFolderFilter(options.folderIds)
-
-    const candidates = options.useRegex
-      ? this.index.allMessages()
-      : this.index.searchCandidates(trimmed, trimmed.length >= FTS_MIN_QUERY_LENGTH)
+    // 只在读取快照时占用工作区队列；慢正则不阻塞消息保存和后续查询。
+    const { candidates, pageInfo } = await this.workspace.run(async () => {
+      const now = Date.now()
+      const allowedPages = this.resolveFolderFilter(options.folderIds)
+      const useFts = [...trimmed].length >= FTS_MIN_QUERY_LENGTH
+      // SQLite LIKE 的大小写折叠仅覆盖 ASCII，短查询交给同一 Unicode 匹配器。
+      const indexed =
+        options.useRegex || (!useFts && !options.matchCase)
+          ? this.index.allMessages()
+          : this.index.searchCandidates(trimmed, useFts)
+      const candidates = indexed.filter(
+        (candidate) =>
+          (!allowedPages || allowedPages.has(candidate.pageId)) &&
+          (options.roleFilter === 'all' || candidate.role === options.roleFilter) &&
+          withinTimeRange(candidate.createdAt, options.timeRange, now)
+      )
+      const pageInfo = new Map<string, SearchPageInfo>()
+      for (const page of this.workspace.getTree().pages) {
+        pageInfo.set(page.id, {
+          title: page.name,
+          createdAt: page.createdAt,
+          folderPath: this.folderPathLabel(page.parentFolderId)
+        })
+      }
+      return { candidates, pageInfo }
+    })
+    const found = await this.executor.run(
+      candidates.map((candidate) => candidate.content),
+      trimmed,
+      options
+    )
 
     const matches: SearchMatch[] = []
 
-    for (const candidate of candidates) {
-      if (allowedPages && !allowedPages.has(candidate.pageId)) continue
-      if (options.roleFilter !== 'all' && candidate.role !== options.roleFilter) continue
-      if (!withinTimeRange(candidate.createdAt, options.timeRange, now)) continue
-
-      const ranges = matcher(candidate.content)
+    for (const { index, ranges } of found) {
+      const candidate = candidates[index]
       ranges.forEach((range, occurrence) => {
         const snippet = buildSnippet(candidate.content, range)
         matches.push({
@@ -62,18 +89,34 @@ export class SearchService {
       })
     }
 
-    const pageInfo = new Map<string, SearchPageInfo>()
-    for (const pageId of new Set(matches.map((match) => match.pageId))) {
-      const page = this.workspace.getPage(pageId)
-      if (!page) continue
-      pageInfo.set(pageId, {
-        title: page.name,
-        createdAt: page.createdAt,
-        folderPath: this.folderPathLabel(page.parentFolderId)
-      })
-    }
-
     return { groups: groupMatches(matches, pageInfo), total: matches.length }
+  }
+
+  async messages(input: MessageSearchRequest): Promise<MessageSearchMatch[]> {
+    const found = await this.executor.run(
+      input.messages.map((message) => message.content),
+      input.query,
+      {
+        ...DEFAULT_SEARCH_OPTIONS,
+        ...input.options
+      }
+    )
+    const matches: MessageSearchMatch[] = []
+    for (const { index, ranges } of found) {
+      for (const range of ranges) {
+        matches.push({
+          messageId: input.messages[index].id,
+          startOffset: range.start,
+          endOffset: range.end,
+          globalIndex: matches.length
+        })
+      }
+    }
+    return matches
+  }
+
+  dispose(): Promise<void> {
+    return this.executor.dispose()
   }
 
   /** 将文件夹筛选展开为页面 id 集合；未指定时返回 null 表示不筛选 */

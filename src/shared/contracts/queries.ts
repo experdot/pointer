@@ -4,6 +4,7 @@
 
 import type {
   Account,
+  ChatMessage,
   Conversation,
   Folder,
   MessageQueue,
@@ -48,6 +49,19 @@ export interface WorkspaceSearchResult {
   total: number
 }
 
+export interface MessageSearchMatch {
+  messageId: string
+  startOffset: number
+  endOffset: number
+  globalIndex: number
+}
+
+export interface MessageSearchRequest {
+  messages: Pick<ChatMessage, 'id' | 'content'>[]
+  query: string
+  options: Pick<SearchOptions, 'matchCase' | 'useRegex' | 'matchWholeWord'>
+}
+
 export interface AttachmentContent {
   mimeType: string
   dataBase64: string
@@ -79,6 +93,7 @@ interface RuntimeQueryMap {
     payload: { query: string; options: SearchOptions }
     result: WorkspaceSearchResult
   }
+  'search.messages': { payload: MessageSearchRequest; result: MessageSearchMatch[] }
   'ai.models': { payload: { llmId: string }; result: ModelCatalog }
   'ai.test': { payload: { llmId: string }; result: ConnectionCheck }
   'attachment.read': { payload: { relativePath: string }; result: AttachmentContent }

@@ -17,6 +17,7 @@ import { useDebouncedCallback } from 'use-debounce'
 import { command } from '../../../runtime/client'
 import { copyToClipboard } from '../../../utils/clipboard'
 import TableViewModal from './TableViewModal'
+import { prepareMarkdown } from './prepareMarkdown'
 
 function Mermaid(props: { code: string }): React.JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null)
@@ -193,7 +194,6 @@ function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
 
 function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
   const ref = useRef<HTMLPreElement>(null)
-  const refText = ref.current?.innerText
   const [mermaidCode, setMermaidCode] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -202,18 +202,21 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
     if (!ref.current) return
     const mermaidDom = ref.current.querySelector('code.language-mermaid')
     if (mermaidDom) {
-      setMermaidCode((mermaidDom as HTMLElement).innerText)
+      setMermaidCode(mermaidDom.textContent ?? '')
     }
   }, 600)
 
   useEffect(() => {
-    setTimeout(renderMermaid, 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refText])
+    const timer = setTimeout(renderMermaid, 1)
+    return () => {
+      clearTimeout(timer)
+      renderMermaid.cancel()
+    }
+  }, [props.children, renderMermaid])
 
   const handleCopy = async (): Promise<void> => {
     if (ref.current) {
-      const code = ref.current.innerText
+      const code = ref.current.querySelector('code')?.textContent ?? ''
       const success = await copyToClipboard(code)
       if (success) {
         setIsCopied(true)
@@ -224,7 +227,7 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
 
   const handleDownload = async (): Promise<void> => {
     if (ref.current) {
-      const code = ref.current.innerText
+      const code = ref.current.querySelector('code')?.textContent ?? ''
       const codeElement = ref.current.querySelector('code')
       const language = codeElement?.className.match(/language-(\w+)/)?.[1] || 'txt'
 
@@ -297,44 +300,9 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
   )
 }
 
-function escapeDollarNumber(text: string): string {
-  if (!text) return ''
-
-  let escapedText = ''
-
-  for (let i = 0; i < text.length; i += 1) {
-    let char = text[i]
-    const nextChar = text[i + 1] || ' '
-
-    if (char === '$' && nextChar >= '0' && nextChar <= '9') {
-      char = '\\$'
-    }
-
-    escapedText += char
-  }
-
-  return escapedText
-}
-
-function escapeBrackets(text: string): string {
-  if (!text) return ''
-
-  const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g
-  return text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
-    if (codeBlock) {
-      return codeBlock
-    } else if (squareBracket) {
-      return `$$${squareBracket}$$`
-    } else if (roundBracket) {
-      return `$${roundBracket}$`
-    }
-    return match
-  })
-}
-
 function MarkdownContentImpl(props: { content: string }): React.JSX.Element {
   const escapedContent = useMemo(() => {
-    return escapeBrackets(escapeDollarNumber(props.content))
+    return prepareMarkdown(props.content)
   }, [props.content])
 
   return (

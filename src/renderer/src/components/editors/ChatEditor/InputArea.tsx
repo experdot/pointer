@@ -60,10 +60,21 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   // 只订阅本页的输入内容与需要的 action：在别的页签打字不再重渲染这个输入框
   const content = useChatUIStore((state) => state.getState(pageId).inputContent)
   const setInputContent = useChatUIStore((state) => state.setInputContent)
-  const clearPendingAttachments = useChatUIStore((state) => state.clearPendingAttachments)
   const { pendingAttachments, addAttachments, addAttachmentsFromSelector, removeAttachment } =
     useAttachment(pageId)
   const textAreaRef = useRef<TextAreaRef>(null)
+  const sending = useRef(false)
+  const composing = useRef(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const attachmentAction = useCallback(async (action: () => Promise<void>) => {
+    setSendError(null)
+    try {
+      await action()
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : '附件操作失败')
+    }
+  }, [])
 
   // 获取当前 tab 的活跃状态
   const isTabActive = useTabsStore((state) => {
@@ -106,10 +117,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
       const files = e.dataTransfer.files
       if (files.length > 0) {
-        await addAttachments(files)
+        await attachmentAction(() => addAttachments(files))
       }
     },
-    [addAttachments]
+    [addAttachments, attachmentAction]
   )
 
   // 粘贴图片处理
@@ -129,10 +140,10 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
       if (imageFiles.length > 0) {
         e.preventDefault()
-        await addAttachments(imageFiles)
+        await attachmentAction(() => addAttachments(imageFiles))
       }
     },
-    [addAttachments]
+    [addAttachments, attachmentAction]
   )
 
   useImperativeHandle(
@@ -158,13 +169,30 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     const trimmed = content.trim()
     // 允许仅发送附件（无文本）
     if (!trimmed && pendingAttachments.length === 0) return
-    if (disabled) return
+    if (disabled || !hasLLMConfig || !hasDefaultLLM || sending.current) return
+    if (isStreaming && pendingAttachments.length) {
+      setSendError('消息队列暂不支持附件，请等待当前回答结束后发送')
+      return
+    }
 
     const attachmentsToSend = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined
-    setInputContent(pageId, '')
-    clearPendingAttachments(pageId)
-    await onSend(trimmed, attachmentsToSend)
-    focusInput()
+    sending.current = true
+    setIsSending(true)
+    setSendError(null)
+    try {
+      await onSend(trimmed, attachmentsToSend)
+      const store = useChatUIStore.getState()
+      // 只确认本次提交的草稿，等待期间的新文字和新附件属于下一条消息。
+      if (store.getState(pageId).inputContent === content) setInputContent(pageId, '')
+      for (const attachment of attachmentsToSend ?? [])
+        store.removePendingAttachment(pageId, attachment.id)
+      focusInput()
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : String(error))
+    } finally {
+      sending.current = false
+      setIsSending(false)
+    }
   }, [
     content,
     pendingAttachments,
@@ -173,11 +201,14 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     focusInput,
     pageId,
     setInputContent,
-    clearPendingAttachments
+    hasLLMConfig,
+    hasDefaultLLM,
+    isStreaming
   ])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (composing.current || e.nativeEvent.isComposing || e.keyCode === 229) return
       if (e.key === 'Escape') {
         e.preventDefault()
         blurInput()
@@ -223,9 +254,11 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     // 发送按钮
     return (
       <Button
+        aria-label="发送"
         type="primary"
         icon={<SendOutlined />}
         onClick={handleSend}
+        loading={isSending}
         disabled={(!content.trim() && pendingAttachments.length === 0) || disabled}
       >
         发送
@@ -263,16 +296,26 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     >
       {/* 待发送附件预览 */}
       {pendingAttachments.length > 0 && (
-        <AttachmentPreview attachments={pendingAttachments} onRemove={removeAttachment} />
+        <AttachmentPreview
+          attachments={pendingAttachments}
+          onRemove={(id) => void attachmentAction(() => removeAttachment(id))}
+        />
       )}
 
       <div className="chat-editor__textarea-wrapper">
         <TextArea
+          aria-label="消息内容"
           ref={textAreaRef}
           className="chat-editor__textarea"
           value={content}
           onChange={(e) => setInputContent(pageId, e.target.value)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => {
+            composing.current = true
+          }}
+          onCompositionEnd={() => {
+            composing.current = false
+          }}
           onPaste={handlePaste}
           placeholder="输入消息..."
           autoSize={{ minRows: 2, maxRows: 10 }}
@@ -285,14 +328,21 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
         )}
       </div>
 
+      {sendError && (
+        <div role="alert" className="chat-editor__send-error">
+          {sendError}
+        </div>
+      )}
+
       <div className="chat-editor__input-toolbar">
         <div className="chat-editor__input-toolbar-left">
           <Tooltip title="添加图片">
             <Button
+              aria-label="添加图片"
               type="text"
               className="chat-editor__attachment-btn"
               icon={<PictureOutlined />}
-              onClick={addAttachmentsFromSelector}
+              onClick={() => void attachmentAction(addAttachmentsFromSelector)}
               disabled={isInputDisabled || isStreaming}
             />
           </Tooltip>

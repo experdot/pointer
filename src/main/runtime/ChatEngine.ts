@@ -130,6 +130,14 @@ export class ChatEngine {
     }
   }
 
+  abortMissingParents(pageId: string, conversation: Conversation): void {
+    const ids = new Set(conversation.messages.map((message) => message.id))
+    for (const request of this.active.values()) {
+      const parent = request.assistant.parentMessageId
+      if (request.pageId === pageId && parent && !ids.has(parent)) request.controller.abort()
+    }
+  }
+
   private assertReady(workspace: WorkspaceStore, pageId?: string): void {
     if (this.suspended || workspace !== this.deps.workspace())
       throw new RuntimeError('runtime.stale-scope', '当前工作区正在关闭')
@@ -146,7 +154,8 @@ export class ChatEngine {
   /** 准入、读取和用户消息写入在同一事务内；模型流不占用写队列。 */
   private async sendInside(
     workspace: WorkspaceStore,
-    input: SendInput
+    input: SendInput,
+    accept?: () => Promise<void>
   ): Promise<ChatRequestHandle> {
     this.assertReady(workspace, input.pageId)
     let conversation = await workspace.readConversation(input.pageId)
@@ -173,7 +182,7 @@ export class ChatEngine {
       user = appended.message
       parentMessageId = user.id
     }
-    return this.startGeneration(workspace, conversation, parentMessageId, input, user)
+    return this.startGeneration(workspace, conversation, parentMessageId, input, user, accept)
   }
 
   async regenerate(input: {
@@ -226,7 +235,8 @@ export class ChatEngine {
     conversation: Conversation,
     parentMessageId: string | undefined,
     input: { llmId?: string; modelConfigId?: string },
-    user?: ChatMessage
+    user?: ChatMessage,
+    accept?: () => Promise<void>
   ): Promise<ChatRequestHandle> {
     const config = this.resolveConfig(input.llmId, input.modelConfigId)
     const providerMessages = await this.buildProviderMessages(
@@ -237,8 +247,9 @@ export class ChatEngine {
     this.assertReady(workspace, conversation.pageId)
     if (user) {
       await workspace.writeConversation(conversation)
-      this.emit('conversation.message', { pageId: conversation.pageId, message: user })
     }
+    // 队列移除等准入写入必须先成功，才能发起不可撤销的远端请求。
+    await accept?.()
     const assistant = appendMessage(
       conversation,
       {
@@ -266,14 +277,22 @@ export class ChatEngine {
       finished,
       markFinished
     }
-    this.active.set(request.requestId, request)
-    if (this.suspended) request.controller.abort()
-    this.emit(
-      'conversation.message',
-      { pageId: request.pageId, message: assistant, requestId: request.requestId },
-      request.scopeId
-    )
-    void this.runStream(request, config, providerMessages)
+    workspace.afterCommit(() => {
+      if (user)
+        this.emit(
+          'conversation.message',
+          { pageId: conversation.pageId, message: user },
+          request.scopeId
+        )
+      this.active.set(request.requestId, request)
+      if (this.suspended) request.controller.abort()
+      this.emit(
+        'conversation.message',
+        { pageId: request.pageId, message: assistant, requestId: request.requestId },
+        request.scopeId
+      )
+      void this.runStream(request, config, providerMessages)
+    })
     return { requestId: request.requestId, messageId: assistant.id }
   }
 
@@ -282,6 +301,11 @@ export class ChatEngine {
     await workspace.run(async () => {
       if (!workspace.getPage(pageId)) return
       const current = await workspace.readConversation(pageId)
+      if (
+        assistant.parentMessageId &&
+        !current.messages.some((message) => message.id === assistant.parentMessageId)
+      )
+        return
       const next = current.messages.some((message) => message.id === assistant.id)
         ? updateMessage(current, assistant.id, assistant, Date.now())
         : appendMessage(current, assistant, assistant.createdAt).conversation
@@ -607,9 +631,10 @@ export class ChatEngine {
         const queue = await queues.get(pageId)
         const item = queue.items[0]
         if (queue.paused || !item) return
-        await this.sendInside(workspace, { pageId, content: item.content })
-        await queues.remove(pageId, item.id)
-        this.emit('queue.changed', { pageId })
+        await this.sendInside(workspace, { pageId, content: item.content }, async () => {
+          await queues.remove(pageId, item.id)
+        })
+        workspace.afterCommit(() => this.emit('queue.changed', { pageId }))
       })
     } catch (error) {
       console.warn('[runtime] 队列启动失败，已保留队列项', error)

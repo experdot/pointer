@@ -5,6 +5,7 @@ import { useMessagesStore } from '../../../../stores/messagesStore'
 import { useSettingsStore } from '../../../../stores/settingsStore'
 import type { LLMConfig, ModelConfig, Topic } from '@renderer/types/shared'
 import { collectSubtreeMessages, getDirectTopicMessages } from '../../messageTraversal'
+import { buildIndex, pathToMessage } from '@shared/domain'
 
 /**
  * Messages Source Plugin
@@ -49,12 +50,10 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
         break
 
       case 'topic-messages':
-        // Get messages within a specific topic
-        if (topicId) {
+        {
           const topic = topics.find((t) => t.id === topicId)
-          if (topic) {
-            filteredMessages = getTopicMessages(messages, topic.startMessageId, topic.endMessageId)
-          }
+          if (!topic) throw new Error('话题不存在，请重新选择导出范围')
+          filteredMessages = getTopicMessages(messages, topic.startMessageId, topic.endMessageId)
         }
         break
 
@@ -66,6 +65,12 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
 
     // Sort messages by tree order
     filteredMessages = sortMessagesByTreeOrder(filteredMessages, messages)
+    const selectedIds = new Set(filteredMessages.map((message) => message.id))
+    const selectedTopics = topics.filter(
+      (topic) =>
+        selectedIds.has(topic.startMessageId) &&
+        (selectionMode !== 'topic-messages' || topic.id === topicId)
+    )
 
     // Generate raw content (markdown format as base)
     const rawContent = generateMessagesMarkdown(
@@ -73,14 +78,14 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
       options,
       llmConfigs,
       modelConfigs,
-      topics
+      selectedTopics
     )
 
     return {
       contentType: 'messages',
       rawContent,
       messages: filteredMessages,
-      topics: selectionMode === 'topic-messages' ? topics.filter((t) => t.id === topicId) : topics,
+      topics: selectedTopics,
       metadata: {
         pageId
       }
@@ -97,23 +102,7 @@ function getCurrentBranchMessages(
   messages: import('@renderer/types/shared').ChatMessage[],
   leafMessageId?: string
 ): import('@renderer/types/shared').ChatMessage[] {
-  if (!leafMessageId) return []
-
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const path: import('@renderer/types/shared').ChatMessage[] = []
-
-  let currentId: string | undefined = leafMessageId
-  while (currentId) {
-    const message = messageMap.get(currentId)
-    if (message) {
-      path.unshift(message)
-      currentId = message.parentMessageId
-    } else {
-      break
-    }
-  }
-
-  return path
+  return pathToMessage(buildIndex(messages), leafMessageId)
 }
 
 /**
@@ -134,26 +123,19 @@ function sortMessagesByTreeOrder(
   filteredMessages: import('@renderer/types/shared').ChatMessage[],
   allMessages: import('@renderer/types/shared').ChatMessage[]
 ): import('@renderer/types/shared').ChatMessage[] {
-  // Build order map from all messages
+  const index = buildIndex(allMessages)
   const orderMap = new Map<string, number>()
-  let order = 0
-
-  function traverse(parentId?: string): void {
-    const children = allMessages
-      .filter((m) => m.parentMessageId === parentId)
-      .sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0))
-
-    for (const child of children) {
-      orderMap.set(child.id, order++)
-      traverse(child.id)
+  const roots = index.childrenByParent.get(undefined) ?? []
+  // 显式栈避免长会话递归溢出；损坏数据中的环和孤儿也最多访问一次。
+  for (const root of [...roots, ...allMessages]) {
+    const stack = [root]
+    while (stack.length) {
+      const current = stack.pop()!
+      if (orderMap.has(current.id)) continue
+      orderMap.set(current.id, orderMap.size)
+      const children = index.childrenByParent.get(current.id) ?? []
+      for (let i = children.length - 1; i >= 0; i--) stack.push(children[i])
     }
-  }
-
-  // Find root messages (no parent)
-  const roots = allMessages.filter((m) => !m.parentMessageId)
-  for (const root of roots) {
-    orderMap.set(root.id, order++)
-    traverse(root.id)
   }
 
   // Sort filtered messages by order

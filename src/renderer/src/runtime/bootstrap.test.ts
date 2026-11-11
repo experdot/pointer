@@ -132,6 +132,21 @@ describe('展示层镜像', () => {
     expect(useTabsStore.getState().initialized).toBe(true)
   })
 
+  it('非当前工作区改名和注销更新列表，保持当前选择并忽略旧 scope', async () => {
+    const { bootstrapRuntime } = await import('./bootstrap')
+    const { useWorkspaceStore } = await import('../stores/workspaceStore')
+    await bootstrapRuntime()
+    const current = { id: 'ws-1', name: '默认工作区', type: 'default' as const, path: '/tmp/ws' }
+    const other = { id: 'ws-2', name: '已改名', type: 'custom' as const, path: '/tmp/other' }
+    emit({ type: 'workspaces.changed', payload: [current, other] })
+    expect(useWorkspaceStore.getState().workspaces).toEqual([current, other])
+    expect(useWorkspaceStore.getState().currentWorkspace?.id).toBe(current.id)
+    emit({ type: 'workspaces.changed', payload: [current] })
+    expect(useWorkspaceStore.getState().workspaces).toEqual([current])
+    emit({ type: 'workspaces.changed', scopeId: 'old', payload: [other] })
+    expect(useWorkspaceStore.getState().workspaces).toEqual([current])
+  })
+
   it('对话变更事件会重新拉取会话', async () => {
     const { bootstrapRuntime } = await import('./bootstrap')
     const { useMessagesStore } = await import('../stores/messagesStore')
@@ -141,7 +156,9 @@ describe('展示层镜像', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(useMessagesStore.getState().get('page-1')?.messages).toHaveLength(1)
+    await vi.waitFor(() =>
+      expect(useMessagesStore.getState().get('page-1')?.messages).toHaveLength(1)
+    )
   })
 
   it('流式增量合并写入消息内容并标记状态', async () => {
@@ -413,8 +430,9 @@ describe('展示层镜像', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const tabs = useTabsStore.getState().tabs
-    expect(tabs.map((tab) => tab.dataId)).toEqual(['page-2'])
+    await vi.waitFor(() =>
+      expect(useTabsStore.getState().tabs.map((tab) => tab.dataId)).toEqual(['page-2'])
+    )
 
     const replacements = commands.filter((entry) => entry.name === 'viewState.replace')
     for (const replacement of replacements) {
@@ -447,9 +465,11 @@ describe('展示层镜像', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const accountStore = useAccountStore.getState()
-    expect(accountStore.currentAccountId).toBe('acc-2')
-    expect(accountStore.accounts.map((account) => account.name)).toEqual(['默认账户', '新账户'])
+    await vi.waitFor(() => {
+      const accountStore = useAccountStore.getState()
+      expect(accountStore.currentAccountId).toBe('acc-2')
+      expect(accountStore.accounts.map((account) => account.name)).toEqual(['默认账户', '新账户'])
+    })
   })
 
   it('配置入口请求设置内页后可被消费，且不会重复消费', async () => {

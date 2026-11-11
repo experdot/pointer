@@ -33,7 +33,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
   const setSearchOpen = useChatUIStore((state) => state.setSearchOpen)
 
   // 使用搜索高亮 Hook
-  const { total, scrollToMatch } = useSearchHighlight({
+  const { total, error, scrollToMatch } = useSearchHighlight({
     containerRef,
     messages,
     searchState,
@@ -178,6 +178,11 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
       />
 
       <span className="search-bar__count">{countDisplay}</span>
+      {error && (
+        <span role="alert" title={error}>
+          {error}
+        </span>
+      )}
 
       <div className="search-bar__nav">
         <Tooltip title="上一个 (Shift+Enter)">

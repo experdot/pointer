@@ -3,6 +3,7 @@ import { Markdown } from './Markdown'
 import { screenshotElement } from '../../../utils/screenshot'
 import { copyToClipboard } from '../../../utils/clipboard'
 import { command } from '../../../runtime/client'
+import { encodeCsvRows } from '../../../features/export/csv'
 import './tableViewModal.scss'
 
 interface TableViewModalProps {
@@ -24,17 +25,20 @@ export default function TableViewModal({
 }: TableViewModalProps): React.JSX.Element | null {
   const [viewMode, setViewMode] = useState<'table' | 'text'>('table')
   const [isExportingImage, setIsExportingImage] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const tableImageRef = useRef<HTMLDivElement>(null)
   const tableTextImageRef = useRef<HTMLDivElement>(null)
 
   const handleCopyMarkdown = async (): Promise<void> => {
     const contentToCopy = viewMode === 'table' ? tableMarkdown : tableTextMarkdown
+    setError(null)
     if (contentToCopy) {
-      await copyToClipboard(contentToCopy)
+      if (!(await copyToClipboard(contentToCopy))) setError('复制失败，请重试')
     }
   }
 
   const handleExportCSV = async (): Promise<void> => {
+    setError(null)
     const csv = convertTableHtmlToCSV(tableHtml)
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
     try {
@@ -47,7 +51,7 @@ export default function TableViewModal({
         ]
       })
     } catch (error) {
-      console.error('Export CSV failed:', error)
+      setError(error instanceof Error ? error.message : '导出 CSV 失败')
     }
   }
 
@@ -82,18 +86,7 @@ export default function TableViewModal({
       })
     }
 
-    return rows
-      .map((row) =>
-        row
-          .map((cell) => {
-            if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
-              return `"${cell.replace(/"/g, '""')}"`
-            }
-            return cell
-          })
-          .join(',')
-      )
-      .join('\n')
+    return encodeCsvRows(rows)
   }
 
   const handleExportImage = async (): Promise<void> => {
@@ -101,17 +94,23 @@ export default function TableViewModal({
     if (!targetRef) return
 
     setIsExportingImage(true)
+    setError(null)
     try {
       // 等待隐藏容器完成渲染
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       const blob = await screenshotElement(targetRef, { scale: 2, backgroundColor: '#ffffff' })
-      const buffer = new Uint8Array(await blob.arrayBuffer())
+      const dataBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
+        reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'))
+        reader.readAsDataURL(blob)
+      })
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
 
       await command('dialog.saveFile', {
         suggestedName: `table-${timestamp}.png`,
-        content: Buffer.from(buffer).toString('base64'),
+        content: dataBase64,
         encoding: 'base64',
         filters: [
           { name: 'PNG Images', extensions: ['png'] },
@@ -119,7 +118,7 @@ export default function TableViewModal({
         ]
       })
     } catch (error) {
-      console.error('Export image failed:', error)
+      setError(error instanceof Error ? error.message : '导出图片失败')
     } finally {
       setIsExportingImage(false)
     }
@@ -129,7 +128,13 @@ export default function TableViewModal({
 
   return (
     <>
-      <div className="table-modal-overlay" onClick={onClose}>
+      <div
+        className="table-modal-overlay"
+        role="dialog"
+        aria-label="表格查看"
+        data-shortcut-blocking-overlay="true"
+        onClick={onClose}
+      >
         <div className="table-modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="table-modal-header">
             <span className="table-modal-title">表格查看</span>
@@ -138,6 +143,7 @@ export default function TableViewModal({
             </span>
           </div>
           <div className="table-modal-body">
+            {error && <div role="alert">{error}</div>}
             <div className="table-view-mode-switch-container">
               <div className="table-view-mode-switch">
                 <button

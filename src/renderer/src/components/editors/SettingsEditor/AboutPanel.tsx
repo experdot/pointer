@@ -19,6 +19,7 @@ const { Text, Paragraph, Link } = Typography
 
 export function AboutPanel(): React.JSX.Element {
   const updateStore = useUpdateStore()
+  const setCurrentVersion = useUpdateStore((state) => state.setCurrentVersion)
   const { settings, setAutoCheckUpdate } = useSettingsStore()
   const { message, modal } = App.useApp()
   const runSaved = useSavedAction()
@@ -38,25 +39,30 @@ export function AboutPanel(): React.JSX.Element {
 
   // 初始化时获取当前版本
   useEffect(() => {
+    let active = true
     const getCurrentVersion = async (): Promise<void> => {
       try {
         const version = await query('app.version', undefined)
-        updateStore.setCurrentVersion(version)
+        if (active) setCurrentVersion(version)
       } catch (err) {
         console.error('Failed to get app version:', err)
       }
     }
     getCurrentVersion()
-  }, [updateStore])
+    return () => {
+      active = false
+    }
+  }, [setCurrentVersion])
 
   const handleCheckForUpdates = async (): Promise<void> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
     try {
       updateStore.setCheckingForUpdates(true)
       updateStore.setError(null)
       updateStore.setIsStartupCheck(false)
 
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('检查更新超时')), 30000)
+        timer = setTimeout(() => reject(new Error('检查更新超时')), 30000)
       })
 
       const updatePromise = command('app.checkUpdate', undefined)
@@ -77,6 +83,8 @@ export function AboutPanel(): React.JSX.Element {
       updateStore.setError(errorMessage)
       updateStore.setCheckingForUpdates(false)
       message.error(`检查更新失败: ${errorMessage}`)
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -220,6 +228,7 @@ export function AboutPanel(): React.JSX.Element {
       {/* 操作按钮 */}
       <Space>
         <Button
+          aria-label="检查更新"
           icon={<ReloadOutlined />}
           loading={checkingForUpdates}
           onClick={handleCheckForUpdates}
@@ -230,6 +239,7 @@ export function AboutPanel(): React.JSX.Element {
 
         {updateAvailable && !updateDownloaded && (
           <Button
+            aria-label="下载更新"
             type="primary"
             icon={<CloudDownloadOutlined />}
             loading={downloading}
@@ -241,7 +251,13 @@ export function AboutPanel(): React.JSX.Element {
         )}
 
         {updateDownloaded && (
-          <Button type="primary" danger icon={<DownloadOutlined />} onClick={handleInstallUpdate}>
+          <Button
+            aria-label="安装并重启"
+            type="primary"
+            danger
+            icon={<DownloadOutlined />}
+            onClick={handleInstallUpdate}
+          >
             安装并重启
           </Button>
         )}

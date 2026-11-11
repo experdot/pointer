@@ -25,6 +25,7 @@ export const MessageActions = React.memo(function MessageActions({
     <div className="message-item__actions">
       <Tooltip title={copied ? '已复制' : '复制'}>
         <Button
+          aria-label={copied ? '已复制' : '复制'}
           type="text"
           size="small"
           icon={copied ? <CheckOutlined /> : <CopyOutlined />}
@@ -32,21 +33,39 @@ export const MessageActions = React.memo(function MessageActions({
         />
       </Tooltip>
       <Tooltip title="编辑">
-        <Button type="text" size="small" icon={<EditOutlined />} onClick={onStartEdit} />
+        <Button
+          aria-label="编辑"
+          type="text"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={onStartEdit}
+        />
       </Tooltip>
       {isAssistant && (
         <Tooltip title="重试">
-          <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRetry} />
+          <Button
+            aria-label="重试"
+            type="text"
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={onRetry}
+          />
         </Tooltip>
       )}
       {isUser && isLeaf && (
         <Tooltip title="继续生成">
-          <Button type="text" size="small" icon={<ArrowDownOutlined />} onClick={onContinue} />
+          <Button
+            aria-label="继续生成"
+            type="text"
+            size="small"
+            icon={<ArrowDownOutlined />}
+            onClick={onContinue}
+          />
         </Tooltip>
       )}
       <Popconfirm title="确定删除此消息？" onConfirm={onDelete} okText="删除" cancelText="取消">
         <Tooltip title="删除">
-          <Button type="text" size="small" icon={<DeleteOutlined />} />
+          <Button aria-label="删除" type="text" size="small" icon={<DeleteOutlined />} />
         </Tooltip>
       </Popconfirm>
     </div>

@@ -96,10 +96,15 @@ pnpm build:unpack   # build without packaging
 pnpm lint           # ESLint (warnings fail the run)
 pnpm format         # Prettier
 pnpm typecheck      # type check main + renderer
-pnpm test           # unit tests (domain + renderer mirror)
+pnpm test           # domain, kernel, IPC, mirrors and React DOM tests
+pnpm test:coverage  # full-source coverage report and regression thresholds
+pnpm test:stress    # large trees, seeded inputs and storage budgets
+pnpm test:e2e       # production build + real Electron desktop scenarios
 pnpm smoke:kernel   # boot the kernel in a temp dir and verify the query/command/event chain
 pnpm release        # build and publish to GitHub Releases
 ```
+
+Testing scope, isolation rules and verification records are documented in [docs/testing.md](docs/testing.md).
 
 ## Configuration
 

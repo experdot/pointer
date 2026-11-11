@@ -265,6 +265,15 @@ function handleEvent(event: RuntimeEvent): void {
     return
   }
   switch (event.type) {
+    case 'workspaces.changed': {
+      const currentWorkspaceId = useWorkspaceStore.getState().currentWorkspaceId
+      useWorkspaceStore.setState({
+        workspaces: event.payload,
+        currentWorkspace: event.payload.find((item) => item.id === currentWorkspaceId) ?? null,
+        initialized: true
+      })
+      break
+    }
     case 'accounts.changed':
       useAccountStore.setState({ accounts: event.payload, initialized: true })
       break

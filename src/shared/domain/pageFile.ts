@@ -219,17 +219,18 @@ function flattenForDisplay(
   const result: Array<{ message: ChatMessage; layer: number; branch: number }> = []
   const visited = new Set<string>()
 
-  const walk = (parentId: string | undefined, layer: number): void => {
-    const siblings = byParent.get(parentId) ?? []
-    siblings.forEach((message, position) => {
-      if (visited.has(message.id)) return
-      visited.add(message.id)
-      result.push({ message, layer, branch: position + 1 })
-      walk(message.id, layer + 1)
-    })
+  const pending = (byParent.get(undefined) ?? [])
+    .map((message, index) => ({ message, layer: 1, branch: index + 1 }))
+    .reverse()
+  while (pending.length) {
+    const entry = pending.pop()!
+    if (visited.has(entry.message.id)) continue
+    visited.add(entry.message.id)
+    result.push(entry)
+    const children = byParent.get(entry.message.id) ?? []
+    for (let index = children.length - 1; index >= 0; index--)
+      pending.push({ message: children[index], layer: entry.layer + 1, branch: index + 1 })
   }
-
-  walk(undefined, 1)
 
   // 兜底：环或孤立节点也应被写出，避免静默丢数据
   for (const message of messages) {

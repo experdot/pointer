@@ -56,6 +56,8 @@ export const markdownFormatPlugin: FormatPlugin = {
  * Format content as a markdown code block
  */
 function formatCodeBlock(code: string, language?: string): string {
-  const lang = language || ''
-  return `\`\`\`${lang}\n${code}\n\`\`\``
+  const lang = language?.match(/^[\w#+.-]+/)?.[0] ?? ''
+  const longest = (code.match(/`+/g) ?? []).reduce((max, run) => Math.max(max, run.length), 0)
+  const fence = '`'.repeat(Math.max(3, longest + 1))
+  return `${fence}${lang}\n${code}\n${fence}`
 }

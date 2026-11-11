@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import type { ChatMessage } from '@renderer/types/shared'
 import type { SearchState } from '../stores/chatUIStore'
-import {
-  SEARCH_DEBOUNCE_MS,
-  findAllMatches,
-  type SearchMatch,
-  type SearchOptions
-} from '../utils/searchUtils'
+import { SEARCH_DEBOUNCE_MS, type SearchMatch, type SearchOptions } from '../utils/searchUtils'
 import {
   buildTextIndex,
   createRangeFromFullTextOffset,
   findOccurrenceOffset
 } from '../utils/highlightRange'
 import { expandTopicsForMessage } from '../services/navigationService'
+import { query } from '../runtime/client'
 
 interface UseSearchHighlightOptions {
   containerRef: React.RefObject<HTMLElement | null>
@@ -25,6 +21,7 @@ interface UseSearchHighlightOptions {
 interface UseSearchHighlightResult {
   matches: SearchMatch[]
   total: number
+  error: string | null
   scrollToMatch: (index: number) => void
 }
 
@@ -50,25 +47,33 @@ export function useSearchHighlight({
     [searchState.matchCase, searchState.useRegex, searchState.matchWholeWord]
   )
 
-  // 防抖后的查询
-  const [debouncedQuery, setDebouncedQuery] = useState(searchState.query)
+  const [matches, setMatches] = useState<SearchMatch[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  // 防抖处理
+  // 内核线程执行匹配；清空、切页、修改选项和卸载立即使旧结果失效。
   useEffect(() => {
+    let active = true
+    setMatches([])
+    setError(null)
+    if (!searchState.isOpen || !searchState.query.trim()) return
     const timer = setTimeout(() => {
-      setDebouncedQuery(searchState.query)
+      void query('search.messages', {
+        messages: messages.map(({ id, content }) => ({ id, content })),
+        query: searchState.query,
+        options: searchOptions
+      })
+        .then((result) => {
+          if (active) setMatches(result)
+        })
+        .catch((cause) => {
+          if (active) setError(cause instanceof Error ? cause.message : String(cause))
+        })
     }, SEARCH_DEBOUNCE_MS)
-
-    return () => clearTimeout(timer)
-  }, [searchState.query])
-
-  // 计算匹配结果（使用防抖后的查询）
-  const matches = useMemo(() => {
-    if (!searchState.isOpen || !debouncedQuery.trim()) {
-      return []
+    return () => {
+      active = false
+      clearTimeout(timer)
     }
-    return findAllMatches(messages, debouncedQuery, searchOptions)
-  }, [messages, searchState.isOpen, debouncedQuery, searchOptions])
+  }, [messages, searchState.isOpen, searchState.query, searchOptions, pageId])
 
   // 通知匹配结果变化
   useEffect(() => {
@@ -182,6 +187,7 @@ export function useSearchHighlight({
   return {
     matches,
     total: matches.length,
+    error,
     scrollToMatch
   }
 }

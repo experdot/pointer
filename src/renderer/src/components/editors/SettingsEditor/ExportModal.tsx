@@ -38,6 +38,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const [checkedLLM, setCheckedLLM] = useState<React.Key[]>([])
   const [checkedModel, setCheckedModel] = useState<React.Key[]>([])
   const [includeUI, setIncludeUI] = useState(false)
+  const [includeApiKeys, setIncludeApiKeys] = useState(false)
 
   // 构建树数据
   const chatsTree = useMemo(() => buildPageTreeNodes(pages, folders), [pages, folders])
@@ -72,6 +73,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       setCheckedLLM(getAllKeys(llmTree))
       setCheckedModel(getAllKeys(modelTree))
       setIncludeUI(false)
+      setIncludeApiKeys(false)
     }
   }, [open, chatsTree, llmTree, modelTree, getAllKeys])
 
@@ -105,12 +107,24 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       .filter((k) => String(k).startsWith('item:'))
       .map((k) => String(k).replace('item:', ''))
 
-    return { pageIds, folderIds, llmIds, modelIds }
+    const llmFolderIds = checkedLLM
+      .filter((key) => String(key).startsWith('folder:'))
+      .map((key) => String(key).slice(7))
+    const modelFolderIds = checkedModel
+      .filter((key) => String(key).startsWith('folder:'))
+      .map((key) => String(key).slice(7))
+    return { pageIds, folderIds, llmIds, modelIds, llmFolderIds, modelFolderIds }
   }, [checkedChats, checkedLLM, checkedModel])
 
   const stats = getStats()
   const hasSelection =
-    stats.pageIds.length > 0 || stats.llmIds.length > 0 || stats.modelIds.length > 0 || includeUI
+    stats.pageIds.length > 0 ||
+    stats.folderIds.length > 0 ||
+    stats.llmIds.length > 0 ||
+    stats.modelIds.length > 0 ||
+    stats.llmFolderIds.length > 0 ||
+    stats.modelFolderIds.length > 0 ||
+    includeUI
 
   // 导出数据
   const handleExport = async (): Promise<void> => {
@@ -123,7 +137,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       }
 
       // 导出对话数据
-      if (stats.pageIds.length > 0) {
+      if (stats.pageIds.length > 0 || stats.folderIds.length > 0) {
         exportData.data.pages = pages.filter((p) => stats.pageIds.includes(p.id))
         exportData.data.folders = folders.filter((f) => stats.folderIds.includes(f.id))
 
@@ -137,32 +151,36 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       }
 
       // 导出 LLM 配置
-      if (stats.llmIds.length > 0) {
-        const llmFolderIds = checkedLLM
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
+      if (stats.llmIds.length > 0 || stats.llmFolderIds.length > 0) {
         exportData.data.settings = {
           ...exportData.data.settings,
           llmConfigs: {
-            items: settings.llmConfigs.items.filter((i) => stats.llmIds.includes(i.id)),
-            folders: settings.llmConfigs.folders.filter((f) => llmFolderIds.includes(f.id))
-          }
+            items: settings.llmConfigs.items
+              .filter((i) => stats.llmIds.includes(i.id))
+              .map((item) => ({ ...item, apiKey: includeApiKeys ? item.apiKey : '' })),
+            folders: settings.llmConfigs.folders.filter((f) => stats.llmFolderIds.includes(f.id))
+          },
+          defaultLLMId:
+            settings.defaultLLMId && stats.llmIds.includes(settings.defaultLLMId)
+              ? settings.defaultLLMId
+              : undefined
         }
       }
 
       // 导出模型配置
-      if (stats.modelIds.length > 0) {
-        const modelFolderIds = checkedModel
-          .filter((k) => String(k).startsWith('folder:'))
-          .map((k) => String(k).replace('folder:', ''))
-
+      if (stats.modelIds.length > 0 || stats.modelFolderIds.length > 0) {
         exportData.data.settings = {
           ...exportData.data.settings,
           modelConfigs: {
             items: settings.modelConfigs.items.filter((i) => stats.modelIds.includes(i.id)),
-            folders: settings.modelConfigs.folders.filter((f) => modelFolderIds.includes(f.id))
-          }
+            folders: settings.modelConfigs.folders.filter((f) =>
+              stats.modelFolderIds.includes(f.id)
+            )
+          },
+          defaultModelConfigId:
+            settings.defaultModelConfigId && stats.modelIds.includes(settings.defaultModelConfigId)
+              ? settings.defaultModelConfigId
+              : undefined
         }
       }
 
@@ -177,8 +195,11 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       const a = document.createElement('a')
       a.href = url
       a.download = `pointer-backup-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      try {
+        a.click()
+      } finally {
+        URL.revokeObjectURL(url)
+      }
 
       message.success('导出成功')
       onClose()
@@ -233,7 +254,17 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     {
       key: 'llm',
       label: `LLM配置 (${stats.llmIds.length})`,
-      children: renderTree(llmTree, checkedLLM, setCheckedLLM, 'llm')
+      children: (
+        <>
+          <Checkbox
+            checked={includeApiKeys}
+            onChange={(event) => setIncludeApiKeys(event.target.checked)}
+          >
+            包含 API Key（明文）
+          </Checkbox>
+          {renderTree(llmTree, checkedLLM, setCheckedLLM, 'llm')}
+        </>
+      )
     },
     {
       key: 'model',
@@ -275,6 +306,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       }
     >
       <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k as TabKey)} items={tabItems} />
+      <Text type="secondary">附件仅导出引用，图片文件需单独保留。</Text>
     </Modal>
   )
 }

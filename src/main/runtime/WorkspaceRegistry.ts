@@ -16,7 +16,17 @@ import type {
 import { createWorkspace, toWorkspaceSummary } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
 import type { PathResolver } from './paths'
-import { ensureDir, isDirectory, pathExists, readJson, removePath, writeJsonAtomic } from './fsx'
+import {
+  ensureDir,
+  isDirectory,
+  pathExists,
+  readJson,
+  readText,
+  removePath,
+  movePath,
+  writeJsonAtomic,
+  writeTextAtomic
+} from './fsx'
 
 interface WorkspacesFile {
   currentWorkspaceId: string | null
@@ -80,8 +90,8 @@ export class WorkspaceRegistry {
   async setCurrent(workspaceId: string): Promise<Workspace> {
     const workspace = this.getById(workspaceId)
     if (!workspace) throw new RuntimeError('workspace.not-found', `工作区不存在：${workspaceId}`)
+    await this.persist(workspaceId)
     this.currentWorkspaceId = workspaceId
-    await this.persist()
     return workspace
   }
 
@@ -95,9 +105,7 @@ export class WorkspaceRegistry {
 
     const registered = this.workspaces.find((item) => item.path === dirPath)
     if (registered) {
-      this.currentWorkspaceId = registered.id
-      await this.ensureIdentity(registered)
-      await this.persist()
+      await this.commitWorkspace(registered, this.workspaces, registered.id)
       return registered
     }
 
@@ -112,10 +120,7 @@ export class WorkspaceRegistry {
       at
     )
 
-    this.workspaces = [...this.workspaces, workspace]
-    this.currentWorkspaceId = workspace.id
-    await this.ensureIdentity(workspace)
-    await this.persist()
+    await this.commitWorkspace(workspace, [...this.workspaces, workspace], workspace.id)
     return workspace
   }
 
@@ -130,8 +135,6 @@ export class WorkspaceRegistry {
 
     const existing = this.workspaces.find((item) => item.path === dirPath)
     if (existing) {
-      this.currentWorkspaceId = existing.id
-      await this.persist()
       return existing
     }
 
@@ -146,10 +149,7 @@ export class WorkspaceRegistry {
       at
     )
 
-    this.workspaces = [...this.workspaces, workspace]
-    this.currentWorkspaceId = workspace.id
-    await this.ensureIdentity(workspace)
-    await this.persist()
+    await this.commitWorkspace(workspace, [...this.workspaces, workspace])
     return workspace
   }
 
@@ -158,9 +158,10 @@ export class WorkspaceRegistry {
     if (!workspace) throw new RuntimeError('workspace.not-found', `工作区不存在：${workspaceId}`)
 
     const updated: Workspace = { ...workspace, name: name.trim() || workspace.name, updatedAt: at }
-    this.workspaces = this.workspaces.map((item) => (item.id === workspaceId ? updated : item))
-    await this.ensureIdentity(updated)
-    await this.persist()
+    await this.commitWorkspace(
+      updated,
+      this.workspaces.map((item) => (item.id === workspaceId ? updated : item))
+    )
     return updated
   }
 
@@ -172,14 +173,24 @@ export class WorkspaceRegistry {
       throw new RuntimeError('workspace.last-workspace', '至少需要保留一个工作区')
     }
 
-    this.workspaces = this.workspaces.filter((item) => item.id !== workspaceId)
-    if (this.currentWorkspaceId === workspaceId) {
-      this.currentWorkspaceId = this.workspaces[0]?.id ?? null
-    }
-    await this.persist()
-
-    if (workspace.type === 'default') {
-      await removePath(workspace.path, true)
+    const workspaces = this.workspaces.filter((item) => item.id !== workspaceId)
+    const currentWorkspaceId =
+      this.currentWorkspaceId === workspaceId
+        ? (workspaces[0]?.id ?? null)
+        : this.currentWorkspaceId
+    // 先提交注销，再清理默认目录。清理失败保留残留文件，不恢复已提交的注册记录。
+    const retired =
+      workspace.type === 'default' ? `${workspace.path}.deleted-${randomUUID()}` : null
+    await this.persist(currentWorkspaceId, workspaces)
+    this.workspaces = workspaces
+    this.currentWorkspaceId = currentWorkspaceId
+    if (retired) {
+      try {
+        await movePath(workspace.path, retired)
+        await removePath(retired, true)
+      } catch (error) {
+        console.warn('[runtime] 已注销工作区，待清理目录：', retired, error)
+      }
     }
   }
 
@@ -254,10 +265,36 @@ export class WorkspaceRegistry {
     await writeJsonAtomic(this.paths.workspaceConfigFile(workspace.path), identity)
   }
 
-  private async persist(): Promise<void> {
+  private async commitWorkspace(
+    workspace: Workspace,
+    workspaces: Workspace[],
+    currentWorkspaceId = this.currentWorkspaceId
+  ): Promise<void> {
+    const identityPath = this.paths.workspaceConfigFile(workspace.path)
+    const previous = await readText(identityPath)
+    await this.ensureIdentity(workspace)
+    try {
+      await this.persist(currentWorkspaceId, workspaces)
+    } catch (error) {
+      try {
+        if (previous === null) await removePath(identityPath)
+        else await writeTextAtomic(identityPath, previous)
+      } catch (failure) {
+        throw new AggregateError([error, failure], '注册失败且工作区身份恢复失败')
+      }
+      throw error
+    }
+    this.workspaces = workspaces
+    this.currentWorkspaceId = currentWorkspaceId
+  }
+
+  private async persist(
+    currentWorkspaceId = this.currentWorkspaceId,
+    workspaces = this.workspaces
+  ): Promise<void> {
     await writeJsonAtomic(this.paths.workspacesFile(this.accountId), {
-      currentWorkspaceId: this.currentWorkspaceId,
-      workspaces: this.workspaces
+      currentWorkspaceId,
+      workspaces
     } satisfies WorkspacesFile)
   }
 }

@@ -39,7 +39,7 @@ export async function query<K extends RuntimeQueryName>(
   const key = `${scopeId}:${name}:${JSON.stringify(payload)}`
   const serial = ++sequence
   queries.set(key, serial)
-  const result = await port().query(name, payload, scopeId)
+  const result = await port().query(name, payload, scopeId).catch(rethrow)
   if (
     name !== 'session.get' &&
     (scopeId !== useSessionStore.getState().scopeId || queries.get(key) !== serial)
@@ -54,7 +54,7 @@ export async function command<K extends RuntimeCommandName>(
   payload: RuntimeCommandPayload<K>
 ): Promise<RuntimeCommandResult<K>> {
   const scopeId = useSessionStore.getState().scopeId
-  const result = await port().command(name, payload, scopeId)
+  const result = await port().command(name, payload, scopeId).catch(rethrow)
   if (
     !/^(session\.|account\.|workspace\.)/.test(name) &&
     scopeId !== useSessionStore.getState().scopeId
@@ -74,4 +74,22 @@ export function onFlush(handler: () => Promise<void>): () => void {
 
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function rethrow(error: unknown): never {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    'message' in error &&
+    typeof error.code === 'string' &&
+    typeof error.message === 'string'
+  ) {
+    throw new RuntimeError(
+      error.code,
+      error.message,
+      'details' in error ? error.details : undefined
+    )
+  }
+  throw error
 }

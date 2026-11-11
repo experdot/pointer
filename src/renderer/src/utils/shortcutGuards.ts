@@ -55,7 +55,11 @@ function isBlockingOverlayActive(event?: KeyboardEvent | null): boolean {
 }
 
 export function shouldIgnoreAppShortcuts(event?: KeyboardEvent | null): boolean {
-  return isMonacoFocused(event) || isBlockingOverlayActive(event)
+  return (
+    Boolean(event?.isComposing || event?.keyCode === 229) ||
+    isMonacoFocused(event) ||
+    isBlockingOverlayActive(event)
+  )
 }
 
 export function shouldIgnoreChatReadingShortcuts(event?: KeyboardEvent | null): boolean {

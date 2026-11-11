@@ -110,3 +110,9 @@
 .chat-editor__no-config-text a:hover {
   text-decoration: underline;
 }
+
+.chat-editor__send-error {
+  color: var(--ant-color-error, #d4380d);
+  padding: 4px 12px;
+  font-size: 12px;
+}

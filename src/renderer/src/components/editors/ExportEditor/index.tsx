@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useExportStore } from '../../../stores/exportStore'
+import { ExportStoreProvider, useExportStore } from '../../../stores/exportStore'
 import type { ExportEditorProps, SourceData } from '../../../features/export/types'
 import { Sidebar } from './panels/Sidebar'
 import { PreviewPanel } from './panels/PreviewPanel'
@@ -34,6 +34,14 @@ function isSourceDataReady(data: SourceData | null): boolean {
  * - Right: Preview panel (with edit capability and export actions)
  */
 export function ExportEditor({ context }: ExportEditorProps): React.JSX.Element {
+  return (
+    <ExportStoreProvider>
+      <ExportEditorContent context={context} />
+    </ExportStoreProvider>
+  )
+}
+
+function ExportEditorContent({ context }: ExportEditorProps): React.JSX.Element {
   const { setSourceType, setSourceData, reset, generatePreview, sourceData } = useExportStore()
   const hasAutoPreviewedRef = useRef(false)
 

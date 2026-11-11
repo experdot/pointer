@@ -5,6 +5,7 @@ import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
 import { query } from '../../../runtime/client'
 import { useDraftField } from '../../../hooks/useDraftField'
+import { useSettingsStore } from '../../../stores/settingsStore'
 import type { LLMConfig, ConfigFolder } from '@renderer/types/shared'
 
 const BASE_URL_PRESETS = [
@@ -58,6 +59,7 @@ export function LLMConfigPanel(): React.JSX.Element {
   const handleTest = async (config: LLMConfig): Promise<void> => {
     setTesting(true)
     try {
+      await useSettingsStore.getState().flush()
       const result = await query('ai.test', { llmId: config.id })
       if (result.ok) {
         message.success('连接成功')
@@ -75,6 +77,7 @@ export function LLMConfigPanel(): React.JSX.Element {
     if (fetchingModels) return
     setFetchingModels(true)
     try {
+      await useSettingsStore.getState().flush()
       const result = await query('ai.models', { llmId: config.id })
       if (result.models.length > 0) {
         setModelOptionsMap((prev) => ({ ...prev, [config.id]: result.models }))
@@ -129,6 +132,7 @@ API Key: ${config.apiKey}
           <Form layout="vertical" key={selectedConfig.id}>
             <Form.Item label="名称">
               <Input
+                aria-label="配置名称"
                 value={nameField.value}
                 onChange={(e) => nameField.setValue(e.target.value)}
                 onFocus={nameField.handlers.onFocus}
@@ -139,6 +143,7 @@ API Key: ${config.apiKey}
             </Form.Item>
             <Form.Item label="API Base URL">
               <AutoComplete
+                aria-label="API Base URL"
                 value={baseUrlField.value}
                 onChange={(v) => baseUrlField.setValue(v)}
                 onFocus={baseUrlField.handlers.onFocus}
@@ -149,12 +154,14 @@ API Key: ${config.apiKey}
             </Form.Item>
             <Form.Item label="API Key">
               <Input.Password
+                aria-label="API Key"
                 value={selectedConfig.apiKey}
                 onChange={(e) => updateConfig(selectedConfig.id, { apiKey: e.target.value })}
               />
             </Form.Item>
             <Form.Item label="模型名称">
               <AutoComplete
+                aria-label="模型名称"
                 value={modelNameField.value}
                 onChange={(v) => modelNameField.setValue(v)}
                 options={modelOptions.map((m) => ({ value: m, label: m }))}

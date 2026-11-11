@@ -74,10 +74,12 @@ export class AccountStore {
       throw new RuntimeError('account.invalid', diagnostics[0].message)
     }
 
-    this.accounts = [...this.accounts, account]
-    this.currentAccountId = account.id
+    const accounts = [...this.accounts, account]
+    const currentAccountId = this.currentAccountId ?? account.id
     await ensureDir(this.paths.accountDir(account.id))
-    await this.persist()
+    await this.persist(accounts, currentAccountId)
+    this.accounts = accounts
+    this.currentAccountId = currentAccountId
     return account
   }
 
@@ -101,8 +103,9 @@ export class AccountStore {
       throw new RuntimeError('account.invalid', diagnostics[0].message)
     }
 
-    this.accounts = this.accounts.map((item) => (item.id === accountId ? updated : item))
-    await this.persist()
+    const accounts = this.accounts.map((item) => (item.id === accountId ? updated : item))
+    await this.persist(accounts)
+    this.accounts = accounts
     return updated
   }
 
@@ -114,11 +117,12 @@ export class AccountStore {
       throw new RuntimeError('account.not-found', `账户不存在：${accountId}`)
     }
 
-    this.accounts = this.accounts.filter((item) => item.id !== accountId)
-    if (this.currentAccountId === accountId) {
-      this.currentAccountId = this.accounts[0]?.id ?? null
-    }
-    await this.persist()
+    const accounts = this.accounts.filter((item) => item.id !== accountId)
+    const currentAccountId =
+      this.currentAccountId === accountId ? (accounts[0]?.id ?? null) : this.currentAccountId
+    await this.persist(accounts, currentAccountId)
+    this.accounts = accounts
+    this.currentAccountId = currentAccountId
     await removePath(this.paths.accountDir(accountId), true)
   }
 
@@ -126,8 +130,8 @@ export class AccountStore {
     if (!this.accounts.some((item) => item.id === accountId)) {
       throw new RuntimeError('account.not-found', `账户不存在：${accountId}`)
     }
+    await this.persist(this.accounts, accountId)
     this.currentAccountId = accountId
-    await this.persist()
   }
 
   getSession(): SessionFile {
@@ -135,14 +139,17 @@ export class AccountStore {
   }
 
   async setSession(session: SessionFile): Promise<void> {
+    await writeJsonAtomic(this.paths.sessionFile, session)
     this.session = { ...session }
-    await writeJsonAtomic(this.paths.sessionFile, this.session)
   }
 
-  private async persist(): Promise<void> {
+  private async persist(
+    accounts = this.accounts,
+    currentAccountId = this.currentAccountId
+  ): Promise<void> {
     await writeJsonAtomic(this.paths.accountsFile, {
-      accounts: this.accounts,
-      currentAccountId: this.currentAccountId
+      accounts,
+      currentAccountId
     } satisfies AccountsFile)
   }
 }

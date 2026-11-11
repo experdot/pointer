@@ -140,13 +140,33 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
   const mutateLlmTree = (
     mutator: (tree: ConfigTree<LLMConfig>, at: number) => ConfigTree<LLMConfig>
   ): void => {
-    mutate((settings, at) => ({ ...settings, llmConfigs: mutator(settings.llmConfigs, at) }))
+    mutate((settings, at) => {
+      const llmConfigs = mutator(settings.llmConfigs, at)
+      return {
+        ...settings,
+        llmConfigs,
+        defaultLLMId: llmConfigs.items.some((item) => item.id === settings.defaultLLMId)
+          ? settings.defaultLLMId
+          : undefined
+      }
+    })
   }
 
   const mutateModelTree = (
     mutator: (tree: ConfigTree<ModelConfig>, at: number) => ConfigTree<ModelConfig>
   ): void => {
-    mutate((settings, at) => ({ ...settings, modelConfigs: mutator(settings.modelConfigs, at) }))
+    mutate((settings, at) => {
+      const modelConfigs = mutator(settings.modelConfigs, at)
+      return {
+        ...settings,
+        modelConfigs,
+        defaultModelConfigId: modelConfigs.items.some(
+          (item) => item.id === settings.defaultModelConfigId
+        )
+          ? settings.defaultModelConfigId
+          : undefined
+      }
+    })
   }
 
   return {

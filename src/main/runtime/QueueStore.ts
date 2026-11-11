@@ -20,7 +20,8 @@ export class QueueStore {
   constructor(
     private readonly paths: PathResolver,
     private readonly workspacePath: string,
-    private readonly pageExists: (pageId: string) => boolean
+    private readonly pageExists: (pageId: string) => boolean,
+    private readonly writeJson: (path: string, value: unknown) => Promise<void> = writeJsonAtomic
   ) {}
 
   async get(pageId: string): Promise<MessageQueue> {
@@ -71,6 +72,6 @@ export class QueueStore {
 
   private async save(queue: MessageQueue): Promise<void> {
     if (!this.pageExists(queue.pageId)) throw new RuntimeError('page.not-found', '页面不存在')
-    await writeJsonAtomic(this.paths.queueFile(this.workspacePath, queue.pageId), queue)
+    await this.writeJson(this.paths.queueFile(this.workspacePath, queue.pageId), queue)
   }
 }

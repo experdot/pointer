@@ -256,6 +256,8 @@ describe('[R21] 内核备份恢复', () => {
     const result = await restore(input(data))
     expect(result.error).toBe('disk full')
     expect(result.counts.pages).toBe(1)
+    expect(ws.getPage('second')).toBeUndefined()
+    expect(result.ids.pages.second).toBeUndefined()
     expect(ws.getPage('third')).toBeUndefined()
     expect(
       write.mock.calls.filter(

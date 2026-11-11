@@ -99,6 +99,7 @@ export function useMessageQueue({
   const handleSend = useCallback(
     async (content: string, attachments?: AttachmentRef[]) => {
       if (isStreaming) {
+        if (attachments?.length) throw new Error('消息队列暂不支持附件，请等待当前回答结束后发送')
         // AI 正在输出，消息入队（队列目前不支持附件，仅文本）
         await enqueue(content)
       } else {

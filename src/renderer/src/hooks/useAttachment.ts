@@ -106,10 +106,10 @@ export function useAttachment(pageId: string): UseAttachmentResult {
   const removeAttachment = useCallback(
     async (attachmentId: string) => {
       const attachment = pendingAttachments.find((item) => item.id === attachmentId)
-      removePendingAttachment(pageId, attachmentId)
       if (attachment) {
         await command('attachment.delete', { relativePath: attachment.relativePath })
       }
+      removePendingAttachment(pageId, attachmentId)
     },
     [pageId, pendingAttachments, removePendingAttachment]
   )

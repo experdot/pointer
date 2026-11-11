@@ -5,6 +5,15 @@ import windowStateKeeper from 'electron-window-state'
 import icon from '../../resources/icon.png?asset'
 import type { ForwardedShortcutAction } from '@shared/shortcuts'
 
+function openExternalLink(url: string): void {
+  try {
+    if (!['https:', 'http:', 'mailto:'].includes(new URL(url).protocol)) return
+    void shell.openExternal(url).catch((error) => console.warn('打开链接失败：', error))
+  } catch {
+    // 非法 URL 不交给系统协议处理器。
+  }
+}
+
 function resolveForwardedShortcutAction(input: Electron.Input): ForwardedShortcutAction | null {
   if (input.type !== 'keyDown' || input.alt) {
     return null
@@ -71,8 +80,16 @@ export function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    openExternalLink(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const current = new URL(mainWindow.webContents.getURL())
+    const target = new URL(url)
+    if (current.href.split('#')[0] === target.href.split('#')[0]) return
+    event.preventDefault()
+    openExternalLink(url)
   })
 
   mainWindow.webContents.on('before-input-event', (event, input) => {

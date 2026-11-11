@@ -6,3 +6,6 @@ out
 *.log*
 .claude/
 .vscode/
+coverage/
+test-results/
+playwright-report/

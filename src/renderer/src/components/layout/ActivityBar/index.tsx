@@ -40,6 +40,7 @@ export function ActivityBar(): React.JSX.Element {
         {activities.map((item) => (
           <Tooltip key={item.key} title={item.title} placement="right">
             <button
+              aria-label={item.title}
               className={`activity-bar-item ${activePanel === item.key && sidebarVisible ? 'active' : ''}`}
               onClick={() => setActivePanel(item.key)}
             >
@@ -59,13 +60,13 @@ export function ActivityBar(): React.JSX.Element {
           destroyOnHidden
         >
           <Tooltip title="工作区" placement="right">
-            <button className="activity-bar-item">
+            <button aria-label="工作区" className="activity-bar-item">
               <FolderOutlined />
             </button>
           </Tooltip>
         </Popover>
         <Tooltip title="设置" placement="right">
-          <button className="activity-bar-item" onClick={() => openSettings()}>
+          <button aria-label="设置" className="activity-bar-item" onClick={() => openSettings()}>
             <SettingOutlined />
           </button>
         </Tooltip>
@@ -78,7 +79,7 @@ export function ActivityBar(): React.JSX.Element {
           onOpenChange={setUserPopoverOpen}
           destroyOnHidden
         >
-          <button className="activity-bar-item activity-bar-avatar">
+          <button aria-label="账户" className="activity-bar-item activity-bar-avatar">
             <Avatar
               size={28}
               icon={<avatarConfig.icon />}

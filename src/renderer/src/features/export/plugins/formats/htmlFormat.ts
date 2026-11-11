@@ -1,6 +1,11 @@
 import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { getDirectTopicMessages } from '../../messageTraversal'
 
 /**
  * HTML Format Plugin
@@ -28,7 +33,7 @@ export const htmlFormatPlugin: FormatPlugin = {
 
       case 'code':
         html = wrapInHtml(
-          `<pre><code class="language-${content.language || 'text'}">${escapeHtml(content.rawContent)}</code></pre>`,
+          `<pre><code class="language-${escapeHtml(content.language || 'text')}">${escapeHtml(content.rawContent)}</code></pre>`,
           'Code Export'
         )
         break
@@ -114,8 +119,30 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
   const parts: string[] = []
 
   // Build model name map for lookup
-  const llmConfigs = useSettingsStore.getState().settings.llmConfigs.items
+  const settings = useSettingsStore.getState().settings
+  const llmConfigs = settings.llmConfigs.items
   const modelNameMap = new Map(llmConfigs.map((config) => [config.id, config.modelName]))
+  const modelConfigNameMap = new Map(
+    settings.modelConfigs.items.map((config) => [config.id, config.name])
+  )
+
+  if (metadata?.showTopicsOutline && content.topics?.length) {
+    const starts = new Set(content.topics.map((topic) => topic.startMessageId))
+    parts.push('<nav aria-label="目录"><h1>目录</h1><ul>')
+    for (const topic of content.topics) {
+      const titles = getDirectTopicMessages(
+        messages,
+        topic.startMessageId,
+        topic.endMessageId,
+        starts
+      )
+        .filter((message) => message.title)
+        .map((message) => `<li>${escapeHtml(message.title!)}</li>`)
+        .join('')
+      parts.push(`<li>${escapeHtml(topic.name)}${titles ? `<ul>${titles}</ul>` : ''}</li>`)
+    }
+    parts.push('</ul></nav>')
+  }
 
   for (const message of messages) {
     const roleLabel =
@@ -134,6 +161,10 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
     if (metadata?.showModelName && message.llmId) {
       const modelName = modelNameMap.get(message.llmId) || message.llmId
       msgHtml += ` <span style="font-weight: normal; color: #888; font-size: 0.9em;">(${escapeHtml(modelName)})</span>`
+    }
+    if (metadata?.showModelConfig && message.modelConfigId) {
+      const name = modelConfigNameMap.get(message.modelConfigId) ?? message.modelConfigId
+      msgHtml += ` (${escapeHtml(name)})`
     }
     msgHtml += '</div>'
 
@@ -164,34 +195,10 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
  * Simple markdown to HTML conversion
  */
 function simpleMarkdownToHtml(markdown: string): string {
-  let html = escapeHtml(markdown)
-
-  // Code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, _lang, code) => {
-    return `<pre style="background: #2d2d2d; color: #ccc; padding: 12px; border-radius: 4px; overflow-x: auto;"><code>${code}</code></pre>`
-  })
-
-  // Inline code
-  html = html.replace(
-    /`([^`]+)`/g,
-    '<code style="background: #f0f0f0; padding: 2px 4px; border-radius: 2px;">$1</code>'
+  // 与界面使用同一 Markdown 解析器，避免正则替换继续处理已经生成的代码标签。
+  return renderToStaticMarkup(
+    createElement(ReactMarkdown, { remarkPlugins: [remarkGfm] }, markdown)
   )
-
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-
-  // Italic
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
-
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
-
-  // Line breaks
-  html = html.replace(/\n/g, '<br>')
-
-  return html
 }
 
 /**
