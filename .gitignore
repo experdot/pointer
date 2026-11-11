@@ -5,6 +5,7 @@ out
 .eslintcache
 *.log*
 .claude/
+.cursor/
 .vscode/
 coverage/
 test-results/

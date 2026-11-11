@@ -123,4 +123,4 @@ macOS 与 Linux 产物需要本地执行 `pnpm build:mac` / `pnpm build:linux`�
 
 ## 关闭与保存屏障
 
-更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`，只有 lint、typecheck、test、smoke:kernel、build 全部通过才进入发布。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。
+更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`：Windows 执行 lint、类型检查、覆盖率测试、压力测试、内核 smoke 和 Electron 桌面测试；Linux/macOS 执行快速测试与压力测试。全部通过后才进入发布。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。

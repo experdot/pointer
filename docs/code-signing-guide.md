@@ -121,7 +121,7 @@ pnpm run build:win
 Get-AuthenticodeSignature "dist\pointer-<版本>-setup.exe"
 ```
 
-产物命名来自 `electron-builder.yml` 的 `nsis.artifactName: ${name}-${version}-setup.${ext}`，当前版本（2.0.0-preview.1）对应 `dist\pointer-2.0.0-preview.1-setup.exe`。
+产物命名来自 `electron-builder.yml` 的 `nsis.artifactName: ${name}-${version}-setup.${ext}`，实际版本以 `package.json` 为准。
 
 3. **发布测试**：
 

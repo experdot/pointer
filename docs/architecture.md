@@ -119,11 +119,12 @@ workspaces/<accountId>/default/    默认工作区
 完整测试分层、覆盖矩阵、资源预算和本地验收结果见 [testing.md](testing.md)。
 
 ```bash
-pnpm lint          # ESLint（warning 也视为失败）
-pnpm typecheck     # 主进程 + 渲染进程类型检查
-pnpm test          # 领域层、真实 SQLite 内核故障回归、镜像与导入导出
-pnpm smoke:kernel  # 在临时目录启动完整内核，验证查询/命令/事件链路，共 23 项检查
-pnpm build         # 类型检查 + electron-vite 构建
+pnpm lint           # ESLint（warning 也视为失败）
+pnpm typecheck      # 主进程、渲染进程及测试类型检查
+pnpm test:coverage  # 快速测试与覆盖率门槛
+pnpm test:stress    # 大数据及资源预算测试
+pnpm smoke:kernel   # 临时目录中的内核命令链，共 23 项检查
+pnpm test:e2e       # 生产构建与真实 Electron 桌面流程
 ```
 
-开发和 CI 固定 pnpm 10.26.2，Node 22（`.nvmrc` 为 22.16.0），安装使用 `pnpm install --frozen-lockfile`。PR 校验与发布前校验均执行上述五项命令，发布任务依赖校验通过。逐项对应与验收记录见 [全局审查修复清单](review-fixes.md)。
+开发和 CI 固定 pnpm 10.26.2，Node 22（`.nvmrc` 为 22.16.0），安装使用 `pnpm install --frozen-lockfile`。Windows CI 执行完整链路；Linux/macOS CI 执行快速测试与压力测试，发布任务依赖校验通过。覆盖矩阵与本地验收结果见 [testing.md](testing.md)。
