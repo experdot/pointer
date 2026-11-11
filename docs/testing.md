@@ -114,7 +114,7 @@ V8 初始全量基线为语句 39.07%、分支 34.01%、函数 32.35%、行 39.5
 - `coverage/` 提供 HTML、LCOV 和 JSON 汇总；`playwright-report/` 提供桌面报告；`test-results/` 保留失败截图、trace，以及富文本和表格 PNG 示例。运行新的桌面套件会清理上一轮桌面产物。
 - Windows CI 执行完整链路并始终上传报告；Linux/macOS CI 执行快速测试和压力测试。三个平台均执行 `test:release`。PR、`main` 和 `release/**` 推送触发校验，也可通过 `workflow_dispatch` 手动触发。
 - 发布工作流将同一个提交 SHA 传入各平台校验。Windows 桌面测试通过后上传 `release-build-windows`；Linux/macOS 完成快速测试、压力测试及生产构建后分别上传 `release-build-linux`、`release-build-macos`。各平台打包任务复用本平台的构建产物，保留 7 天。
-- 发布回归还覆盖共享草稿的并发读取、错误草稿/发布类型、三平台产物和 macOS 双架构缺失、未完成或零字节附件，并使用当前 electron-builder 校验配置及实际架构文件名。所有 GitHub API 均模拟，不上传真实产物。
+- 发布回归还覆盖共享草稿的并发读取、错误草稿/发布类型、三平台产物和 macOS 双架构缺失、未完成或零字节附件。Windows job 运行一次 electron-builder 配置和产物命名检查，覆盖三个目标平台。所有 GitHub API 均模拟，不上传真实产物。
 
 ### 验证边界
 

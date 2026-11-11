@@ -389,41 +389,47 @@ test('拒绝错误草稿、错误发布类型或已经被公开的草稿', async
   assert.deepEqual(reads, [])
 })
 
-test('草稿验收的文件名与当前 electron-builder 的实际架构命名一致', async () => {
-  const require = createRequire(import.meta.url)
-  const { getConfig, validateConfiguration } = require('app-builder-lib/out/util/config/config')
-  const { expandMacro } = require('app-builder-lib/out/util/macroExpander')
-  const { Arch, getArtifactArchName } = require('builder-util')
-  const root = fileURLToPath(new URL('../', import.meta.url))
-  const config = await getConfig(root)
-  await validateConfiguration(config, { isEnabled: false })
-  const { name } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-  const version = '2.0.0-preview.2'
-  const targets = [
-    ['win', 'nsis', 'exe', Arch.x64],
-    ['mac', 'dmg', 'dmg', Arch.x64],
-    ['mac', 'dmg', 'dmg', Arch.arm64],
-    ['mac', 'zip', 'zip', Arch.x64],
-    ['mac', 'zip', 'zip', Arch.arm64],
-    ['linux', 'appImage', 'AppImage', Arch.x64],
-    ['linux', 'deb', 'deb', Arch.x64]
-  ]
-  const names = targets.map(([platform, target, ext, arch]) =>
-    expandMacro(
-      config[target]?.artifactName ?? config[platform].artifactName,
-      getArtifactArchName(arch, ext),
-      { name, version },
-      { ext }
+test(
+  '草稿验收的文件名与当前 electron-builder 的实际架构命名一致',
+  { skip: process.env.POINTER_SKIP_RELEASE_ARTIFACT_NAME_TEST === '1' },
+  async (t) => {
+    const require = createRequire(import.meta.url)
+    const { getConfig, validateConfiguration } = require('app-builder-lib/out/util/config/config')
+    const { expandMacro } = require('app-builder-lib/out/util/macroExpander')
+    const { Arch, getArtifactArchName, log } = require('builder-util')
+    // 避免 Node.js 22 的测试运行器将 stdout 中的非 ASCII 日志误读为测试事件。
+    t.mock.method(log, 'info', () => {})
+    const root = fileURLToPath(new URL('../', import.meta.url))
+    const config = await getConfig(root)
+    await validateConfiguration(config, { isEnabled: false })
+    const { name } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+    const version = '2.0.0-preview.2'
+    const targets = [
+      ['win', 'nsis', 'exe', Arch.x64],
+      ['mac', 'dmg', 'dmg', Arch.x64],
+      ['mac', 'dmg', 'dmg', Arch.arm64],
+      ['mac', 'zip', 'zip', Arch.x64],
+      ['mac', 'zip', 'zip', Arch.arm64],
+      ['linux', 'appImage', 'AppImage', Arch.x64],
+      ['linux', 'deb', 'deb', Arch.x64]
+    ]
+    const names = targets.map(([platform, target, ext, arch]) =>
+      expandMacro(
+        config[target]?.artifactName ?? config[platform].artifactName,
+        getArtifactArchName(arch, ext),
+        { name, version },
+        { ext }
+      )
     )
-  )
-  assert.equal(new Set(names).size, names.length)
-  assert.deepEqual(
-    requiredReleaseAssets(version)
-      .filter((name) => !name.endsWith('.yml') && !name.endsWith('.blockmap'))
-      .sort(),
-    names.sort()
-  )
-  assert.equal(config.mac.identity, null)
-  assert.equal(config.mac.notarize, false)
-  assert.ok(!config.linux.target.includes('snap'))
-})
+    assert.equal(new Set(names).size, names.length)
+    assert.deepEqual(
+      requiredReleaseAssets(version)
+        .filter((name) => !name.endsWith('.yml') && !name.endsWith('.blockmap'))
+        .sort(),
+      names.sort()
+    )
+    assert.equal(config.mac.identity, null)
+    assert.equal(config.mac.notarize, false)
+    assert.ok(!config.linux.target.includes('snap'))
+  }
+)

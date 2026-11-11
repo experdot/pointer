@@ -89,6 +89,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:release
+        env:
+          POINTER_SKIP_RELEASE_ARTIFACT_NAME_TEST: '1'
       - run: pnpm test
       - run: pnpm test:stress
       - run: pnpm build
