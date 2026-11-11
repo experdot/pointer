@@ -104,7 +104,6 @@ features/       # Feature modules (export plugins, etc.)
 | `docs/architecture.md`       | Layering, data flow, contracts, storage layout      |
 | `docs/release-guide.md`      | Release branches, version tags, CI and publication  |
 | `docs/auto-update-guide.md`  | Auto-update behavior and commands/events            |
-| `docs/code-signing-guide.md` | Windows code signing, dev signature-check bypass    |
 | `docs/testing.md`            | Test layers, coverage matrix and validation records |
 
 ## Key Files

@@ -101,8 +101,7 @@ publish:
 ## 安全说明（当前状态）
 
 - 传输走 HTTPS（GitHub Releases）。
-- Windows 当前配置为 `win.verifyUpdateCodeSignature: false`，并非只影响开发环境；正式签名与恢复更新签名校验见 [code-signing-guide.md](code-signing-guide.md)。
-- 开发环境读取 `dev-app-update.yml` 并启用 `forceDevUpdateConfig`、`allowDowngrade`。允许降级影响版本选择，不等于关闭签名校验；内核另用 `isNewerVersion` 过滤低版本。
+- 开发环境读取 `dev-app-update.yml` 并启用 `forceDevUpdateConfig` 和 `allowDowngrade`。内核仍使用 `isNewerVersion` 过滤低版本。
 - macOS 当前使用 `identity: null`、`notarize: false` 生成无需 Apple 凭据的测试包，不支持签名依赖的自动更新。发布 ZIP 与更新元数据用于保持产物完整，不能替代有效签名。正式接入要求见 [Electron 签名说明](https://www.electronjs.org/docs/latest/tutorial/code-signing)。
 - 安装前有二次确认弹窗，并提示保存当前工作。
 

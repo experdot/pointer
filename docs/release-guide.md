@@ -145,8 +145,6 @@ macOS 目前提供**未签名、未公证的测试包**：`mac.identity: null`�
 
 Draft 表示尚未公开，Pre-release 表示版本性质。GitHub 的草稿、预发布标记和发布操作见 [Release 管理说明](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)。
 
-Windows 签名配置见 [代码签名指南](code-signing-guide.md)。当前构建配置中 `win.verifyUpdateCodeSignature` 为 `false`，发布工作流尚未配置签名证书；签名与升级验收需按实际发布要求安排。
-
 ### 7. 同步修复并维护后续版本
 
 将 release 分支上的修复通过 PR 同步回 `main`，避免后续版本重新出现已修复的问题。同步时按主线实际开发进度处理版本号，不将 `main` 的版本号回退到旧系列。

@@ -164,7 +164,6 @@ src/
 - [架构说明](docs/architecture.md)——分层、数据流、契约与存储布局
 - [发布指南](docs/release-guide.md)——分支、版本号、tag、CI 与正式发布
 - [自动更新指南](docs/auto-update-guide.md)
-- [Windows 代码签名指南](docs/code-signing-guide.md)
 
 ## 贡献
 

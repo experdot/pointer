@@ -164,7 +164,6 @@ src/
 - [Architecture](docs/architecture.md) — layering, data flow, contracts, storage layout
 - [Release guide](docs/release-guide.md)（中文）— branches, tags, CI and release publication
 - [Auto-update guide](docs/auto-update-guide.md)（中文）
-- [Windows code signing guide](docs/code-signing-guide.md)（中文）
 
 ## Contributing
 
