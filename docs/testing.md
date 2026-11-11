@@ -13,6 +13,7 @@
 | `pnpm test:renderer` | 状态镜像和真实挂载的 React Hook/组件                       |
 | `pnpm test:coverage` | 快速测试及 V8 覆盖率，输出到 `coverage/`，包含未执行源文件 |
 | `pnpm test:stress`   | 大数据、固定种子随机序列及资源预算                         |
+| `pnpm test:release`  | 临时 Git 仓库中的 tag/提交校验、CLI 失败及草稿 API 回归    |
 | `pnpm test:e2e`      | 构建后运行真实 Electron 桌面流程                           |
 | `pnpm smoke:kernel`  | Electron 环境下的内核命令链检查，不经过窗口或 IPC          |
 | `pnpm check:bundle`  | 检查现有生产构建的入口和总 JS 体积；`pnpm build` 自动执行  |
@@ -111,7 +112,8 @@ V8 初始全量基线为语句 39.07%、分支 34.01%、函数 32.35%、行 39.5
 - 两万节点深/宽/随机树和固定种子输入验证可终止、顺序和内容往返；1000 个流式片段只产生用户消息和助手终态各一次页面写入。
 - 构建预算：主入口 850000 B，preload 16000 B，renderer 入口 14500000 B，renderer 全部 JS 42000000 B。当前约为 758 KB / 3 KB / 13.23 MB / 37.75 MB。
 - `coverage/` 提供 HTML、LCOV 和 JSON 汇总；`playwright-report/` 提供桌面报告；`test-results/` 保留失败截图、trace，以及富文本和表格 PNG 示例。运行新的桌面套件会清理上一轮桌面产物。
-- Windows CI 执行完整链路并始终上传报告；Linux/macOS CI 执行快速测试和压力测试。也可通过 `workflow_dispatch` 手动触发。
+- Windows CI 执行完整链路并始终上传报告；Linux/macOS CI 执行快速测试和压力测试。三个平台均执行 `test:release`。PR、`main` 和 `release/**` 推送触发校验，也可通过 `workflow_dispatch` 手动触发。
+- 发布工作流将同一个提交 SHA 传入各平台校验。Windows 桌面测试通过后上传 `release-build`，发布任务下载该产物打包，避免重复编译；该产物保留 7 天。
 
 ### 验证边界
 

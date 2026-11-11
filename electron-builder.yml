@@ -62,5 +62,6 @@ publish:
   provider: github
   owner: experdot
   repo: pointer
+  releaseType: draft
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

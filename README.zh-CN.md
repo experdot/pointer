@@ -99,9 +99,11 @@ pnpm typecheck      # 主进程 + 渲染进程类型检查
 pnpm test           # 领域、内核、IPC、镜像和 React DOM 测试
 pnpm test:coverage  # 全量源码覆盖率及回退门槛
 pnpm test:stress    # 大树、固定种子输入和落盘预算
+pnpm test:release   # 发布 tag 校验与草稿元数据回归
 pnpm test:e2e       # 生产构建 + 真实 Electron 桌面场景
 pnpm smoke:kernel   # 在临时目录启动内核，验证查询/命令/事件链路
-pnpm release        # 构建并发布到 GitHub Releases
+pnpm package:local  # 构建并本地打包，不上传
+pnpm release        # 校验 tag、构建并上传 Windows 发布草稿
 ```
 
 测试范围、隔离约束和验证记录见 [docs/testing.md](docs/testing.md)。
@@ -158,6 +160,7 @@ src/
 ## 文档
 
 - [架构说明](docs/architecture.md)——分层、数据流、契约与存储布局
+- [发布指南](docs/release-guide.md)——分支、版本号、tag、CI 与正式发布
 - [自动更新指南](docs/auto-update-guide.md)
 - [Windows 代码签名指南](docs/code-signing-guide.md)
 

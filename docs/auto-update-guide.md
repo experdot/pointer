@@ -95,6 +95,7 @@ publish:
   provider: github
   owner: experdot
   repo: pointer
+  releaseType: draft
 ```
 
 ## 安全说明（当前状态）
@@ -106,13 +107,13 @@ publish:
 
 ## 发布流程
 
-1. 更新 `package.json` 的版本号（`pnpm version patch|minor|major`）
-2. `pnpm release`：构建并发布到 GitHub Releases（`electron-builder --publish=always`）
-3. 也可以推送 `v*` tag，由 `.github/workflows/release.yml` 构建并发布。该工作流的构建矩阵当前只有 `windows-latest`
-4. 产物名为 `pointer-<版本>-setup.exe`（来自 `nsis.artifactName: ${name}-${version}-setup.${ext}`），同时生成 `latest.yml` 与 `.blockmap` 供自动更新使用
-5. `pnpm release:draft` 只构建不发布，用于发布前验证
+分支准备、版本号、tag、CI、草稿验收与正式发布的完整步骤统一维护在 [发布指南](release-guide.md)。
 
-macOS 与 Linux 产物需要本地执行 `pnpm build:mac` / `pnpm build:linux`，尚未纳入自动发布。
+规范入口是推送与 `package.json.version` 对应的 `v*` tag。发布工作流固定 tag 对应的提交，通过校验后使用桌面测试通过的构建产物生成 Windows 安装包，并上传到 GitHub Release 草稿。CI 根据版本号自动设置 Pre-release 标记，验收后再公开发布。
+
+安装包名为 `pointer-<版本>-setup.exe`，对应 `.blockmap` 和更新元数据（如 `latest.yml`）应一起发布。macOS 与 Linux 尚未纳入自动打包发布。
+
+`pnpm release` 会校验 tag、提交和工作区，构建并上传 Windows 草稿；本地直接上传时需自行核对 Pre-release 标记。`pnpm package:local` 使用 `--publish=never`，仅本地打包，不创建 GitHub 草稿，替代原 `release:draft` 命令。
 
 ## 故障排除
 

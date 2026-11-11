@@ -20,6 +20,7 @@ pnpm lint             # Run ESLint
 pnpm format           # Run Prettier
 pnpm typecheck        # Type check both main and renderer processes
 pnpm test             # Run tests (domain + SQLite kernel + renderer mirror)
+pnpm test:release     # Test release guards and draft metadata with isolated Git fixtures
 pnpm smoke:kernel     # Boot the kernel in a temp dir and verify the full command/query chain
 
 # Building
@@ -30,8 +31,10 @@ pnpm build:linux      # Linux build
 pnpm build:unpack     # Build without packaging (for testing)
 
 # Release
-pnpm release          # Build and publish to GitHub Releases
-pnpm release:draft    # Build for release testing (no publish)
+pnpm check:release    # Verify the version tag, commit and clean working tree
+pnpm release          # Verify tag, build and upload a Windows release draft
+pnpm release:upload   # Verify tag, package existing output and upload (used by release CI)
+pnpm package:local    # Build and package locally without uploading
 ```
 
 ## Architecture
@@ -97,8 +100,10 @@ features/       # Feature modules (export plugins, etc.)
 | File                         | Purpose                                             |
 | ---------------------------- | --------------------------------------------------- |
 | `docs/architecture.md`       | Layering, data flow, contracts, storage layout      |
-| `docs/auto-update-guide.md`  | Auto-update behavior, commands/events, release flow |
+| `docs/release-guide.md`      | Release branches, version tags, CI and publication  |
+| `docs/auto-update-guide.md`  | Auto-update behavior and commands/events            |
 | `docs/code-signing-guide.md` | Windows code signing, dev signature-check bypass    |
+| `docs/testing.md`            | Test layers, coverage matrix and validation records |
 
 ## Key Files
 

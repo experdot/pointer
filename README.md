@@ -99,9 +99,11 @@ pnpm typecheck      # type check main + renderer
 pnpm test           # domain, kernel, IPC, mirrors and React DOM tests
 pnpm test:coverage  # full-source coverage report and regression thresholds
 pnpm test:stress    # large trees, seeded inputs and storage budgets
+pnpm test:release   # release tag guards and draft metadata
 pnpm test:e2e       # production build + real Electron desktop scenarios
 pnpm smoke:kernel   # boot the kernel in a temp dir and verify the query/command/event chain
-pnpm release        # build and publish to GitHub Releases
+pnpm package:local  # build and package locally without uploading
+pnpm release        # verify tag, build and upload a Windows release draft
 ```
 
 Testing scope, isolation rules and verification records are documented in [docs/testing.md](docs/testing.md).
@@ -158,6 +160,7 @@ src/
 ## Documentation
 
 - [Architecture](docs/architecture.md) — layering, data flow, contracts, storage layout
+- [Release guide](docs/release-guide.md)（中文）— branches, tags, CI and release publication
 - [Auto-update guide](docs/auto-update-guide.md)（中文）
 - [Windows code signing guide](docs/code-signing-guide.md)（中文）
 

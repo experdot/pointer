@@ -3,8 +3,19 @@ name: Validate
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   workflow_call:
+    inputs:
+      ref:
+        description: Exact commit to validate
+        required: false
+        type: string
+        default: ''
+      upload_build:
+        description: Save the production build tested on Windows for release packaging
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -15,6 +26,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.26.2
@@ -25,14 +38,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm test:release
       - run: pnpm test:coverage
       - run: pnpm test:stress
       - run: pnpm smoke:kernel
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload_build }}
+        with:
+          name: release-build
+          overwrite: true
+          path: |
+            out/main/
+            out/preload/
+            out/renderer/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: windows-test-reports
+          overwrite: true
           path: |
             coverage/
             playwright-report/
@@ -47,6 +74,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.26.2
@@ -55,5 +84,6 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test:release
       - run: pnpm test
       - run: pnpm test:stress

@@ -5,25 +5,60 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release (for example v2.0.0-preview.2)
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Resolve and validate release tag
+        id: release
+        run: node scripts/release.mjs resolve
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+
   validate:
+    needs: prepare
     uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+      upload_build: true
 
-  build:
-    needs: validate
-    strategy:
-      matrix:
-        os: [windows-latest]
-
-    runs-on: ${{ matrix.os }}
+  publish:
+    needs: [prepare, validate]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -39,11 +74,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build application
-        run: pnpm run build
+      - name: Download tested production build
+        uses: actions/download-artifact@v4
+        with:
+          name: release-build
+          path: out
 
-      - name: Build and Release for Windows
-        if: matrix.os == 'windows-latest'
-        run: pnpm run release
+      - run: pnpm check:bundle
+
+      - name: Prepare draft release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const { join } = require('node:path')
+            const moduleUrl = pathToFileURL(join(process.env.GITHUB_WORKSPACE, 'scripts/release.mjs'))
+            const { verifyRelease, prepareDraft } = await import(moduleUrl.href)
+            const release = verifyRelease({
+              tag: process.env.RELEASE_TAG,
+              sha: process.env.RELEASE_SHA
+            })
+            const draft = await prepareDraft({ github, ...context.repo, release })
+            core.info(`Draft ready: ${draft.html_url}`)
+
+      - name: Package and upload tested build
+        run: pnpm release:upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: 'true'
