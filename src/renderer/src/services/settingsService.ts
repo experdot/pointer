@@ -261,10 +261,6 @@ export function setDefaultModelConfigId(id: string | undefined): void {
   useSettingsStore.getState().setDefaultModelConfigId(id)
 }
 
-export function setAutoCheckUpdate(enabled: boolean): void {
-  useSettingsStore.getState().setAutoCheckUpdate(enabled)
-}
-
 // ==================== 设置面板 ====================
 
 export function openSettings(tab?: string): void {

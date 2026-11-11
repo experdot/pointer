@@ -109,12 +109,6 @@ publish:
 
 分支准备、版本号、tag、CI、草稿验收与正式发布的完整步骤统一维护在 [发布指南](release-guide.md)。
 
-规范入口是推送与 `package.json.version` 对应的 `v*` tag。发布工作流固定该提交，各平台校验并构建后只创建一次共享草稿，再分别打包、上传 Windows x64、macOS x64/arm64 与 Linux x64 产物。CI 根据版本号自动设置 Pre-release 标记，全部附件检查通过后仍保留草稿，由维护者验收并公开。
-
-Windows 提供 `.exe` 和 `.blockmap`；macOS 每个架构提供 `.dmg` 与 `.zip`；Linux 提供 `.AppImage` 和 `.deb`。对应更新元数据为 `latest.yml`、`latest-mac.yml` 和 `latest-linux.yml`。macOS 双架构在同一任务中生成，合并写入一份更新元数据。具体文件名见发布指南；当前不自动发布 Snap Store。
-
-`pnpm release` 会校验 tag、提交和工作区，构建并上传 Windows 草稿；本地直接上传时需自行核对 Pre-release 标记。`pnpm package:local` 使用 `--publish=never`，仅本地打包，不创建 GitHub 草稿，替代原 `release:draft` 命令。
-
 ## 故障排除
 
 - **检查更新失败**：确认网络可达 GitHub；错误信息会出现在通知与「关于」页的错误 Alert 中，控制台会记录 `Update error`
@@ -124,4 +118,4 @@ Windows 提供 `.exe` 和 `.blockmap`；macOS 每个架构提供 `.dmg` 与 `.zi
 
 ## 关闭与保存屏障
 
-更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。发布工作流先调用 `ci.yml`：Windows 执行 lint、类型检查、覆盖率测试、压力测试、内核 smoke 和 Electron 桌面测试；Linux/macOS 执行快速测试、压力测试及发布所需的生产构建。三个平台均执行发布脚本回归，全部通过后才创建草稿并打包上传。Node 与 pnpm 版本、冻结锁文件安装与开发环境一致。
+更新安装复用内核的关闭流程：停止准入和自动出队，中止活动生成并保存，再通过 `runtime:flush` / `runtime:flushed` 等待设置与展示状态落盘。`chat.saveFailed` 存在时拒绝继续关闭；用户可重试保存或取消。

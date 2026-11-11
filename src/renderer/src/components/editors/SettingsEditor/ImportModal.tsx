@@ -27,6 +27,7 @@ import type { ConfigTree, LLMConfig, ModelConfig } from '@renderer/types/shared'
 import {
   buildConfigTreeNodes,
   buildPageTreeNodes,
+  getAllTreeKeys,
   type NodeDecorator
 } from '../../../utils/treeNodes'
 
@@ -137,21 +138,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     )
   }, [importData, decorateModel])
 
-  // 获取所有 keys
-  const getAllKeys = useCallback((tree: TreeDataNode[]): React.Key[] => {
-    const keys: React.Key[] = []
-    const traverse = (nodes: TreeDataNode[]): void => {
-      nodes.forEach((node) => {
-        keys.push(node.key)
-        if (node.children) {
-          traverse(node.children)
-        }
-      })
-    }
-    traverse(tree)
-    return keys
-  }, [])
-
   // 文件上传处理
   const handleFileUpload = async (file: UploadFile): Promise<boolean> => {
     try {
@@ -170,7 +156,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       setTimeout(() => {
         if (data.data.pages) {
           const tree = buildPageTreeNodes(data.data.pages, data.data.folders || [], decorateChats)
-          setCheckedChats(getAllKeys(tree))
+          setCheckedChats(getAllTreeKeys(tree))
         }
         if (data.data.settings?.llmConfigs) {
           const tree = buildConfigTreeNodes(
@@ -178,7 +164,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             (item: LLMConfig) => item.name,
             decorateLLM
           )
-          setCheckedLLM(getAllKeys(tree))
+          setCheckedLLM(getAllTreeKeys(tree))
         }
         if (data.data.settings?.modelConfigs) {
           const tree = buildConfigTreeNodes(
@@ -186,7 +172,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             (item: ModelConfig) => item.name,
             decorateModel
           )
-          setCheckedModel(getAllKeys(tree))
+          setCheckedModel(getAllTreeKeys(tree))
         }
         setIncludeUI(Boolean(data.data.viewState))
       }, 0)
@@ -195,21 +181,6 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     } catch {
       message.error('文件解析失败')
       return false
-    }
-  }
-
-  // 全选/取消全选
-  const handleSelectAll = (tab: TabKey, checked: boolean): void => {
-    switch (tab) {
-      case 'chats':
-        setCheckedChats(checked ? getAllKeys(chatsTree) : [])
-        break
-      case 'llm':
-        setCheckedLLM(checked ? getAllKeys(llmTree) : [])
-        break
-      case 'model':
-        setCheckedModel(checked ? getAllKeys(modelTree) : [])
-        break
     }
   }
 
@@ -282,10 +253,9 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   const renderTree = (
     tree: TreeDataNode[],
     checked: React.Key[],
-    setChecked: (keys: React.Key[]) => void,
-    tab: TabKey
+    setChecked: (keys: React.Key[]) => void
   ): React.ReactNode => {
-    const allKeys = getAllKeys(tree)
+    const allKeys = getAllTreeKeys(tree)
     const isAllChecked = allKeys.length > 0 && allKeys.every((k) => checked.includes(k))
     const isIndeterminate = !isAllChecked && checked.length > 0
 
@@ -294,7 +264,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
         <Checkbox
           checked={isAllChecked}
           indeterminate={isIndeterminate}
-          onChange={(e) => handleSelectAll(tab, e.target.checked)}
+          onChange={(e) => setChecked(e.target.checked ? allKeys : [])}
         >
           全选 / 取消全选
         </Checkbox>
@@ -339,17 +309,17 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
     {
       key: 'chats',
       label: `对话 (${stats.pageIds.length})`,
-      children: renderTree(chatsTree, checkedChats, setCheckedChats, 'chats')
+      children: renderTree(chatsTree, checkedChats, setCheckedChats)
     },
     {
       key: 'llm',
       label: `LLM配置 (${stats.llmIds.length})`,
-      children: renderTree(llmTree, checkedLLM, setCheckedLLM, 'llm')
+      children: renderTree(llmTree, checkedLLM, setCheckedLLM)
     },
     {
       key: 'model',
       label: `模型配置 (${stats.modelIds.length})`,
-      children: renderTree(modelTree, checkedModel, setCheckedModel, 'model')
+      children: renderTree(modelTree, checkedModel, setCheckedModel)
     },
     {
       key: 'ui',

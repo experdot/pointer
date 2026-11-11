@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react'
-import { Typography, Drawer, Empty } from 'antd'
+import { Typography, Drawer } from 'antd'
 import {
   COMPACT_MODE_THRESHOLD,
   useLayoutStore,
@@ -11,25 +11,14 @@ import './Sidebar.css'
 
 const { Text } = Typography
 
-const panelTitles: Record<string, string> = {
+const panelTitles: Record<ActivityPanel, string> = {
   explorer: '资源管理器',
-  search: '搜索',
-  favorites: '收藏'
-}
-
-// 收藏功能暂未实现
-function FavoritesPlaceholder(): React.JSX.Element {
-  return (
-    <div className="sidebar-unsupported">
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该功能暂不支持" />
-    </div>
-  )
+  search: '搜索'
 }
 
 const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
   explorer: Explorer,
-  search: Search,
-  favorites: FavoritesPlaceholder
+  search: Search
 }
 
 export function Sidebar(): React.JSX.Element {

@@ -5,7 +5,7 @@
  */
 
 import type { TreeNodeBase } from './common'
-import { compareNodes } from './common'
+import { compareNodes, descendantFolderIds } from './common'
 
 export interface ConfigItemBase extends TreeNodeBase {
   kind: 'item'
@@ -49,21 +49,7 @@ export function configDescendantFolderIds<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   folderId: string
 ): string[] {
-  const result: string[] = []
-  const visited = new Set<string>([folderId])
-  const stack = [folderId]
-
-  while (stack.length > 0) {
-    const current = stack.pop() as string
-    for (const folder of tree.folders) {
-      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
-      visited.add(folder.id)
-      result.push(folder.id)
-      stack.push(folder.id)
-    }
-  }
-
-  return result
+  return descendantFolderIds(tree, folderId)
 }
 
 /** 同级已占用的名称集合 */

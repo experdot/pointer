@@ -37,12 +37,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
-      - run: pnpm typecheck
+      - run: pnpm build
       - run: pnpm test:release
       - run: pnpm test:coverage
       - run: pnpm test:stress
       - run: pnpm smoke:kernel
-      - run: pnpm test:e2e
+      - run: pnpm exec playwright test
       - uses: actions/upload-artifact@v4
         if: ${{ inputs.upload_build }}
         with:

@@ -5,7 +5,7 @@
  * 类型定义放在此处是为了让渲染进程有唯一的形状来源。
  */
 
-export type ActivityPanel = 'explorer' | 'search' | 'favorites'
+export type ActivityPanel = 'explorer' | 'search'
 
 interface TabState {
   id: string

@@ -132,6 +132,40 @@ describe('展示层镜像', () => {
     expect(useTabsStore.getState().initialized).toBe(true)
   })
 
+  it('旧收藏面板在启动和状态恢复时回落到会话树，并保留其他布局设置', async () => {
+    const { bootstrapRuntime } = await import('./bootstrap')
+    const { useLayoutStore } = await import('../stores/layoutStore')
+    const { useViewStateStore } = await import('../stores/viewStateStore')
+    const legacyState: ViewState = JSON.parse(
+      JSON.stringify({
+        ...viewState,
+        layout: { sidebarWidth: 315, sidebarVisible: true, activePanel: 'favorites' }
+      })
+    )
+    currentViewState = legacyState
+
+    await bootstrapRuntime()
+
+    const restoredLayout = { ...legacyState.layout, activePanel: 'explorer' }
+    expect(useViewStateStore.getState().viewState.layout).toEqual(restoredLayout)
+    expect(useLayoutStore.getState()).toMatchObject(restoredLayout)
+
+    emit({
+      type: 'viewState.changed',
+      payload: { ...viewState, layout: { ...viewState.layout, activePanel: 'search' } }
+    })
+    expect(useLayoutStore.getState().activePanel).toBe('search')
+
+    emit({ type: 'viewState.changed', payload: legacyState })
+    expect(useLayoutStore.getState()).toMatchObject(restoredLayout)
+    useViewStateStore.getState().patch({ expandedFolderIds: ['folder-1'] })
+    await useViewStateStore.getState().flush()
+    const replacement = commands.findLast((entry) => entry.name === 'viewState.replace')
+    expect((replacement?.payload as { viewState: ViewState }).viewState.layout).toEqual(
+      restoredLayout
+    )
+  })
+
   it('非当前工作区改名和注销更新列表，保持当前选择并忽略旧 scope', async () => {
     const { bootstrapRuntime } = await import('./bootstrap')
     const { useWorkspaceStore } = await import('../stores/workspaceStore')

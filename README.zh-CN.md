@@ -156,7 +156,7 @@ src/
 | 存储     | `.pointer.md` 文件、node:sqlite 索引（FTS5，trigram 分词器） |
 | 构建工具 | Vite、Electron Builder                                       |
 | 编辑器   | Monaco Editor                                                |
-| 渲染     | react-markdown（流式）、Shiki、KaTeX、Mermaid                |
+| 渲染     | react-markdown（流式）、rehype-highlight、KaTeX、Mermaid     |
 | 更新     | electron-updater（GitHub Releases）                          |
 
 ## 文档

@@ -37,7 +37,7 @@ const initialState: LayoutStateInternal = {
   isCompactMode: typeof window === 'undefined' ? false : window.innerWidth < COMPACT_MODE_THRESHOLD
 }
 
-const validActivePanels: ActivityPanel[] = ['explorer', 'search', 'favorites']
+const validActivePanels: ActivityPanel[] = ['explorer', 'search']
 
 const persist = (state: LayoutStateInternal): void => {
   useViewStateStore.getState().patch({

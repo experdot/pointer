@@ -26,9 +26,26 @@ export interface Diagnostic {
   entityId?: string
 }
 
-/** 诊断结果是否全部通过 */
-export function isValid(diagnostics: readonly Diagnostic[]): boolean {
-  return diagnostics.length === 0
+/** 文件夹的全部后代 id（不含自身）；visited 守卫保证成环数据也能终止。 */
+export function descendantFolderIds(
+  tree: { folders: readonly Pick<TreeNodeBase, 'id' | 'parentFolderId'>[] },
+  folderId: string
+): string[] {
+  const result: string[] = []
+  const visited = new Set<string>([folderId])
+  const stack = [folderId]
+
+  while (stack.length > 0) {
+    const current = stack.pop() as string
+    for (const folder of tree.folders) {
+      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
+      visited.add(folder.id)
+      result.push(folder.id)
+      stack.push(folder.id)
+    }
+  }
+
+  return result
 }
 
 /** 同级节点排序：order、创建时间、id 依次比较，保证结果确定 */

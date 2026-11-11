@@ -3,26 +3,17 @@ productName: pointer
 directories:
   buildResources: build
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - out/main/**
+  - out/preload/**
+  - out/renderer/**
+  - resources/**
+  - LICENSE
 asarUnpack:
   - resources/**
 extraMetadata:
   description: pointer
 win:
   executableName: pointer
-  # Windows 代码签名配置（生产环境使用）
-  # 取消注释并配置以下选项以启用代码签名：
-  # certificateFile: path/to/certificate.p12  # 证书文件路径
-  # certificatePassword: ${env.WIN_CSC_KEY_PASSWORD}  # 证书密码（通过环境变量）
-  # certificateSubjectName: "Your Company Name"  # 证书主题名称
-  # sign: true  # 启用签名
-  # signingHashAlgorithms: ['sha256']  # 签名算法
-  # timestampServer: 'http://timestamp.digicert.com'  # 时间戳服务器
   verifyUpdateCodeSignature: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
@@ -44,21 +35,13 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 linux:
+  icon: resources/icon.png
   target:
     - AppImage
     - deb
   artifactName: ${name}-${version}-linux-${arch}.${ext}
   maintainer: experdot <experdot@foxmail.com>
   category: Utility
-snap:
-  publish:
-    - provider: snapStore
-      channels: [edge]
-  plugs:
-    - default
-    - home
-    - network
-    - removable-media
 npmRebuild: false
 publish:
   provider: github

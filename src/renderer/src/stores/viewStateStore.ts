@@ -44,7 +44,20 @@ export const useViewStateStore = create<ViewStateStore>((set, get) => {
     viewState: defaultViewState(),
     initialized: false,
 
-    setViewState: (state) => set({ viewState: pending ?? state, initialized: true }),
+    setViewState: (state) => {
+      const next = pending ?? state
+      set({
+        viewState: {
+          ...next,
+          layout: {
+            ...next.layout,
+            // 旧工作区可能仍保存已移除的收藏面板。
+            activePanel: next.layout.activePanel === 'search' ? 'search' : 'explorer'
+          }
+        },
+        initialized: true
+      })
+    },
 
     patch: (patch) => {
       const next: ViewState = { ...get().viewState, ...patch }

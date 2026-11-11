@@ -593,20 +593,3 @@ export function findTopicByStartMessageId(
 ): Topic | undefined {
   return topics.find((topic) => topic.startMessageId === messageId)
 }
-
-export function getMessageTopicInfo(
-  groups: readonly TopicGroup[],
-  messageId: string
-): { topicId: string; topicName: string; topicMessageId: string } | null {
-  for (const group of groups) {
-    if (group.messageIds.includes(messageId)) {
-      return {
-        topicId: group.topicId,
-        topicName: group.name,
-        topicMessageId: group.startMessageId
-      }
-    }
-  }
-
-  return null
-}

@@ -90,40 +90,6 @@
   overflow: hidden;
 }
 
-.config-tree-title {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-.config-tree-title-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.config-tree-title-text.is-default {
-  font-weight: 500;
-}
-
-.config-tree-title-more {
-  flex-shrink: 0;
-  margin-left: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.config-tree-title:hover .config-tree-title-more,
-.config-tree-title-more:hover {
-  opacity: 0.6;
-}
-
-.config-tree-title-more:hover {
-  opacity: 1;
-}
-
 /* 隐藏拖拽图标 */
 .config-tree-content .ant-tree-draggable-icon {
   display: none;

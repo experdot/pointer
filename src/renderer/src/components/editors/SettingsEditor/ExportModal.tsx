@@ -8,7 +8,7 @@ import { useViewStateStore } from '../../../stores/viewStateStore'
 import { query } from '../../../runtime/client'
 import type { MessagesRecord } from '@renderer/types/shared'
 import type { LLMConfig, ModelConfig } from '@renderer/types/shared'
-import { buildConfigTreeNodes, buildPageTreeNodes } from '../../../utils/treeNodes'
+import { buildConfigTreeNodes, buildPageTreeNodes, getAllTreeKeys } from '../../../utils/treeNodes'
 
 const { Text } = Typography
 
@@ -22,8 +22,6 @@ interface ExportModalProps {
 
 type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 
-// 构建页面树
-// 构建配置树
 export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Element {
   const { message } = App.useApp()
   const pages = usePagesStore((s) => s.pages)
@@ -51,46 +49,16 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     [settings.modelConfigs]
   )
 
-  // 获取所有 keys
-  const getAllKeys = useCallback((tree: TreeDataNode[]): React.Key[] => {
-    const keys: React.Key[] = []
-    const traverse = (nodes: TreeDataNode[]): void => {
-      nodes.forEach((node) => {
-        keys.push(node.key)
-        if (node.children) {
-          traverse(node.children)
-        }
-      })
-    }
-    traverse(tree)
-    return keys
-  }, [])
-
   // 初始化选中状态（全选）
   React.useEffect(() => {
     if (open) {
-      setCheckedChats(getAllKeys(chatsTree))
-      setCheckedLLM(getAllKeys(llmTree))
-      setCheckedModel(getAllKeys(modelTree))
+      setCheckedChats(getAllTreeKeys(chatsTree))
+      setCheckedLLM(getAllTreeKeys(llmTree))
+      setCheckedModel(getAllTreeKeys(modelTree))
       setIncludeUI(false)
       setIncludeApiKeys(false)
     }
-  }, [open, chatsTree, llmTree, modelTree, getAllKeys])
-
-  // 全选/取消全选
-  const handleSelectAll = (tab: TabKey, checked: boolean): void => {
-    switch (tab) {
-      case 'chats':
-        setCheckedChats(checked ? getAllKeys(chatsTree) : [])
-        break
-      case 'llm':
-        setCheckedLLM(checked ? getAllKeys(llmTree) : [])
-        break
-      case 'model':
-        setCheckedModel(checked ? getAllKeys(modelTree) : [])
-        break
-    }
-  }
+  }, [open, chatsTree, llmTree, modelTree])
 
   // 统计选中数量
   const getStats = useCallback(() => {
@@ -213,10 +181,9 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const renderTree = (
     tree: TreeDataNode[],
     checked: React.Key[],
-    setChecked: (keys: React.Key[]) => void,
-    tab: TabKey
+    setChecked: (keys: React.Key[]) => void
   ): React.ReactNode => {
-    const allKeys = getAllKeys(tree)
+    const allKeys = getAllTreeKeys(tree)
     const isAllChecked = allKeys.length > 0 && allKeys.every((k) => checked.includes(k))
     const isIndeterminate = !isAllChecked && checked.length > 0
 
@@ -225,7 +192,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
         <Checkbox
           checked={isAllChecked}
           indeterminate={isIndeterminate}
-          onChange={(e) => handleSelectAll(tab, e.target.checked)}
+          onChange={(e) => setChecked(e.target.checked ? allKeys : [])}
         >
           全选 / 取消全选
         </Checkbox>
@@ -249,7 +216,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     {
       key: 'chats',
       label: `对话 (${stats.pageIds.length})`,
-      children: renderTree(chatsTree, checkedChats, setCheckedChats, 'chats')
+      children: renderTree(chatsTree, checkedChats, setCheckedChats)
     },
     {
       key: 'llm',
@@ -262,14 +229,14 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
           >
             包含 API Key（明文）
           </Checkbox>
-          {renderTree(llmTree, checkedLLM, setCheckedLLM, 'llm')}
+          {renderTree(llmTree, checkedLLM, setCheckedLLM)}
         </>
       )
     },
     {
       key: 'model',
       label: `模型配置 (${stats.modelIds.length})`,
-      children: renderTree(modelTree, checkedModel, setCheckedModel, 'model')
+      children: renderTree(modelTree, checkedModel, setCheckedModel)
     },
     {
       key: 'ui',

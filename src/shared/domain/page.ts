@@ -5,7 +5,9 @@
  */
 
 import type { Diagnostic, TreeNodeBase } from './common'
-import { compareNodes, nameKey } from './common'
+import { compareNodes, descendantFolderIds, nameKey } from './common'
+
+export { descendantFolderIds } from './common'
 
 export interface Folder extends TreeNodeBase {
   kind: 'folder'
@@ -32,25 +34,6 @@ export function childrenOf(tree: PageTree, parentFolderId: string | undefined): 
 export function nextOrder(tree: PageTree, parentFolderId: string | undefined): number {
   const siblings = childrenOf(tree, parentFolderId)
   return siblings.reduce((max, node) => Math.max(max, node.order + 1), 0)
-}
-
-/** 文件夹的全部后代文件夹 id（不含自身）；visited 守卫保证损伤数据成环时也能终止 */
-export function descendantFolderIds(tree: PageTree, folderId: string): string[] {
-  const result: string[] = []
-  const visited = new Set<string>([folderId])
-  const stack = [folderId]
-
-  while (stack.length > 0) {
-    const current = stack.pop() as string
-    for (const folder of tree.folders) {
-      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
-      visited.add(folder.id)
-      result.push(folder.id)
-      stack.push(folder.id)
-    }
-  }
-
-  return result
 }
 
 /** 节点所在的完整文件夹路径（自根向下），用于生成磁盘目录 */

@@ -156,7 +156,7 @@ src/
 | Storage   | `.pointer.md` files, node:sqlite index (FTS5, trigram tokenizer) |
 | Build     | Vite, Electron Builder                                           |
 | Editor    | Monaco Editor                                                    |
-| Rendering | react-markdown (streaming), Shiki, KaTeX, Mermaid                |
+| Rendering | react-markdown (streaming), rehype-highlight, KaTeX, Mermaid     |
 | Updates   | electron-updater (GitHub Releases)                               |
 
 ## Documentation

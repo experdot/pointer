@@ -20,11 +20,6 @@
   white-space: nowrap;
 }
 
-.chat-editor__header-actions {
-  display: flex;
-  gap: 4px;
-}
-
 .chat-editor__title-wrapper {
   display: inline-flex;
   align-items: center;

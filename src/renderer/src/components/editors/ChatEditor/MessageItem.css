@@ -274,10 +274,6 @@
   font-size: 12px;
 }
 
-.message-item__title-input {
-  max-width: 200px;
-}
-
 .message-item__title-more {
   padding: 0;
   width: 18px;

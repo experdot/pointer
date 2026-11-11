@@ -181,6 +181,7 @@ function evictVanishedCaches(pages: Page[]): void {
 
 function applyViewState(viewState: ViewState): void {
   useViewStateStore.getState().setViewState(viewState)
+  viewState = useViewStateStore.getState().viewState
   useLayoutStore.setState({
     sidebarWidth: viewState.layout.sidebarWidth,
     sidebarVisible: viewState.layout.sidebarVisible,

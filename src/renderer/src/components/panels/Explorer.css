@@ -99,36 +99,6 @@
   overflow: hidden;
 }
 
-.explorer-tree-title {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-.explorer-tree-title-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.explorer-tree-title-more {
-  flex-shrink: 0;
-  margin-left: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.explorer-tree-title:hover .explorer-tree-title-more,
-.explorer-tree-title-more:hover {
-  opacity: 0.6;
-}
-
-.explorer-tree-title-more:hover {
-  opacity: 1;
-}
-
 /* 隐藏拖拽图标 */
 .explorer-tree .ant-tree-draggable-icon {
   display: none;

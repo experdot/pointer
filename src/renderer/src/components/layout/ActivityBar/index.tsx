@@ -1,12 +1,6 @@
 import React, { useState } from 'react'
 import { Flex, Tooltip, Popover, Avatar } from 'antd'
-import {
-  MessageOutlined,
-  SearchOutlined,
-  StarOutlined,
-  SettingOutlined,
-  FolderOutlined
-} from '@ant-design/icons'
+import { MessageOutlined, SearchOutlined, SettingOutlined, FolderOutlined } from '@ant-design/icons'
 import { useLayoutStore, type ActivityPanel } from '../../../stores/layoutStore'
 import { useAccountStore } from '../../../stores/accountStore'
 import { UserProfileCard, getAvatarConfig } from './UserProfileCard'
@@ -22,8 +16,7 @@ interface ActivityItem {
 
 const activities: ActivityItem[] = [
   { key: 'explorer', icon: <MessageOutlined />, title: '资源管理器' },
-  { key: 'search', icon: <SearchOutlined />, title: '搜索' },
-  { key: 'favorites', icon: <StarOutlined />, title: '收藏' }
+  { key: 'search', icon: <SearchOutlined />, title: '搜索' }
 ]
 
 export function ActivityBar(): React.JSX.Element {

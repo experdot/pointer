@@ -6,9 +6,22 @@
  */
 
 import { FileTextOutlined, FolderOutlined, SettingOutlined } from '@ant-design/icons'
-import type { ReactNode } from 'react'
+import type { Key, ReactNode } from 'react'
 import type { TreeDataNode } from 'antd'
 import type { ConfigFolder, ConfigItemBase, ConfigTree, Folder, Page } from '@shared/domain'
+
+/** 按显示顺序收集树节点，用于备份导入和导出的全选。 */
+export function getAllTreeKeys(tree: readonly TreeDataNode[]): Key[] {
+  const keys: Key[] = []
+  const traverse = (nodes: readonly TreeDataNode[]): void => {
+    for (const node of nodes) {
+      keys.push(node.key)
+      if (node.children) traverse(node.children)
+    }
+  }
+  traverse(tree)
+  return keys
+}
 
 /** TreeSelect 使用的节点结构（配置选择器） */
 interface ConfigSelectorNode {

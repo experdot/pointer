@@ -4,7 +4,7 @@
  * 纯计算直接复用领域层；写入一律通过命令发往内核。
  */
 
-import type { ChatMessage, MessageDraft, Topic } from '@shared/domain'
+import type { ChatMessage, Topic } from '@shared/domain'
 import {
   buildIndex,
   childMessages,
@@ -12,20 +12,12 @@ import {
   computeTopicGroups,
   filterByTopicCollapse,
   findTopicByStartMessageId,
-  getMessageTopicInfo,
   pathToMessage
 } from '@shared/domain'
 import type { MessagePatch } from '@shared/contracts'
 import { useMessagesStore } from '../stores/messagesStore'
 
 export type { OutlineNode, TopicGroup } from '@shared/domain'
-
-export async function addMessage(
-  pageId: string,
-  draft: Omit<MessageDraft, 'id'> & { id?: string }
-): Promise<ChatMessage> {
-  return useMessagesStore.getState().addMessage(pageId, draft)
-}
 
 export async function updateMessage(
   pageId: string,
@@ -123,14 +115,9 @@ export async function setTopicCollapsed(
   await useMessagesStore.getState().updateTopic(pageId, topicId, { collapsed })
 }
 
-export function getTopics(pageId: string): Topic[] {
-  return useMessagesStore.getState().getTopics(pageId)
-}
-
 export {
   computeOutline,
   computeTopicGroups,
   filterByTopicCollapse as filterMessagesByTopicCollapse,
-  findTopicByStartMessageId,
-  getMessageTopicInfo
+  findTopicByStartMessageId
 }
