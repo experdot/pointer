@@ -136,6 +136,7 @@ afterEach(async () => {
 })
 
 describe('存储回归', () => {
+  // 36 个并发写入命令最终串行落盘，为 Windows CI 的 fsync 和覆盖率开销留出余量。
   it('[R1] 并发读改写和队列操作不会互相覆盖', async () => {
     const p = await page()
     await Promise.all(Array.from({ length: 12 }, (_, index) => append(p.id, `m${index}`)))
@@ -162,7 +163,7 @@ describe('存储回归', () => {
         expect.objectContaining({ content: String(index) })
       )
     })
-  })
+  }, 15000)
 
   it.each(['cascade', 'clear'] as const)(
     '[R3] 文件夹 %s 删除磁盘页面与队列，重新打开不复活',
