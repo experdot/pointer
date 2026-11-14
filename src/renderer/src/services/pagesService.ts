@@ -6,6 +6,8 @@ import type { Folder, Page } from '@shared/domain'
 import { nameKey } from '@shared/domain'
 import { v4 as uuidv4 } from 'uuid'
 import { refreshTree } from '../runtime/bootstrap'
+import { command } from '../runtime/client'
+import type { RuntimeCommandPayload } from '@shared/contracts'
 import { useFoldersStore } from '../stores/foldersStore'
 import { useMessagesStore } from '../stores/messagesStore'
 import { usePagesStore } from '../stores/pagesStore'
@@ -69,6 +71,10 @@ export async function deletePage(id: string): Promise<void> {
 
 export async function deletePages(ids: readonly string[]): Promise<void> {
   await usePagesStore.getState().delete([...ids])
+}
+
+export async function moveNode(move: RuntimeCommandPayload<'tree.move'>): Promise<void> {
+  await command('tree.move', move)
 }
 
 export async function movePage(

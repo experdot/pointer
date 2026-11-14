@@ -294,7 +294,7 @@ export class RuntimeCore {
       return this.executeCommand(name, payload)
     }
     return workspace &&
-      /^(page\.|folder\.|conversation\.|topic\.|queue\.|viewState\.|attachment\.|library\.|backup\.)/.test(
+      /^(tree\.|page\.|folder\.|conversation\.|topic\.|queue\.|viewState\.|attachment\.|library\.|backup\.)/.test(
         name
       )
       ? workspace.run(write)
@@ -402,6 +402,21 @@ export class RuntimeCore {
         return this.options.host.pickDirectory((payload as { title?: string } | undefined)?.title)
 
       // 页面树
+      case 'tree.move': {
+        const input = payload as RuntimeCommandPayload<'tree.move'>
+        if (
+          !input ||
+          typeof input.nodeId !== 'string' ||
+          typeof input.targetNodeId !== 'string' ||
+          !['before', 'after', 'inside'].includes(input.placement) ||
+          (input.conflictPolicy !== undefined &&
+            !['error', 'rename'].includes(input.conflictPolicy))
+        ) {
+          throw new RuntimeError('tree.invalid-move', '无效的节点移动请求')
+        }
+        if (await this.requireWorkspace().moveTreeNode(input, Date.now())) this.emitTreeChanged()
+        return undefined
+      }
       case 'page.create': {
         const input = payload as {
           name?: string

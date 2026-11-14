@@ -19,7 +19,7 @@ import {
   getShortcutLabel,
   getStandardDropdownProps
 } from '../../utils/shortcutPresentation'
-import { DEFAULT_FOLDER_NAME } from '@shared/domain'
+import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
 import './TreeView.css'
 
 // ==================== 类型定义 ====================
@@ -58,7 +58,7 @@ interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLike> {
   isItem: (item: TItem | TFolder) => item is TItem
 
   // 操作回调
-  batchUpdateItemsOrder: (items: (TItem | TFolder)[], parentFolderId?: string) => void
+  onMove: (move: TreeMove) => void
   updateItem: (id: string, name: string) => void
   deleteItem: (id: string) => void
   updateFolder: (id: string, name: string) => void
@@ -354,7 +354,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   getItemTitleExtra,
   getFolderName = defaultFolderName,
   isItem,
-  batchUpdateItemsOrder,
+  onMove,
   updateItem,
   deleteItem,
   updateFolder,
@@ -493,6 +493,21 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   }, [folders, items, rootItems, isItem, itemIcon, getItemName, getItemTitleExtra, getFolderName])
 
   // ==================== 事件处理 ====================
+
+  const handleTreeClick = useCallback((event: React.MouseEvent<HTMLDivElement>): void => {
+    if (event.defaultPrevented || !(event.target instanceof Element)) return
+
+    const target = event.target
+    const node = target.closest('.ant-tree-treenode')
+    const content = node?.querySelector<HTMLElement>('.ant-tree-node-content-wrapper')
+    if (!content || content.contains(target)) return
+    if (target.closest('.ant-tree-checkbox, .ant-tree-switcher:not(.ant-tree-switcher-noop)')) {
+      return
+    }
+
+    // 外层留白和行间占位也走 Tree 自身的选中逻辑，避免出现只能拖拽、无法点击的区域。
+    content.click()
+  }, [])
 
   const handleStartRename = useCallback((id: string, currentName: string): void => {
     setEditingId(id)
@@ -664,13 +679,6 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
 
   // ==================== 拖拽处理 ====================
 
-  const getItemsAtLevel = (parentFolderId?: string, excludeId?: string): (TItem | TFolder)[] => {
-    return [
-      ...items.filter((p) => p.parentFolderId === parentFolderId && p.id !== excludeId),
-      ...folders.filter((f) => f.parentFolderId === parentFolderId && f.id !== excludeId)
-    ].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-  }
-
   const handleDrop: TreeProps['onDrop'] = (info) => {
     const dragKey = info.dragNode.key as string
     const dropKey = info.node.key as string
@@ -680,19 +688,14 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
     if (!draggedItem) return
 
     if (dropNodeData?.isFolder && !info.dropToGap) {
-      const itemsInFolder = getItemsAtLevel(dropKey, dragKey)
-      batchUpdateItemsOrder([draggedItem, ...itemsInFolder], dropKey)
+      onMove({ nodeId: dragKey, targetNodeId: dropKey, placement: 'inside' })
     } else if (info.dropToGap) {
-      const targetItem =
-        items.find((p) => p.id === dropKey) || folders.find((f) => f.id === dropKey)
-      const targetParentFolderId = targetItem?.parentFolderId
-      const sameLevelItems = getItemsAtLevel(targetParentFolderId, dragKey)
-      const targetIndex = sameLevelItems.findIndex((item) => item.id === dropKey)
-      const dropPos = info.dropPosition
       const targetPos = Number(info.node.pos.split('-').pop())
-      const insertIndex = dropPos > targetPos ? targetIndex + 1 : targetIndex
-      sameLevelItems.splice(insertIndex, 0, draggedItem)
-      batchUpdateItemsOrder(sameLevelItems, targetParentFolderId)
+      onMove({
+        nodeId: dragKey,
+        targetNodeId: dropKey,
+        placement: info.dropPosition > targetPos ? 'after' : 'before'
+      })
     }
   }
 
@@ -861,7 +864,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   const isEmpty = rootItems.length === 0
 
   return (
-    <div ref={containerRef} className={`tree-view-content ${className}`}>
+    <div ref={containerRef} className={`tree-view-content ${className}`} onClick={handleTreeClick}>
       {isEmpty ? (
         <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (

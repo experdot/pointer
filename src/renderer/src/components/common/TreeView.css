@@ -43,6 +43,11 @@
   border-radius: 0;
 }
 
+/* 节点边缘与内容区都用于点击选择，覆盖 antd 默认的 grab 光标。 */
+.tree-view-content .ant-tree .ant-tree-treenode {
+  cursor: pointer;
+}
+
 .tree-view-content .ant-tree-treenode:hover {
   background-color: var(--ant-tree-node-hover-bg);
 }

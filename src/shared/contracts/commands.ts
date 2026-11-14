@@ -14,6 +14,7 @@ import type {
   Page,
   Settings,
   Topic,
+  TreeMove,
   WorkspacePathValidation,
   WorkspaceSummary,
   WorkspaceType
@@ -39,6 +40,13 @@ export type MessagePatch = Partial<
 export interface NodePatch {
   name?: string
   starred?: boolean
+}
+
+export interface TreeMoveConflict {
+  nodeId: string
+  kind: 'page' | 'folder'
+  name: string
+  targetFolderId?: string
 }
 
 export interface ChatRequestHandle {
@@ -103,6 +111,10 @@ interface RuntimeCommandMap {
   'workspace.pickDirectory': { payload: { title?: string }; result: string | null }
 
   // 页面树
+  'tree.move': {
+    payload: TreeMove & { conflictPolicy?: 'error' | 'rename' }
+    result: void
+  }
   'page.create': {
     payload: {
       name?: string

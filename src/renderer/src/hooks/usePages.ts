@@ -20,12 +20,7 @@ interface UsePagesResult {
   rootFolders: FolderView[]
   rootItems: TreeNodeView[]
   getItemsInFolder: (folderId: string | undefined) => TreeNodeView[]
-  batchUpdateItemsOrder: (items: TreeNodeView[], parentFolderId?: string) => Promise<void>
-  batchUpdateItemsOrderWithRename: (items: TreeNodeView[], parentFolderId?: string) => Promise<void>
-  checkBatchMoveConflicts: (
-    items: TreeNodeView[],
-    parentFolderId?: string
-  ) => { hasConflict: boolean; conflictNames: string[] }
+  moveNode: typeof pagesService.moveNode
   createPage: typeof pagesService.createPage
   updatePage: typeof pagesService.updatePage
   deletePage: typeof pagesService.deletePage
@@ -73,35 +68,6 @@ export function usePages(): UsePagesResult {
     [folders, pages]
   )
 
-  /** 依次追加到目标文件夹，调用顺序即最终顺序；重名由内核自动处理 */
-  const batchUpdateItemsOrder = useCallback(
-    async (items: TreeNodeView[], parentFolderId?: string) => {
-      for (const item of items) {
-        if (item.kind === 'page') {
-          await pagesService.movePage(item.id, parentFolderId)
-        } else {
-          await pagesService.moveFolder(item.id, parentFolderId)
-        }
-      }
-    },
-    []
-  )
-
-  const checkBatchMoveConflicts = useCallback((items: TreeNodeView[], parentFolderId?: string) => {
-    const conflictNames: string[] = []
-
-    for (const item of items) {
-      if (item.parentFolderId === parentFolderId) continue
-      const conflict =
-        item.kind === 'page'
-          ? pagesService.checkPageNameConflict(item.name, parentFolderId, item.id)
-          : pagesService.checkFolderNameConflict(item.name, parentFolderId, item.id)
-      if (conflict) conflictNames.push(item.name)
-    }
-
-    return { hasConflict: conflictNames.length > 0, conflictNames }
-  }, [])
-
   return {
     pages,
     folders,
@@ -109,9 +75,7 @@ export function usePages(): UsePagesResult {
     rootFolders,
     rootItems,
     getItemsInFolder,
-    batchUpdateItemsOrder,
-    batchUpdateItemsOrderWithRename: batchUpdateItemsOrder,
-    checkBatchMoveConflicts,
+    moveNode: pagesService.moveNode,
     createPage: pagesService.createPage,
     updatePage: pagesService.updatePage,
     deletePage: pagesService.deletePage,

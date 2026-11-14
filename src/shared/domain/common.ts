@@ -19,6 +19,13 @@ export interface TreeNodeBase extends Timestamps {
   order: number
 }
 
+/** 节点移动意图；inside 表示放到目标文件夹的首位。 */
+export interface TreeMove {
+  nodeId: string
+  targetNodeId: string
+  placement: 'before' | 'after' | 'inside'
+}
+
 /** 不变量校验结果 */
 export interface Diagnostic {
   code: string

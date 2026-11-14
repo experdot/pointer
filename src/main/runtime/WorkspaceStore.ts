@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto'
 import { rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import type {
   AttachmentRef,
   ChatMessage,
@@ -34,6 +35,7 @@ import {
   isPageFileName,
   isReservedDirectory,
   moveNode,
+  moveTreeNode,
   nameKey,
   nextOrder,
   normalizeSiblingIndexes,
@@ -51,7 +53,7 @@ import {
   validatePageTree
 } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
-import type { NodePatch } from '@shared/contracts'
+import type { NodePatch, RuntimeCommandPayload, TreeMoveConflict } from '@shared/contracts'
 import type { PathResolver } from './paths'
 import type { IndexDb } from './IndexDb'
 import { SerialExecutor } from './SerialExecutor'
@@ -232,7 +234,7 @@ export class WorkspaceStore {
     return this.pagePaths.get(pageId)
   }
 
-  async readConversation(pageId: string): Promise<Conversation> {
+  async readConversation(pageId: string, refreshMetadata = true): Promise<Conversation> {
     const relativePath = this.pagePaths.get(pageId)
     if (!relativePath) return emptyConversation(pageId)
 
@@ -256,7 +258,7 @@ export class WorkspaceStore {
       })
     }
 
-    this.refreshPageFromDocument(pageId, parsed.value.page)
+    if (refreshMetadata) this.refreshPageFromDocument(pageId, parsed.value.page)
 
     const conversation = this.repairConversation({
       pageId,
@@ -369,6 +371,49 @@ export class WorkspaceStore {
     await this.persistPageMetadataDiff(before)
     await this.applyLayout()
     await this.syncIndexForPage(pageId)
+  }
+
+  async moveTreeNode(input: RuntimeCommandPayload<'tree.move'>, at: number): Promise<boolean> {
+    const before = this.getTree()
+    const result = moveTreeNode(before, input, at)
+    if (!result.ok) {
+      throw new RuntimeError(result.error.code, result.error.message)
+    }
+    if (result.tree === before) return false
+
+    let next = result.tree
+    const moved = [...next.pages, ...next.folders].find((node) => node.id === input.nodeId)!
+    const name = this.uniqueNameAt(moved.parentFolderId, moved.name, moved.id)
+    if (name !== moved.name) {
+      if (input.conflictPolicy !== 'rename') {
+        const conflict: TreeMoveConflict = {
+          nodeId: moved.id,
+          kind: moved.kind,
+          name: moved.name,
+          targetFolderId: moved.parentFolderId
+        }
+        throw new RuntimeError('tree.name-conflict', '目标位置已有同名节点', conflict)
+      }
+      next =
+        moved.kind === 'page'
+          ? updatePage(next, moved.id, { name }, at)
+          : updateFolder(next, moved.id, { name }, at)
+    }
+
+    this.folders = next.folders
+    this.pages = next.pages
+    await this.persistFoldersDiff(before.folders)
+    await this.persistPageMetadataDiff(before.pages)
+    const previousPaths = new Map(this.pagePaths)
+    await this.applyLayout()
+    // 布局可能同时移动文件夹下的页面；只刷新路径索引，不重建消息全文索引。
+    for (const page of this.pages) {
+      const relativePath = this.pagePaths.get(page.id)
+      if (relativePath && previousPaths.get(page.id) !== relativePath) {
+        this.index.upsertPage(page, relativePath, this.pageMtimes.get(page.id) ?? 0)
+      }
+    }
+    return true
   }
 
   async movePage(
@@ -574,7 +619,15 @@ export class WorkspaceStore {
   async detectExternalChanges(): Promise<string[]> {
     const previous = new Map(this.pageMtimes)
     const paths = new Map(this.pagePaths)
-    const oldTree = JSON.stringify(this.getTree())
+    // 磁盘遍历顺序、对象字段顺序及可选字段缺省不能被误报为外部改动。
+    const nodesById = (): Map<string, Record<string, unknown>> =>
+      new Map(
+        [...this.folders, ...this.pages].map((node) => [
+          node.id,
+          Object.fromEntries(Object.entries(node).filter(([, value]) => value !== undefined))
+        ])
+      )
+    const oldTree = nodesById()
     await this.loadFolders()
     await this.scanFromDisk()
     const changed = new Set<string>()
@@ -583,7 +636,7 @@ export class WorkspaceStore {
         changed.add(id)
     }
     // 空文件夹变更也需要广播树事件。
-    if (oldTree !== JSON.stringify(this.getTree()) && !changed.size) changed.add('')
+    if (!isDeepStrictEqual(oldTree, nodesById()) && !changed.size) changed.add('')
     return [...changed]
   }
 
@@ -722,7 +775,8 @@ export class WorkspaceStore {
 
     const absolutePath = this.absPath(relativePath)
     const text = (await readText(absolutePath)) ?? ''
-    const conversation = await this.readConversation(pageId)
+    // 当前树已经应用本次命令，读取会话正文时不能用磁盘中的旧元数据覆盖它。
+    const conversation = await this.readConversation(pageId, false)
 
     const next = replacePageMetadata(text, {
       version: PAGE_FILE_FORMAT_VERSION,

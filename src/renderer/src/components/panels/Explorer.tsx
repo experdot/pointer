@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Flex, Button, Dropdown } from 'antd'
+import { App, Flex, Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   PlusOutlined,
@@ -13,7 +13,6 @@ import {
   StarOutlined
 } from '@ant-design/icons'
 import { usePages } from '../../hooks/usePages'
-import type { TreeNodeView } from '../../hooks/usePages'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useMessagesStore } from '../../stores/messagesStore'
 import { useLayoutStore } from '../../stores/layoutStore'
@@ -27,7 +26,9 @@ import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { Page, Folder } from '@renderer/types/shared'
-import { DEFAULT_FOLDER_NAME } from '@shared/domain'
+import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
+import { RuntimeError, type TreeMoveConflict } from '@shared/contracts'
+import { errorMessage } from '../../runtime/client'
 import { resolveFolderCreationTarget, resolvePageCreationTarget } from '../../utils/creationTarget'
 import './Explorer.css'
 
@@ -42,9 +43,7 @@ export function Explorer(): React.JSX.Element {
   const {
     pages,
     folders,
-    batchUpdateItemsOrder,
-    batchUpdateItemsOrderWithRename,
-    checkBatchMoveConflicts,
+    moveNode,
     createPage,
     deletePage,
     deletePages,
@@ -64,6 +63,7 @@ export function Explorer(): React.JSX.Element {
     (state) => state.tabs.find((tab) => tab.id === state.activeTabId)?.dataId
   )
   const { showDeleteConfirm } = useConfirmDialog()
+  const { message } = App.useApp()
   const setActivePanel = useLayoutStore((state) => state.setActivePanel)
   const setSearchOptions = useGlobalSearchStore((state) => state.setOptions)
 
@@ -77,11 +77,7 @@ export function Explorer(): React.JSX.Element {
     parentFolderId?: string
   } | null>(null)
   const [moveConflict, setMoveConflict] = useState<MoveConflictInfo | null>(null)
-  const [pendingDragOperation, setPendingDragOperation] = useState<{
-    items: (Page | Folder)[]
-    parentFolderId: string | undefined
-    conflictNames: string[]
-  } | null>(null)
+  const [pendingDragOperation, setPendingDragOperation] = useState<TreeMove | null>(null)
 
   useEffect(() => {
     if (activePageId) {
@@ -324,41 +320,38 @@ export function Explorer(): React.JSX.Element {
     // 保持 moveTarget 不变，用户可以选择其他目标文件夹
   }, [])
 
-  // 包装 batchUpdateItemsOrder，检查拖拽冲突
-  const handleBatchUpdateItemsOrder = useCallback(
-    (items: (Page | Folder)[], parentFolderId?: string) => {
-      const nodes = items as TreeNodeView[]
-      const { hasConflict, conflictNames } = checkBatchMoveConflicts(nodes, parentFolderId)
-
-      if (hasConflict) {
-        // 有冲突，保存待处理操作，显示冲突对话框
-        setPendingDragOperation({ items, parentFolderId, conflictNames })
-        setMoveConflict({
-          type: items[0]?.kind === 'page' ? 'page' : 'folder',
-          id: items[0]?.id ?? '',
-          name: conflictNames[0] ?? '',
-          targetFolderId: parentFolderId
-        })
-        return
+  const handleTreeMove = useCallback(
+    async (move: TreeMove): Promise<void> => {
+      try {
+        await moveNode(move)
+      } catch (error) {
+        if (error instanceof RuntimeError && error.code === 'tree.name-conflict') {
+          const conflict = error.details as TreeMoveConflict
+          setPendingDragOperation(move)
+          setMoveConflict({
+            type: conflict.kind,
+            id: conflict.nodeId,
+            name: conflict.name,
+            targetFolderId: conflict.targetFolderId
+          })
+        } else {
+          void message.error(errorMessage(error))
+        }
       }
-
-      // 无冲突，直接执行
-      void batchUpdateItemsOrder(nodes, parentFolderId)
     },
-    [checkBatchMoveConflicts, batchUpdateItemsOrder]
+    [moveNode, message]
   )
 
-  // 处理拖拽冲突的自动重命名
-  const handleDragConflictAutoRename = useCallback((): void => {
-    if (pendingDragOperation) {
-      void batchUpdateItemsOrderWithRename(
-        pendingDragOperation.items as TreeNodeView[],
-        pendingDragOperation.parentFolderId
-      )
+  const handleDragConflictAutoRename = useCallback(async (): Promise<void> => {
+    if (!pendingDragOperation) return
+    try {
+      await moveNode({ ...pendingDragOperation, conflictPolicy: 'rename' })
+      setPendingDragOperation(null)
+      setMoveConflict(null)
+    } catch (error) {
+      void message.error(errorMessage(error))
     }
-    setPendingDragOperation(null)
-    setMoveConflict(null)
-  }, [pendingDragOperation, batchUpdateItemsOrderWithRename])
+  }, [pendingDragOperation, moveNode, message])
 
   const menuItems: MenuProps['items'] = [
     { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
@@ -412,7 +405,7 @@ export function Explorer(): React.JSX.Element {
         getItemName={pageName}
         getItemTitleExtra={getItemTitleExtra}
         isItem={isPageItem}
-        batchUpdateItemsOrder={handleBatchUpdateItemsOrder}
+        onMove={handleTreeMove}
         updateItem={handleUpdateItemName}
         deleteItem={deletePage}
         updateFolder={handleUpdateFolderName}

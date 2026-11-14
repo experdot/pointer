@@ -4,7 +4,7 @@
  * 页面只承载元数据；消息与 Topic 属于 Conversation（见 chat.ts）。
  */
 
-import type { Diagnostic, TreeNodeBase } from './common'
+import type { Diagnostic, TreeMove, TreeNodeBase } from './common'
 import { compareNodes, descendantFolderIds, nameKey } from './common'
 
 export { descendantFolderIds } from './common'
@@ -148,6 +148,60 @@ export function moveNode(
     return tree
   }
 
+  return insertNodeBefore(tree, node, targetFolderId, beforeNodeId, at)
+}
+
+/** 按当前树解析移动意图；失效目标不能退化为移到末尾。 */
+export function moveTreeNode(
+  tree: PageTree,
+  move: TreeMove,
+  at: number
+): { ok: true; tree: PageTree } | { ok: false; error: Diagnostic } {
+  const fail = (code: string, message: string): { ok: false; error: Diagnostic } => ({
+    ok: false,
+    error: { code, message, entityId: move.nodeId }
+  })
+  const node = findNode(tree, move.nodeId)
+  const target = findNode(tree, move.targetNodeId)
+  if (!node) return fail('tree.node-not-found', '移动的节点已不存在')
+  if (!target) return fail('tree.target-not-found', '目标节点已不存在')
+  if (!['before', 'after', 'inside'].includes(move.placement)) {
+    return fail('tree.invalid-placement', '无效的放置位置')
+  }
+  if (move.placement === 'inside' && !findFolder(tree, target.id)) {
+    return fail('tree.invalid-target', '只能移入文件夹')
+  }
+  if (node.id === target.id && move.placement !== 'inside') return { ok: true, tree }
+
+  const parentId = move.placement === 'inside' ? target.id : target.parentFolderId
+  if (parentId && !findFolder(tree, parentId)) {
+    return fail('tree.target-not-found', '目标文件夹已不存在')
+  }
+  if (findFolder(tree, node.id) && parentId && isFolderAncestor(tree, node.id, parentId)) {
+    return fail('tree.cycle', '不能把文件夹移入自身或其子文件夹')
+  }
+
+  const siblings = childrenOf(tree, parentId).filter((item) => item.id !== node.id)
+  const index =
+    move.placement === 'inside'
+      ? 0
+      : siblings.findIndex((item) => item.id === target.id) + (move.placement === 'after' ? 1 : 0)
+  return {
+    ok: true,
+    tree: insertNodeBefore(tree, node, parentId, siblings[index]?.id, at)
+  }
+}
+
+/** beforeNodeId 为空时明确追加到末尾；只更新实际改变的节点。 */
+function insertNodeBefore(
+  tree: PageTree,
+  node: TreeNodeBase,
+  targetFolderId: string | undefined,
+  beforeNodeId: string | undefined,
+  at: number
+): PageTree {
+  const nodeId = node.id
+  const sourceParentId = node.parentFolderId
   const sourceLevel = childrenOf(tree, sourceParentId).filter((item) => item.id !== nodeId)
   const targetLevelBase =
     sourceParentId === targetFolderId
@@ -176,14 +230,19 @@ export function moveNode(
     })
   }
 
+  let changed = false
   const apply = <T extends TreeNodeBase>(items: T[]): T[] =>
     items.map((item) => {
       const order = orderById.get(item.id)
       if (order === undefined) return item
-      return { ...item, order, parentFolderId: parentById.get(item.id), updatedAt: at }
+      const parentFolderId = parentById.get(item.id)
+      if (item.order === order && item.parentFolderId === parentFolderId) return item
+      changed = true
+      return { ...item, order, parentFolderId, updatedAt: at }
     })
 
-  return { folders: apply(tree.folders), pages: apply(tree.pages) }
+  const next = { folders: apply(tree.folders), pages: apply(tree.pages) }
+  return changed ? next : tree
 }
 
 /**
