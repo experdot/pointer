@@ -70,7 +70,6 @@
   justify-content: space-between;
   gap: 16px;
   padding: 8px 12px;
-  font-size: 13px;
 }
 
 .settings-shortcuts-row + .settings-shortcuts-row {

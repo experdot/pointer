@@ -1,5 +1,17 @@
 import React, { useEffect } from 'react'
-import { Typography, Flex, Card, Button, Space, Progress, Alert, Switch, Badge, App } from 'antd'
+import {
+  Typography,
+  Flex,
+  Card,
+  Button,
+  Space,
+  Progress,
+  Alert,
+  Switch,
+  Badge,
+  App,
+  Divider
+} from 'antd'
 import {
   CloudDownloadOutlined,
   ReloadOutlined,
@@ -15,7 +27,7 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { command, query } from '../../../runtime/client'
 import { useSavedAction } from '../../../hooks/useSavedAction'
 
-const { Text, Paragraph, Link } = Typography
+const { Text, Link } = Typography
 
 export function AboutPanel(): React.JSX.Element {
   const updateStore = useUpdateStore()
@@ -263,23 +275,7 @@ export function AboutPanel(): React.JSX.Element {
         )}
       </Space>
 
-      {/* 更新说明 */}
-      <Card size="small" style={{ backgroundColor: '#f9f9f9' }}>
-        <Space direction="vertical" size="small">
-          <Text strong style={{ fontSize: 12 }}>
-            更新说明:
-          </Text>
-          <Text style={{ fontSize: 12 }} type="secondary">
-            • 应用会自动检查GitHub上的最新版本
-          </Text>
-          <Text style={{ fontSize: 12 }} type="secondary">
-            • 下载的更新包会在后台验证完整性
-          </Text>
-          <Text style={{ fontSize: 12 }} type="secondary">
-            • 安装更新需要重启应用，请保存好当前工作
-          </Text>
-        </Space>
-      </Card>
+      <Divider style={{ margin: '8px 0' }} />
 
       {/* 关于应用标题 */}
       <Text strong style={{ fontSize: 16 }}>
@@ -297,10 +293,6 @@ export function AboutPanel(): React.JSX.Element {
           <Text>{currentVersion || '获取中...'}</Text>
         </Flex>
         <Flex justify="space-between">
-          <Text type="secondary">构建框架</Text>
-          <Text>Electron + React + TypeScript</Text>
-        </Flex>
-        <Flex justify="space-between">
           <Text type="secondary">许可证</Text>
           <Text>MIT 开源许可证</Text>
         </Flex>
@@ -311,10 +303,6 @@ export function AboutPanel(): React.JSX.Element {
           </Link>
         </Flex>
       </Flex>
-
-      <Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
-        一个探索性的 AI 聊天应用，致力于提供更好的 AI 交互体验。
-      </Paragraph>
     </Flex>
   )
 }

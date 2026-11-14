@@ -69,7 +69,7 @@ export function ShortcutsPanel(): React.JSX.Element {
           快捷键
         </Text>
         <br />
-        <Text type="secondary">当前平台的默认快捷键（仅展示，不支持修改）</Text>
+        <Text type="secondary">当前默认快捷键</Text>
       </div>
 
       {shortcutGroups.map((group) => (

@@ -35,7 +35,6 @@
 
 .ai-generate-popover__no-config-text {
   color: var(--ant-color-text-secondary);
-  font-size: 13px;
 }
 
 .ai-generate-popover__no-config-text a {

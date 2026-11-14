@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
-import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App } from 'antd'
-import { RobotOutlined } from '@ant-design/icons'
+import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App, Tooltip } from 'antd'
+import { RobotOutlined, CopyOutlined } from '@ant-design/icons'
 import { useSettings, useModelConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
 import { useDraftField } from '../../../hooks/useDraftField'
@@ -167,7 +167,13 @@ Top P: ${config.topP}`
                 >
                   {defaultModelConfigId === selectedConfig.id ? '已设为默认' : '设为默认'}
                 </Button>
-                <Button onClick={() => handleCopyAsText(selectedConfig)}>复制为文本</Button>
+                <Tooltip title="复制配置文本到剪贴板">
+                  <Button
+                    aria-label="复制配置文本到剪贴板"
+                    icon={<CopyOutlined />}
+                    onClick={() => handleCopyAsText(selectedConfig)}
+                  />
+                </Tooltip>
               </Space>
             </Form.Item>
           </Form>

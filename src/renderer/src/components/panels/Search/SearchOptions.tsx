@@ -96,7 +96,6 @@ export function SearchOptions(): React.JSX.Element {
                 <div className="search-filter-item">
                   <span className="search-filter-title">角色</span>
                   <Select
-                    size="small"
                     value={options.roleFilter}
                     onChange={(value) => handleOptionChange('roleFilter', value)}
                     options={roleOptions}
@@ -106,7 +105,6 @@ export function SearchOptions(): React.JSX.Element {
                 <div className="search-filter-item">
                   <span className="search-filter-title">时间</span>
                   <Select
-                    size="small"
                     value={options.timeRange}
                     onChange={(value) => handleOptionChange('timeRange', value)}
                     options={timeOptions}

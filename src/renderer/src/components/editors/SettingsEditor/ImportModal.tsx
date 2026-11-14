@@ -297,7 +297,9 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
           </p>
-          <p className="ant-upload-text">点击或拖拽文件到此处</p>
+          <p className="ant-upload-text" style={{ fontSize: 14 }}>
+            点击或拖拽文件到此处
+          </p>
           <p className="ant-upload-hint">支持 .json 格式的备份文件</p>
         </Dragger>
       </Modal>

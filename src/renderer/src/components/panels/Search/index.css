@@ -129,7 +129,6 @@
 
 .search-placeholder p {
   margin: 0;
-  font-size: 13px;
 }
 
 /* Search Results */
@@ -156,7 +155,7 @@
 }
 
 .search-result-group-icon {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ant-color-text-secondary);
   flex-shrink: 0;
 }
@@ -170,7 +169,6 @@
 .search-result-group-title {
   flex-shrink: 1;
   min-width: 0;
-  font-size: 13px;
   color: var(--ant-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,7 +188,7 @@
 
 .search-result-group-time {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ant-color-text-quaternary);
   margin-left: auto;
   padding-left: 4px;
@@ -246,14 +244,14 @@
 
 .search-result-message-time {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ant-color-text-quaternary);
   margin-left: 4px;
 }
 
 .search-result-message-count {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ant-color-text-tertiary);
   background: var(--ant-color-fill-secondary);
   padding: 0 5px;
@@ -331,8 +329,4 @@
 /* Empty state */
 .search-panel .ant-empty {
   padding: 24px;
-}
-
-.search-panel .ant-empty-description {
-  font-size: 13px;
 }

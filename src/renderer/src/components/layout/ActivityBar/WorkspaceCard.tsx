@@ -164,7 +164,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
                 <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
                   <Text ellipsis>{workspace.name}</Text>
                   {workspace.type === 'custom' && (
-                    <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
+                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
                       {workspace.path}
                     </Text>
                   )}
@@ -211,7 +211,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             {currentWorkspace?.name || '未选择工作区'}
           </Text>
           {currentWorkspace?.type === 'custom' && (
-            <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
+            <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
               {currentWorkspace.path}
             </Text>
           )}

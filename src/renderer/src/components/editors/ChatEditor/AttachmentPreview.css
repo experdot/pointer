@@ -52,7 +52,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@
   padding: 2px 4px;
   background: rgba(0, 0, 0, 0.6);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

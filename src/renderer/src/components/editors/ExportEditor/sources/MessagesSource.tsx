@@ -238,7 +238,7 @@ export function MessagesSourceSelector({
     <div>
       {/* Selection mode */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>选择模式</div>
+        <div style={{ marginBottom: 8, fontWeight: 500 }}>选择模式</div>
         <Select
           value={selectionMode}
           onChange={(value) => handleModeChange(value as MessageSelectionMode)}
@@ -250,7 +250,7 @@ export function MessagesSourceSelector({
       {/* Topic selector (for topic-messages mode) */}
       {selectionMode === 'topic-messages' && topics.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>选择 Topic</div>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>选择 Topic</div>
           <Select
             value={selectedTopicId}
             onChange={(value) => handleTopicSelect(value)}
@@ -328,8 +328,7 @@ export function MessagesSourceSelector({
         style={{
           padding: 12,
           background: 'var(--ant-color-bg-layout)',
-          borderRadius: 6,
-          fontSize: 13
+          borderRadius: 6
         }}
       >
         已选择 <strong>{selectedMessageIds.length}</strong> 条消息

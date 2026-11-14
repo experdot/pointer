@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
-import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete } from 'antd'
-import { ApiOutlined } from '@ant-design/icons'
+import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete, Tooltip } from 'antd'
+import { ApiOutlined, CopyOutlined } from '@ant-design/icons'
 import { useSettings, useLLMConfigs } from '../../../hooks/useSettings'
 import { ConfigTree } from '../../common/ConfigTree'
 import { query } from '../../../runtime/client'
@@ -189,7 +189,13 @@ API Key: ${config.apiKey}
                   >
                     {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}
                   </Button>
-                  <Button onClick={() => handleCopyAsText(selectedConfig)}>复制为文本</Button>
+                  <Tooltip title="复制配置文本到剪贴板">
+                    <Button
+                      aria-label="复制配置文本到剪贴板"
+                      icon={<CopyOutlined />}
+                      onClick={() => handleCopyAsText(selectedConfig)}
+                    />
+                  </Tooltip>
                 </Space>
                 <Button onClick={() => handleTest(selectedConfig)} loading={testing}>
                   测试连接

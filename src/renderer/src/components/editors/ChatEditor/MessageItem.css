@@ -81,7 +81,7 @@
 }
 
 .message-item__role {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ant-color-text);
 }
@@ -160,7 +160,6 @@
   padding: 8px 12px;
   background: var(--ant-color-fill-tertiary);
   border-radius: 4px;
-  font-size: 13px;
   color: var(--ant-color-text-secondary);
 }
 

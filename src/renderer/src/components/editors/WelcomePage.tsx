@@ -17,7 +17,7 @@ export function WelcomePage({ onNewChat, onOpenSettings }: WelcomePageProps): Re
         欢迎使用 Pointer
       </Title>
       <Text type="secondary" className="welcome-subtitle">
-        智能 AI 聊天助手
+        专注纯文本 AI 聊天体验的应用
       </Text>
       <Flex gap={12} className="welcome-actions">
         <Button type="primary" icon={<PlusOutlined />} size="large" onClick={onNewChat}>
