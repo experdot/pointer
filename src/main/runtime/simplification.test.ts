@@ -159,22 +159,24 @@ describe('会话选择与生成', () => {
     )
   })
 
-  it('旧 session 只迁移一次，之后按各账号的工作区记录恢复', async () => {
+  it('启动与切换后按账号和工作区记录恢复选择，不生成 session 文件或版本字段', async () => {
     const original = await f.query('session.get', undefined)
+    const accountsPath = join(f.root, 'accounts.json')
+    const sessionPath = join(f.root, 'session.json')
+    expect(JSON.parse(await readFile(accountsPath, 'utf8'))).toEqual({
+      accounts: await f.query('accounts.list', undefined),
+      currentAccountId: original.accountId
+    })
+    expect(await fsx.pathExists(sessionPath)).toBe(false)
     const second = await f.command('account.create', { name: 'second' })
+    const secondDefault = await f.query('session.get', undefined)
     const secondWorkspace = await f.command('workspace.create', {
       name: 'chosen',
       type: 'custom',
       path: join(f.root, 'chosen')
     })
-    await f.command('session.selectAccount', { accountId: original.accountId! })
-    const accountsPath = join(f.root, 'accounts.json')
-    const accounts = JSON.parse(await readFile(accountsPath, 'utf8'))
-    delete accounts.version
-    await writeFile(accountsPath, JSON.stringify(accounts))
-    const sessionPath = join(f.root, 'session.json')
-    const legacy = JSON.stringify({ accountId: second.id, workspaceId: secondWorkspace.id })
-    await writeFile(sessionPath, legacy)
+    await f.command('session.selectWorkspace', { workspaceId: secondDefault.workspaceId! })
+    await f.command('session.selectWorkspace', { workspaceId: secondWorkspace.id })
     await f.restart()
     expect(await f.query('session.get', undefined)).toMatchObject({
       accountId: second.id,
@@ -188,8 +190,56 @@ describe('会话选择与生成', () => {
     })
     await f.command('session.selectAccount', { accountId: second.id })
     expect((await f.query('session.get', undefined)).workspaceId).toBe(secondWorkspace.id)
-    expect(await readFile(sessionPath, 'utf8')).toBe(legacy)
-    expect(JSON.parse(await readFile(accountsPath, 'utf8')).version).toBe(2)
+    expect(JSON.parse(await readFile(accountsPath, 'utf8'))).toEqual({
+      accounts: await f.query('accounts.list', undefined),
+      currentAccountId: second.id
+    })
+    expect(await fsx.pathExists(sessionPath)).toBe(false)
+  })
+
+  it.each(['conflicting', 'malformed'] as const)(
+    '遗留 session 文件为 %s 时不影响启动，也不会被修改或删除',
+    async (content) => {
+      const original = await f.query('session.get', undefined)
+      const second = await f.command('account.create', { name: 'second' })
+      const secondSession = await f.query('session.get', undefined)
+      await f.command('session.selectAccount', { accountId: original.accountId! })
+      await writeFile(
+        join(f.root, 'accounts.json'),
+        JSON.stringify({
+          accounts: await f.query('accounts.list', undefined),
+          currentAccountId: original.accountId
+        })
+      )
+      const sessionPath = join(f.root, 'session.json')
+      const legacy =
+        content === 'malformed'
+          ? '{invalid'
+          : JSON.stringify({ accountId: second.id, workspaceId: secondSession.workspaceId })
+      await writeFile(sessionPath, legacy)
+      await f.restart()
+      expect(await f.query('session.get', undefined)).toMatchObject({
+        accountId: original.accountId,
+        workspaceId: original.workspaceId
+      })
+      expect(await readFile(sessionPath, 'utf8')).toBe(legacy)
+    }
+  )
+
+  it('已有账号文件的 version 字段被忽略，正常保存时仅写当前字段', async () => {
+    const before = await f.query('session.get', undefined)
+    const accountsPath = join(f.root, 'accounts.json')
+    const accounts = {
+      accounts: await f.query('accounts.list', undefined),
+      currentAccountId: before.accountId
+    }
+    await writeFile(accountsPath, JSON.stringify({ ...accounts, version: 2 }))
+    await f.restart()
+    expect(await f.query('session.get', undefined)).toMatchObject({
+      accountId: before.accountId,
+      workspaceId: before.workspaceId
+    })
+    expect(JSON.parse(await readFile(accountsPath, 'utf8'))).toEqual(accounts)
   })
 })
 

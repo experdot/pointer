@@ -183,9 +183,9 @@ export class RuntimeCore {
   // ==================== 生命周期 ====================
 
   async init(): Promise<void> {
-    const legacyWorkspaceId = await this.accounts.load()
+    await this.accounts.load()
     const account = await this.accounts.ensureDefaultAccount()
-    await this.openAccount(account.id, legacyWorkspaceId)
+    await this.openAccount(account.id)
   }
 
   async dispose(): Promise<void> {
@@ -767,7 +767,7 @@ export class RuntimeCore {
 
   // ==================== 会话管理 ====================
 
-  private async openAccount(accountId: string, preferredWorkspaceId?: string): Promise<void> {
+  private async openAccount(accountId: string): Promise<void> {
     if (!this.accounts.getById(accountId)) throw new RuntimeError('account.not-found', '账户不存在')
     const settingsStore = new SettingsStore(this.paths, accountId)
     await settingsStore.load(accountId)
@@ -775,11 +775,7 @@ export class RuntimeCore {
     const registry = new WorkspaceRegistry(this.paths, accountId)
     await registry.load(accountId)
 
-    const preferred = preferredWorkspaceId ? registry.getById(preferredWorkspaceId) : undefined
-    const workspace =
-      preferred && (await registry.validatePath(preferred.path)).valid
-        ? preferred
-        : await registry.ensureDefault(Date.now())
+    const workspace = await registry.ensureDefault(Date.now())
 
     await this.openWorkspace(workspace, { registry, settingsStore })
   }

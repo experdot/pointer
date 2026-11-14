@@ -48,14 +48,14 @@ UI → services/* → stores/* → runtime/client → 内核命令 → 内核事
 ### 应用数据目录（`app.getPath('userData')`）
 
 ```
-accounts.json          账户列表与当前账户（version=2）
+accounts.json          账户列表与当前账户
 accounts/<accountId>/
   workspaces.json      该账户的工作区列表与当前工作区
   settings.json        账户级设置（LLM 配置、模型配置，API Key 以明文随配置保存）
 workspaces/<accountId>/default/    默认工作区
 ```
 
-当前选择仅由 `accounts.json` 的当前账户与该账户 `workspaces.json` 的当前工作区组成。旧 `session.json` 只在账户目录尚无版本标记时读取；成功打开对应工作区后写入版本标记，之后不再读取或更新旧文件。切换失败恢复原选择，切换账户时恢复各自上次使用的工作区。
+当前选择仅由 `accounts.json` 的 `currentAccountId` 与该账户 `workspaces.json` 的 `currentWorkspaceId` 组成。账号文件只写入 `accounts` 和 `currentAccountId`；已有的额外字段（如 `version`）不参与加载，正常保存时省略。程序不读取、写入或清理遗留的 `session.json`，无需迁移。切换失败恢复原选择，切换账户时恢复各自上次使用的工作区。
 
 ### 工作区目录
 

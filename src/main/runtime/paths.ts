@@ -6,10 +6,9 @@
  * 磁盘布局：
  *
  *   <appData>/
- *     accounts.json                账户目录
- *     session.json                 旧版选择记录（仅读取迁移）
+ *     accounts.json                账户列表与当前账户
  *     accounts/<accountId>/
- *       workspaces.json            该账户的工作区列表
+ *       workspaces.json            该账户的工作区列表与当前工作区
  *       settings.json              账户级设置
  *     workspaces/<accountId>/default/   默认工作区
  *
@@ -34,10 +33,6 @@ export class PathResolver {
 
   get accountsFile(): string {
     return join(this.appDataPath, 'accounts.json')
-  }
-
-  get legacySessionFile(): string {
-    return join(this.appDataPath, 'session.json')
   }
 
   accountDir(accountId: string): string {

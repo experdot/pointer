@@ -10,14 +10,8 @@ import type { PathResolver } from './paths'
 import { ensureDir, readJson, removePath, writeJsonAtomic } from './fsx'
 
 interface AccountsFile {
-  version?: 2
   accounts: Account[]
   currentAccountId: string | null
-}
-
-interface SessionFile {
-  accountId: string | null
-  workspaceId: string | null
 }
 
 export class AccountStore {
@@ -26,23 +20,13 @@ export class AccountStore {
 
   constructor(private readonly paths: PathResolver) {}
 
-  async load(): Promise<string | undefined> {
+  async load(): Promise<void> {
     const file = await readJson<AccountsFile>(this.paths.accountsFile)
     this.accounts = file?.accounts ?? []
     this.currentAccountId =
       file?.currentAccountId && this.accounts.some((item) => item.id === file.currentAccountId)
         ? file.currentAccountId
         : (this.accounts[0]?.id ?? null)
-
-    // 旧版 session.json 优先级更高，仅迁移一次；成功打开工作区后 setCurrent 写入版本标记。
-    if (file?.version !== 2) {
-      const session = await readJson<SessionFile>(this.paths.legacySessionFile)
-      if (session?.accountId && this.getById(session.accountId)) {
-        this.currentAccountId = session.accountId
-        return session.workspaceId ?? undefined
-      }
-    }
-    return undefined
   }
 
   list(): Account[] {
@@ -146,7 +130,6 @@ export class AccountStore {
     currentAccountId = this.currentAccountId
   ): Promise<void> {
     await writeJsonAtomic(this.paths.accountsFile, {
-      version: 2,
       accounts,
       currentAccountId
     } satisfies AccountsFile)
