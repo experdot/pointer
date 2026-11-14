@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex } from 'antd'
+import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex, Divider } from 'antd'
 import type { TreeDataNode } from 'antd'
 import { usePagesStore } from '../../../stores/pagesStore'
 import { useFoldersStore } from '../../../stores/foldersStore'
@@ -216,7 +216,12 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     {
       key: 'chats',
       label: `对话 (${stats.pageIds.length})`,
-      children: renderTree(chatsTree, checkedChats, setCheckedChats)
+      children: (
+        <Flex vertical gap={8}>
+          {renderTree(chatsTree, checkedChats, setCheckedChats)}
+          <Text type="secondary">图片附件暂不支持导出</Text>
+        </Flex>
+      )
     },
     {
       key: 'llm',
@@ -229,6 +234,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
           >
             包含 API Key（明文）
           </Checkbox>
+          <Divider style={{ margin: '8px 0' }} />
           {renderTree(llmTree, checkedLLM, setCheckedLLM)}
         </>
       )
@@ -273,7 +279,6 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
       }
     >
       <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k as TabKey)} items={tabItems} />
-      <Text type="secondary">附件仅导出引用，图片文件需单独保留。</Text>
     </Modal>
   )
 }

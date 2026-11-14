@@ -26,7 +26,9 @@ export function DataPanel(): React.JSX.Element {
           数据管理
         </Text>
         <br />
-        <Text type="secondary">导入、导出或重置应用数据</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          导入、导出或重置应用数据
+        </Text>
       </div>
 
       <Space size="middle">
@@ -48,7 +50,9 @@ export function DataPanel(): React.JSX.Element {
           第三方数据导入
         </Text>
         <br />
-        <Text type="secondary">从其他平台导入聊天记录（支持 OpenAI、DeepSeek 等）</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          从其他平台导入聊天记录（支持 OpenAI、DeepSeek 等）
+        </Text>
       </div>
 
       <Space>

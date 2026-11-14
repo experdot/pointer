@@ -46,7 +46,7 @@ export function ActivityBar(): React.JSX.Element {
         <Popover
           content={<WorkspaceCard onClose={() => setWorkspacePopoverOpen(false)} />}
           trigger="click"
-          placement="rightBottom"
+          placement="right"
           arrow={false}
           open={workspacePopoverOpen}
           onOpenChange={setWorkspacePopoverOpen}

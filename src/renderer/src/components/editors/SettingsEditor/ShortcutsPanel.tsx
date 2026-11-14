@@ -69,7 +69,9 @@ export function ShortcutsPanel(): React.JSX.Element {
           快捷键
         </Text>
         <br />
-        <Text type="secondary">当前默认快捷键</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          当前默认快捷键
+        </Text>
       </div>
 
       {shortcutGroups.map((group) => (

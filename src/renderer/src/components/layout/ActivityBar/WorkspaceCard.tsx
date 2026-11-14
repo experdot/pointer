@@ -1,13 +1,6 @@
 import React, { useState } from 'react'
 import { Flex, Typography, Button, Divider, List, App, Tooltip } from 'antd'
-import {
-  FolderOutlined,
-  FolderOpenOutlined,
-  SwapOutlined,
-  CheckOutlined,
-  ArrowLeftOutlined,
-  DeleteOutlined
-} from '@ant-design/icons'
+import { FolderOutlined, FolderOpenOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useWorkspaceStore } from '../../../stores/workspaceStore'
 import { useSavedAction } from '../../../hooks/useSavedAction'
 import {
@@ -20,6 +13,7 @@ import {
   openWorkspaceInFileManager
 } from '../../../services/workspaceService'
 import type { WorkspaceSummary } from '@renderer/types/shared'
+import './WorkspaceCard.css'
 
 const { Text } = Typography
 
@@ -29,7 +23,6 @@ interface WorkspaceCardProps {
 
 export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Element {
   const { workspaces, currentWorkspaceId, currentWorkspace } = useWorkspaceStore()
-  const [showWorkspaceList, setShowWorkspaceList] = useState(false)
   const [switching, setSwitching] = useState(false)
   const { message, modal } = App.useApp()
   const runSaved = useSavedAction()
@@ -134,84 +127,20 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
     })
   }
 
-  if (showWorkspaceList) {
-    return (
-      <Flex vertical gap={8} style={{ width: 260 }}>
-        <Flex align="center" gap={8}>
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => setShowWorkspaceList(false)}
-          />
-          <Text strong>选择工作区</Text>
-        </Flex>
-        <Divider style={{ margin: '4px 0' }} />
-        <List
-          size="small"
-          dataSource={workspaces}
-          renderItem={(workspace) => (
-            <List.Item
-              style={{ padding: '8px', cursor: 'pointer' }}
-              onClick={() => handleSwitchWorkspace(workspace.id)}
-            >
-              <Flex align="center" gap={8} flex={1}>
-                {workspace.type === 'default' ? (
-                  <FolderOutlined style={{ fontSize: 16 }} />
-                ) : (
-                  <FolderOpenOutlined style={{ fontSize: 16, color: '#1677ff' }} />
-                )}
-                <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
-                  <Text ellipsis>{workspace.name}</Text>
-                  {workspace.type === 'custom' && (
-                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
-                      {workspace.path}
-                    </Text>
-                  )}
-                </Flex>
-                {workspace.id === currentWorkspaceId ? (
-                  <CheckOutlined style={{ color: '#1677ff', flexShrink: 0 }} />
-                ) : workspace.type === 'custom' ? (
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={(e) => handleDeleteWorkspace(workspace, e)}
-                    style={{ flexShrink: 0 }}
-                  />
-                ) : null}
-              </Flex>
-            </List.Item>
-          )}
-        />
-        <Divider style={{ margin: '4px 0' }} />
-        <Button
-          type="dashed"
-          icon={<FolderOpenOutlined />}
-          block
-          onClick={handleOpenFolder}
-          loading={switching}
-        >
-          打开文件夹...
-        </Button>
-      </Flex>
-    )
-  }
-
   return (
-    <Flex vertical gap={8} style={{ width: 240 }}>
+    <Flex vertical gap={8} style={{ width: 260 }}>
       <Flex align="center" gap={12}>
-        {currentWorkspace?.type === 'default' ? (
-          <FolderOutlined style={{ fontSize: 24 }} />
-        ) : (
-          <FolderOpenOutlined style={{ fontSize: 24, color: '#1677ff' }} />
-        )}
+        <FolderOutlined style={{ fontSize: 24 }} />
         <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
           <Text strong ellipsis>
             {currentWorkspace?.name || '未选择工作区'}
           </Text>
           {currentWorkspace?.type === 'custom' && (
-            <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+            <Text
+              type="secondary"
+              style={{ fontSize: 12 }}
+              ellipsis={{ tooltip: currentWorkspace.path }}
+            >
               {currentWorkspace.path}
             </Text>
           )}
@@ -228,15 +157,50 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         </Tooltip>
       </Flex>
       <Divider style={{ margin: '8px 0' }} />
-      <Button
-        type="text"
-        icon={<SwapOutlined />}
-        block
-        style={{ justifyContent: 'flex-start' }}
-        onClick={() => setShowWorkspaceList(true)}
-      >
-        切换工作区
-      </Button>
+      <Text type="secondary">切换工作区</Text>
+      <List
+        size="small"
+        style={{
+          maxHeight: 'min(320px, calc(100vh - 240px))',
+          overflowY: 'auto',
+          overflowX: 'hidden'
+        }}
+        dataSource={workspaces.filter((workspace) => workspace.id !== currentWorkspaceId)}
+        locale={{ emptyText: '暂无其他工作区' }}
+        renderItem={(workspace) => (
+          <List.Item
+            className="workspace-card__item"
+            style={{ padding: '8px', cursor: 'pointer' }}
+            onClick={() => handleSwitchWorkspace(workspace.id)}
+          >
+            <Flex align="center" gap={8} flex={1} style={{ minWidth: 0 }}>
+              <FolderOutlined style={{ fontSize: 16 }} />
+              <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
+                <Text ellipsis>{workspace.name}</Text>
+                {workspace.type === 'custom' && (
+                  <Text
+                    type="secondary"
+                    style={{ fontSize: 12 }}
+                    ellipsis={{ tooltip: workspace.path }}
+                  >
+                    {workspace.path}
+                  </Text>
+                )}
+              </Flex>
+              {workspace.type === 'custom' && (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => handleDeleteWorkspace(workspace, e)}
+                  style={{ flexShrink: 0 }}
+                />
+              )}
+            </Flex>
+          </List.Item>
+        )}
+      />
+      <Divider style={{ margin: '8px 0' }} />
       <Button
         type="text"
         icon={<FolderOpenOutlined />}

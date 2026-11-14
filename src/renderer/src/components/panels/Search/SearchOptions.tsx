@@ -116,7 +116,6 @@ export function SearchOptions(): React.JSX.Element {
                     <span className="search-filter-title">文件夹</span>
                     <Select
                       mode="multiple"
-                      size="small"
                       value={options.folderIds || []}
                       onChange={handleFolderChange}
                       options={folderOptions}
