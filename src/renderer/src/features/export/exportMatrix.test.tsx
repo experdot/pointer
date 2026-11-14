@@ -215,6 +215,33 @@ describe('导出语义边界', () => {
       )
     ).rejects.toThrow('话题')
   })
+  it.each(['current-branch', 'free-select'] as const)(
+    '%s 使用打开时的分支范围，正文取预览时的最新内容',
+    async (selectionMode) => {
+      useMessagesStore.getState().setConversation({
+        ...conversation,
+        leafMessageId: 'a',
+        messages: conversation.messages.map((message) =>
+          message.id === 'b' ? { ...message, content: '更新后的回答' } : message
+        )
+      })
+      const result = await messagesSourcePlugin.extract(
+        {
+          type: 'messages',
+          pageId: 'p',
+          selectionMode,
+          branchMessageIds: ['u', 'b'],
+          selectedMessageIds: selectionMode === 'free-select' ? ['b'] : ['u', 'b']
+        },
+        DEFAULT_EXPORT_OPTIONS
+      )
+      expect(result.messages?.map((message) => message.id)).toEqual(
+        selectionMode === 'free-select' ? ['b'] : ['u', 'b']
+      )
+      expect(result.rawContent).toContain('更新后的回答')
+      expect(result.rawContent).not.toContain('另一个分支')
+    }
+  )
   it('自由选择的目录只包含选中消息所属范围，不泄露其他话题名称', async () => {
     const result = await messagesSourcePlugin.extract(
       { type: 'messages', pageId: 'p', selectionMode: 'free-select', selectedMessageIds: ['u'] },

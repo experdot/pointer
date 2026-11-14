@@ -1,6 +1,7 @@
 import { Button, Checkbox, Select, Modal } from 'antd'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
+import { isSourceDataReady } from '../../../../features/export/sourceData'
 import { FORMAT_SUPPORT, type SourceType, type FormatType } from '../../../../features/export/types'
 
 interface SidebarProps {
@@ -94,7 +95,7 @@ export function Sidebar({ pageId }: SidebarProps): React.JSX.Element {
   // 1. No source data
   // 2. Preview is generating
   // 3. Preview is not stale (already up to date)
-  const isGenerateDisabled = !sourceData || isGenerating || !isPreviewStale
+  const isGenerateDisabled = !isSourceDataReady(sourceData) || isGenerating || !isPreviewStale
 
   return (
     <div className="export-sidebar">

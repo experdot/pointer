@@ -157,4 +157,39 @@ describe('导出编辑器状态与实际出口', () => {
     first.getState().setPreviewContainerElement(null)
     await expect(first.getState().downloadImage()).rejects.toThrow('请先生成预览')
   })
+  it('消息勾选变化后所有出口拒绝旧预览，全不选不生成，重选后可重新导出', async () => {
+    const instance = createExportStore()
+    const data = {
+      type: 'messages' as const,
+      pageId: 'p',
+      selectionMode: 'free-select' as const,
+      branchMessageIds: ['u', 'a'],
+      selectedMessageIds: ['u', 'a']
+    }
+    instance.getState().setSourceType('messages')
+    instance.getState().setSourceData(data)
+    await instance.getState().generatePreview()
+    instance.getState().setSourceData({ ...data, selectedMessageIds: ['a'] })
+    for (const action of [
+      'doExport',
+      'copyToClipboard',
+      'downloadImage',
+      'copyImageToClipboard'
+    ] as const) {
+      await expect(instance.getState()[action]()).rejects.toThrow('重新生成预览')
+    }
+    expect(command).not.toHaveBeenCalled()
+    expect(screenshotElement).not.toHaveBeenCalled()
+    instance.getState().setSourceData({ ...data, selectedMessageIds: [] })
+    await instance.getState().generatePreview()
+    expect(exportManager.generatePreview).toHaveBeenCalledTimes(1)
+    await expect(instance.getState().doExport()).rejects.toThrow('请选择')
+    instance.getState().setSourceData({ ...data, selectedMessageIds: ['a'] })
+    await instance.getState().generatePreview()
+    await instance.getState().doExport()
+    expect(command).toHaveBeenCalledWith(
+      'dialog.saveFile',
+      expect.objectContaining({ content: 'preview' })
+    )
+  })
 })

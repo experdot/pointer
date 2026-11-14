@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons'
 import { useExportStore } from '../../../../stores/exportStore'
 import { exportManager } from '../../../../features/export'
+import { isSourceDataReady } from '../../../../features/export/sourceData'
 import type { PreviewMode } from '../../../../features/export/types'
 import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation'
 
@@ -57,6 +58,7 @@ export function PreviewPanel(): React.JSX.Element {
     editedContent,
     isDirty,
     isGenerating,
+    isPreviewStale,
     error,
     updatePreviewOptions,
     enterEditMode,
@@ -173,7 +175,7 @@ export function PreviewPanel(): React.JSX.Element {
   // Determine what content to show
   const hasSource = sourceType && sourceData
   const hasPreview = previewResult !== null
-  const canExport = hasPreview
+  const canExport = hasPreview && !isPreviewStale && !isGenerating && isSourceDataReady(sourceData)
 
   // Build effective result for preview (use edited content if dirty)
   const effectiveResult =
@@ -197,6 +199,9 @@ export function PreviewPanel(): React.JSX.Element {
           />
           {isDirty && (
             <span style={{ color: 'var(--ant-color-warning)', fontSize: 12 }}>(已修改)</span>
+          )}
+          {hasPreview && isPreviewStale && (
+            <span style={{ color: 'var(--ant-color-text-secondary)' }}>请重新生成预览</span>
           )}
         </div>
         <div className="preview-panel__header-right">

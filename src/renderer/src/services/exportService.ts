@@ -27,11 +27,16 @@ function openExportTab(context?: ExportEditorContext): void {
 /**
  * Export messages from a page
  */
-export function exportMessages(pageId: string, messageIds?: string[]): void {
+export function exportMessages(
+  pageId: string,
+  messageIds?: string[],
+  options?: Pick<ExportEditorContext, 'selectionMode' | 'branchMessageIds'>
+): void {
   openExportTab({
     sourceType: 'messages',
     pageId,
-    messageIds
+    messageIds,
+    ...options
   })
 }
 

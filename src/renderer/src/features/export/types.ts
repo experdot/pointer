@@ -17,6 +17,8 @@ export interface MessagesSourceData {
   pageId: string
   selectionMode: MessageSelectionMode
   selectedMessageIds: string[]
+  /** 打开导出页时的分支范围，独立于用户的勾选。 */
+  branchMessageIds?: string[]
   topicId?: string // For topic-messages mode
 }
 
@@ -287,6 +289,8 @@ export interface ExportEditorContext {
   sourceType?: SourceType
   pageId?: string
   messageIds?: string[]
+  selectionMode?: MessageSelectionMode
+  branchMessageIds?: string[]
   text?: string
   code?: string
   language?: string

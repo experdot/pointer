@@ -17,6 +17,7 @@ import {
   FORMAT_SUPPORT
 } from '../features/export/types'
 import { exportManager } from '../features/export/ExportManager'
+import { isSourceDataReady } from '../features/export/sourceData'
 import {
   screenshotElement,
   downloadBlob,
@@ -36,6 +37,12 @@ import {
 export const createExportStore = (): StoreApi<ExportStore> =>
   createStore<ExportStore>((set, get) => {
     let revision = 0
+    const requireMessagePreview = (): void => {
+      const { sourceData, isPreviewStale, isGenerating } = get()
+      if (sourceData?.type !== 'messages') return
+      if (!isSourceDataReady(sourceData)) throw new Error('请选择要导出的消息')
+      if (isPreviewStale || isGenerating) throw new Error('请重新生成预览后再导出')
+    }
     return {
       // ==================== Initial State ====================
 
@@ -159,6 +166,11 @@ export const createExportStore = (): StoreApi<ExportStore> =>
           return
         }
 
+        if (sourceData.type === 'messages' && !isSourceDataReady(sourceData)) {
+          set({ error: '请选择要导出的消息' })
+          return
+        }
+
         set({ isGenerating: true, error: null })
 
         try {
@@ -216,6 +228,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
       // ==================== Export Actions ====================
 
       doExport: async () => {
+        requireMessagePreview()
         const { previewResult, editedContent, isDirty, formatType } = get()
 
         const contentToExport =
@@ -252,6 +265,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
       },
 
       copyToClipboard: async () => {
+        requireMessagePreview()
         const { previewResult, editedContent, isDirty } = get()
 
         const contentToCopy =
@@ -276,6 +290,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
       },
 
       downloadImage: async () => {
+        requireMessagePreview()
         const { previewContainerElement } = get()
 
         if (!previewContainerElement) {
@@ -288,6 +303,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
       },
 
       copyImageToClipboard: async () => {
+        requireMessagePreview()
         const { previewContainerElement } = get()
 
         if (!previewContainerElement) {

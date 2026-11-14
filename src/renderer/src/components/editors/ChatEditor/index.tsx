@@ -6,6 +6,7 @@ import { useMessageQueue } from '../../../hooks/useMessageQueue'
 import { toggleMessageCollapsed, setMessagesCollapsed } from '../../../services/messagesService'
 import * as navigationService from '../../../services/navigationService'
 import { generateSessionTitle } from '../../../services/titleService'
+import { exportMessages } from '../../../services/exportService'
 import { useMessagesStore } from '../../../stores/messagesStore'
 import { useChatUIStore } from '../../../stores/chatUIStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
@@ -30,6 +31,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     page,
     messages,
     currentPath,
+    isLoading,
     sendMessage,
     stopStreaming,
     retryMessage,
@@ -193,16 +195,42 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
     [pageId]
   )
 
+  const handleSetCollapsed = useCallback(
+    (ids: string[], collapsed: boolean) => {
+      void setMessagesCollapsed(pageId, ids, collapsed).catch((error) =>
+        notify.error(errorMessage(error))
+      )
+    },
+    [pageId, notify]
+  )
+
   const handleCollapseAll = useCallback(() => {
     const { streaming } = useMessagesStore.getState()
     const nonStreamingIds = currentPath.filter((m) => !streaming[m.id]).map((m) => m.id)
-    setMessagesCollapsed(pageId, nonStreamingIds, true)
-  }, [pageId, currentPath])
+    handleSetCollapsed(nonStreamingIds, true)
+  }, [currentPath, handleSetCollapsed])
+
+  const handleCollapseAI = useCallback(() => {
+    const { streaming } = useMessagesStore.getState()
+    const ids = currentPath
+      .filter((m) => m.role === 'assistant' && !streaming[m.id])
+      .map((m) => m.id)
+    handleSetCollapsed(ids, true)
+  }, [currentPath, handleSetCollapsed])
 
   const handleExpandAll = useCallback(() => {
     const ids = currentPath.map((m) => m.id)
-    setMessagesCollapsed(pageId, ids, false)
-  }, [pageId, currentPath])
+    handleSetCollapsed(ids, false)
+  }, [currentPath, handleSetCollapsed])
+
+  const handleExport = useCallback(
+    (selectionMode: 'current-branch' | 'free-select') => {
+      const branchMessageIds = currentPath.map((m) => m.id)
+      if (branchMessageIds.length === 0) return
+      exportMessages(pageId, branchMessageIds, { selectionMode, branchMessageIds })
+    },
+    [pageId, currentPath]
+  )
 
   // 停止 streaming 并暂停队列（先暂停队列，防止 streaming 停止后触发自动处理）
   const handleStopWithQueue = useCallback(async () => {
@@ -263,6 +291,11 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
       ))}
       <Header
         page={page}
+        actionsDisabled={isLoading || currentPath.length === 0}
+        onCollapseAll={handleCollapseAll}
+        onExpandAll={handleExpandAll}
+        onCollapseAI={handleCollapseAI}
+        onExport={handleExport}
         onGenerate={async (options) => {
           const result = await generateSessionTitle(page.id, options)
           if (!result.success) {
@@ -278,8 +311,6 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
         onNavigateToMessage={handleNavigateToMessage}
         onNavigateToPrev={handleNavigateToPrev}
         onNavigateToNext={handleNavigateToNext}
-        onCollapseAll={handleCollapseAll}
-        onExpandAll={handleExpandAll}
         outline={outline}
         onBatchGenerateTitles={batchGenerateTitles}
         onSmartSegment={smartSegmentation}

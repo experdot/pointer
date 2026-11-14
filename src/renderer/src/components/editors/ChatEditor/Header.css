@@ -9,6 +9,18 @@
   height: 48px;
 }
 
+.chat-editor__header-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-editor__header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .chat-editor__title {
   flex: 1;
   min-width: 0;
@@ -24,7 +36,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: 300px;
+  max-width: min(300px, 100%);
   min-width: 0;
 }
 

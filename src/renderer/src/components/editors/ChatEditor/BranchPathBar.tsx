@@ -5,8 +5,6 @@ import {
   EllipsisOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
-  CompressOutlined,
-  ExpandOutlined,
   UserOutlined,
   RobotOutlined
 } from '@ant-design/icons'
@@ -37,8 +35,6 @@ interface BranchPathBarProps {
   onNavigateToMessage: (messageId: string) => void
   onNavigateToPrev: () => void
   onNavigateToNext: () => void
-  onCollapseAll?: () => void
-  onExpandAll?: () => void
   // 大纲相关
   outline?: OutlineNode[]
   onBatchGenerateTitles?: (options: GenerateOptions) => Promise<void>
@@ -54,8 +50,6 @@ export function BranchPathBar({
   onNavigateToMessage,
   onNavigateToPrev,
   onNavigateToNext,
-  onCollapseAll,
-  onExpandAll,
   outline,
   onBatchGenerateTitles,
   onSmartSegment,
@@ -205,13 +199,6 @@ export function BranchPathBar({
         </Tooltip>
         <Tooltip title={formatShortcutTooltip('下一条', 'messageNext')}>
           <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToNext} />
-        </Tooltip>
-        <span className="branch-path-bar__nav-divider" />
-        <Tooltip title="全部折叠">
-          <CompressOutlined className="branch-path-bar__nav-btn" onClick={onCollapseAll} />
-        </Tooltip>
-        <Tooltip title="全部展开">
-          <ExpandOutlined className="branch-path-bar__nav-btn" onClick={onExpandAll} />
         </Tooltip>
       </div>
     </div>

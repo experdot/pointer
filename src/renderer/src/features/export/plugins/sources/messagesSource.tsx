@@ -24,7 +24,7 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
   supportedFormats: ['markdown', 'txt', 'html'],
 
   async extract(data: MessagesSourceData, options: ExportOptions): Promise<ExtractedContent> {
-    const { pageId, selectionMode, selectedMessageIds, topicId } = data
+    const { pageId, selectionMode, selectedMessageIds, topicId, branchMessageIds } = data
 
     // Load messages from store
     const record = await useMessagesStore.getState().load(pageId)
@@ -37,6 +37,8 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
 
     // Filter messages based on selection mode
     let filteredMessages = messages
+    const branchIds = branchMessageIds ? new Set(branchMessageIds) : undefined
+    const requestedIds = new Set(selectedMessageIds)
 
     switch (selectionMode) {
       case 'all-branches':
@@ -46,7 +48,9 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
 
       case 'current-branch':
         // Get current path from root to leaf
-        filteredMessages = getCurrentBranchMessages(messages, leafMessageId)
+        filteredMessages = branchIds
+          ? messages.filter((message) => branchIds.has(message.id))
+          : getCurrentBranchMessages(messages, leafMessageId)
         break
 
       case 'topic-messages':
@@ -59,7 +63,9 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
 
       case 'free-select':
         // Use user-selected messages
-        filteredMessages = messages.filter((m) => selectedMessageIds.includes(m.id))
+        filteredMessages = messages.filter(
+          (m) => requestedIds.has(m.id) && (!branchIds || branchIds.has(m.id))
+        )
         break
     }
 

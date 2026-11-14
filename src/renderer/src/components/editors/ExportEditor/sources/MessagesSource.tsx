@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Select, Checkbox, Empty, Spin } from 'antd'
+import { useEffect, useState, useMemo, useRef } from 'react'
+import { Alert, Select, Checkbox, Empty, Spin } from 'antd'
+import { buildIndex, pathToMessage } from '@shared/domain'
 import { FolderOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons'
 import { useMessagesStore } from '../../../../stores/messagesStore'
 import type {
@@ -10,6 +11,7 @@ import type {
 import type { ChatMessage, Topic } from '@renderer/types/shared'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 import { collectSubtreeIds } from '../../../../features/export/messageTraversal'
+import { errorMessage } from '../../../../runtime/client'
 
 interface MessageGroup {
   topic?: Topic
@@ -45,6 +47,11 @@ export function MessagesSourceSelector({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [leafMessageId, setLeafMessageId] = useState<string | undefined>()
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const latest = useRef({ data, onChange })
+  useEffect(() => {
+    latest.current = { data, onChange }
+  }, [data, onChange])
 
   const load = useMessagesStore((state) => state.load)
 
@@ -57,35 +64,49 @@ export function MessagesSourceSelector({
   useEffect(() => {
     if (!pageId) return
 
+    let cancelled = false
     setLoading(true)
+    setLoadError(null)
     load(pageId)
       .then((record) => {
+        if (cancelled) return
         setMessages(record.messages)
         setTopics(record.topics ?? [])
         setLeafMessageId(record.leafMessageId)
 
         // Initialize selection if not set
-        if (!data) {
+        if (!latest.current.data) {
           const currentBranchIds = getCurrentBranchIds(record.messages, record.leafMessageId)
-          onChange({
+          latest.current.onChange({
             type: 'messages',
             pageId,
             selectionMode: 'current-branch',
-            selectedMessageIds: currentBranchIds
+            selectedMessageIds: currentBranchIds,
+            branchMessageIds: currentBranchIds
           })
         }
       })
-      .finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((error) => {
+        if (!cancelled) setLoadError(errorMessage(error))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [pageId, load])
+
+  const branchMessageIds = useMemo(
+    () => data?.branchMessageIds ?? getCurrentBranchIds(messages, leafMessageId),
+    [data?.branchMessageIds, messages, leafMessageId]
+  )
 
   // Get current branch messages
   const branchMessages = useMemo(() => {
-    const branchIds = getCurrentBranchIds(messages, leafMessageId)
-    return branchIds
-      .map((id) => messages.find((m) => m.id === id))
-      .filter((m): m is ChatMessage => !!m)
-  }, [messages, leafMessageId])
+    const byId = new Map(messages.map((message) => [message.id, message]))
+    return branchMessageIds.map((id) => byId.get(id)).filter((m): m is ChatMessage => !!m)
+  }, [messages, branchMessageIds])
 
   // Group messages by topic
   const groupedMessages = useMemo((): MessageGroup[] => {
@@ -137,7 +158,7 @@ export function MessagesSourceSelector({
         newSelectedIds = messages.map((m) => m.id)
         break
       case 'current-branch':
-        newSelectedIds = getCurrentBranchIds(messages, leafMessageId)
+        newSelectedIds = branchMessages.map((m) => m.id)
         break
       case 'topic-messages':
         // Keep current selection until topic is selected
@@ -145,7 +166,7 @@ export function MessagesSourceSelector({
         break
       case 'free-select':
         // Initialize with current branch
-        newSelectedIds = getCurrentBranchIds(messages, leafMessageId)
+        newSelectedIds = branchMessages.map((m) => m.id)
         break
     }
 
@@ -153,6 +174,7 @@ export function MessagesSourceSelector({
       type: 'messages',
       pageId,
       selectionMode: mode,
+      branchMessageIds,
       selectedMessageIds: newSelectedIds,
       topicId: mode === 'topic-messages' ? selectedTopicId : undefined
     })
@@ -166,6 +188,7 @@ export function MessagesSourceSelector({
       type: 'messages',
       pageId,
       selectionMode: 'free-select',
+      branchMessageIds,
       selectedMessageIds: newSelectedIds
     })
   }
@@ -180,6 +203,7 @@ export function MessagesSourceSelector({
       type: 'messages',
       pageId,
       selectionMode: 'free-select',
+      branchMessageIds,
       selectedMessageIds: newSelectedIds
     })
   }
@@ -195,6 +219,7 @@ export function MessagesSourceSelector({
       type: 'messages',
       pageId,
       selectionMode: 'free-select',
+      branchMessageIds,
       selectedMessageIds: newSelectedIds
     })
   }
@@ -213,6 +238,7 @@ export function MessagesSourceSelector({
       type: 'messages',
       pageId,
       selectionMode: 'topic-messages',
+      branchMessageIds,
       selectedMessageIds: topicMessageIds,
       topicId
     })
@@ -231,6 +257,7 @@ export function MessagesSourceSelector({
   }
 
   if (messages.length === 0) {
+    if (loadError) return <Alert type="error" message={loadError} />
     return <Empty description="没有消息可导出" image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
@@ -240,6 +267,7 @@ export function MessagesSourceSelector({
       <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 8, fontWeight: 500 }}>选择模式</div>
         <Select
+          aria-label="消息选择模式"
           value={selectionMode}
           onChange={(value) => handleModeChange(value as MessageSelectionMode)}
           options={selectionModeOptions}
@@ -286,6 +314,7 @@ export function MessagesSourceSelector({
                 {group.topic && (
                   <div className="free-select-group__header">
                     <Checkbox
+                      aria-label={`选择话题 ${group.topic.name}`}
                       indeterminate={
                         group.messages.some((m) => selectedMessageIds.includes(m.id)) &&
                         !group.messages.every((m) => selectedMessageIds.includes(m.id))
@@ -307,6 +336,7 @@ export function MessagesSourceSelector({
                       className={`free-select-item ${group.topic ? 'free-select-item--indented' : ''}`}
                     >
                       <Checkbox
+                        aria-label={`选择消息 ${preview}`}
                         checked={selectedMessageIds.includes(message.id)}
                         onChange={(e) => handleItemCheck(message.id, e.target.checked)}
                       />
@@ -341,19 +371,7 @@ export function MessagesSourceSelector({
  * Get message IDs in the current branch (from root to leaf)
  */
 function getCurrentBranchIds(messages: ChatMessage[], leafMessageId?: string): string[] {
-  if (!leafMessageId) return []
-
-  const messageMap = new Map(messages.map((m) => [m.id, m]))
-  const path: string[] = []
-
-  let currentId: string | undefined = leafMessageId
-  while (currentId) {
-    path.unshift(currentId)
-    const message = messageMap.get(currentId)
-    currentId = message?.parentMessageId
-  }
-
-  return path
+  return pathToMessage(buildIndex(messages), leafMessageId).map((message) => message.id)
 }
 
 /**
