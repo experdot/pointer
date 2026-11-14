@@ -57,24 +57,3 @@ export function normalizeOrders(queue: MessageQueue): MessageQueue {
   )
   return { ...queue, items }
 }
-
-/** 取出队首元素 */
-export function shiftItem(queue: MessageQueue): { queue: MessageQueue; item?: QueueItem } {
-  const [first, ...rest] = sorted(queue)
-  if (!first) return { queue }
-  return { queue: normalizeOrders({ ...queue, items: rest }), item: first }
-}
-
-/** 重排为给定顺序 */
-export function reorder(queue: MessageQueue, orderedIds: readonly string[]): MessageQueue {
-  const positionById = new Map(orderedIds.map((id, index) => [id, index]))
-  const sortedById = [...queue.items].sort((a, b) => {
-    const pa = positionById.get(a.id)
-    const pb = positionById.get(b.id)
-    if (pa === undefined && pb === undefined) return a.order - b.order
-    if (pa === undefined) return 1
-    if (pb === undefined) return -1
-    return pa - pb
-  })
-  return { ...queue, items: sortedById.map((item, index) => ({ ...item, order: index })) }
-}

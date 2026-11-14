@@ -296,10 +296,6 @@ export class IndexDb {
     this.db.prepare(`DELETE FROM messages WHERE page_id = ? AND id = ?`).run(pageId, messageId)
     this.deleteFtsByMessage.run(pageId, messageId)
   }
-
-  clear(): void {
-    this.db.exec('DELETE FROM messages; DELETE FROM messages_fts; DELETE FROM pages;')
-  }
 }
 
 function toCandidate(row: MessageRow): MessageCandidate {

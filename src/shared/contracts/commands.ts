@@ -125,20 +125,12 @@ interface RuntimeCommandMap {
     result: Page
   }
   'page.update': { payload: { pageId: string; patch: NodePatch }; result: void }
-  'page.move': {
-    payload: { pageId: string; targetFolderId?: string; beforeNodeId?: string }
-    result: void
-  }
   'page.delete': { payload: { pageIds: string[] }; result: void }
   'folder.create': {
     payload: { name?: string; parentFolderId?: string; afterNodeId?: string }
     result: Folder
   }
   'folder.update': { payload: { folderId: string; patch: NodePatch }; result: void }
-  'folder.move': {
-    payload: { folderId: string; targetFolderId?: string; beforeNodeId?: string }
-    result: void
-  }
   'folder.delete': {
     payload: { folderIds: string[]; mode?: 'promote' | 'cascade' }
     result: void
@@ -173,7 +165,7 @@ interface RuntimeCommandMap {
       pageId: string
       topic: { id: string; name: string; startMessageId: string; endMessageId?: string }
     }
-    result: Topic
+    result: void
   }
   'topic.update': {
     payload: {

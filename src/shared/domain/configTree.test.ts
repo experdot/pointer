@@ -6,7 +6,6 @@ import {
   clearConfigFolder,
   configChildren,
   configDescendantFolderIds,
-  configNamesAtLevel,
   configNextOrder,
   emptyConfigTree,
   removeConfigFolder,
@@ -33,11 +32,10 @@ function fixture(): ConfigTree<ConfigItemBase> {
 }
 
 describe('配置树', () => {
-  it('遍历与名称收集', () => {
+  it('遍历层级与计算次序', () => {
     const tree = fixture()
     expect(configChildren(tree, undefined).map((node) => node.id)).toEqual(['f1', 'i2'])
     expect(configChildren(tree, 'f1').map((node) => node.id)).toEqual(['f2', 'i1'])
-    expect(configNamesAtLevel(tree, 'f1')).toEqual(['备用', 'GPT'])
     expect(configDescendantFolderIds(tree, 'f1')).toEqual(['f2'])
     expect(configNextOrder(tree, undefined)).toBe(1)
   })

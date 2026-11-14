@@ -36,24 +36,6 @@ export function nextOrder(tree: PageTree, parentFolderId: string | undefined): n
   return siblings.reduce((max, node) => Math.max(max, node.order + 1), 0)
 }
 
-/** 节点所在的完整文件夹路径（自根向下），用于生成磁盘目录 */
-export function folderPathNames(tree: PageTree, folderId: string | undefined): string[] {
-  const names: string[] = []
-  const visited = new Set<string>()
-  let currentId = folderId
-
-  while (currentId) {
-    if (visited.has(currentId)) break
-    visited.add(currentId)
-    const folder = tree.folders.find((item) => item.id === currentId)
-    if (!folder) break
-    names.unshift(folder.name)
-    currentId = folder.parentFolderId
-  }
-
-  return names
-}
-
 /** 判断 candidateAncestorId 是否是 nodeId 的祖先文件夹（含自身） */
 export function isFolderAncestor(
   tree: PageTree,
@@ -124,33 +106,6 @@ export function updateFolder(
   }
 }
 
-/**
- * 移动节点到目标文件夹，可插入到某个同级节点之前
- * 移动文件夹时禁止移动到自身或其后代之下
- */
-export function moveNode(
-  tree: PageTree,
-  nodeId: string,
-  targetFolderId: string | undefined,
-  beforeNodeId: string | undefined,
-  at: number
-): PageTree {
-  const node = findNode(tree, nodeId)
-  if (!node) return tree
-
-  const isFolder = Boolean(findFolder(tree, nodeId))
-  if (isFolder && targetFolderId && isFolderAncestor(tree, nodeId, targetFolderId)) {
-    return tree
-  }
-
-  const sourceParentId = node.parentFolderId
-  if (sourceParentId === targetFolderId && !beforeNodeId) {
-    return tree
-  }
-
-  return insertNodeBefore(tree, node, targetFolderId, beforeNodeId, at)
-}
-
 /** 按当前树解析移动意图；失效目标不能退化为移到末尾。 */
 export function moveTreeNode(
   tree: PageTree,
@@ -162,18 +117,20 @@ export function moveTreeNode(
     error: { code, message, entityId: move.nodeId }
   })
   const node = findNode(tree, move.nodeId)
-  const target = findNode(tree, move.targetNodeId)
+  const target = move.targetNodeId ? findNode(tree, move.targetNodeId) : undefined
   if (!node) return fail('tree.node-not-found', '移动的节点已不存在')
-  if (!target) return fail('tree.target-not-found', '目标节点已不存在')
-  if (!['before', 'after', 'inside'].includes(move.placement)) {
+  if (!['before', 'after', 'inside', 'end'].includes(move.placement)) {
     return fail('tree.invalid-placement', '无效的放置位置')
   }
-  if (move.placement === 'inside' && !findFolder(tree, target.id)) {
+  const intoFolder = move.placement === 'inside' || move.placement === 'end'
+  if (!target && (move.targetNodeId !== undefined || !intoFolder))
+    return fail('tree.target-not-found', '目标节点已不存在')
+  if (intoFolder && target && !findFolder(tree, target.id)) {
     return fail('tree.invalid-target', '只能移入文件夹')
   }
-  if (node.id === target.id && move.placement !== 'inside') return { ok: true, tree }
+  if (node.id === target?.id && !intoFolder) return { ok: true, tree }
 
-  const parentId = move.placement === 'inside' ? target.id : target.parentFolderId
+  const parentId = intoFolder ? target?.id : target!.parentFolderId
   if (parentId && !findFolder(tree, parentId)) {
     return fail('tree.target-not-found', '目标文件夹已不存在')
   }
@@ -185,7 +142,10 @@ export function moveTreeNode(
   const index =
     move.placement === 'inside'
       ? 0
-      : siblings.findIndex((item) => item.id === target.id) + (move.placement === 'after' ? 1 : 0)
+      : move.placement === 'end'
+        ? siblings.length
+        : siblings.findIndex((item) => item.id === target!.id) +
+          (move.placement === 'after' ? 1 : 0)
   return {
     ok: true,
     tree: insertNodeBefore(tree, node, parentId, siblings[index]?.id, at)

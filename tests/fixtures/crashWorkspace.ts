@@ -1,6 +1,6 @@
 import { RuntimeCore } from '../../src/main/runtime/RuntimeCore'
 import fs from 'node:fs/promises'
-import type { RuntimeCommandName } from '../../src/shared/contracts'
+import type { RuntimeCommandName, RuntimeCommandPayload } from '../../src/shared/contracts'
 
 async function main(): Promise<void> {
   const [root, rawCommand, marker, count] = process.argv.slice(2)
@@ -24,7 +24,10 @@ async function main(): Promise<void> {
     if ((String(from).includes(marker) || String(to).includes(marker)) && ++moves === Number(count))
       process.exit(99)
   }
-  const command = JSON.parse(rawCommand) as { name: RuntimeCommandName; payload: unknown }
+  const command = JSON.parse(rawCommand) as {
+    name: RuntimeCommandName
+    payload: RuntimeCommandPayload<RuntimeCommandName>
+  }
   await runtime.command(command.name, command.payload)
   process.exit(0)
 }

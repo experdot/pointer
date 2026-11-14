@@ -7,7 +7,7 @@
  *
  *   <appData>/
  *     accounts.json                账户目录
- *     session.json                 上次使用的账户/工作区
+ *     session.json                 旧版选择记录（仅读取迁移）
  *     accounts/<accountId>/
  *       workspaces.json            该账户的工作区列表
  *       settings.json              账户级设置
@@ -36,7 +36,7 @@ export class PathResolver {
     return join(this.appDataPath, 'accounts.json')
   }
 
-  get sessionFile(): string {
+  get legacySessionFile(): string {
     return join(this.appDataPath, 'session.json')
   }
 
@@ -90,11 +90,6 @@ export class PathResolver {
     const target = join(root, `${pageId}.json`)
     assertWithin(root, target)
     return target
-  }
-
-  /** 页面文件位于工作区根目录，文件夹层级映射为真实目录 */
-  pageFile(workspacePath: string, folderSegments: readonly string[], fileName: string): string {
-    return join(workspacePath, ...folderSegments, fileName)
   }
 
   /** 附件的相对路径（相对工作区根目录），用于写入领域模型 */

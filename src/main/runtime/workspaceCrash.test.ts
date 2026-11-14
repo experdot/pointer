@@ -43,8 +43,8 @@ describe('真实进程中断后的工作区恢复', () => {
       const result = await runChild(
         f.root,
         {
-          name: 'folder.move',
-          payload: { folderId: b.id, beforeNodeId: a.id }
+          name: 'tree.move',
+          payload: { nodeId: b.id, targetNodeId: a.id, placement: 'before' }
         },
         'layout-',
         move

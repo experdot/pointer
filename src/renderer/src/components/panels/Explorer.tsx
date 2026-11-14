@@ -21,7 +21,6 @@ import { useConfirmDialog } from '../common/ConfirmDialog'
 import { TreeView } from '../common/TreeView'
 import type { GenerateOptions } from '../common/AIGeneratePopover'
 import { generateSessionTitle } from '../../services/titleService'
-import * as pagesService from '../../services/pagesService'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
@@ -77,7 +76,7 @@ export function Explorer(): React.JSX.Element {
     parentFolderId?: string
   } | null>(null)
   const [moveConflict, setMoveConflict] = useState<MoveConflictInfo | null>(null)
-  const [pendingDragOperation, setPendingDragOperation] = useState<TreeMove | null>(null)
+  const [pendingMoveOperation, setPendingMoveOperation] = useState<TreeMove | null>(null)
 
   useEffect(() => {
     if (activePageId) {
@@ -271,63 +270,20 @@ export function Explorer(): React.JSX.Element {
     [folders.length, setSearchOptions, setActivePanel]
   )
 
-  const handleMoveConfirm = useCallback(
-    async (targetFolderId: string | undefined): Promise<void> => {
-      if (!moveTarget) return
-
-      // 与迁移前一致：目标文件夹已有同名节点时先弹冲突对话框
-      const conflict =
-        moveTarget.type === 'page'
-          ? pagesService.checkPageNameConflict(moveTarget.name, targetFolderId, moveTarget.id)
-          : pagesService.checkFolderNameConflict(moveTarget.name, targetFolderId, moveTarget.id)
-
-      if (conflict) {
-        setMoveConflict({
-          type: moveTarget.type,
-          id: moveTarget.id,
-          name: moveTarget.name,
-          targetFolderId
-        })
-        return
-      }
-
-      if (moveTarget.type === 'page') {
-        await pagesService.movePage(moveTarget.id, targetFolderId)
-      } else {
-        await pagesService.moveFolder(moveTarget.id, targetFolderId)
-      }
-      setMoveTarget(null)
-    },
-    [moveTarget]
-  )
-
-  const handleConflictAutoRename = useCallback(async (): Promise<void> => {
-    if (!moveConflict) return
-
-    if (moveConflict.type === 'page') {
-      await pagesService.movePage(moveConflict.id, moveConflict.targetFolderId)
-    } else {
-      await pagesService.moveFolder(moveConflict.id, moveConflict.targetFolderId)
-    }
-
-    setMoveConflict(null)
-    setMoveTarget(null)
-  }, [moveConflict])
-
   const handleConflictCancel = useCallback((): void => {
     setMoveConflict(null)
-    setPendingDragOperation(null)
-    // 保持 moveTarget 不变，用户可以选择其他目标文件夹
+    setPendingMoveOperation(null)
   }, [])
 
   const handleTreeMove = useCallback(
     async (move: TreeMove): Promise<void> => {
       try {
         await moveNode(move)
+        setMoveTarget(null)
       } catch (error) {
         if (error instanceof RuntimeError && error.code === 'tree.name-conflict') {
           const conflict = error.details as TreeMoveConflict
-          setPendingDragOperation(move)
+          setPendingMoveOperation(move)
           setMoveConflict({
             type: conflict.kind,
             id: conflict.nodeId,
@@ -342,16 +298,29 @@ export function Explorer(): React.JSX.Element {
     [moveNode, message]
   )
 
-  const handleDragConflictAutoRename = useCallback(async (): Promise<void> => {
-    if (!pendingDragOperation) return
+  const handleMoveConfirm = useCallback(
+    async (targetFolderId: string | undefined): Promise<void> => {
+      if (!moveTarget) return
+      await handleTreeMove({
+        nodeId: moveTarget.id,
+        targetNodeId: targetFolderId,
+        placement: 'end'
+      })
+    },
+    [moveTarget, handleTreeMove]
+  )
+
+  const handleConflictAutoRename = useCallback(async (): Promise<void> => {
+    if (!pendingMoveOperation) return
     try {
-      await moveNode({ ...pendingDragOperation, conflictPolicy: 'rename' })
-      setPendingDragOperation(null)
+      await moveNode({ ...pendingMoveOperation, conflictPolicy: 'rename' })
+      setPendingMoveOperation(null)
       setMoveConflict(null)
+      setMoveTarget(null)
     } catch (error) {
       void message.error(errorMessage(error))
     }
-  }, [pendingDragOperation, moveNode, message])
+  }, [pendingMoveOperation, moveNode, message])
 
   const menuItems: MenuProps['items'] = [
     { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
@@ -439,9 +408,7 @@ export function Explorer(): React.JSX.Element {
         open={moveConflict !== null}
         conflict={moveConflict}
         onCancel={handleConflictCancel}
-        onAutoRename={
-          pendingDragOperation ? handleDragConflictAutoRename : handleConflictAutoRename
-        }
+        onAutoRename={handleConflictAutoRename}
       />
     </Flex>
   )

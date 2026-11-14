@@ -141,3 +141,46 @@ test('拖入同名位置先保持原树，确认后一次完成重命名和移�
   expect(children.map((node) => node.id)).toEqual([ids.source, ids.existing])
   expect(children[0].name).not.toBe(children[1].name)
 })
+
+test('菜单移动共用重名处理，自动命名后可以移回根目录并持久化', async ({ desktop }) => {
+  let page = desktop.page
+  const ids = await page.evaluate(async () => {
+    const { scopeId } = await window.runtime.query('session.get', undefined)
+    const source = await window.runtime.command('page.create', { name: '菜单同名' }, scopeId)
+    const folder = await window.runtime.command('folder.create', { name: '菜单目标' }, scopeId)
+    await window.runtime.command(
+      'folder.create',
+      { name: '菜单同名', parentFolderId: folder.id },
+      scopeId
+    )
+    return { source: source.id, folder: folder.id }
+  })
+  const chooseDestination = async (name: string, destination: string): Promise<void> => {
+    await row(page, name).locator('.tree-view-title-text').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '移动至...' }).click()
+    const dialog = page.getByRole('dialog', { name: '移动至...' })
+    await dialog.getByText(destination, { exact: true }).click()
+    await dialog.getByRole('button', { name: /^移\s*动$/ }).click()
+  }
+  const before = await getTree(page)
+  await chooseDestination('菜单同名', '菜单目标')
+  const conflict = page.getByRole('dialog', { name: '名称冲突' })
+  await expect(conflict).toBeVisible()
+  expect(await getTree(page)).toEqual(before)
+  await conflict.getByRole('button', { name: '自动重命名' }).click()
+  await expect(conflict).toBeHidden()
+  const moved = (await getTree(page)).pages.find((item) => item.id === ids.source)!
+  expect(moved.parentFolderId).toBe(ids.folder)
+  expect(moved.name).not.toBe('菜单同名')
+  await row(page, '菜单目标').locator('.ant-tree-switcher').click()
+  await chooseDestination(moved.name, '根目录')
+  await expect
+    .poll(
+      async () => (await getTree(page)).pages.find((item) => item.id === ids.source)?.parentFolderId
+    )
+    .toBeUndefined()
+  const saved = await getTree(page)
+  await desktop.restart()
+  page = desktop.page
+  expect(normalize(await getTree(page))).toEqual(normalize(saved))
+})

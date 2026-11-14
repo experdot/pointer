@@ -5,6 +5,7 @@ import { treeDocument } from '../helpers/trees'
 describe('页面文件规模与固定种子性质测试', () => {
   it.each(['deep', 'wide', 'random'] as const)('20000 条 %s 消息完整往返', (shape) => {
     const original = treeDocument(20000, 20261111, shape)
+    expect(validateConversation({ pageId: original.page.id, ...original })).toEqual([])
     const text = serializePageFile(original)
     const parsed = parsePageFile(text)
     expect(parsed.ok).toBe(true)

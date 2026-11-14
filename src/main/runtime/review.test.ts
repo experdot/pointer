@@ -176,7 +176,7 @@ describe('存储回归', () => {
         mode === 'clear' ? 'folder.clear' : 'folder.delete',
         mode === 'clear' ? { folderId: folder.id } : { folderIds: [folder.id], mode }
       )
-      await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId })
+      await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId! })
       expect(await runtime.query('tree.get', undefined)).toMatchObject({ pages: [] })
       expect(await readdir(join(session.workspacePath!, '.pointer', 'queues'))).toEqual([])
     }
@@ -197,7 +197,7 @@ describe('存储回归', () => {
     const p = await page('标题', folder.id)
     const title = "$& $' $` $$"
     await runtime.command('page.update', { pageId: p.id, patch: { name: title } })
-    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId })
+    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId! })
     expect(internals().workspace.getPage(p.id)?.name).toBe(title)
     expect(internals().workspace.getFolder(folder.id)?.name).toBe('.archive')
     for (const name of ['.pointer', '.git', '.hg', '.svn'])
@@ -403,7 +403,7 @@ describe('聊天生命周期回归', () => {
     await expect(
       runtime.command('page.create', { name: 'stale' }, session.scopeId)
     ).rejects.toMatchObject({ code: 'runtime.stale-scope' })
-    await runtime.command('session.selectAccount', { accountId: session.accountId })
+    await runtime.command('session.selectAccount', { accountId: session.accountId! })
     expect((await conversation(p.id)).messages.at(-1)?.content).toBe('partial answer')
     expect(((await runtime.query('session.get', undefined)) as SessionSnapshot).scopeId).not.toBe(
       session.scopeId
@@ -428,7 +428,7 @@ describe('聊天生命周期回归', () => {
     })
     await expect(runtime.prepareClose()).rejects.toMatchObject({ code: 'chat.unsaved' })
     await expect(
-      runtime.command('session.selectAccount', { accountId: session.accountId })
+      runtime.command('session.selectAccount', { accountId: session.accountId! })
     ).rejects.toMatchObject({ code: 'chat.unsaved' })
     spy.mockRestore()
     await runtime.command('chat.retrySave', { requestId: handle.requestId })
@@ -571,7 +571,7 @@ describe('聊天生命周期回归', () => {
     const p = await page('kept', folder.id)
     await append(p.id, 'm')
     await runtime.command('data.reset', { targets: ['folders'] })
-    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId })
+    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId! })
     expect(internals().workspace.getTree()).toMatchObject({
       folders: [],
       pages: [expect.objectContaining({ id: p.id, parentFolderId: undefined })]
@@ -580,7 +580,7 @@ describe('聊天生命周期回归', () => {
     await runtime.command('data.reset', {
       targets: ['conversations', 'tabs', 'layout', 'settings']
     })
-    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId })
+    await runtime.command('session.selectWorkspace', { workspaceId: session.workspaceId! })
     expect(internals().workspace.pageIds()).toEqual([])
     expect(await runtime.query('settings.get', undefined)).toMatchObject({
       settings: defaultSettings()

@@ -140,16 +140,14 @@ describe('单条树移动命令', () => {
         if (this.changed) writeCommits += 1
         await commit.call(this)
       })
-      const legacyPageMove = vi.spyOn(WorkspaceStore.prototype, 'movePage')
-      const legacyFolderMove = vi.spyOn(WorkspaceStore.prototype, 'moveFolder')
+
       f.events.length = 0
 
       await f.command('tree.move', { nodeId: d.id, targetNodeId: a.id, placement: 'before' })
       const after = await f.query('tree.get', undefined)
       expect(childrenOf(after, parent?.id).map((node) => node.id)).toEqual([d.id, a.id, b.id, c.id])
       expect(writeCommits).toBe(1)
-      expect(legacyPageMove).not.toHaveBeenCalled()
-      expect(legacyFolderMove).not.toHaveBeenCalled()
+
       expect(f.events.filter((event) => event.type === 'tree.changed')).toEqual([
         expect.objectContaining({ payload: after })
       ])
@@ -358,7 +356,11 @@ describe('单条树移动命令', () => {
       ).rejects.toMatchObject({ code })
     }
     await expect(
-      f.runtime.command('tree.move', { nodeId: a.id, targetNodeId: b.id, placement: 'invalid' })
+      f.runtime.command('tree.move', {
+        nodeId: a.id,
+        targetNodeId: b.id,
+        placement: 'invalid' as never
+      })
     ).rejects.toMatchObject({ code: 'tree.invalid-move' })
     expect(await f.query('tree.get', undefined)).toEqual(before)
     expect(writeText).not.toHaveBeenCalled()

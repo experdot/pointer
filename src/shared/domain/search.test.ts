@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage } from './chat'
 import {
   DEFAULT_SEARCH_OPTIONS,
   buildSnippet,
   compileMatcher,
   groupMatches,
-  searchConversation,
   withinTimeRange
 } from './search'
 import type { SearchOptions, SearchPageInfo } from './search'
@@ -69,87 +67,26 @@ describe('片段提取', () => {
   })
 })
 
-describe('会话内检索', () => {
-  const messages: ChatMessage[] = [
-    { id: 'm1', role: 'user', content: '如何设计架构', createdAt: 1, branchIndex: 0 },
-    {
-      id: 'm2',
-      role: 'assistant',
-      content: '架构需要分层',
-      createdAt: 2,
-      branchIndex: 0,
-      parentMessageId: 'm1'
-    },
-    {
-      id: 'm3',
-      role: 'system',
-      content: '架构提示',
-      createdAt: 3,
-      branchIndex: 0,
-      parentMessageId: 'm1'
-    }
-  ]
-
-  it('按角色与时间过滤', () => {
-    const matcher = compileMatcher('架构', options())
-    const all = searchConversation({
-      pageId: 'p',
-      messages,
-      matcher,
-      options: options(),
-      now: 100
-    })
-    expect(all.map((match) => match.messageId)).toEqual(['m1', 'm2', 'm3'])
-
-    const userOnly = searchConversation({
-      pageId: 'p',
-      messages,
-      matcher,
-      options: options({ roleFilter: 'user' }),
-      now: 100
-    })
-    expect(userOnly.map((match) => match.messageId)).toEqual(['m1'])
-  })
-
-  it('时间范围按消息创建时间过滤', () => {
-    const now = 10 * 24 * 60 * 60 * 1000
-    expect(withinTimeRange(now - 1000, 'week', now)).toBe(true)
-    expect(withinTimeRange(now - 8 * 24 * 60 * 60 * 1000, 'week', now)).toBe(false)
-  })
-
-  it('同一消息内的多次命中带递增序号', () => {
-    const matcher = compileMatcher('架构', options())
-    const matches = searchConversation({
-      pageId: 'p',
-      messages: [{ id: 'm', role: 'user', content: '架构 架构', createdAt: 1, branchIndex: 0 }],
-      matcher,
-      options: options(),
-      now: 100
-    })
-
-    expect(matches.map((match) => match.occurrenceIndexInMessage)).toEqual([0, 1])
-  })
+it('时间范围按消息创建时间过滤', () => {
+  const now = 10 * 24 * 60 * 60 * 1000
+  expect(withinTimeRange(now - 1000, 'week', now)).toBe(true)
+  expect(withinTimeRange(now - 8 * 24 * 60 * 60 * 1000, 'week', now)).toBe(false)
 })
 
 describe('结果分组', () => {
   it('按页面与消息两级分组并按时间倒序排列页面', () => {
-    const matcher = compileMatcher('架构', options())
-    const matches = [
-      ...searchConversation({
-        pageId: 'p1',
-        messages: [{ id: 'm1', role: 'user', content: '架构', createdAt: 5, branchIndex: 0 }],
-        matcher,
-        options: options(),
-        now: 100
-      }),
-      ...searchConversation({
-        pageId: 'p2',
-        messages: [{ id: 'm2', role: 'user', content: '架构', createdAt: 9, branchIndex: 0 }],
-        matcher,
-        options: options(),
-        now: 100
-      })
-    ]
+    const matches = ['p1', 'p2'].map((pageId, index) => ({
+      pageId,
+      messageId: 'm' + index,
+      role: 'user' as const,
+      createdAt: index === 0 ? 5 : 9,
+      snippet: '架构',
+      matchStart: 0,
+      matchEnd: 2,
+      contentStart: 0,
+      contentEnd: 2,
+      occurrenceIndexInMessage: 0
+    }))
 
     const info = new Map<string, SearchPageInfo>([
       ['p1', { title: '页面一', createdAt: 1 }],

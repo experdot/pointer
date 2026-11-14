@@ -35,7 +35,9 @@ interface RuntimeEventMap {
   'app.updateStatus': UpdateStatus
 }
 
-type RuntimeEventName = keyof RuntimeEventMap
+export type RuntimeEventName = keyof RuntimeEventMap
+
+export type RuntimeEventPayload<K extends RuntimeEventName> = RuntimeEventMap[K]
 
 export type RuntimeEvent = {
   [K in RuntimeEventName]: { type: K; payload: RuntimeEventMap[K]; scopeId?: string | null }

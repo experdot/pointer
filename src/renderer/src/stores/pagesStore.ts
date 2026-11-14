@@ -26,7 +26,6 @@ interface PagesActions {
   }) => Promise<Page>
   rename: (id: string, name: string) => Promise<void>
   update: (id: string, patch: { name?: string; starred?: boolean }) => Promise<void>
-  move: (id: string, targetFolderId?: string, beforeNodeId?: string) => Promise<void>
   delete: (ids: string | string[]) => Promise<void>
   reset: () => void
 }
@@ -64,10 +63,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
 
   update: async (id, patch) => {
     await command('page.update', { pageId: id, patch })
-  },
-
-  move: async (id, targetFolderId, beforeNodeId) => {
-    await command('page.move', { pageId: id, targetFolderId, beforeNodeId })
   },
 
   delete: async (ids) => {

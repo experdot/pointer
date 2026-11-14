@@ -25,7 +25,6 @@ interface UsePagesResult {
   updatePage: typeof pagesService.updatePage
   deletePage: typeof pagesService.deletePage
   deletePages: typeof pagesService.deletePages
-  movePage: typeof pagesService.movePage
   createFolder: typeof pagesService.createFolder
   updateFolder: typeof pagesService.updateFolder
   deleteFolder: typeof pagesService.deleteFolder
@@ -80,7 +79,6 @@ export function usePages(): UsePagesResult {
     updatePage: pagesService.updatePage,
     deletePage: pagesService.deletePage,
     deletePages: pagesService.deletePages,
-    movePage: pagesService.movePage,
     createFolder: pagesService.createFolder,
     updateFolder: pagesService.updateFolder,
     deleteFolder: pagesService.deleteFolder,

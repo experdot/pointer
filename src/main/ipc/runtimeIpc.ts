@@ -6,7 +6,12 @@
 
 import { BrowserWindow, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
-import type { RuntimeCommandRequest, RuntimeQueryRequest } from '@shared/contracts'
+import type {
+  RuntimeCommandRequest,
+  RuntimeQueryRequest,
+  RuntimeQueryPayload,
+  RuntimeCommandPayload
+} from '@shared/contracts'
 import { RUNTIME_CHANNELS, toFailure } from '@shared/contracts'
 import type { RuntimeCore } from '../runtime'
 
@@ -63,7 +68,11 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
   })
   ipcMain.handle(RUNTIME_CHANNELS.query, async (_event, request: RuntimeQueryRequest) => {
     try {
-      const value = await runtime.query(request.name, request.payload, request.scopeId ?? null)
+      const value = await runtime.query(
+        request.name,
+        request.payload as RuntimeQueryPayload<typeof request.name>,
+        request.scopeId ?? null
+      )
       return { ok: true, scopeId: runtime.getScopeId(), value }
     } catch (error) {
       return toFailure(error)
@@ -72,7 +81,11 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
 
   ipcMain.handle(RUNTIME_CHANNELS.command, async (_event, request: RuntimeCommandRequest) => {
     try {
-      const value = await runtime.command(request.name, request.payload, request.scopeId ?? null)
+      const value = await runtime.command(
+        request.name,
+        request.payload as RuntimeCommandPayload<typeof request.name>,
+        request.scopeId ?? null
+      )
       return { ok: true, scopeId: runtime.getScopeId(), value }
     } catch (error) {
       return toFailure(error)

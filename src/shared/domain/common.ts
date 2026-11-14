@@ -19,12 +19,11 @@ export interface TreeNodeBase extends Timestamps {
   order: number
 }
 
-/** 节点移动意图；inside 表示放到目标文件夹的首位。 */
-export interface TreeMove {
-  nodeId: string
-  targetNodeId: string
-  placement: 'before' | 'after' | 'inside'
-}
+/** inside/end 表示移入目录首位/末尾；省略目标表示工作区根目录。 */
+export type TreeMove = { nodeId: string } & (
+  | { targetNodeId: string; placement: 'before' | 'after' }
+  | { targetNodeId?: string; placement: 'inside' | 'end' }
+)
 
 /** 不变量校验结果 */
 export interface Diagnostic {
@@ -41,14 +40,20 @@ export function descendantFolderIds(
   const result: string[] = []
   const visited = new Set<string>([folderId])
   const stack = [folderId]
+  const children = new Map<string | undefined, string[]>()
+  for (const folder of tree.folders) {
+    const siblings = children.get(folder.parentFolderId) ?? []
+    siblings.push(folder.id)
+    children.set(folder.parentFolderId, siblings)
+  }
 
   while (stack.length > 0) {
     const current = stack.pop() as string
-    for (const folder of tree.folders) {
-      if (folder.parentFolderId !== current || visited.has(folder.id)) continue
-      visited.add(folder.id)
-      result.push(folder.id)
-      stack.push(folder.id)
+    for (const id of children.get(current) ?? []) {
+      if (visited.has(id)) continue
+      visited.add(id)
+      result.push(id)
+      stack.push(id)
     }
   }
 

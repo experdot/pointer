@@ -3,17 +3,9 @@
  */
 
 import type { MessageQueue, QueueItem } from '@shared/domain'
-import {
-  emptyQueue,
-  enqueue,
-  removeItem,
-  setPaused,
-  shiftItem,
-  updateItem,
-  clear
-} from '@shared/domain'
+import { emptyQueue, enqueue, removeItem, setPaused, updateItem, clear } from '@shared/domain'
 import type { PathResolver } from './paths'
-import { readJson, removePath, writeJsonAtomic } from './fsx'
+import { readJson } from './fsx'
 import { RuntimeError } from '@shared/contracts'
 
 export class QueueStore {
@@ -21,7 +13,7 @@ export class QueueStore {
     private readonly paths: PathResolver,
     private readonly workspacePath: string,
     private readonly pageExists: (pageId: string) => boolean,
-    private readonly writeJson: (path: string, value: unknown) => Promise<void> = writeJsonAtomic
+    private readonly writeJson: (path: string, value: unknown) => Promise<void>
   ) {}
 
   async get(pageId: string): Promise<MessageQueue> {
@@ -58,16 +50,6 @@ export class QueueStore {
     const next = setPaused(await this.get(pageId), paused)
     await this.save(next)
     return next
-  }
-
-  async shift(pageId: string): Promise<{ queue: MessageQueue; item?: QueueItem }> {
-    const result = shiftItem(await this.get(pageId))
-    await this.save(result.queue)
-    return result
-  }
-
-  async removeForPage(pageId: string): Promise<void> {
-    await removePath(this.paths.queueFile(this.workspacePath, pageId))
   }
 
   private async save(queue: MessageQueue): Promise<void> {

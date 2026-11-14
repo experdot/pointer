@@ -17,7 +17,17 @@ import {
   unlink
 } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
-import { isReservedDirectory } from '@shared/domain'
+import { isPageFileName, isReservedDirectory } from '@shared/domain'
+
+/** 忽略内部写入噪声；目录改名仍需扫描，空文件名表示平台未提供具体路径。 */
+export function isWorkspaceFileChange(event: string, fileName: string | null): boolean {
+  if (!fileName) return true
+  const parts = fileName.replace(/\\/g, '/').split('/')
+  if (parts[0] === '.pointer') return parts.length === 2 && parts[1] === 'folders.json'
+  if (parts.some(isReservedDirectory)) return false
+  if (/\.tmp-[\da-f-]{36}$/i.test(fileName)) return false
+  return isPageFileName(fileName) || event === 'rename'
+}
 
 function missing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'

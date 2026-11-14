@@ -5,7 +5,7 @@
  * 因此界面上的高亮与命中位置始终与用户输入一致。
  */
 
-import type { SearchMatch, SearchOptions, SearchPageInfo } from '@shared/domain'
+import type { Folder, PageTree, SearchMatch, SearchOptions, SearchPageInfo } from '@shared/domain'
 import {
   buildSnippet,
   DEFAULT_SEARCH_OPTIONS,
@@ -37,9 +37,12 @@ export class SearchService {
     if (!trimmed) return { groups: [], total: 0 }
 
     // 只在读取快照时占用工作区队列；慢正则不阻塞消息保存和后续查询。
-    const { candidates, pageInfo } = await this.workspace.run(async () => {
+    const { candidates, pageInfo } = await this.workspace.read(() => {
       const now = Date.now()
-      const allowedPages = this.resolveFolderFilter(options.folderIds)
+      const tree = this.workspace.getTree()
+      const folders = new Map(tree.folders.map((folder) => [folder.id, folder]))
+      const labels = new Map<string, string | undefined>()
+      const allowedPages = this.resolveFolderFilter(tree, options.folderIds)
       const useFts = [...trimmed].length >= FTS_MIN_QUERY_LENGTH
       // SQLite LIKE 的大小写折叠仅覆盖 ASCII，短查询交给同一 Unicode 匹配器。
       const indexed =
@@ -53,11 +56,13 @@ export class SearchService {
           withinTimeRange(candidate.createdAt, options.timeRange, now)
       )
       const pageInfo = new Map<string, SearchPageInfo>()
-      for (const page of this.workspace.getTree().pages) {
+      for (const page of tree.pages) {
+        if (page.parentFolderId && !labels.has(page.parentFolderId))
+          labels.set(page.parentFolderId, this.folderPathLabel(folders, page.parentFolderId))
         pageInfo.set(page.id, {
           title: page.name,
           createdAt: page.createdAt,
-          folderPath: this.folderPathLabel(page.parentFolderId)
+          folderPath: page.parentFolderId ? labels.get(page.parentFolderId) : undefined
         })
       }
       return { candidates, pageInfo }
@@ -120,10 +125,9 @@ export class SearchService {
   }
 
   /** 将文件夹筛选展开为页面 id 集合；未指定时返回 null 表示不筛选 */
-  private resolveFolderFilter(folderIds?: readonly string[]): Set<string> | null {
+  private resolveFolderFilter(tree: PageTree, folderIds?: readonly string[]): Set<string> | null {
     if (!folderIds || folderIds.length === 0) return null
 
-    const tree = this.workspace.getTree()
     const folderSet = new Set<string>()
     for (const folderId of folderIds) {
       folderSet.add(folderId)
@@ -138,10 +142,12 @@ export class SearchService {
     return pageIds
   }
 
-  private folderPathLabel(folderId?: string): string | undefined {
+  private folderPathLabel(
+    folders: ReadonlyMap<string, Folder>,
+    folderId: string
+  ): string | undefined {
     if (!folderId) return undefined
 
-    const tree = this.workspace.getTree()
     const names: string[] = []
     const visited = new Set<string>()
     let currentId: string | undefined = folderId
@@ -149,12 +155,12 @@ export class SearchService {
     while (currentId) {
       if (visited.has(currentId)) break
       visited.add(currentId)
-      const folder = tree.folders.find((item) => item.id === currentId)
+      const folder = folders.get(currentId)
       if (!folder) break
-      names.unshift(folder.name)
+      names.push(folder.name)
       currentId = folder.parentFolderId
     }
 
-    return names.length > 0 ? names.join(' / ') : undefined
+    return names.length > 0 ? names.reverse().join(' / ') : undefined
   }
 }

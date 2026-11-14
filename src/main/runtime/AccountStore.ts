@@ -1,5 +1,5 @@
 /**
- * 账户目录（accounts.json）与当前会话记录
+ * 账户目录与当前账户；每个账户的当前工作区由 WorkspaceRegistry 维护
  */
 
 import { randomUUID } from 'node:crypto'
@@ -10,6 +10,7 @@ import type { PathResolver } from './paths'
 import { ensureDir, readJson, removePath, writeJsonAtomic } from './fsx'
 
 interface AccountsFile {
+  version?: 2
   accounts: Account[]
   currentAccountId: string | null
 }
@@ -22,11 +23,10 @@ interface SessionFile {
 export class AccountStore {
   private accounts: Account[] = []
   private currentAccountId: string | null = null
-  private session: SessionFile = { accountId: null, workspaceId: null }
 
   constructor(private readonly paths: PathResolver) {}
 
-  async load(): Promise<void> {
+  async load(): Promise<string | undefined> {
     const file = await readJson<AccountsFile>(this.paths.accountsFile)
     this.accounts = file?.accounts ?? []
     this.currentAccountId =
@@ -34,8 +34,15 @@ export class AccountStore {
         ? file.currentAccountId
         : (this.accounts[0]?.id ?? null)
 
-    const session = await readJson<SessionFile>(this.paths.sessionFile)
-    if (session) this.session = { accountId: session.accountId, workspaceId: session.workspaceId }
+    // 旧版 session.json 优先级更高，仅迁移一次；成功打开工作区后 setCurrent 写入版本标记。
+    if (file?.version !== 2) {
+      const session = await readJson<SessionFile>(this.paths.legacySessionFile)
+      if (session?.accountId && this.getById(session.accountId)) {
+        this.currentAccountId = session.accountId
+        return session.workspaceId ?? undefined
+      }
+    }
+    return undefined
   }
 
   list(): Account[] {
@@ -134,20 +141,12 @@ export class AccountStore {
     this.currentAccountId = accountId
   }
 
-  getSession(): SessionFile {
-    return { ...this.session }
-  }
-
-  async setSession(session: SessionFile): Promise<void> {
-    await writeJsonAtomic(this.paths.sessionFile, session)
-    this.session = { ...session }
-  }
-
   private async persist(
     accounts = this.accounts,
     currentAccountId = this.currentAccountId
   ): Promise<void> {
     await writeJsonAtomic(this.paths.accountsFile, {
+      version: 2,
       accounts,
       currentAccountId
     } satisfies AccountsFile)

@@ -75,7 +75,7 @@ describe('工作区生命周期', () => {
     expect(await f.query('workspaces.list', undefined)).toEqual(before)
   })
 
-  it.each(['workspaces.json', 'accounts.json', 'session.json'])(
+  it.each(['workspaces.json', 'accounts.json'])(
     '切换时 %s 写入失败，原会话选择、数据与重启结果保持一致',
     async (file) => {
       const original = await f.query('session.get', undefined)
@@ -119,7 +119,11 @@ describe('工作区生命周期', () => {
     const write = fsx.writeJsonAtomic
     let failed = false
     vi.spyOn(fsx, 'writeJsonAtomic').mockImplementation(async (path, value) => {
-      if (!failed && path.endsWith('session.json')) {
+      if (
+        !failed &&
+        path.endsWith('accounts.json') &&
+        (value as { currentAccountId: string }).currentAccountId !== before.accountId
+      ) {
         failed = true
         throw new Error('会话保存失败')
       }
@@ -284,7 +288,7 @@ describe('目录布局与排他访问', () => {
         pageId: p.id,
         draft: { id: 'message', role: 'user', content: p.id }
       })
-    await f.command('folder.move', { folderId: b.id, beforeNodeId: a.id })
+    await f.command('tree.move', { nodeId: b.id, targetNodeId: a.id, placement: 'before' })
     await f.restart()
     const pages = (await f.query('tree.get', undefined)).pages
     expect(pages.find((item) => item.id === pa.id)?.parentFolderId).toBe(a.id)
@@ -348,7 +352,7 @@ describe('目录布局与排他访问', () => {
         return move(from, to)
       })
       await expect(
-        f.command('folder.move', { folderId: b.id, beforeNodeId: a.id })
+        f.command('tree.move', { nodeId: b.id, targetNodeId: a.id, placement: 'before' })
       ).rejects.toThrow('交换中断')
       expect(await f.query('tree.get', undefined)).toEqual(before)
       await f.restart()

@@ -5,14 +5,14 @@
  * 落盘策略：流式过程中不写盘；用户消息立即落盘，助手消息在结束（完成/中止/失败）时落盘一次。
  */
 
+import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
 import { randomUUID } from 'node:crypto'
 import type {
   AttachmentRef,
   ChatMessage,
   Conversation,
   ModelParameters,
-  ProviderConnection,
-  Settings
+  ProviderConnection
 } from '@shared/domain'
 import {
   appendMessage,
@@ -30,6 +30,7 @@ import type { WorkspaceStore } from './WorkspaceStore'
 import type { QueueStore } from './QueueStore'
 import type { ProviderMessage } from './providers'
 import { isAbortError, streamChat } from './providers'
+import { resolveModelConfig } from './modelConfig'
 import {
   MESSAGE_TITLE_PROMPT,
   SESSION_TITLE_PROMPT,
@@ -148,7 +149,7 @@ export class ChatEngine {
 
   async send(input: SendInput): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    return workspace.run(() => this.sendInside(workspace, input))
+    return workspace.write(() => this.sendInside(workspace, input))
   }
 
   /** 准入、读取和用户消息写入在同一事务内；模型流不占用写队列。 */
@@ -192,14 +193,14 @@ export class ChatEngine {
     modelConfigId?: string
   }): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    return workspace.run(async () => {
+    return workspace.write(async () => {
       this.assertReady(workspace, input.pageId)
       const conversation = await workspace.readConversation(input.pageId)
       const message = conversation.messages.find((item) => item.id === input.messageId)
       if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
       return this.startGeneration(workspace, conversation, message.parentMessageId, {
-        llmId: input.llmId ?? message.llmId,
-        modelConfigId: input.modelConfigId ?? message.modelConfigId
+        ...input,
+        previous: message
       })
     })
   }
@@ -211,7 +212,7 @@ export class ChatEngine {
     modelConfigId?: string
   }): Promise<ChatRequestHandle> {
     const workspace = this.requireWorkspace()
-    return workspace.run(async () => {
+    return workspace.write(async () => {
       this.assertReady(workspace, input.pageId)
       const conversation = await workspace.readConversation(input.pageId)
       const message = conversation.messages.find(
@@ -222,10 +223,7 @@ export class ChatEngine {
         workspace,
         conversation,
         message.role === 'user' ? message.id : message.parentMessageId,
-        {
-          llmId: input.llmId ?? message.llmId,
-          modelConfigId: input.modelConfigId ?? message.modelConfigId
-        }
+        { ...input, previous: message }
       )
     })
   }
@@ -234,11 +232,11 @@ export class ChatEngine {
     workspace: WorkspaceStore,
     conversation: Conversation,
     parentMessageId: string | undefined,
-    input: { llmId?: string; modelConfigId?: string },
+    input: { llmId?: string; modelConfigId?: string; previous?: ChatMessage },
     user?: ChatMessage,
     accept?: () => Promise<void>
   ): Promise<ChatRequestHandle> {
-    const config = this.resolveConfig(input.llmId, input.modelConfigId)
+    const config = this.resolveConfig(input.llmId, input.modelConfigId, input.previous)
     const providerMessages = await this.buildProviderMessages(
       workspace,
       conversation,
@@ -298,7 +296,7 @@ export class ChatEngine {
 
   private async save(request: ActiveRequest): Promise<void> {
     const { workspace, assistant, pageId } = request
-    await workspace.run(async () => {
+    await workspace.write(async () => {
       if (!workspace.getPage(pageId)) return
       const current = await workspace.readConversation(pageId)
       if (
@@ -407,38 +405,14 @@ export class ChatEngine {
     return messages
   }
 
-  private resolveConfig(llmId?: string, modelConfigId?: string): ResolvedConfig {
-    const settingsStore = this.deps.settings()
-    if (!settingsStore) {
-      throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
-    }
-
-    const settings: Settings = settingsStore.get()
-    const targetLlmId = llmId ?? settings.defaultLLMId ?? settings.llmConfigs.items[0]?.id
-    const llm = settings.llmConfigs.items.find((item) => item.id === targetLlmId)
-    if (!llm) {
-      throw new RuntimeError('ai.no-llm-config', '未找到可用的 LLM 配置')
-    }
-
-    const apiKey = llm.apiKey
-    if (!apiKey) {
-      throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
-    }
-
-    const targetModelConfigId =
-      modelConfigId ?? settings.defaultModelConfigId ?? settings.modelConfigs.items[0]?.id
-    const model = settings.modelConfigs.items.find((item) => item.id === targetModelConfigId)
-
-    return {
-      connection: { baseUrl: llm.baseUrl, apiKey, modelName: llm.modelName },
-      parameters: {
-        systemPrompt: model?.systemPrompt ?? '',
-        topP: model?.topP ?? 1,
-        temperature: model?.temperature ?? 1
-      },
-      llmId: llm.id,
-      modelConfigId: model?.id
-    }
+  private resolveConfig(
+    llmId?: string,
+    modelConfigId?: string,
+    previous?: ChatMessage
+  ): ResolvedConfig {
+    const settings = this.deps.settings()
+    if (!settings) throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
+    return resolveModelConfig(settings.get(), { llmId, modelConfigId }, previous)
   }
 
   // ==================== 无界面调用 ====================
@@ -482,7 +456,7 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
       throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const message = conversation.messages.find((item) => item.id === input.messageId)
@@ -501,18 +475,20 @@ export class ChatEngine {
     const title = normalizeTitle(content, 15)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
-    await workspace.mutateConversation(input.pageId, (current) => {
-      if (
-        workspace !== this.deps.workspace() ||
-        this.suspended ||
-        !current.messages.some((item) => item.id === message.id)
-      )
-        throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
-      return {
-        conversation: updateMessage(current, message.id, { title }, Date.now()),
-        result: undefined
-      }
-    })
+    await workspace.write(() =>
+      workspace.mutateConversation(input.pageId, (current) => {
+        if (
+          workspace !== this.deps.workspace() ||
+          this.suspended ||
+          !current.messages.some((item) => item.id === message.id)
+        )
+          throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+        return {
+          conversation: updateMessage(current, message.id, { title }, Date.now()),
+          result: undefined
+        }
+      })
+    )
     this.emit('conversation.changed', { pageId: input.pageId })
     return title
   }
@@ -525,7 +501,7 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
       throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const topic = conversation.topics.find((item) => item.id === input.topicId)
@@ -556,18 +532,20 @@ export class ChatEngine {
     const name = normalizeTitle(generated, 15)
     if (!name) throw new RuntimeError('chat.title-empty', '模型未返回有效话题名称')
 
-    await workspace.mutateConversation(input.pageId, (current) => {
-      if (
-        workspace !== this.deps.workspace() ||
-        this.suspended ||
-        !current.topics.some((item) => item.id === topic.id)
-      )
-        throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
-      return {
-        conversation: updateTopic(current, topic.id, { name }, Date.now()),
-        result: undefined
-      }
-    })
+    await workspace.write(() =>
+      workspace.mutateConversation(input.pageId, (current) => {
+        if (
+          workspace !== this.deps.workspace() ||
+          this.suspended ||
+          !current.topics.some((item) => item.id === topic.id)
+        )
+          throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+        return {
+          conversation: updateTopic(current, topic.id, { name }, Date.now()),
+          result: undefined
+        }
+      })
+    )
     this.emit('conversation.changed', { pageId: input.pageId })
     return name
   }
@@ -579,7 +557,7 @@ export class ChatEngine {
     extraRequirements?: string
   }): Promise<string> {
     const workspace = this.requireWorkspace()
-    const conversation = await workspace.run(() => workspace.readConversation(input.pageId))
+    const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
       throw new RuntimeError('runtime.stale-scope', '工作区已变化')
     const path = currentPath(conversation)
@@ -602,7 +580,7 @@ export class ChatEngine {
     const title = normalizeTitle(generated, 20)
     if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
 
-    await workspace.run(async () => {
+    await workspace.write(async () => {
       if (workspace !== this.deps.workspace() || this.suspended)
         throw new RuntimeError('runtime.stale-scope', '目标消息不存在')
       await workspace.updatePage(input.pageId, { name: title }, Date.now())
@@ -620,7 +598,7 @@ export class ChatEngine {
     const workspace = this.deps.workspace()
     if (!queues || !workspace || this.suspended) return
     try {
-      await workspace.run(async () => {
+      await workspace.write(async () => {
         if (
           this.suspended ||
           this.isPageBusy(pageId) ||
@@ -641,7 +619,11 @@ export class ChatEngine {
     }
   }
 
-  private emit(type: RuntimeEvent['type'], payload: unknown, scopeId = this.deps.scope()): void {
+  private emit<K extends RuntimeEventName>(
+    type: K,
+    payload: RuntimeEventPayload<K>,
+    scopeId = this.deps.scope()
+  ): void {
     this.deps.emit({ type, payload, scopeId } as RuntimeEvent)
   }
 

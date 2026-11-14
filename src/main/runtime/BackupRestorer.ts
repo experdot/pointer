@@ -228,9 +228,17 @@ export async function restoreBackup(
       const parentFolderId = parent(folder.parentFolderId, result.ids.folders, (id) =>
         Boolean(workspace.getFolder(id))
       )
-      const restoredId = await workspace.run(async () => {
+      const restoredId = await workspace.write(async () => {
         if (existing && strategy === 'overwrite') {
-          await workspace.moveFolder(existing.id, parentFolderId, undefined, Date.now())
+          await workspace.moveTreeNode(
+            {
+              nodeId: existing.id,
+              targetNodeId: parentFolderId,
+              placement: 'end',
+              conflictPolicy: 'rename'
+            },
+            Date.now()
+          )
           await workspace.updateFolder(existing.id, { name: folder.name }, Date.now())
           return existing.id
         } else {
@@ -259,11 +267,19 @@ export async function restoreBackup(
       const parentFolderId = parent(page.parentFolderId, result.ids.folders, (id) =>
         Boolean(workspace.getFolder(id))
       )
-      const restoredId = await workspace.run(async () => {
+      const restoredId = await workspace.write(async () => {
         let id: string
         if (existing && strategy === 'overwrite') {
           id = existing.id
-          await workspace.movePage(id, parentFolderId, undefined, Date.now())
+          await workspace.moveTreeNode(
+            {
+              nodeId: id,
+              targetNodeId: parentFolderId,
+              placement: 'end',
+              conflictPolicy: 'rename'
+            },
+            Date.now()
+          )
           await workspace.updatePage(
             id,
             { name: page.name, starred: page.starred ?? false },

@@ -84,10 +84,3 @@ export function uniquePageFileName(taken: ReadonlySet<string>, pageName: string)
 export function isPageFileName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith(PAGE_FILE_EXTENSION)
 }
-
-/** 去掉页面文件扩展名，得到基础名 */
-export function stripPageFileExtension(fileName: string): string {
-  return isPageFileName(fileName)
-    ? fileName.slice(0, fileName.length - PAGE_FILE_EXTENSION.length)
-    : fileName
-}

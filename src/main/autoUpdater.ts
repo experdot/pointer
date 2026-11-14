@@ -107,5 +107,3 @@ export function setupAutoUpdater(report?: (status: UpdateStatus) => void): Updat
     quitAndInstall: () => autoUpdater.quitAndInstall()
   }
 }
-
-export { autoUpdater }

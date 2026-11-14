@@ -4,7 +4,7 @@
  * 匹配与片段提取是纯函数；命中的存储与索引由内核层负责。
  */
 
-import type { ChatMessage, MessageRole } from './chat'
+import type { MessageRole } from './chat'
 
 type RoleFilter = 'all' | 'user' | 'assistant'
 type TimeRange = 'all' | 'today' | 'week' | 'month'
@@ -147,50 +147,6 @@ export interface SearchMatch {
   /** 该命中文本在消息内的出现序号（0 起） */
   occurrenceIndexInMessage: number
   createdAt: number
-}
-
-interface SearchParams {
-  pageId: string
-  messages: readonly ChatMessage[]
-  matcher: Matcher
-  options: SearchMatchOptions
-  now: number
-}
-
-/** 在单个会话内执行匹配 */
-export function searchConversation({
-  pageId,
-  messages,
-  matcher,
-  options,
-  now
-}: SearchParams): SearchMatch[] {
-  const results: SearchMatch[] = []
-
-  for (const message of messages) {
-    if (options.roleFilter !== 'all' && message.role !== options.roleFilter) continue
-    if (!withinTimeRange(message.createdAt, options.timeRange, now)) continue
-    if (!message.content) continue
-
-    const ranges = matcher(message.content)
-    ranges.forEach((range, occurrence) => {
-      const snippet = buildSnippet(message.content, range)
-      results.push({
-        pageId,
-        messageId: message.id,
-        role: message.role,
-        snippet: snippet.snippet,
-        matchStart: snippet.matchStart,
-        matchEnd: snippet.matchEnd,
-        contentStart: snippet.contentStart,
-        contentEnd: snippet.contentEnd,
-        occurrenceIndexInMessage: occurrence,
-        createdAt: message.createdAt
-      })
-    })
-  }
-
-  return results
 }
 
 export interface SearchMessageGroup {

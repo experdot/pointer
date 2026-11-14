@@ -28,6 +28,7 @@ function buildDocument(): PageFileDocument {
       branchIndex: 0,
       parentMessageId: 'm1',
       llmId: 'llm-1',
+      sourceModel: '外部模型 <x> & y',
       modelConfigId: 'model-1',
       hasError: true,
       starred: true,

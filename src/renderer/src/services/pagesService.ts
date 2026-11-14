@@ -3,7 +3,6 @@
  */
 
 import type { Folder, Page } from '@shared/domain'
-import { nameKey } from '@shared/domain'
 import { v4 as uuidv4 } from 'uuid'
 import { refreshTree } from '../runtime/bootstrap'
 import { command } from '../runtime/client'
@@ -75,46 +74,6 @@ export async function deletePages(ids: readonly string[]): Promise<void> {
 
 export async function moveNode(move: RuntimeCommandPayload<'tree.move'>): Promise<void> {
   await command('tree.move', move)
-}
-
-export async function movePage(
-  id: string,
-  targetFolderId: string | undefined,
-  beforeNodeId?: string
-): Promise<void> {
-  await usePagesStore.getState().move(id, targetFolderId, beforeNodeId)
-}
-
-export async function moveFolder(
-  id: string,
-  targetFolderId: string | undefined,
-  beforeNodeId?: string
-): Promise<void> {
-  await useFoldersStore.getState().move(id, targetFolderId, beforeNodeId)
-}
-
-export function checkPageNameConflict(
-  name: string,
-  parentFolderId: string | undefined,
-  excludeId?: string
-): boolean {
-  const key = nameKey(name)
-  return usePagesStore
-    .getState()
-    .findByFolderId(parentFolderId)
-    .some((page) => page.id !== excludeId && nameKey(page.name) === key)
-}
-
-export function checkFolderNameConflict(
-  name: string,
-  parentFolderId: string | undefined,
-  excludeId?: string
-): boolean {
-  const key = nameKey(name)
-  return useFoldersStore
-    .getState()
-    .findByParentId(parentFolderId)
-    .some((folder) => folder.id !== excludeId && nameKey(folder.name) === key)
 }
 
 export async function createFolder(input?: {

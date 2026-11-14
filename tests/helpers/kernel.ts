@@ -63,10 +63,10 @@ export async function createKernel(): Promise<KernelFixture> {
       return runtime
     },
     command<K extends RuntimeCommandName>(name: K, payload: RuntimeCommandPayload<K>) {
-      return runtime.command(name, payload) as Promise<RuntimeCommandResult<K>>
+      return runtime.command(name, payload)
     },
     query<K extends RuntimeQueryName>(name: K, payload: RuntimeQueryPayload<K>) {
-      return runtime.query(name, payload) as Promise<RuntimeQueryResult<K>>
+      return runtime.query(name, payload)
     },
     async configure(baseUrl = 'http://provider.invalid/v1') {
       const settings = defaultSettings()

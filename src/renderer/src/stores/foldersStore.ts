@@ -31,7 +31,6 @@ interface FoldersActions {
   }) => Promise<Folder>
   update: (id: string, patch: { name?: string }) => Promise<void>
   rename: (id: string, name: string) => Promise<void>
-  move: (id: string, targetFolderId?: string, beforeNodeId?: string) => Promise<void>
   delete: (ids: string | string[], mode?: 'promote' | 'cascade') => Promise<void>
   clear: (id: string) => Promise<void>
   toggleExpanded: (id: string) => void
@@ -85,10 +84,6 @@ export const useFoldersStore = create<FoldersStore>((set, get) => ({
 
   rename: async (id, name) => {
     await command('folder.update', { folderId: id, patch: { name } })
-  },
-
-  move: async (id, targetFolderId, beforeNodeId) => {
-    await command('folder.move', { folderId: id, targetFolderId, beforeNodeId })
   },
 
   delete: async (ids, mode = 'promote') => {

@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
@@ -34,7 +35,6 @@ import {
   emptyConversation,
   isPageFileName,
   isReservedDirectory,
-  moveNode,
   moveTreeNode,
   nameKey,
   nextOrder,
@@ -81,13 +81,24 @@ interface FoldersFile {
 
 export class WorkspaceStore {
   private readonly writes = new SerialExecutor()
+  private readonly access = new AsyncLocalStorage<'read' | WorkspaceTransaction>()
   private transaction: WorkspaceTransaction | null = null
   private committedCallbacks: Array<() => void> | null = null
   private recoveryRequired = false
-  run<T>(operation: () => Promise<T> | T): Promise<T> {
+  /** 读取与写入共用串行队列，读取不创建回滚快照或磁盘事务。 */
+  read<T>(operation: () => Promise<T> | T): Promise<T> {
+    this.assertNotNested()
+    return this.writes.run(() => {
+      this.assertReady()
+      return this.access.run('read', operation)
+    })
+  }
+
+  /** 唯一事务入口；内部变更方法只执行操作，不再次入队。 */
+  write<T>(operation: () => Promise<T> | T): Promise<T> {
+    this.assertNotNested()
     return this.writes.run(async () => {
-      if (this.recoveryRequired)
-        throw new RuntimeError('workspace.recovery-required', '文件恢复未完成，请重新打开工作区')
+      this.assertReady()
       const before = {
         folders: this.folders,
         pages: this.pages,
@@ -101,7 +112,7 @@ export class WorkspaceStore {
       const callbacks: Array<() => void> = []
       this.committedCallbacks = callbacks
       try {
-        const result = await operation()
+        const result = await this.access.run(transaction, operation)
         await transaction.commit()
         this.transaction = null
         this.committedCallbacks = null
@@ -146,8 +157,25 @@ export class WorkspaceStore {
     return this.writes.idle()
   }
 
+  private assertReady(): void {
+    if (this.recoveryRequired)
+      throw new RuntimeError('workspace.recovery-required', '文件恢复未完成，请重新打开工作区')
+  }
+
+  private assertNotNested(): void {
+    if (this.access.getStore())
+      throw new RuntimeError('workspace.nested-operation', '工作区操作不能重复入队')
+  }
+
+  private requireTransaction(): WorkspaceTransaction {
+    if (!this.transaction || this.access.getStore() !== this.transaction)
+      throw new RuntimeError('workspace.transaction-required', '工作区修改必须在写事务中执行')
+    return this.transaction
+  }
+
   afterCommit(callback: () => void): void {
-    if (this.committedCallbacks) this.committedCallbacks.push(callback)
+    if (this.transaction && this.access.getStore() === this.transaction && this.committedCallbacks)
+      this.committedCallbacks.push(callback)
     else callback()
   }
 
@@ -155,16 +183,15 @@ export class WorkspaceStore {
     await this.trackWrite(path, () => writeJsonAtomic(path, value))
   }
 
-  mutateConversation<T>(
+  async mutateConversation<T>(
     pageId: string,
     change: (current: Conversation) => { conversation: Conversation; result: T }
   ): Promise<T> {
-    return this.run(async () => {
-      if (!this.getPage(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
-      const next = change(await this.readConversation(pageId))
-      await this.writeConversation(next.conversation)
-      return next.result
-    })
+    this.requireTransaction()
+    if (!this.getPage(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
+    const next = change(await this.readConversation(pageId))
+    await this.writeConversation(next.conversation)
+    return next.result
   }
   private folders: Folder[] = []
   private pages: Page[] = []
@@ -190,7 +217,7 @@ export class WorkspaceStore {
   async open(): Promise<void> {
     await this.ensureStructure()
     await WorkspaceTransaction.recover(this.path)
-    await this.run(async () => {
+    await this.write(async () => {
       await this.loadFolders()
       await this.scanFromDisk()
       await this.applyLayout()
@@ -234,7 +261,7 @@ export class WorkspaceStore {
     return this.pagePaths.get(pageId)
   }
 
-  async readConversation(pageId: string, refreshMetadata = true): Promise<Conversation> {
+  async readConversation(pageId: string): Promise<Conversation> {
     const relativePath = this.pagePaths.get(pageId)
     if (!relativePath) return emptyConversation(pageId)
 
@@ -244,7 +271,6 @@ export class WorkspaceStore {
 
     const cached = this.conversationCache.get(pageId)
     if (cached && cached.mtime === mtime) {
-      this.pageMtimes.set(pageId, mtime)
       return cached.conversation
     }
 
@@ -258,8 +284,6 @@ export class WorkspaceStore {
       })
     }
 
-    if (refreshMetadata) this.refreshPageFromDocument(pageId, parsed.value.page)
-
     const conversation = this.repairConversation({
       pageId,
       messages: parsed.value.messages,
@@ -269,11 +293,11 @@ export class WorkspaceStore {
     })
 
     this.conversationCache.set(pageId, { mtime, conversation })
-    this.pageMtimes.set(pageId, mtime)
     return conversation
   }
 
   async writeConversation(conversation: Conversation): Promise<void> {
+    this.requireTransaction()
     for (const message of conversation.messages) {
       for (const attachment of message.attachments ?? [])
         this.resolveAttachmentPath(attachment.relativePath)
@@ -319,6 +343,7 @@ export class WorkspaceStore {
     },
     at: number
   ): Promise<Page> {
+    this.requireTransaction()
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
     if (input.id) {
       assertSafeId(input.id)
@@ -339,21 +364,16 @@ export class WorkspaceStore {
     this.pages = addPage(this.getTree(), page).pages
     const pagesBefore = this.pages
     const foldersBefore = this.folders
-    if (input.afterNodeId) {
-      // 显式参照（导入等场景）：插到该同级节点之后，保持备份中的顺序
-      await this.applyInsertPosition(page.id, input.afterNodeId, parentFolderId, at)
-    } else {
-      // v1 策略：新建对话固定落到目标层级（父文件夹或根目录）最前面
-      this.moveToFront(page.id, parentFolderId, at)
-    }
+    this.positionNewNode(page.id, input.afterNodeId, at)
     await this.persistFoldersDiff(foldersBefore)
     await this.persistPageMetadataDiff(pagesBefore)
     await this.applyLayout()
     await this.writeConversation(emptyConversation(page.id))
-    return { ...page }
+    return this.getPage(page.id)!
   }
 
   async updatePage(pageId: string, patch: NodePatch, at: number): Promise<void> {
+    this.requireTransaction()
     const page = this.pages.find((item) => item.id === pageId)
     if (!page) throw new RuntimeError('page.not-found', `页面不存在：${pageId}`)
 
@@ -374,6 +394,7 @@ export class WorkspaceStore {
   }
 
   async moveTreeNode(input: RuntimeCommandPayload<'tree.move'>, at: number): Promise<boolean> {
+    this.requireTransaction()
     const before = this.getTree()
     const result = moveTreeNode(before, input, at)
     if (!result.ok) {
@@ -416,33 +437,8 @@ export class WorkspaceStore {
     return true
   }
 
-  async movePage(
-    pageId: string,
-    targetFolderId: string | undefined,
-    beforeNodeId: string | undefined,
-    at: number
-  ): Promise<void> {
-    if (!this.pages.some((page) => page.id === pageId)) {
-      throw new RuntimeError('page.not-found', `页面不存在：${pageId}`)
-    }
-
-    const tree = moveNode(
-      this.getTree(),
-      pageId,
-      this.validatedFolderId(targetFolderId),
-      beforeNodeId,
-      at
-    )
-    const before = this.pages
-    this.folders = tree.folders
-    this.pages = tree.pages
-    await this.persistFolders()
-    await this.persistPageMetadataDiff(before)
-    await this.applyLayout()
-    await this.syncIndexForPage(pageId)
-  }
-
   async deletePages(pageIds: readonly string[]): Promise<void> {
+    this.requireTransaction()
     const existing = pageIds.filter((pageId) => this.pages.some((page) => page.id === pageId))
 
     for (const pageId of existing) {
@@ -463,11 +459,12 @@ export class WorkspaceStore {
   }
 
   async clearConversations(): Promise<void> {
+    this.requireTransaction()
     await this.deletePages(this.pageIds())
     const root = this.paths.queuesDir(this.path)
     for (const file of await walkFiles(root, { include: (name) => name.endsWith('.json') })) {
       assertWithin(root, file.absolutePath)
-      await removePath(file.absolutePath)
+      await this.trackWrite(file.absolutePath, () => removePath(file.absolutePath))
     }
   }
 
@@ -475,6 +472,7 @@ export class WorkspaceStore {
     input: { id?: string; name?: string; parentFolderId?: string; afterNodeId?: string },
     at: number
   ): Promise<Folder> {
+    this.requireTransaction()
     this.assertFolderName(input.name ?? DEFAULT_FOLDER_NAME)
     if (input.id) {
       assertSafeId(input.id)
@@ -494,14 +492,15 @@ export class WorkspaceStore {
 
     this.folders = addFolder(this.getTree(), folder).folders
     const before = this.pages
-    await this.applyInsertPosition(folder.id, input.afterNodeId, parentFolderId, at)
+    this.positionNewNode(folder.id, input.afterNodeId, at)
     await this.persistPageMetadataDiff(before)
     await this.persistFolders()
     await this.applyLayout()
-    return { ...folder }
+    return this.getFolder(folder.id)!
   }
 
   async updateFolder(folderId: string, patch: NodePatch, at: number): Promise<void> {
+    this.requireTransaction()
     if (patch.name !== undefined) this.assertFolderName(patch.name)
     const folder = this.folders.find((item) => item.id === folderId)
     if (!folder) throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
@@ -510,31 +509,6 @@ export class WorkspaceStore {
     const name = this.uniqueNameAt(folder.parentFolderId, patch.name.trim(), folderId)
     this.folders = updateFolder(this.getTree(), folderId, { name }, at).folders
     await this.persistFolders()
-    await this.applyLayout()
-  }
-
-  async moveFolder(
-    folderId: string,
-    targetFolderId: string | undefined,
-    beforeNodeId: string | undefined,
-    at: number
-  ): Promise<void> {
-    if (!this.folders.some((folder) => folder.id === folderId)) {
-      throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
-    }
-
-    const tree = moveNode(
-      this.getTree(),
-      folderId,
-      this.validatedFolderId(targetFolderId),
-      beforeNodeId,
-      at
-    )
-    const before = this.pages
-    this.folders = tree.folders
-    this.pages = tree.pages
-    await this.persistFolders()
-    await this.persistPageMetadataDiff(before)
     await this.applyLayout()
   }
 
@@ -549,6 +523,7 @@ export class WorkspaceStore {
     mode: 'promote' | 'cascade',
     at: number
   ): Promise<string[]> {
+    this.requireTransaction()
     const before = this.pages.map((page) => page.id)
     let tree = this.getTree()
     for (const folderId of folderIds) {
@@ -594,6 +569,7 @@ export class WorkspaceStore {
   }
 
   async clearFolder(folderId: string): Promise<string[]> {
+    this.requireTransaction()
     if (!this.folders.some((folder) => folder.id === folderId)) {
       throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
     }
@@ -615,8 +591,9 @@ export class WorkspaceStore {
 
   // ==================== 外部改动 ====================
 
-  /** 对比文件 mtime 与内存记录，返回内容发生变化的页面 id */
-  async detectExternalChanges(): Promise<string[]> {
+  /** 单次扫描产生差异并完成索引同步；普通读取只更新会话缓存。 */
+  async reconcileExternalChanges(): Promise<{ pageIds: string[]; treeChanged: boolean }> {
+    this.requireTransaction()
     const previous = new Map(this.pageMtimes)
     const paths = new Map(this.pagePaths)
     // 磁盘遍历顺序、对象字段顺序及可选字段缺省不能被误报为外部改动。
@@ -635,24 +612,19 @@ export class WorkspaceStore {
       if (previous.get(id) !== this.pageMtimes.get(id) || paths.get(id) !== this.pagePaths.get(id))
         changed.add(id)
     }
-    // 空文件夹变更也需要广播树事件。
-    if (!isDeepStrictEqual(oldTree, nodesById()) && !changed.size) changed.add('')
-    return [...changed]
-  }
-
-  /** 外部改动后重新读取磁盘并同步索引 */
-  async reload(changedPageIds: readonly string[]): Promise<void> {
-    await this.scanFromDisk()
+    const treeChanged = !isDeepStrictEqual(oldTree, nodesById())
+    if (!changed.size && !treeChanged) return { pageIds: [], treeChanged: false }
     await this.applyLayout()
     this.index.retainPages(new Set(this.pageIds()))
     for (const id of this.conversationCache.keys()) {
       if (!this.getPage(id)) this.conversationCache.delete(id)
     }
 
-    for (const pageId of changedPageIds) {
+    for (const pageId of changed) {
       if (!this.pages.some((page) => page.id === pageId)) continue
       await this.syncIndexForPage(pageId)
     }
+    return { pageIds: [...changed], treeChanged }
   }
 
   // ==================== 附件 ====================
@@ -679,6 +651,7 @@ export class WorkspaceStore {
     files: ReadonlyArray<{ name: string; mimeType: string; dataBase64: string }>,
     at: number
   ): Promise<AttachmentRef[]> {
+    this.requireTransaction()
     const attachmentsDir = this.paths.attachmentsDir(this.path)
     await ensureDir(attachmentsDir)
 
@@ -704,7 +677,7 @@ export class WorkspaceStore {
         throw new RuntimeError('attachment.too-large', '附件不能超过 10 MB')
       await this.validateAttachmentPath(this.paths.attachmentRelativePath(fileName), true)
       const target = join(attachmentsDir, fileName)
-      await this.transaction?.capture(target)
+      await this.requireTransaction().capture(target)
       await writeBinaryAtomic(target, buffer)
 
       results.push({
@@ -722,8 +695,9 @@ export class WorkspaceStore {
 
   /** 删除附件文件 */
   async deleteAttachment(relativePath: string): Promise<void> {
+    this.requireTransaction()
     const target = await this.validateAttachmentPath(relativePath, true)
-    await this.transaction?.capture(target)
+    await this.requireTransaction().capture(target)
     await removePath(target)
   }
 
@@ -776,7 +750,9 @@ export class WorkspaceStore {
     const absolutePath = this.absPath(relativePath)
     const text = (await readText(absolutePath)) ?? ''
     // 当前树已经应用本次命令，读取会话正文时不能用磁盘中的旧元数据覆盖它。
-    const conversation = await this.readConversation(pageId, false)
+    const conversation = await this.readConversation(pageId)
+
+    const contentChanged = this.conversationCache.get(pageId)?.mtime !== this.pageMtimes.get(pageId)
 
     const next = replacePageMetadata(text, {
       version: PAGE_FILE_FORMAT_VERSION,
@@ -792,55 +768,34 @@ export class WorkspaceStore {
     this.pageMtimes.set(pageId, mtime)
     this.conversationCache.set(pageId, { mtime, conversation })
     this.index.upsertPage(page, relativePath, mtime)
+    if (contentChanged) this.index.replaceMessages(pageId, conversation.messages)
   }
 
-  /**
-   * 计算并应用新建节点的位置
-   *
-   * - 有参照项（afterNodeId）→ 插到该同级节点之后，后续同级整体下移
-   * - 只给了父文件夹 → 追加到该文件夹末尾
-   * - 都没有 → 插到根目录最前面
-   */
-  private async applyInsertPosition(
-    nodeId: string,
-    afterNodeId: string | undefined,
-    parentFolderId: string | undefined,
-    at: number
-  ): Promise<void> {
-    if (!afterNodeId && parentFolderId) return
-
+  /** 页面置顶；文件夹在根层置顶、在子目录追加；显式参照优先。 */
+  private positionNewNode(nodeId: string, afterNodeId: string | undefined, at: number): void {
     const tree = this.getTree()
     const node =
       tree.pages.find((item) => item.id === nodeId) ??
-      tree.folders.find((item) => item.id === nodeId)
-    if (!node) return
-
-    const siblings = childrenOf(tree, node.parentFolderId).filter((item) => item.id !== nodeId)
-
-    if (!afterNodeId) {
-      // 插到最前面
-      const moved = moveNode(tree, nodeId, node.parentFolderId, siblings[0]?.id, at)
-      this.folders = moved.folders
-      this.pages = moved.pages
-      return
-    }
-
-    const referenceIndex = siblings.findIndex((item) => item.id === afterNodeId)
-    if (referenceIndex === -1) return
-
-    const nextSibling = siblings[referenceIndex + 1]
-    const moved = moveNode(tree, nodeId, node.parentFolderId, nextSibling?.id, at)
-    this.folders = moved.folders
-    this.pages = moved.pages
-  }
-
-  /** 新建对话固定落到目标层级最前面（对齐 v1 release 分支的 min(order) - 1000 语义） */
-  private moveToFront(nodeId: string, parentFolderId: string | undefined, at: number): void {
-    const tree = this.getTree()
-    const siblings = childrenOf(tree, parentFolderId).filter((item) => item.id !== nodeId)
-    const moved = moveNode(tree, nodeId, parentFolderId, siblings[0]?.id, at)
-    this.folders = moved.folders
-    this.pages = moved.pages
+      tree.folders.find((item) => item.id === nodeId)!
+    if (
+      afterNodeId &&
+      !childrenOf(tree, node.parentFolderId).some((item) => item.id === afterNodeId)
+    )
+      throw new RuntimeError('tree.invalid-target', '新建节点的参照项必须位于同一文件夹')
+    const result = moveTreeNode(
+      tree,
+      afterNodeId
+        ? { nodeId, targetNodeId: afterNodeId, placement: 'after' }
+        : {
+            nodeId,
+            targetNodeId: node.parentFolderId,
+            placement: node.kind === 'page' || !node.parentFolderId ? 'inside' : 'end'
+          },
+      at
+    )
+    if (!result.ok) throw new RuntimeError(result.error.code, result.error.message)
+    this.pages = result.tree.pages
+    this.folders = result.tree.folders
   }
 
   private async ensureStructure(): Promise<void> {
@@ -866,13 +821,13 @@ export class WorkspaceStore {
 
   /** 为一个命令中的多次文件变更保留撤销内容，避免只回滚内存而留下半完成磁盘状态。 */
   private async trackWrite(path: string, write: () => Promise<void>): Promise<void> {
-    await this.transaction?.capture(path)
+    await this.requireTransaction().capture(path)
     await write()
   }
 
   private async trackMove(from: string, to: string): Promise<void> {
-    await this.transaction?.capture(from)
-    await this.transaction?.capture(to)
+    await this.requireTransaction().capture(from)
+    await this.requireTransaction().capture(to)
     await movePath(from, to)
   }
 
@@ -896,8 +851,8 @@ export class WorkspaceStore {
     if (changed) await this.persistFolders()
   }
 
-  /** 扫描磁盘；返回页面结构是否发生变化 */
-  private async scanFromDisk(): Promise<boolean> {
+  /** 扫描页面和目录元数据，调用方负责比较差异并同步索引。 */
+  private async scanFromDisk(): Promise<void> {
     this.folderDirs = computeWorkspaceLayout({ folders: this.folders, pages: [] }).folderDirs
 
     const files = await walkFiles(this.path, { include: isPageFileName })
@@ -926,11 +881,6 @@ export class WorkspaceStore {
       pageMtimes.set(parsed.value.page.id, file.modifiedAt)
     }
 
-    const knownIds = new Set(this.pages.map((page) => page.id))
-    const nextIds = new Set(pages.map((page) => page.id))
-    const structureChanged =
-      knownIds.size !== nextIds.size || [...nextIds].some((id) => !knownIds.has(id))
-
     this.pages = pages
     this.pagePaths = pagePaths
     this.pageMtimes = pageMtimes
@@ -942,8 +892,6 @@ export class WorkspaceStore {
     if (diagnostics.length > 0) {
       console.warn('[runtime] 页面树存在异常：', diagnostics.slice(0, 5))
     }
-
-    return structureChanged
   }
 
   private folderIdForDir(directory: string): string | undefined {
@@ -1008,7 +956,7 @@ export class WorkspaceStore {
 
     for (const dir of new Set(layout.folderDirs.values())) {
       if (!(await isDirectory(this.absPath(dir))))
-        await this.transaction?.capture(this.absPath(dir), 'directory')
+        await this.requireTransaction().capture(this.absPath(dir), 'directory')
       await ensureDir(this.absPath(dir))
     }
 
@@ -1021,7 +969,7 @@ export class WorkspaceStore {
     const staging = join(this.paths.pointerDir(this.path), `layout-${randomUUID()}`)
     const staged = new Map<string, string>()
     if (pending.length) {
-      await this.transaction?.capture(staging, 'directory')
+      await this.requireTransaction().capture(staging, 'directory')
       await ensureDir(staging)
       for (const page of pending) {
         const from = this.pagePaths.get(page.id)
@@ -1054,7 +1002,7 @@ export class WorkspaceStore {
     directories.sort((a, b) => b.split('/').length - a.split('/').length)
     for (const dir of directories) {
       if (keep.has(dir)) continue
-      await this.transaction?.capture(this.absPath(dir), 'directory')
+      await this.requireTransaction().capture(this.absPath(dir), 'directory')
       await this.removeEmptyDirectory(this.absPath(dir))
     }
   }
@@ -1090,29 +1038,10 @@ export class WorkspaceStore {
     const page = this.pages.find((item) => item.id === pageId)
     if (!page) return
 
-    const mtime = this.pageMtimes.get(pageId) ?? Date.now()
+    const mtime = this.conversationCache.get(pageId)?.mtime ?? Date.now()
     this.index.upsertPage(page, relativePath, mtime)
     this.index.replaceMessages(pageId, conversation.messages)
-  }
-
-  /** 文件被外部修改后，用文件内的元数据刷新内存中的页面信息 */
-  private refreshPageFromDocument(pageId: string, parsedPage: Page): void {
-    const current = this.pages.find((page) => page.id === pageId)
-    if (!current) return
-
-    const next: Page = {
-      ...current,
-      name: parsedPage.name || current.name,
-      starred: parsedPage.starred ?? current.starred,
-      order: parsedPage.order,
-      updatedAt: parsedPage.updatedAt
-    }
-
-    const unchanged =
-      next.name === current.name && next.starred === current.starred && next.order === current.order
-    if (!unchanged) {
-      this.pages = this.pages.map((page) => (page.id === pageId ? next : page))
-    }
+    this.pageMtimes.set(pageId, mtime)
   }
 
   /** 读取到的会话可能被外部编辑破坏，尽量修复到合法状态 */

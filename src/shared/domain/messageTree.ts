@@ -57,11 +57,11 @@ export function pathToMessage(index: MessageIndex, messageId?: string): ChatMess
     visited.add(currentId)
     const message = index.byId.get(currentId)
     if (!message) break
-    path.unshift(message)
+    path.push(message)
     currentId = message.parentMessageId
   }
 
-  return path
+  return path.reverse()
 }
 
 /**
@@ -155,6 +155,20 @@ export function firstLeafOf(index: MessageIndex, messageId: string): string {
 export function validateConversation(conversation: Conversation): Diagnostic[] {
   const diagnostics: Diagnostic[] = []
   const index = buildIndex(conversation.messages)
+  // 每条父链只走一次，并复用已确定的结果（包含通向环的节点）。
+  const cyclic = new Map<string, boolean>()
+  for (const message of conversation.messages) {
+    if (cyclic.has(message.id)) continue
+    const path = new Set<string>()
+    let currentId: string | undefined = message.id
+    while (currentId && index.byId.has(currentId) && !cyclic.has(currentId)) {
+      if (path.has(currentId)) break
+      path.add(currentId)
+      currentId = index.byId.get(currentId)?.parentMessageId
+    }
+    const hasCycle = Boolean(currentId && (path.has(currentId) || cyclic.get(currentId)))
+    for (const id of path) cyclic.set(id, hasCycle)
+  }
 
   if (index.byId.size !== conversation.messages.length) {
     const seen = new Set<string>()
@@ -178,7 +192,7 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
         entityId: message.id
       })
     }
-    if (isCyclic(index, message.id)) {
+    if (cyclic.get(message.id)) {
       diagnostics.push({
         code: 'chat.cycle',
         message: `消息树存在循环引用：${message.id}`,
@@ -253,19 +267,6 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
   }
 
   return diagnostics
-}
-
-function isCyclic(index: MessageIndex, messageId: string): boolean {
-  const visited = new Set<string>()
-  let currentId: string | undefined = messageId
-
-  while (currentId) {
-    if (visited.has(currentId)) return true
-    visited.add(currentId)
-    currentId = index.byId.get(currentId)?.parentMessageId
-  }
-
-  return false
 }
 
 /**

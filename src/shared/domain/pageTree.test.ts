@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { TreeMove } from './common'
 import type { Folder, Page, PageTree } from './page'
 import {
   addFolder,
@@ -6,14 +7,19 @@ import {
   childrenOf,
   clearFolder,
   descendantFolderIds,
-  folderPathNames,
   isFolderAncestor,
-  moveNode,
+  moveTreeNode,
   nextOrder,
   removeFolder,
   removePages,
   validatePageTree
 } from './page'
+
+function applyMove(tree: PageTree, move: TreeMove): PageTree {
+  const result = moveTreeNode(tree, move, 100)
+  if (!result.ok) throw new Error(result.error.code)
+  return result.tree
+}
 
 function folder(id: string, name: string, parentFolderId?: string, order = 0): Folder {
   return { id, kind: 'folder', name, parentFolderId, order, createdAt: 1 }
@@ -39,10 +45,8 @@ describe('页面树遍历', () => {
     expect(childrenOf(tree, 'f1').map((node) => node.id)).toEqual(['f2', 'p1'])
   })
 
-  it('计算层级路径与后代集合', () => {
+  it('计算后代集合与祖先关系', () => {
     const tree = fixture()
-    expect(folderPathNames(tree, 'f2')).toEqual(['工作', '归档'])
-    expect(folderPathNames(tree, undefined)).toEqual([])
     expect(descendantFolderIds(tree, 'f1')).toEqual(['f2'])
     expect(isFolderAncestor(tree, 'f1', 'f2')).toBe(true)
     expect(isFolderAncestor(tree, 'f2', 'f1')).toBe(false)
@@ -57,7 +61,7 @@ describe('页面树遍历', () => {
 
 describe('页面树变更', () => {
   it('移动页面到目标文件夹并重排序号', () => {
-    const tree = moveNode(fixture(), 'p2', 'f2', undefined, 100)
+    const tree = applyMove(fixture(), { nodeId: 'p2', targetNodeId: 'f2', placement: 'end' })
 
     expect(childrenOf(tree, undefined).map((node) => node.id)).toEqual(['f1'])
     expect(childrenOf(tree, 'f2').map((node) => node.id)).toEqual(['p2'])
@@ -65,13 +69,15 @@ describe('页面树变更', () => {
   })
 
   it('可插入到指定同级节点之前', () => {
-    const tree = moveNode(fixture(), 'p2', 'f1', 'p1', 100)
+    const tree = applyMove(fixture(), { nodeId: 'p2', targetNodeId: 'p1', placement: 'before' })
     expect(childrenOf(tree, 'f1').map((node) => node.id)).toEqual(['f2', 'p2', 'p1'])
   })
 
   it('禁止把文件夹移动到自身后代之下', () => {
     const tree = fixture()
-    expect(moveNode(tree, 'f1', 'f2', undefined, 100)).toEqual(tree)
+    expect(
+      moveTreeNode(tree, { nodeId: 'f1', targetNodeId: 'f2', placement: 'inside' }, 100).ok
+    ).toBe(false)
   })
 
   it('删除文件夹可提升子节点或级联删除', () => {

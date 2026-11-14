@@ -52,14 +52,6 @@ export function configDescendantFolderIds<T extends ConfigItemBase>(
   return descendantFolderIds(tree, folderId)
 }
 
-/** 同级已占用的名称集合 */
-export function configNamesAtLevel<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  parentFolderId: string | undefined
-): string[] {
-  return configChildren(tree, parentFolderId).map((node) => node.name)
-}
-
 export function addConfigItem<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   item: T

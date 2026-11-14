@@ -3,7 +3,6 @@ import { nameKey } from './common'
 import {
   MAX_FILE_BASE_LENGTH,
   sanitizeFileName,
-  stripPageFileExtension,
   uniqueName,
   uniquePageFileName,
   isPageFileName
@@ -66,10 +65,8 @@ describe('唯一命名', () => {
 })
 
 describe('扩展名识别', () => {
-  it('识别与剥离页面扩展名', () => {
+  it('识别页面扩展名', () => {
     expect(isPageFileName('a.pointer.md')).toBe(true)
     expect(isPageFileName('a.md')).toBe(false)
-    expect(stripPageFileExtension('a.pointer.md')).toBe('a')
-    expect(stripPageFileExtension('a.md')).toBe('a.md')
   })
 })
