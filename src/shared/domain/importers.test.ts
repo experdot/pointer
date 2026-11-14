@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { detectFormat, parseImport } from './importers'
 import { PAGE_FILE_FORMAT_VERSION, parsePageFile, serializePageFile } from './pageFile'
+import { deepseekExport } from '../../../tests/fixtures/deepseek'
 
 /** 导入缺少时间戳时使用的固定时钟 */
 const NOW = 1_700_000_000_000
@@ -77,6 +78,85 @@ describe('ChatGPT 导出解析', () => {
 })
 
 describe('DeepSeek 导出解析', () => {
+  it('搜索片段没有正文时仍读取后续回答，并保留所有思考与回答片段', () => {
+    const result = parseImport(
+      deepseekExport([
+        { type: 'SEARCH', results: [{ title: '搜索元数据' }] },
+        { type: 'THINK', content: '先分析' },
+        { type: 'TOOL_SEARCH', results: [] },
+        { type: 'TOOL_OPEN', content: '工具元数据不作为回答' },
+        { type: 'THINK', content: '再分析' },
+        { type: 'RESPONSE', content: '第一段回答' },
+        { type: 'RESPONSE', content: '第二段回答' }
+      ]),
+      undefined,
+      NOW
+    )
+
+    expect(result.format).toBe('deepseek')
+    expect(result.conversations[0].messages[1]).toMatchObject({
+      id: '2',
+      role: 'assistant',
+      content: '第一段回答\n\n第二段回答',
+      reasoning: '先分析\n\n再分析',
+      parentMessageId: '1',
+      llmId: 'deepseek-chat'
+    })
+    expect(result.conversations[0].leafMessageId).toBe('2')
+  })
+
+  it.each([
+    {
+      label: '附件位于提问前',
+      fragments: [
+        { type: 'FILE', files: [{ id: 'file-1' }] },
+        { type: 'REQUEST', content: '分析附件' }
+      ],
+      role: 'user',
+      content: '分析附件',
+      reasoning: undefined
+    },
+    {
+      label: '仅有附件',
+      fragments: [{ type: 'FILE', files: [{ id: 'file-1' }] }],
+      role: 'user',
+      content: '',
+      reasoning: undefined
+    },
+    {
+      label: '只有思考尚无回答',
+      fragments: [
+        { type: 'SEARCH', results: [] },
+        { type: 'THINK', content: '尚在思考' }
+      ],
+      role: 'assistant',
+      content: '',
+      reasoning: '尚在思考'
+    },
+    {
+      label: '缺失、空值和非字符串正文',
+      fragments: [
+        null,
+        { type: 'RESPONSE' },
+        { type: 'RESPONSE', content: null },
+        { type: 'RESPONSE', content: false },
+        { type: 'THINK', content: {} }
+      ],
+      role: 'assistant',
+      content: '',
+      reasoning: undefined
+    }
+  ])('$label 时正文始终为字符串且消息身份保留', ({ fragments, role, content, reasoning }) => {
+    const result = parseImport(deepseekExport(fragments), 'deepseek', NOW)
+    expect(result.conversations[0].messages[1]).toMatchObject({
+      id: '2',
+      parentMessageId: '1',
+      role,
+      content,
+      reasoning
+    })
+  })
+
   it('按 fragment 判定角色并建立父子关系', () => {
     const result = parseImport(
       [

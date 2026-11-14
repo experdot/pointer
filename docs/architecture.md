@@ -90,7 +90,7 @@ workspaces/<accountId>/default/    默认工作区
 - **消息树**：同一父节点下 `branchIndex` 唯一并按它排序；`leafMessageId` 指向当前分支链路的终点，`selectedMessageId` 用于滚动定位；Topic 是同一路径上一段连续消息的命名分组。重新生成与继续都会在参照消息的父节点下创建新的分支。
 - **页面树**：`validatePageTree` 校验 id 唯一、父节点存在、无环、同级名称唯一（名称比较键为 NFC + trim + 小写）。删除文件夹支持「提升子节点」与「级联删除」两种语义。
 - **页面文件**：只接受 `version="2"` 的 `<pointer-page>` / `<pointer-message>` 标签，消息正文以 `<!-- [POINTER-MSG] -->` 分隔，思考内容包在 `<details>` 中；旧版本标签写出的文件会被判为缺少页面块，扫描时跳过。
-- **导入器**：`openai`（ChatGPT 导出）、`deepseek`、`pointer` 三种格式，导入时保持原有顺序。
+- **导入器**：`openai`（ChatGPT 导出）、`deepseek`、`pointer` 三种格式，导入时保持原有顺序。DeepSeek 遍历全部片段，将 `REQUEST` / `RESPONSE` 文本合并为正文、`THINK` 合并为思考内容；搜索及工具元数据不作为正文，只有附件的用户节点保留为空正文，不导入附件文件。
 - **消息队列**：按 order 依次发送，暂停时不出队；队列属于会话。
 
 ## 七、会话执行

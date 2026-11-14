@@ -273,6 +273,11 @@ function parseOpenAI(payload: OpenAIExport[], now: number): ImportParseResult {
 
 // ==================== DeepSeek ====================
 
+interface DeepSeekFragment {
+  type: string
+  content?: unknown
+}
+
 interface DeepSeekNode {
   id: string
   parent: string | null
@@ -280,7 +285,7 @@ interface DeepSeekNode {
   message: {
     model?: string
     inserted_at?: string
-    fragments?: Array<{ type: 'REQUEST' | 'RESPONSE'; content: string }>
+    fragments?: Array<DeepSeekFragment | null>
   } | null
 }
 
@@ -290,6 +295,33 @@ interface DeepSeekExport {
   inserted_at?: string
   updated_at?: string
   mapping: Record<string, DeepSeekNode>
+}
+
+function parseDeepSeekFragments(
+  fragments: Array<DeepSeekFragment | null>
+): Pick<RawMessage, 'role' | 'content' | 'reasoning'> {
+  const types = new Set<string>()
+  const content: string[] = []
+  const reasoning: string[] = []
+  for (const fragment of fragments) {
+    if (!fragment) continue
+    types.add(fragment.type)
+    if (typeof fragment.content !== 'string' || fragment.content.length === 0) continue
+    // SEARCH、FILE 和 TOOL_* 是元数据片段，真正的正文可能出现在它们之后。
+    if (fragment.type === 'REQUEST' || fragment.type === 'RESPONSE') {
+      content.push(fragment.content)
+    } else if (fragment.type === 'THINK') {
+      reasoning.push(fragment.content)
+    }
+  }
+
+  const fromUser =
+    types.has('REQUEST') || (types.has('FILE') && !types.has('RESPONSE') && !types.has('THINK'))
+  return {
+    role: fromUser ? 'user' : 'assistant',
+    content: content.join('\n\n'),
+    reasoning: reasoning.join('\n\n') || undefined
+  }
 }
 
 function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResult {
@@ -311,14 +343,13 @@ function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResul
 
     for (const [id, node] of Object.entries(conversation.mapping)) {
       if (id === 'root' || !node.message) continue
-      const fragment = node.message.fragments?.[0]
-      if (!fragment) continue
+      const fragments = node.message.fragments
+      if (!Array.isArray(fragments) || fragments.length === 0) continue
 
       childrenById.set(id, node.children ?? [])
       raw.push({
         id,
-        role: fragment.type === 'REQUEST' ? 'user' : 'assistant',
-        content: fragment.content,
+        ...parseDeepSeekFragments(fragments),
         createdAt: timestampToMillis(node.message.inserted_at, now),
         // 注意：父节点若不在保留集合内（缺消息/缺片段），这里不做跨节点重映射，
         // 下游会以 orphan 诊断呈现；如需修复可参考 OpenAI 的 resolveParent 思路

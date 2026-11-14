@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createKernel, type KernelFixture } from '../../../tests/helpers/kernel'
+import { deepseekExport } from '../../../tests/fixtures/deepseek'
 import * as fsx from './fsx'
 
 let f: KernelFixture
@@ -23,6 +24,31 @@ afterEach(async () => {
 })
 
 describe('第三方导入的选择、计数和事务', () => {
+  it('DeepSeek 搜索、思考和多段回答可以写入 SQLite，重启后正文与思考均保留', async () => {
+    const payload = deepseekExport([
+      { type: 'SEARCH', results: [] },
+      { type: 'THINK', content: '思考一' },
+      { type: 'TOOL_OPEN', results: [] },
+      { type: 'THINK', content: '思考二' },
+      { type: 'RESPONSE', content: '回答一' },
+      { type: 'RESPONSE', content: '回答二' }
+    ])
+    expect(
+      await f.command('library.import', { source: 'deepseek', payload: JSON.stringify(payload) })
+    ).toEqual({ importedPages: 1, importedMessages: 2 })
+    await f.restart()
+    const tree = await f.query('tree.get', undefined)
+    const conversation = await f.query('conversation.get', { pageId: tree.pages[0].id })
+    expect(conversation.messages[1]).toMatchObject({
+      id: '2',
+      role: 'assistant',
+      content: '回答一\n\n回答二',
+      reasoning: '思考一\n\n思考二',
+      parentMessageId: '1'
+    })
+    expect(conversation.leafMessageId).toBe('2')
+  })
+
   it('只导入选中的对话，父目录、顺序和内容重启后保持一致', async () => {
     expect(
       await f.command('library.import', {
