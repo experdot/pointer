@@ -191,64 +191,6 @@ describe('会话选择与生成', () => {
     expect(await readFile(sessionPath, 'utf8')).toBe(legacy)
     expect(JSON.parse(await readFile(accountsPath, 'utf8')).version).toBe(2)
   })
-
-  it.each(['chat.continue', 'chat.regenerate'] as const)(
-    '%s 可使用默认配置处理外部模型名或失效的历史引用',
-    async (command) => {
-      await f.configure()
-      const provider = controlledProvider()
-      const result = await f.command('library.import', {
-        source: 'chatgpt',
-        payload: JSON.stringify([
-          {
-            title: 'imported',
-            current_node: 'a',
-            mapping: {
-              u: {
-                id: 'u',
-                children: ['a'],
-                message: { id: 'u', author: { role: 'user' }, content: { parts: ['question'] } }
-              },
-              a: {
-                id: 'a',
-                parent: 'u',
-                children: [],
-                message: {
-                  id: 'a',
-                  author: { role: 'assistant' },
-                  content: { parts: ['answer'] },
-                  metadata: { model_slug: 'foreign-model' }
-                }
-              }
-            }
-          }
-        ])
-      })
-      expect(result.importedPages).toBe(1)
-      const pageId = (await f.query('tree.get', undefined)).pages[0].id
-      await f.restart()
-      const conversation = await f.query('conversation.get', { pageId })
-      expect(conversation.messages[1]).toMatchObject({ sourceModel: 'foreign-model' })
-      expect(conversation.messages[1].llmId).toBeUndefined()
-      for (const stale of [false, true]) {
-        if (stale)
-          await f.command('conversation.updateMessage', {
-            pageId,
-            messageId: 'a',
-            patch: { llmId: 'removed-config', modelConfigId: 'removed-parameters' }
-          })
-        const request = await f.command(command, { pageId, messageId: 'a' })
-        await vi.waitFor(() => expect(provider.requests).toHaveLength(stale ? 2 : 1))
-        expect(provider.requests.at(-1)?.body.model).toBe('test-model')
-        provider.requests.at(-1)!.finish()
-        await f.terminal(request.requestId)
-      }
-      await expect(
-        f.command(command, { pageId, messageId: 'a', llmId: 'explicit-missing' })
-      ).rejects.toMatchObject({ code: 'ai.no-llm-config' })
-      expect(provider.requests).toHaveLength(2)
-    }
-  )
 })
 
 describe('统一命令行为', () => {

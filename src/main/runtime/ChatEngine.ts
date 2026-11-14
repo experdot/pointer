@@ -12,7 +12,8 @@ import type {
   ChatMessage,
   Conversation,
   ModelParameters,
-  ProviderConnection
+  ProviderConnection,
+  Settings
 } from '@shared/domain'
 import {
   appendMessage,
@@ -30,7 +31,6 @@ import type { WorkspaceStore } from './WorkspaceStore'
 import type { QueueStore } from './QueueStore'
 import type { ProviderMessage } from './providers'
 import { isAbortError, streamChat } from './providers'
-import { resolveModelConfig } from './modelConfig'
 import {
   MESSAGE_TITLE_PROMPT,
   SESSION_TITLE_PROMPT,
@@ -199,8 +199,8 @@ export class ChatEngine {
       const message = conversation.messages.find((item) => item.id === input.messageId)
       if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
       return this.startGeneration(workspace, conversation, message.parentMessageId, {
-        ...input,
-        previous: message
+        llmId: input.llmId ?? message.llmId,
+        modelConfigId: input.modelConfigId ?? message.modelConfigId
       })
     })
   }
@@ -223,7 +223,10 @@ export class ChatEngine {
         workspace,
         conversation,
         message.role === 'user' ? message.id : message.parentMessageId,
-        { ...input, previous: message }
+        {
+          llmId: input.llmId ?? message.llmId,
+          modelConfigId: input.modelConfigId ?? message.modelConfigId
+        }
       )
     })
   }
@@ -232,11 +235,11 @@ export class ChatEngine {
     workspace: WorkspaceStore,
     conversation: Conversation,
     parentMessageId: string | undefined,
-    input: { llmId?: string; modelConfigId?: string; previous?: ChatMessage },
+    input: { llmId?: string; modelConfigId?: string },
     user?: ChatMessage,
     accept?: () => Promise<void>
   ): Promise<ChatRequestHandle> {
-    const config = this.resolveConfig(input.llmId, input.modelConfigId, input.previous)
+    const config = this.resolveConfig(input.llmId, input.modelConfigId)
     const providerMessages = await this.buildProviderMessages(
       workspace,
       conversation,
@@ -405,14 +408,38 @@ export class ChatEngine {
     return messages
   }
 
-  private resolveConfig(
-    llmId?: string,
-    modelConfigId?: string,
-    previous?: ChatMessage
-  ): ResolvedConfig {
-    const settings = this.deps.settings()
-    if (!settings) throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
-    return resolveModelConfig(settings.get(), { llmId, modelConfigId }, previous)
+  private resolveConfig(llmId?: string, modelConfigId?: string): ResolvedConfig {
+    const settingsStore = this.deps.settings()
+    if (!settingsStore) {
+      throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
+    }
+
+    const settings: Settings = settingsStore.get()
+    const targetLlmId = llmId ?? settings.defaultLLMId ?? settings.llmConfigs.items[0]?.id
+    const llm = settings.llmConfigs.items.find((item) => item.id === targetLlmId)
+    if (!llm) {
+      throw new RuntimeError('ai.no-llm-config', '未找到可用的 LLM 配置')
+    }
+
+    const apiKey = llm.apiKey
+    if (!apiKey) {
+      throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
+    }
+
+    const targetModelConfigId =
+      modelConfigId ?? settings.defaultModelConfigId ?? settings.modelConfigs.items[0]?.id
+    const model = settings.modelConfigs.items.find((item) => item.id === targetModelConfigId)
+
+    return {
+      connection: { baseUrl: llm.baseUrl, apiKey, modelName: llm.modelName },
+      parameters: {
+        systemPrompt: model?.systemPrompt ?? '',
+        topP: model?.topP ?? 1,
+        temperature: model?.temperature ?? 1
+      },
+      llmId: llm.id,
+      modelConfigId: model?.id
+    }
   }
 
   // ==================== 无界面调用 ====================

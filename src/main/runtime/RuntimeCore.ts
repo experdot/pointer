@@ -8,7 +8,7 @@
 import { watch, type FSWatcher } from 'node:fs'
 import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
 import { randomUUID } from 'node:crypto'
-import type { ChatMessage, Conversation, Workspace } from '@shared/domain'
+import type { ChatMessage, Conversation, Settings, Workspace } from '@shared/domain'
 import {
   appendMessage,
   defaultSettings,
@@ -55,7 +55,6 @@ import { WorkspaceStore } from './WorkspaceStore'
 import { listModels, testConnection as testProviderConnection } from './providers'
 import { isWorkspaceFileChange, readBinary } from './fsx'
 import { restoreBackup } from './BackupRestorer'
-import { resolveModelConfig } from './modelConfig'
 
 type QueryHandlers = {
   [K in RuntimeQueryName]: (payload: RuntimeQueryPayload<K>) => Promise<RuntimeQueryResult<K>>
@@ -310,10 +309,10 @@ export class RuntimeCore {
       return this.requireSearch().messages(input)
     },
     'ai.models': async (input) => {
-      return this.listModels(input.llmId)
+      return this.listModels(readLlmId(input))
     },
     'ai.test': async (input) => {
-      return this.testConnection(input.llmId)
+      return this.testConnection(readLlmId(input))
     },
     'attachment.read': async (input) => {
       return this.readAttachment(input.relativePath)
@@ -999,7 +998,7 @@ export class RuntimeCore {
 
   private async listModels(llmId: string): Promise<ModelCatalog> {
     try {
-      const connection = resolveModelConfig(this.requireSettings().get(), { llmId }).connection
+      const connection = this.resolveConnection(llmId)
       return { models: await listModels(connection) }
     } catch (error) {
       return { models: [], error: error instanceof Error ? error.message : String(error) }
@@ -1008,9 +1007,7 @@ export class RuntimeCore {
 
   private async testConnection(llmId: string): Promise<{ ok: boolean; message: string }> {
     try {
-      await testProviderConnection(
-        resolveModelConfig(this.requireSettings().get(), { llmId }).connection
-      )
+      await testProviderConnection(this.resolveConnection(llmId))
       return { ok: true, message: '连接成功' }
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : String(error) }
@@ -1084,6 +1081,26 @@ export class RuntimeCore {
     return { importedPages, importedMessages }
   }
 
+  private resolveConnection(llmId: string): {
+    baseUrl: string
+    apiKey: string
+    modelName: string
+  } {
+    const settings = this.requireSettings()
+    const current: Settings = settings.get()
+    const llm = current.llmConfigs.items.find((item) => item.id === llmId)
+    if (!llm) {
+      throw new RuntimeError('ai.no-llm-config', '未找到指定的 LLM 配置')
+    }
+
+    const apiKey = llm.apiKey
+    if (!apiKey) {
+      throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
+    }
+
+    return { baseUrl: llm.baseUrl, apiKey, modelName: llm.modelName }
+  }
+
   // ==================== 工具方法 ====================
 
   private dispatchEvent(event: RuntimeEvent): void {
@@ -1154,6 +1171,10 @@ function readString(payload: unknown, key: string): string {
 
 function readPageId(payload: unknown): string {
   return readString(payload, 'pageId')
+}
+
+function readLlmId(payload: unknown): string {
+  return readString(payload, 'llmId')
 }
 
 function guessMimeType(relativePath: string): string {

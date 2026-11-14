@@ -33,8 +33,6 @@ export interface ChatMessage extends Timestamps {
   parentMessageId?: string
   branchIndex: number
   llmId?: string
-  /** 导入记录中的模型名称，不作为本地连接配置引用。 */
-  sourceModel?: string
   modelConfigId?: string
   starred?: boolean
   collapsed?: boolean
@@ -79,7 +77,6 @@ export interface MessageDraft {
   reasoning?: string
   attachments?: AttachmentRef[]
   llmId?: string
-  sourceModel?: string
   modelConfigId?: string
   title?: string
   hasError?: boolean

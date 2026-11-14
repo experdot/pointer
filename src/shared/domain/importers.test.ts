@@ -72,7 +72,7 @@ describe('ChatGPT 导出解析', () => {
     expect(conversation.createdAt).toBe(1_700_000_000_000)
     expect(conversation.messages.map((message) => message.id)).toEqual(['u1', 'a1'])
     expect(conversation.messages[1].parentMessageId).toBe('u1')
-    expect(conversation.messages[1].sourceModel).toBe('gpt-x')
+    expect(conversation.messages[1].llmId).toBe('gpt-x')
     expect(conversation.leafMessageId).toBe('a1')
   })
 })
@@ -100,7 +100,7 @@ describe('DeepSeek 导出解析', () => {
       content: '第一段回答\n\n第二段回答',
       reasoning: '先分析\n\n再分析',
       parentMessageId: '1',
-      sourceModel: 'deepseek-chat'
+      llmId: 'deepseek-chat'
     })
     expect(result.conversations[0].leafMessageId).toBe('2')
   })

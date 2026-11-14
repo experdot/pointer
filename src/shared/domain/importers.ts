@@ -33,7 +33,7 @@ interface RawMessage {
   reasoning?: string
   createdAt: number
   parentMessageId?: string
-  sourceModel?: string
+  llmId?: string
 }
 
 /** 外部导出中的角色统一为领域角色；tool 等三值之外的未知值归并为 assistant */
@@ -70,7 +70,7 @@ function withBranchIndexes(messages: RawMessage[]): ChatMessage[] {
     createdAt: message.createdAt,
     parentMessageId: message.parentMessageId,
     branchIndex: branchById.get(message.id) ?? 0,
-    sourceModel: message.sourceModel
+    llmId: message.llmId
   }))
 }
 
@@ -247,7 +247,7 @@ function parseOpenAI(payload: OpenAIExport[], now: number): ImportParseResult {
         content: joinParts(message.content?.parts),
         createdAt: timestampToMillis(message.create_time, now),
         parentMessageId: resolveParent(node.parent),
-        sourceModel: message.metadata?.model_slug
+        llmId: message.metadata?.model_slug
       })
     }
 
@@ -354,7 +354,7 @@ function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResul
         // 注意：父节点若不在保留集合内（缺消息/缺片段），这里不做跨节点重映射，
         // 下游会以 orphan 诊断呈现；如需修复可参考 OpenAI 的 resolveParent 思路
         parentMessageId: node.parent === 'root' ? undefined : (node.parent ?? undefined),
-        sourceModel: node.message.model
+        llmId: node.message.model
       })
     }
 
@@ -439,7 +439,7 @@ function parsePointer(payload: PointerExport, now: number): ImportParseResult {
         reasoning: message.reasoning_content,
         createdAt: timestampToMillis(message.timestamp, now),
         parentMessageId: parentMap.get(message.id) ?? message.parentId,
-        sourceModel: message.modelId
+        llmId: message.modelId
       })
     }
 

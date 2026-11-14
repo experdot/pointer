@@ -176,7 +176,6 @@ function serializeMessageBlock(message: ChatMessage): string {
   if (message.parentMessageId) xml += element('parentMessageId', message.parentMessageId)
   xml += element('branchIndex', message.branchIndex)
   if (message.llmId) xml += element('llmId', message.llmId)
-  if (message.sourceModel) xml += element('sourceModel', message.sourceModel)
   if (message.modelConfigId) xml += element('modelConfigId', message.modelConfigId)
   if (message.starred) xml += element('starred', true)
   if (message.collapsed) xml += element('collapsed', true)
@@ -402,7 +401,6 @@ function parseMessageBlock(section: string): ChatMessage | null {
     branchIndex: readNumber(xml, 'branchIndex') ?? 0,
     parentMessageId: readElement(xml, 'parentMessageId'),
     llmId: readElement(xml, 'llmId'),
-    sourceModel: readElement(xml, 'sourceModel'),
     modelConfigId: readElement(xml, 'modelConfigId'),
     title: readElement(xml, 'title')
   }
