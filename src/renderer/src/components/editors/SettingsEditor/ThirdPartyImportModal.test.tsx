@@ -38,7 +38,7 @@ describe('导入预览与勾选界面', () => {
     fireEvent.click(within(secondRow).getByRole('checkbox'))
     fireEvent.change(screen.getByPlaceholderText('搜索标题...'), { target: { value: '对话1' } })
     expect(screen.queryByText('对话2')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: '导入 1 个对话' }))
+    fireEvent.click(screen.getByText('导入 1 个对话', { selector: 'button span' }))
     await screen.findByText('成功: 1 个')
     expect(command).toHaveBeenCalledWith(
       'library.import',
@@ -57,7 +57,7 @@ describe('导入预览与勾选界面', () => {
     await upload(JSON.stringify(data))
     await screen.findByText('对话1')
     vi.mocked(command).mockRejectedValueOnce(new Error('无法写入工作区'))
-    fireEvent.click(screen.getByRole('button', { name: '导入 2 个对话' }))
+    fireEvent.click(screen.getByText('导入 2 个对话', { selector: 'button span' }))
     await waitFor(() => expect(screen.getByText(/import.json：无法写入工作区/)).toBeTruthy())
     expect(screen.getByText('成功: 0 个')).toBeTruthy()
     expect(command).toHaveBeenCalledTimes(1)

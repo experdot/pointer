@@ -29,6 +29,21 @@ async function setLanguage(language: SupportedLanguage): Promise<void> {
   )
 }
 
+// 直接限定可见的下拉层，避免角色查询反复计算整棵配置树的样式。
+const visibleMenuSelector = '.ant-dropdown:not(.ant-dropdown-hidden) [role="menu"]'
+
+async function openFolderMenu(container: HTMLElement): Promise<HTMLElement> {
+  const trigger = container.querySelector<HTMLElement>(
+    '.config-tree-toolbar .ant-dropdown-trigger'
+  )!
+  fireEvent.mouseEnter(trigger)
+  return waitFor(() => {
+    const menu = document.querySelector<HTMLElement>(visibleMenuSelector)
+    expect(menu).not.toBeNull()
+    return menu!
+  })
+}
+
 beforeEach(async () => {
   useLocaleStore.setState({ snapshot: null, saving: false })
   await setLanguage('en-US')
@@ -81,21 +96,17 @@ describe('语言切换中的菜单与默认文案', () => {
         <Panel />
       </App>
     )
-    const toolbar = within(container.querySelector<HTMLElement>('.config-tree-toolbar')!)
-    const folderTrigger = toolbar.getByRole('button', { name: 'ellipsis' })
-    fireEvent.mouseEnter(folderTrigger)
-    const menu = await screen.findByRole('menu')
+    const menu = await openFolderMenu(container)
     await act(async () => {
       fireEvent.click(within(menu).getByText('New folder'))
-      fireEvent.mouseLeave(folderTrigger)
+      fireEvent.mouseLeave(container.querySelector('.config-tree-toolbar .ant-dropdown-trigger')!)
       await useSettingsStore.getState().flush()
     })
-    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    await waitFor(() => expect(document.querySelector(visibleMenuSelector)).toBeNull())
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
     await setLanguage('zh-CN')
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
-    fireEvent.mouseEnter(folderTrigger)
-    const reopenedMenu = await screen.findByRole('menu')
+    const reopenedMenu = await openFolderMenu(container)
     await act(async () => {
       fireEvent.click(within(reopenedMenu).getByText('新建文件夹'))
       await useSettingsStore.getState().flush()

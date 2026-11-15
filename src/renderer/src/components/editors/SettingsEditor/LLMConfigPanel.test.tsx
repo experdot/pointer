@@ -54,7 +54,7 @@ describe('模型配置的真实表单与设置提交', () => {
       target: { value: 'http://new.invalid/v1' }
     })
     fireEvent.change(screen.getByLabelText('API 密钥'), { target: { value: 'new-key' } })
-    fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
+    fireEvent.click(screen.getByText('测试连接', { selector: 'button span' }))
     await waitFor(() => expect(client.command).toHaveBeenCalledTimes(1))
     expect(client.query).not.toHaveBeenCalled()
     const payload = client.command.mock.calls[0][1]
@@ -77,11 +77,11 @@ describe('模型配置的真实表单与设置提交', () => {
       </App>
     )
     fireEvent.change(screen.getByLabelText('API 密钥'), { target: { value: 'retry-key' } })
-    fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
+    fireEvent.click(screen.getByText('测试连接', { selector: 'button span' }))
     expect(await screen.findByText('测试失败')).toBeTruthy()
     expect(client.query).not.toHaveBeenCalled()
     expect((screen.getByLabelText('API 密钥') as HTMLInputElement).value).toBe('retry-key')
-    fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
+    fireEvent.click(screen.getByText('测试连接', { selector: 'button span' }))
     expect(await screen.findByText('连接成功')).toBeTruthy()
     expect(client.query).toHaveBeenCalledTimes(1)
   })
