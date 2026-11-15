@@ -47,7 +47,35 @@ describe('语言切换中的菜单与默认文案', () => {
   it.each([
     ['LLM', LLMConfigPanel, 'llmConfigs'],
     ['模型', ModelConfigPanel, 'modelConfigs']
-  ] as const)('%s 配置与文件夹仅新增时使用当前语言，表单和预设实时切换', async (_, Panel, key) => {
+  ] as const)('%s 配置仅新增时使用当前语言，已有名称保持不变', async (_, Panel, key) => {
+    const { container } = render(
+      <App>
+        <Panel />
+      </App>
+    )
+    const toolbar = within(container.querySelector<HTMLElement>('.config-tree-toolbar')!)
+    fireEvent.click(toolbar.getByText('New configuration'))
+    await act(async () => useSettingsStore.getState().flush())
+    expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
+    await setLanguage('zh-CN')
+    expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
+    fireEvent.click(toolbar.getByText('新建配置'))
+    await act(async () => useSettingsStore.getState().flush())
+    expect(useSettingsStore.getState().settings[key].items.map((item) => item.name)).toEqual([
+      'New configuration',
+      '新配置'
+    ])
+    if (key === 'modelConfigs') {
+      expect(screen.getByText('温度（Temperature）')).toBeTruthy()
+      expect(screen.getByText('核采样（Top P）')).toBeTruthy()
+    }
+  })
+
+  // 文件夹命名与模型表单分开验证，避免在同一用例中反复扫描完整 Ant Design 表单。
+  it.each([
+    ['LLM', LLMConfigPanel, 'llmConfigs'],
+    ['模型', ModelConfigPanel, 'modelConfigs']
+  ] as const)('%s 文件夹菜单刷新语言，已有文件夹名称保持不变', async (_, Panel, key) => {
     const { container } = render(
       <App>
         <Panel />
@@ -55,9 +83,6 @@ describe('语言切换中的菜单与默认文案', () => {
     )
     const toolbar = within(container.querySelector<HTMLElement>('.config-tree-toolbar')!)
     const folderTrigger = toolbar.getByRole('button', { name: 'ellipsis' })
-    fireEvent.click(toolbar.getByText('New configuration'))
-    await act(async () => useSettingsStore.getState().flush())
-    expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
     fireEvent.mouseEnter(folderTrigger)
     const menu = await screen.findByRole('menu')
     await act(async () => {
@@ -68,29 +93,7 @@ describe('语言切换中的菜单与默认文案', () => {
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
     await setLanguage('zh-CN')
-    expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
-    fireEvent.click(toolbar.getByText('新建配置'))
-    await act(async () => useSettingsStore.getState().flush())
-    expect(useSettingsStore.getState().settings[key].items.map((item) => item.name)).toEqual([
-      'New configuration',
-      '新配置'
-    ])
-    if (key === 'llmConfigs') {
-      const address = screen.getByLabelText('API 基础地址', { selector: 'input' })
-      expect(screen.getByLabelText('API 密钥')).toBeTruthy()
-      fireEvent.focus(address)
-      fireEvent.mouseDown(address)
-      expect(await screen.findByText('Ollama 本地服务')).toBeTruthy()
-      await setLanguage('en-US')
-      expect(await screen.findByText('Ollama Local')).toBeTruthy()
-      expect(screen.getByLabelText('API Key')).toBeTruthy()
-      await setLanguage('zh-CN')
-      fireEvent.blur(address)
-    } else {
-      expect(screen.getByText('温度（Temperature）')).toBeTruthy()
-      expect(screen.getByText('核采样（Top P）')).toBeTruthy()
-    }
     fireEvent.mouseEnter(folderTrigger)
     const reopenedMenu = await screen.findByRole('menu')
     await act(async () => {
@@ -101,6 +104,27 @@ describe('语言切换中的菜单与默认文案', () => {
       'New folder',
       '新文件夹'
     ])
+  })
+
+  it('LLM 表单标签与已打开的服务预设随语言切换', async () => {
+    await setLanguage('zh-CN')
+    const { container } = render(
+      <App>
+        <LLMConfigPanel />
+      </App>
+    )
+    const toolbar = within(container.querySelector<HTMLElement>('.config-tree-toolbar')!)
+    fireEvent.click(toolbar.getByText('新建配置'))
+    await act(async () => useSettingsStore.getState().flush())
+    const address = screen.getByLabelText('API 基础地址', { selector: 'input' })
+    expect(screen.getByLabelText('API 密钥')).toBeTruthy()
+    fireEvent.focus(address)
+    fireEvent.mouseDown(address)
+    expect(await screen.findByText('Ollama 本地服务')).toBeTruthy()
+    await setLanguage('en-US')
+    expect(await screen.findByText('Ollama Local')).toBeTruthy()
+    expect(screen.getByLabelText('API Key')).toBeTruthy()
+    expect(useSettingsStore.getState().settings.llmConfigs.items[0].name).toBe('新配置')
   })
 
   it('导出范围下拉菜单打开时刷新标签，选择与对话内容保持不变', async () => {

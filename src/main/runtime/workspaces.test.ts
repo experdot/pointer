@@ -355,7 +355,11 @@ describe('目录布局与排他访问', () => {
       await expect(
         f.command('tree.move', { nodeId: b.id, targetNodeId: a.id, placement: 'inside' })
       ).rejects.toThrow('交换中断')
-      expect(await f.query('tree.get', undefined)).toEqual(before)
+      const rolledBack = await f.query('tree.get', undefined)
+      // 目录扫描可能改变页面数组的枚举顺序，身份、父级和 orderKey 仍须完整回滚。
+      expect(rolledBack.folders).toEqual(before.folders)
+      expect(rolledBack.pages).toHaveLength(before.pages.length)
+      expect(rolledBack.pages).toEqual(expect.arrayContaining(before.pages))
       await f.restart()
       const tree = await f.query('tree.get', undefined)
       expect(tree.pages.find((page) => page.id === pa.id)?.parentFolderId).toBe(a.id)
