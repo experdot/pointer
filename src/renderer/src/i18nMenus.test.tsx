@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { App } from 'antd'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultSettings } from '@shared/domain'
@@ -53,24 +53,31 @@ describe('语言切换中的菜单与默认文案', () => {
         <Panel />
       </App>
     )
-    fireEvent.click(screen.getByRole('button', { name: /New configuration/ }))
+    const toolbar = within(container.querySelector<HTMLElement>('.config-tree-toolbar')!)
+    const folderTrigger = toolbar.getByRole('button', { name: 'ellipsis' })
+    fireEvent.click(toolbar.getByText('New configuration'))
     await act(async () => useSettingsStore.getState().flush())
     expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
-    fireEvent.mouseEnter(container.querySelector('.config-tree-toolbar .ant-dropdown-trigger')!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /New folder/ }))
-    await act(async () => useSettingsStore.getState().flush())
+    fireEvent.mouseEnter(folderTrigger)
+    const menu = await screen.findByRole('menu')
+    await act(async () => {
+      fireEvent.click(within(menu).getByText('New folder'))
+      fireEvent.mouseLeave(folderTrigger)
+      await useSettingsStore.getState().flush()
+    })
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
     await setLanguage('zh-CN')
     expect(useSettingsStore.getState().settings[key].items[0].name).toBe('New configuration')
     expect(useSettingsStore.getState().settings[key].folders[0].name).toBe('New folder')
-    fireEvent.click(screen.getByRole('button', { name: /新建配置/ }))
+    fireEvent.click(toolbar.getByText('新建配置'))
     await act(async () => useSettingsStore.getState().flush())
     expect(useSettingsStore.getState().settings[key].items.map((item) => item.name)).toEqual([
       'New configuration',
       '新配置'
     ])
     if (key === 'llmConfigs') {
-      const address = screen.getByRole('combobox', { name: 'API 基础地址' })
+      const address = screen.getByLabelText('API 基础地址', { selector: 'input' })
       expect(screen.getByLabelText('API 密钥')).toBeTruthy()
       fireEvent.focus(address)
       fireEvent.mouseDown(address)
@@ -84,9 +91,12 @@ describe('语言切换中的菜单与默认文案', () => {
       expect(screen.getByText('温度（Temperature）')).toBeTruthy()
       expect(screen.getByText('核采样（Top P）')).toBeTruthy()
     }
-    fireEvent.mouseEnter(container.querySelector('.config-tree-toolbar .ant-dropdown-trigger')!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /新建文件夹/ }))
-    await act(async () => useSettingsStore.getState().flush())
+    fireEvent.mouseEnter(folderTrigger)
+    const reopenedMenu = await screen.findByRole('menu')
+    await act(async () => {
+      fireEvent.click(within(reopenedMenu).getByText('新建文件夹'))
+      await useSettingsStore.getState().flush()
+    })
     expect(useSettingsStore.getState().settings[key].folders.map((folder) => folder.name)).toEqual([
       'New folder',
       '新文件夹'
@@ -119,7 +129,7 @@ describe('语言切换中的菜单与默认文案', () => {
         />
       </App>
     )
-    const select = await screen.findByRole('combobox', { name: 'Message selection mode' })
+    const select = await screen.findByLabelText('Message selection mode', { selector: 'input' })
     fireEvent.mouseDown(select)
     expect(await screen.findByText('All branches')).toBeTruthy()
     const changesBefore = onChange.mock.calls.length
@@ -143,10 +153,10 @@ describe('语言切换中的菜单与默认文案', () => {
         options={DEFAULT_PREVIEW_OPTIONS}
       />
     )
-    expect(screen.getByRole('columnheader', { name: 'Column 1' })).toBeTruthy()
+    expect(screen.getByText('Column 1', { selector: 'th' })).toBeTruthy()
     await setLanguage('zh-CN')
-    expect(screen.getByRole('columnheader', { name: '第 1 列' })).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: '我的标题' })).toBeTruthy()
+    expect(screen.getByText('第 1 列', { selector: 'th' })).toBeTruthy()
+    expect(screen.getByText('我的标题', { selector: 'th' })).toBeTruthy()
   })
 
   it('备份树中的未命名占位文本刷新语言，已取消的选择不被重置', async () => {
@@ -178,7 +188,7 @@ describe('语言切换中的菜单与默认文案', () => {
   it('CSV 新增列按当前语言命名，已有列标题不会被语言切换改写', async () => {
     const Editor = csvEditorPlugin.Component
     const onChange = vi.fn()
-    render(
+    const { container } = render(
       <Editor
         content={'自定义\nvalue'}
         format="csv"
@@ -186,12 +196,14 @@ describe('语言切换中的菜单与默认文案', () => {
         onChange={onChange}
       />
     )
+    const header = within(container.querySelector<HTMLElement>('thead')!)
     await setLanguage('zh-CN')
-    fireEvent.click(screen.getByRole('button', { name: /列/ }))
+    // 限定真实表头，避开隐藏的列宽测量副本及整页可访问名称计算。
+    fireEvent.click(header.getByText('列', { selector: 'button span' }))
     expect(onChange.mock.lastCall?.[0]).toBe('自定义,第 2 列\nvalue,')
     await setLanguage('en-US')
     expect(screen.getAllByText('第 2 列').length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByRole('button', { name: /Column/ }))
+    fireEvent.click(header.getByText('Column', { selector: 'button span' }))
     expect(onChange.mock.lastCall?.[0]).toBe('自定义,第 2 列,Column 3\nvalue,,')
   })
 

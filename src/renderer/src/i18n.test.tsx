@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { App, ConfigProvider, Empty } from 'antd'
 import enUS from 'antd/locale/en_US'
 import zhCN from 'antd/locale/zh_CN'
@@ -201,14 +201,16 @@ describe('设置中的语言选择', () => {
       </App>
     )
     fireEvent.mouseEnter(container.querySelector(`${toolbar} .ant-dropdown-trigger`)!)
-    expect(await screen.findByRole('menuitem', { name: /New folder/ })).toBeTruthy()
+    // 先等待菜单打开，再按文本查询，避免轮询整页可访问名称时阻塞悬停计时器。
+    const menu = within(await screen.findByRole('menu'))
+    expect(menu.getByText('New folder')).toBeTruthy()
     await act(async () =>
       useLocaleStore
         .getState()
         .accept({ ...english, preference: 'zh-CN', language: 'zh-CN', revision: 1 })
     )
-    expect(await screen.findByRole('menuitem', { name: /新建文件夹/ })).toBeTruthy()
-    expect(screen.queryByRole('menuitem', { name: /New folder/ })).toBeNull()
+    expect(menu.getByText('新建文件夹')).toBeTruthy()
+    expect(menu.queryByText('New folder')).toBeNull()
   })
 
   it.each(['context', 'more'])('通用树 %s 菜单打开期间切换语言，目录名称不变', async (trigger) => {
@@ -237,15 +239,16 @@ describe('设置中的语言选择', () => {
     )
     if (trigger === 'context') fireEvent.contextMenu(screen.getByText('我的目录'))
     else fireEvent.click(container.querySelector('.tree-view-title-more')!)
-    expect(await screen.findByRole('menuitem', { name: /New folder/ })).toBeTruthy()
+    const menu = within(await screen.findByRole('menu'))
+    expect(menu.getByText('New folder')).toBeTruthy()
     await act(async () =>
       useLocaleStore
         .getState()
         .accept({ ...english, preference: 'zh-CN', language: 'zh-CN', revision: 1 })
     )
-    expect(await screen.findByRole('menuitem', { name: /新建文件夹/ })).toBeTruthy()
-    expect(screen.queryByRole('menuitem', { name: /New folder/ })).toBeNull()
-    expect(screen.getByRole('menuitem', { name: /重命名/ })).toBeTruthy()
+    expect(menu.getByText('新建文件夹')).toBeTruthy()
+    expect(menu.queryByText('New folder')).toBeNull()
+    expect(menu.getByText('重命名')).toBeTruthy()
     expect(screen.getByText('我的目录')).toBeTruthy()
   })
 
@@ -258,14 +261,17 @@ describe('设置中的语言选择', () => {
     expect(screen.getByText('Font size')).toBeTruthy()
     expect(screen.getByText('No data', { selector: '.ant-empty-description' })).toBeTruthy()
     expect(screen.getByText('1 day ago')).toBeTruthy()
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Interface language' }))
-    fireEvent.click(await screen.findByText('简体中文'))
-    await waitFor(() => expect(document.documentElement.lang).toBe('zh-CN'))
+    fireEvent.mouseDown(screen.getByLabelText('Interface language', { selector: 'input' }))
+    const chineseOption = await screen.findByText('简体中文')
+    await act(async () => {
+      fireEvent.click(chineseOption)
+    })
+    expect(document.documentElement.lang).toBe('zh-CN')
     expect(command).toHaveBeenCalledWith('app.locale.set', { preference: 'zh-CN' }, null)
     expect(screen.getByText('字体大小')).toBeTruthy()
     expect(screen.getByText('暂无数据', { selector: '.ant-empty-description' })).toBeTruthy()
     expect(screen.getByText('1天前')).toBeTruthy()
-    expect(screen.getByRole('combobox', { name: '界面语言' })).toBeTruthy()
+    expect(screen.getByLabelText('界面语言', { selector: 'input' })).toBeTruthy()
   })
 
   it('已打开的树和弹窗刷新语言，保留用户输入的目录名', async () => {
