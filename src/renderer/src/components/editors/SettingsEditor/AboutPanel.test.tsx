@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { App } from 'antd'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AboutPanel } from './AboutPanel'
@@ -51,28 +51,48 @@ describe('更新界面的状态与安装前保存', () => {
   })
   it('未保存回答阻止安装，重试只保存对应请求后再请求安装', async () => {
     useUpdateStore.getState().applyStatus({ state: 'downloaded', version: '2.1.0' })
+    let finishSave!: () => void
+    const saving = new Promise<void>((resolve) => {
+      finishSave = resolve
+    })
     vi.mocked(command)
       .mockRejectedValueOnce(
         Object.assign(new Error('尚未保存'), { code: 'chat.unsaved', details: ['request'] })
       )
+      .mockReturnValueOnce(saving)
       .mockResolvedValue(undefined)
     render(
       <App>
         <AboutPanel />
       </App>
     )
-    fireEvent.click(screen.getByRole('button', { name: '安装并重启' }))
-    fireEvent.click(await screen.findByRole('button', { name: /^安\s*装$/ }))
-    const retry = await screen.findByRole('button', { name: '重试保存' })
+    // 等待交互后的状态更新，按标题限定弹窗范围，减少 jsdom 的重复样式计算。
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('安装并重启'))
+    })
+    const installDialog = screen
+      .getAllByText('安装更新')[0]
+      .closest<HTMLElement>('[role="dialog"]')!
+    await act(async () => {
+      fireEvent.click(within(installDialog).getByRole('button', { name: /^安\s*装$/ }))
+    })
+    const saveDialog = screen
+      .getAllByText('回答尚未保存')[0]
+      .closest<HTMLElement>('[role="dialog"]')!
     expect(vi.mocked(command).mock.calls.map(([name]) => name)).toEqual(['app.quitAndInstall'])
-    fireEvent.click(retry)
-    await waitFor(() =>
-      expect(vi.mocked(command).mock.calls.map(([name]) => name)).toEqual([
-        'app.quitAndInstall',
-        'chat.retrySave',
-        'app.quitAndInstall'
-      ])
-    )
+    await act(async () => {
+      fireEvent.click(within(saveDialog).getByRole('button', { name: '重试保存' }))
+    })
+    expect(vi.mocked(command).mock.calls.map(([name]) => name)).toEqual([
+      'app.quitAndInstall',
+      'chat.retrySave'
+    ])
     expect(command).toHaveBeenNthCalledWith(2, 'chat.retrySave', { requestId: 'request' })
+    await act(async () => finishSave())
+    expect(vi.mocked(command).mock.calls.map(([name]) => name)).toEqual([
+      'app.quitAndInstall',
+      'chat.retrySave',
+      'app.quitAndInstall'
+    ])
   })
 })
