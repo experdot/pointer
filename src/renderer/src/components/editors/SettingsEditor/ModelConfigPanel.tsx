@@ -12,7 +12,7 @@ export function ModelConfigPanel(): React.JSX.Element {
   const {
     items,
     folders,
-    batchUpdateItemsOrder,
+    moveNode,
     createConfig,
     updateConfig,
     deleteConfig,
@@ -62,7 +62,7 @@ Top P: ${config.topP}`
         itemIcon={<RobotOutlined />}
         itemNameKey="name"
         isItem={isItem}
-        batchUpdateItemsOrder={batchUpdateItemsOrder}
+        moveNode={moveNode}
         createItem={(inFolderId) =>
           createConfig(
             { name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 },

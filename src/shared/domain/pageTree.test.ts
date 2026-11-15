@@ -9,7 +9,7 @@ import {
   descendantFolderIds,
   isFolderAncestor,
   moveTreeNode,
-  nextOrder,
+  nextOrderKey,
   removeFolder,
   removePages,
   validatePageTree
@@ -22,24 +22,24 @@ function applyMove(tree: PageTree, move: TreeMove): PageTree {
 }
 
 function folder(id: string, name: string, parentFolderId?: string, order = 0): Folder {
-  return { id, kind: 'folder', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'folder', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 function page(id: string, name: string, parentFolderId?: string, order = 0): Page {
-  return { id, kind: 'page', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'page', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 function fixture(): PageTree {
   let tree: PageTree = { folders: [], pages: [] }
   tree = addFolder(tree, folder('f1', '工作'))
   tree = addFolder(tree, folder('f2', '归档', 'f1'))
-  tree = addPage(tree, page('p1', '讨论', 'f1'))
-  tree = addPage(tree, page('p2', '根页面'))
+  tree = addPage(tree, page('p1', '讨论', 'f1', 1))
+  tree = addPage(tree, page('p2', '根页面', undefined, 1))
   return tree
 }
 
 describe('页面树遍历', () => {
-  it('同级节点按 order 排序，文件夹在前', () => {
+  it('同级节点按共享的 orderKey 排序', () => {
     const tree = fixture()
     expect(childrenOf(tree, undefined).map((node) => node.id)).toEqual(['f1', 'p2'])
     expect(childrenOf(tree, 'f1').map((node) => node.id)).toEqual(['f2', 'p1'])
@@ -52,20 +52,20 @@ describe('页面树遍历', () => {
     expect(isFolderAncestor(tree, 'f2', 'f1')).toBe(false)
   })
 
-  it('nextOrder 跳过已占用序号', () => {
+  it('nextOrderKey 跳过已占用序号', () => {
     const tree = fixture()
-    expect(nextOrder(tree, undefined)).toBe(1)
-    expect(nextOrder(tree, 'f1')).toBe(1)
+    expect(nextOrderKey(tree, undefined)).toBe('a2')
+    expect(nextOrderKey(tree, 'f1')).toBe('a2')
   })
 })
 
 describe('页面树变更', () => {
-  it('移动页面到目标文件夹并重排序号', () => {
+  it('移动页面到目标文件夹并生成新键', () => {
     const tree = applyMove(fixture(), { nodeId: 'p2', targetNodeId: 'f2', placement: 'end' })
 
     expect(childrenOf(tree, undefined).map((node) => node.id)).toEqual(['f1'])
     expect(childrenOf(tree, 'f2').map((node) => node.id)).toEqual(['p2'])
-    expect(tree.pages.find((item) => item.id === 'p2')?.order).toBe(0)
+    expect(tree.pages.find((item) => item.id === 'p2')?.orderKey).toBe('a0')
   })
 
   it('可插入到指定同级节点之前', () => {

@@ -9,7 +9,7 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin({ exclude: ['fractional-indexing'] })]
   },
   preload: {
     resolve: {
@@ -17,7 +17,7 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin({ exclude: ['fractional-indexing'] })]
   },
   renderer: {
     resolve: {

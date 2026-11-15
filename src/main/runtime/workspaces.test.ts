@@ -338,12 +338,13 @@ describe('目录布局与排他访问', () => {
   })
 
   it.each([1, 2, 3, 4])(
-    '目录交换第 %i 次移动失败后撤销已完成移动，重启不会交换页面身份',
+    '目录子树第 %i 次移动失败后撤销已完成移动，重启不会交换页面身份',
     async (failAt) => {
       const a = await f.command('folder.create', { name: 'A?' })
       const b = await f.command('folder.create', { name: 'A*', afterNodeId: a.id })
       const pa = await f.command('page.create', { name: 'same', parentFolderId: a.id })
       const pb = await f.command('page.create', { name: 'same', parentFolderId: b.id })
+      await f.command('page.create', { name: 'another', parentFolderId: b.id })
       const before = await f.query('tree.get', undefined)
       const move = fsx.movePath
       let calls = 0
@@ -352,7 +353,7 @@ describe('目录布局与排他访问', () => {
         return move(from, to)
       })
       await expect(
-        f.command('tree.move', { nodeId: b.id, targetNodeId: a.id, placement: 'before' })
+        f.command('tree.move', { nodeId: b.id, targetNodeId: a.id, placement: 'inside' })
       ).rejects.toThrow('交换中断')
       expect(await f.query('tree.get', undefined)).toEqual(before)
       await f.restart()

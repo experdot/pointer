@@ -4,8 +4,10 @@
  * 配置树只是「文件夹 + 条目」的两级结构，用于设置面板的归类展示。
  */
 
-import type { TreeNodeBase } from './common'
+import type { Diagnostic, TreeMove, TreeNodeBase } from './common'
 import { compareNodes, descendantFolderIds } from './common'
+import { orderKeyBetween, orderKeysBetween } from './ordering'
+import { moveOrderedNode } from './treeOrder'
 
 export interface ConfigItemBase extends TreeNodeBase {
   kind: 'item'
@@ -35,14 +37,56 @@ export function configChildren<T extends ConfigItemBase>(
   return [...folders, ...items].sort(compareNodes)
 }
 
-export function configNextOrder<T extends ConfigItemBase>(
+export function configNextOrderKey<T extends ConfigItemBase>(
   tree: ConfigTree<T>,
   parentFolderId: string | undefined
-): number {
-  return configChildren(tree, parentFolderId).reduce(
-    (max, node) => Math.max(max, node.order + 1),
-    0
-  )
+): string {
+  return orderKeyBetween(configChildren(tree, parentFolderId).at(-1)?.orderKey ?? null, null)
+}
+
+export interface ConfigInsertPosition {
+  parentFolderId?: string
+  afterNodeId?: string
+}
+
+/** 在修改重放时按最新配置树解析位置，不能保存过期的排序键。 */
+export function configInsertPosition<T extends ConfigItemBase>(
+  tree: ConfigTree<T>,
+  position: ConfigInsertPosition
+): { parentFolderId?: string; orderKey: string } {
+  const reference = position.afterNodeId
+    ? [...tree.folders, ...tree.items].find((node) => node.id === position.afterNodeId)
+    : undefined
+  if (position.afterNodeId && !reference) throw new Error('配置插入参照项已不存在')
+  const parentFolderId = position.parentFolderId ?? reference?.parentFolderId
+  if (parentFolderId && !tree.folders.some((folder) => folder.id === parentFolderId))
+    throw new Error('配置目标文件夹已不存在')
+  const siblings = configChildren(tree, parentFolderId)
+  if (!reference || position.parentFolderId !== undefined)
+    return { parentFolderId, orderKey: orderKeyBetween(siblings.at(-1)?.orderKey ?? null, null) }
+  const index = siblings.findIndex((node) => node.id === reference.id)
+  return {
+    parentFolderId,
+    orderKey: orderKeyBetween(reference.orderKey, siblings[index + 1]?.orderKey ?? null)
+  }
+}
+
+export function moveConfigNode<T extends ConfigItemBase>(
+  tree: ConfigTree<T>,
+  move: TreeMove,
+  at: number
+): { ok: true; tree: ConfigTree<T> } | { ok: false; error: Diagnostic } {
+  const nodes: (T | ConfigFolder)[] = [...tree.folders, ...tree.items]
+  const result = moveOrderedNode(nodes, move, at)
+  if (!result.ok) return result
+  if (result.nodes === nodes) return { ok: true, tree }
+  return {
+    ok: true,
+    tree: {
+      folders: result.nodes.filter((node): node is ConfigFolder => node.kind === 'folder'),
+      items: result.nodes.filter((node): node is T => node.kind === 'item')
+    }
+  }
 }
 
 export function configDescendantFolderIds<T extends ConfigItemBase>(
@@ -101,37 +145,9 @@ export function removeConfigItem<T extends ConfigItemBase>(
   return { ...tree, items: tree.items.filter((item) => item.id !== itemId) }
 }
 
-export function batchUpdateConfigItems<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  updates: ReadonlyArray<{
-    id: string
-    changes: Partial<Omit<T, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>
-  }>,
-  at: number
-): ConfigTree<T> {
-  return updates.reduce(
-    (accumulated, update) => updateConfigItem(accumulated, update.id, update.changes, at),
-    tree
-  )
-}
-
-export function batchUpdateConfigFolders<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  updates: ReadonlyArray<{
-    id: string
-    changes: Partial<Omit<ConfigFolder, 'id' | 'createdAt' | 'kind' | 'updatedAt'>>
-  }>,
-  at: number
-): ConfigTree<T> {
-  return updates.reduce(
-    (accumulated, update) => updateConfigFolder(accumulated, update.id, update.changes, at),
-    tree
-  )
-}
-
 /**
  * 删除配置文件夹
- * promote：同级上层重新排序后，条目与子文件夹提升到根
+ * promote：条目与子文件夹按原次序提升到根末尾，只给提升的节点分配键
  * cascade：连同其中内容一起删除
  */
 export function removeConfigFolder<T extends ConfigItemBase>(
@@ -150,17 +166,23 @@ export function removeConfigFolder<T extends ConfigItemBase>(
     }
   }
 
-  let offset = configNextOrder(tree, undefined)
+  const promoted = configChildren(tree, folderId)
+  const keys = orderKeysBetween(
+    configChildren(tree, undefined).at(-1)?.orderKey ?? null,
+    null,
+    promoted.length
+  )
+  const byId = new Map(promoted.map((node, index) => [node.id, keys[index]]))
   const folders = tree.folders
     .filter((folder) => folder.id !== folderId)
     .map((folder) =>
       folder.parentFolderId === folderId
-        ? { ...folder, parentFolderId: undefined, order: offset++, updatedAt: at }
+        ? { ...folder, parentFolderId: undefined, orderKey: byId.get(folder.id)!, updatedAt: at }
         : folder
     )
   const items = tree.items.map((item) =>
     item.parentFolderId === folderId
-      ? { ...item, parentFolderId: undefined, order: offset++, updatedAt: at }
+      ? { ...item, parentFolderId: undefined, orderKey: byId.get(item.id)!, updatedAt: at }
       : item
   )
 

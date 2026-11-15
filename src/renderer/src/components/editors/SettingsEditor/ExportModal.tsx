@@ -1,3 +1,4 @@
+import { BACKUP_FORMAT_VERSION } from '@shared/contracts'
 import React, { useState, useMemo, useCallback } from 'react'
 import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex, Divider } from 'antd'
 import type { TreeDataNode } from 'antd'
@@ -99,7 +100,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     setExporting(true)
     try {
       const exportData: ExportData = {
-        version: '1.0.0',
+        version: BACKUP_FORMAT_VERSION,
         exportedAt: Date.now(),
         data: {}
       }

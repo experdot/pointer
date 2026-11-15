@@ -7,6 +7,7 @@
 import type { Diagnostic } from './common'
 import type { ConfigItemBase, ConfigTree } from './configTree'
 import { emptyConfigTree } from './configTree'
+import { validateOrderKeys } from './ordering'
 
 export interface LLMConfig extends ConfigItemBase {
   baseUrl: string
@@ -54,7 +55,10 @@ export interface ModelParameters {
 }
 
 export function validateSettings(settings: Settings): Diagnostic[] {
-  const diagnostics: Diagnostic[] = []
+  const diagnostics: Diagnostic[] = [
+    ...validateOrderKeys([...settings.llmConfigs.folders, ...settings.llmConfigs.items]),
+    ...validateOrderKeys([...settings.modelConfigs.folders, ...settings.modelConfigs.items])
+  ]
   const llmIds = new Set(settings.llmConfigs.items.map((item) => item.id))
 
   if (settings.defaultLLMId && !llmIds.has(settings.defaultLLMId)) {

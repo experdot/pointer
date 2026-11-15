@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import type { Folder, Page } from '@renderer/types/shared'
 import { resolveFolderCreationTarget, resolvePageCreationTarget } from './creationTarget'
 
-const rootPage: Page = { id: 'p1', kind: 'page', name: '根对话', order: 0, createdAt: 1 }
-const rootFolder: Folder = { id: 'f1', kind: 'folder', name: '分组', order: 1, createdAt: 1 }
+const rootPage: Page = { id: 'p1', kind: 'page', name: '根对话', orderKey: 'a0', createdAt: 1 }
+const rootFolder: Folder = { id: 'f1', kind: 'folder', name: '分组', orderKey: 'a1', createdAt: 1 }
 const childPage: Page = {
   id: 'p2',
   kind: 'page',
   name: '子对话',
   parentFolderId: 'f1',
-  order: 0,
+  orderKey: 'a0',
   createdAt: 2
 }
 

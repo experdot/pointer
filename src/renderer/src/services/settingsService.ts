@@ -5,15 +5,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid'
-import type {
-  ConfigFolder,
-  ConfigItemBase,
-  ConfigTree,
-  LLMConfig,
-  ModelConfig,
-  Settings
-} from '@shared/domain'
-import { configChildren, configNextOrder } from '@shared/domain'
+import type { ConfigFolder, LLMConfig, ModelConfig, Settings } from '@shared/domain'
+import { configInsertPosition } from '@shared/domain'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useSettingsUIStore } from '../stores/settingsUIStore'
 import { useTabsStore } from '../stores/tabsStore'
@@ -32,42 +25,6 @@ interface ModelConfigInput {
   temperature: number
 }
 
-/** 计算插入位置：优先放在参考项之后 */
-function prepareInsertPosition<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  afterItemId?: string
-): { parentFolderId?: string; order: number } {
-  if (!afterItemId) {
-    return { order: configNextOrder(tree, undefined) }
-  }
-
-  const reference =
-    tree.items.find((item) => item.id === afterItemId) ??
-    tree.folders.find((folder) => folder.id === afterItemId)
-
-  if (!reference) {
-    return { order: configNextOrder(tree, undefined) }
-  }
-
-  const nextOrder = configChildren(tree, reference.parentFolderId)
-    .filter((node) => node.id !== reference.id && node.order > reference.order)
-    .reduce((min, node) => Math.min(min, node.order), Number.POSITIVE_INFINITY)
-
-  return {
-    parentFolderId: reference.parentFolderId,
-    order: Number.isFinite(nextOrder) ? (reference.order + nextOrder) / 2 : reference.order + 1
-  }
-}
-
-function resolvePosition<T extends ConfigItemBase>(
-  tree: ConfigTree<T>,
-  afterItemId: string | undefined,
-  inFolderId: string | undefined
-): { parentFolderId?: string; order: number } {
-  if (!inFolderId) return prepareInsertPosition(tree, afterItemId)
-  return { parentFolderId: inFolderId, order: configNextOrder(tree, inFolderId) }
-}
-
 // ==================== LLM 配置 ====================
 
 export function createLLMConfig(
@@ -76,7 +33,8 @@ export function createLLMConfig(
   inFolderId?: string
 ): LLMConfig {
   const store = useSettingsStore.getState()
-  const position = resolvePosition(store.settings.llmConfigs, afterItemId, inFolderId)
+  const intent = { afterNodeId: inFolderId ? undefined : afterItemId, parentFolderId: inFolderId }
+  const position = configInsertPosition(store.settings.llmConfigs, intent)
   const id = uuidv4()
 
   const config: LLMConfig = {
@@ -87,11 +45,11 @@ export function createLLMConfig(
     apiKey: data.apiKey ?? '',
     modelName: data.modelName,
     parentFolderId: position.parentFolderId,
-    order: position.order,
+    orderKey: position.orderKey,
     createdAt: Date.now()
   }
 
-  store.addLLMConfig(config)
+  store.addLLMConfig(config, intent)
   return config
 }
 
@@ -123,18 +81,19 @@ export function createLLMConfigFolder(
   inFolderId?: string
 ): ConfigFolder {
   const store = useSettingsStore.getState()
-  const position = resolvePosition(store.settings.llmConfigs, afterItemId, inFolderId)
+  const intent = { afterNodeId: inFolderId ? undefined : afterItemId, parentFolderId: inFolderId }
+  const position = configInsertPosition(store.settings.llmConfigs, intent)
 
   const folder: ConfigFolder = {
     id: uuidv4(),
     kind: 'folder',
     name: name || '新文件夹',
     parentFolderId: position.parentFolderId,
-    order: position.order,
+    orderKey: position.orderKey,
     createdAt: Date.now()
   }
 
-  store.addLLMConfigFolder(folder)
+  store.addLLMConfigFolder(folder, intent)
   return folder
 }
 
@@ -166,7 +125,8 @@ export function createModelConfig(
   inFolderId?: string
 ): ModelConfig {
   const store = useSettingsStore.getState()
-  const position = resolvePosition(store.settings.modelConfigs, afterItemId, inFolderId)
+  const intent = { afterNodeId: inFolderId ? undefined : afterItemId, parentFolderId: inFolderId }
+  const position = configInsertPosition(store.settings.modelConfigs, intent)
 
   const config: ModelConfig = {
     id: uuidv4(),
@@ -176,11 +136,11 @@ export function createModelConfig(
     topP: data.topP,
     temperature: data.temperature,
     parentFolderId: position.parentFolderId,
-    order: position.order,
+    orderKey: position.orderKey,
     createdAt: Date.now()
   }
 
-  store.addModelConfig(config)
+  store.addModelConfig(config, intent)
   return config
 }
 
@@ -212,18 +172,19 @@ export function createModelConfigFolder(
   inFolderId?: string
 ): ConfigFolder {
   const store = useSettingsStore.getState()
-  const position = resolvePosition(store.settings.modelConfigs, afterItemId, inFolderId)
+  const intent = { afterNodeId: inFolderId ? undefined : afterItemId, parentFolderId: inFolderId }
+  const position = configInsertPosition(store.settings.modelConfigs, intent)
 
   const folder: ConfigFolder = {
     id: uuidv4(),
     kind: 'folder',
     name: name || '新文件夹',
     parentFolderId: position.parentFolderId,
-    order: position.order,
+    orderKey: position.orderKey,
     createdAt: Date.now()
   }
 
-  store.addModelConfigFolder(folder)
+  store.addModelConfigFolder(folder, intent)
   return folder
 }
 

@@ -1,3 +1,4 @@
+import { compareNodes } from '@shared/domain'
 import React, { useCallback, useMemo } from 'react'
 import { Select, Collapse, Tag } from 'antd'
 import { FilterOutlined } from '@ant-design/icons'
@@ -46,9 +47,7 @@ export function SearchOptions(): React.JSX.Element {
       parentId: string | undefined,
       prefix: string
     ): { value: string; label: string }[] => {
-      const children = folders
-        .filter((f) => f.parentFolderId === parentId)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      const children = folders.filter((f) => f.parentFolderId === parentId).sort(compareNodes)
 
       const result: { value: string; label: string }[] = []
       for (const folder of children) {

@@ -63,7 +63,7 @@ describe('界面实际备份产物与内核恢复', () => {
         id: 'params',
         name: '参数',
         kind: 'item',
-        order: 0,
+        orderKey: 'a0',
         createdAt: 1,
         systemPrompt: 'system',
         temperature: 0.2,

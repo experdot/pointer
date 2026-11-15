@@ -6,12 +6,20 @@
  */
 
 import { create } from 'zustand'
-import type { ConfigFolder, ConfigTree, LLMConfig, ModelConfig, Settings } from '@shared/domain'
+import type {
+  ConfigFolder,
+  ConfigTree,
+  LLMConfig,
+  ModelConfig,
+  Settings,
+  TreeMove,
+  ConfigInsertPosition
+} from '@shared/domain'
 import {
+  configInsertPosition,
+  moveConfigNode,
   addConfigFolder,
   addConfigItem,
-  batchUpdateConfigFolders,
-  batchUpdateConfigItems,
   clearConfigFolder,
   defaultSettings,
   removeConfigFolder,
@@ -35,29 +43,23 @@ interface SettingsActions {
   setDefaultModelConfigId: (id: string | undefined) => void
   setAutoCheckUpdate: (enabled: boolean) => void
 
-  addLLMConfig: (config: LLMConfig) => void
+  addLLMConfig: (config: LLMConfig, position?: ConfigInsertPosition) => void
   updateLLMConfig: (id: string, changes: Partial<LLMConfig>) => void
   removeLLMConfig: (id: string) => void
-  addLLMConfigFolder: (folder: ConfigFolder) => void
+  moveLLMNode: (move: TreeMove) => void
+  addLLMConfigFolder: (folder: ConfigFolder, position?: ConfigInsertPosition) => void
   updateLLMConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
   removeLLMConfigFolder: (id: string) => void
   clearLLMConfigFolder: (id: string) => void
-  batchUpdateLLMConfigs: (updates: Array<{ id: string; changes: Partial<LLMConfig> }>) => void
-  batchUpdateLLMConfigFolders: (
-    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
-  ) => void
 
-  addModelConfig: (config: ModelConfig) => void
+  addModelConfig: (config: ModelConfig, position?: ConfigInsertPosition) => void
   updateModelConfig: (id: string, changes: Partial<ModelConfig>) => void
   removeModelConfig: (id: string) => void
-  addModelConfigFolder: (folder: ConfigFolder) => void
+  moveModelNode: (move: TreeMove) => void
+  addModelConfigFolder: (folder: ConfigFolder, position?: ConfigInsertPosition) => void
   updateModelConfigFolder: (id: string, changes: Partial<ConfigFolder>) => void
   removeModelConfigFolder: (id: string) => void
   clearModelConfigFolder: (id: string) => void
-  batchUpdateModelConfigs: (updates: Array<{ id: string; changes: Partial<ModelConfig> }>) => void
-  batchUpdateModelConfigFolders: (
-    updates: Array<{ id: string; changes: Partial<ConfigFolder> }>
-  ) => void
 
   /** 立即把待写入的设置提交给内核（切换账户/工作区前、窗口关闭前调用） */
   flush: () => Promise<void>
@@ -103,10 +105,16 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     const epoch = generation
     const batch = [...pending]
     const mutationId = batch.at(-1)!.id
+    const next = batch.reduce((value, item) => item.apply(value), confirmed)
+    if (next === confirmed) {
+      pending = pending.slice(batch.length)
+      set({ settings: confirmed })
+      return
+    }
     inFlight = (async () => {
       try {
         const snapshot = await command('settings.replace', {
-          settings: batch.reduce((value, item) => item.apply(value), confirmed),
+          settings: next,
           baseRevision: revision,
           mutationId
         })
@@ -129,8 +137,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
   const mutate = (mutator: (settings: Settings, at: number) => Settings): void => {
     const at = Date.now()
     const apply = (settings: Settings): Settings => mutator(settings, at)
+    const next = apply(get().settings)
+    if (next === get().settings) return
     pending.push({ id: crypto.randomUUID(), apply })
-    set({ settings: apply(get().settings), initialized: true })
+    set({ settings: next, initialized: true })
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => {
       void flush().catch((error) => console.warn('[settings] 保存失败，保留待保存修改：', error))
@@ -142,6 +152,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
   ): void => {
     mutate((settings, at) => {
       const llmConfigs = mutator(settings.llmConfigs, at)
+      if (llmConfigs === settings.llmConfigs) return settings
       return {
         ...settings,
         llmConfigs,
@@ -157,6 +168,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
   ): void => {
     mutate((settings, at) => {
       const modelConfigs = mutator(settings.modelConfigs, at)
+      if (modelConfigs === settings.modelConfigs) return settings
       return {
         ...settings,
         modelConfigs,
@@ -184,35 +196,63 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     setAutoCheckUpdate: (enabled) =>
       mutate((settings) => ({ ...settings, autoCheckUpdate: enabled })),
 
-    addLLMConfig: (config) => mutateLlmTree((tree) => addConfigItem(tree, config)),
+    addLLMConfig: (config, position) =>
+      mutateLlmTree((tree) =>
+        addConfigItem(tree, {
+          ...config,
+          ...configInsertPosition(tree, position ?? { parentFolderId: config.parentFolderId })
+        })
+      ),
+    moveLLMNode: (move) =>
+      mutateLlmTree((tree, at) => {
+        const result = moveConfigNode(tree, move, at)
+        if (!result.ok) throw new Error(result.error.message)
+        return result.tree
+      }),
     updateLLMConfig: (id, changes) =>
       mutateLlmTree((tree, at) => updateConfigItem(tree, id, changes, at)),
     removeLLMConfig: (id) => mutateLlmTree((tree) => removeConfigItem(tree, id)),
-    addLLMConfigFolder: (folder) => mutateLlmTree((tree) => addConfigFolder(tree, folder)),
+    addLLMConfigFolder: (folder, position) =>
+      mutateLlmTree((tree) =>
+        addConfigFolder(tree, {
+          ...folder,
+          ...configInsertPosition(tree, position ?? { parentFolderId: folder.parentFolderId })
+        })
+      ),
     updateLLMConfigFolder: (id, changes) =>
       mutateLlmTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
     removeLLMConfigFolder: (id) =>
       mutateLlmTree((tree, at) => removeConfigFolder(tree, id, 'promote', at)),
     clearLLMConfigFolder: (id) => mutateLlmTree((tree) => clearConfigFolder(tree, id)),
-    batchUpdateLLMConfigs: (updates) =>
-      mutateLlmTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
-    batchUpdateLLMConfigFolders: (updates) =>
-      mutateLlmTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
 
-    addModelConfig: (config) => mutateModelTree((tree) => addConfigItem(tree, config)),
+    addModelConfig: (config, position) =>
+      mutateModelTree((tree) =>
+        addConfigItem(tree, {
+          ...config,
+          ...configInsertPosition(tree, position ?? { parentFolderId: config.parentFolderId })
+        })
+      ),
+    moveModelNode: (move) =>
+      mutateModelTree((tree, at) => {
+        const result = moveConfigNode(tree, move, at)
+        if (!result.ok) throw new Error(result.error.message)
+        return result.tree
+      }),
     updateModelConfig: (id, changes) =>
       mutateModelTree((tree, at) => updateConfigItem(tree, id, changes, at)),
     removeModelConfig: (id) => mutateModelTree((tree) => removeConfigItem(tree, id)),
-    addModelConfigFolder: (folder) => mutateModelTree((tree) => addConfigFolder(tree, folder)),
+    addModelConfigFolder: (folder, position) =>
+      mutateModelTree((tree) =>
+        addConfigFolder(tree, {
+          ...folder,
+          ...configInsertPosition(tree, position ?? { parentFolderId: folder.parentFolderId })
+        })
+      ),
     updateModelConfigFolder: (id, changes) =>
       mutateModelTree((tree, at) => updateConfigFolder(tree, id, changes, at)),
     removeModelConfigFolder: (id) =>
       mutateModelTree((tree, at) => removeConfigFolder(tree, id, 'promote', at)),
     clearModelConfigFolder: (id) => mutateModelTree((tree) => clearConfigFolder(tree, id)),
-    batchUpdateModelConfigs: (updates) =>
-      mutateModelTree((tree, at) => batchUpdateConfigItems(tree, updates, at)),
-    batchUpdateModelConfigFolders: (updates) =>
-      mutateModelTree((tree, at) => batchUpdateConfigFolders(tree, updates, at)),
 
     flush,
     accept,

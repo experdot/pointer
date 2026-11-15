@@ -53,7 +53,7 @@ async function configure(): Promise<void> {
       id: 'llm',
       kind: 'item',
       name: 'test',
-      order: 0,
+      orderKey: 'a0',
       createdAt: 1,
       apiKey: 'test-only',
       baseUrl: 'http://invalid.test/v1',

@@ -1,3 +1,4 @@
+import { compareNodes } from '@shared/domain'
 import React, { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Input, Empty, Tree, Dropdown, Button, Tooltip } from 'antd'
 import type { TreeDataNode, TreeProps, MenuProps } from 'antd'
@@ -35,13 +36,15 @@ interface FolderLike {
   name: string
   parentFolderId?: string
   expanded?: boolean
-  order?: number
+  orderKey: string
+  createdAt: number
 }
 
 interface ItemLike {
   id: string
   parentFolderId?: string
-  order?: number
+  orderKey: string
+  createdAt: number
 }
 
 interface TreeViewProps<TItem extends ItemLike, TFolder extends FolderLike> {
@@ -95,7 +98,7 @@ function getItemsInFolder<TItem extends ItemLike, TFolder extends FolderLike>(
 ): (TItem | TFolder)[] {
   const itemsInFolder = items.filter((item) => item.parentFolderId === folderId)
   const subFolders = folders.filter((f) => f.parentFolderId === folderId)
-  return [...subFolders, ...itemsInFolder].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  return [...subFolders, ...itemsInFolder].sort(compareNodes)
 }
 
 function getRootItems<TItem extends ItemLike, TFolder extends FolderLike>(
@@ -104,7 +107,7 @@ function getRootItems<TItem extends ItemLike, TFolder extends FolderLike>(
 ): (TItem | TFolder)[] {
   const rootItems = items.filter((item) => !item.parentFolderId)
   const rootFolders = folders.filter((f) => !f.parentFolderId)
-  return [...rootFolders, ...rootItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  return [...rootFolders, ...rootItems].sort(compareNodes)
 }
 
 /** 模块级默认值：默认参数每次渲染都会新建函数，会让 treeData 的 useMemo 失效 */

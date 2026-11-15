@@ -1,21 +1,36 @@
 /** 备份恢复的顺序、冲突和引用映射统一由内核处理。失败即停止并返回已完成计数。 */
 import { randomUUID } from 'node:crypto'
-import type { ConfigFolder, ConfigItemBase, ConfigTree, Conversation } from '@shared/domain'
+import type {
+  ConfigFolder,
+  ConfigItemBase,
+  ConfigTree,
+  Conversation,
+  TreeNodeBase
+} from '@shared/domain'
 import {
   emptyConversation,
+  compareNodes,
+  childrenOf,
+  isOrderKey,
+  orderKeysBetween,
   isReservedDirectory,
   nameKey,
   sanitizeFileName,
   uniqueName,
   validateConversation
 } from '@shared/domain'
-import { RuntimeError, type BackupRestoreInput, type BackupRestoreResult } from '@shared/contracts'
+import {
+  BACKUP_FORMAT_VERSION,
+  RuntimeError,
+  type BackupRestoreInput,
+  type BackupRestoreResult
+} from '@shared/contracts'
 import type { WorkspaceStore } from './WorkspaceStore'
 import type { SettingsStore } from './SettingsStore'
 import type { ViewStateStore } from './ViewStateStore'
 import { assertSafeId } from './pathSafety'
 
-type Node = { id: string; name: string; parentFolderId?: string; order: number }
+type Node = TreeNodeBase
 
 function selected<T extends Node>(all: T[] | undefined, ids: string[]): T[] {
   if (!Array.isArray(ids) || (all !== undefined && !Array.isArray(all)))
@@ -24,16 +39,14 @@ function selected<T extends Node>(all: T[] | undefined, ids: string[]): T[] {
   const seen = new Set<string>()
   for (const node of nodes) {
     assertSafeId(node.id)
-    if (seen.has(node.id) || typeof node.name !== 'string')
+    if (seen.has(node.id) || typeof node.name !== 'string' || !isOrderKey(node.orderKey))
       throw new RuntimeError('backup.invalid', '备份中存在重复标识或无效名称')
     seen.add(node.id)
   }
   for (const id of ids)
     if (!seen.has(id))
       throw new RuntimeError('backup.missing-selection', `备份中找不到选中对象：${id}`)
-  return nodes
-    .filter((node) => ids.includes(node.id))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  return nodes.filter((node) => ids.includes(node.id)).sort(compareNodes)
 }
 
 function parentsFirst<T extends Node>(nodes: T[]): T[] {
@@ -59,7 +72,7 @@ export async function restoreBackup(
   input: BackupRestoreInput
 ): Promise<BackupRestoreResult> {
   if (
-    !input.backup?.version ||
+    input.backup?.version !== BACKUP_FORMAT_VERSION ||
     !input.backup.data ||
     !['generate-new', 'skip', 'overwrite'].includes(input.strategy)
   )
@@ -76,6 +89,14 @@ export async function restoreBackup(
   )
   const llm = selected(data.settings?.llmConfigs?.items, selection.llm)
   const models = selected(data.settings?.modelConfigs?.items, selection.models)
+  for (const nodes of [
+    [...folders, ...pages],
+    [...llmFolders, ...llm],
+    [...modelFolders, ...models]
+  ]) {
+    if (new Set(nodes.map((node) => node.id)).size !== nodes.length)
+      throw new RuntimeError('backup.invalid', '同一棵树包含重复标识')
+  }
   const records = new Map<string, Conversation>()
   for (const folder of folders)
     if (isReservedDirectory(sanitizeFileName(folder.name)))
@@ -134,13 +155,26 @@ export async function restoreBackup(
     itemIds: Record<string, string>
   ): ConfigTree<T> => {
     const next = { folders: [...tree.folders], items: [...tree.items] }
+    // 先建立完整映射，未选择的父目录提升到根时也共用同一个键空间。
+    for (const folder of incomingFolders)
+      folderIds[folder.id] =
+        (strategy === 'generate-new' && next.folders.some((n) => n.id === folder.id)) ||
+        next.items.some((n) => n.id === folder.id)
+          ? randomUUID()
+          : folder.id
+    const changed: (T | ConfigFolder)[] = []
     const merge = <N extends T | ConfigFolder>(
       nodes: N[],
       node: N,
       ids: Record<string, string>
     ): void => {
       const existing = nodes.find((item) => item.id === node.id)
-      const id = existing && strategy === 'generate-new' ? randomUUID() : node.id
+      const otherKind = node.kind === 'folder' ? next.items : next.folders
+      const id =
+        ids[node.id] ??
+        ((existing && strategy === 'generate-new') || otherKind.some((n) => n.id === node.id)
+          ? randomUUID()
+          : node.id)
       ids[node.id] = id
       if (existing && strategy === 'skip') {
         result.counts.skipped++
@@ -154,13 +188,38 @@ export async function restoreBackup(
           .filter((item) => item.id !== id && item.parentFolderId === parentFolderId)
           .map((item) => nameKey(item.name))
       )
-      const value = { ...node, id, parentFolderId, name: uniqueName(taken, node.name) }
+      const keepKey =
+        existing && strategy === 'overwrite' && existing.parentFolderId === parentFolderId
+      const value = {
+        ...node,
+        id,
+        parentFolderId,
+        orderKey: keepKey ? existing.orderKey : node.orderKey,
+        name: uniqueName(taken, node.name)
+      }
       const index = nodes.findIndex((item) => item.id === id)
       if (index >= 0) nodes[index] = value
       else nodes.push(value)
+      if (!keepKey) changed.push(value)
     }
     for (const folder of incomingFolders) merge(next.folders, folder, folderIds)
     for (const item of items) merge(next.items, item, itemIds)
+    const changedIds = new Set(changed.map((node) => node.id))
+    const groups = new Map<string | undefined, (T | ConfigFolder)[]>()
+    for (const node of changed.sort(compareNodes)) {
+      const group = groups.get(node.parentFolderId) ?? []
+      group.push(node)
+      groups.set(node.parentFolderId, group)
+    }
+    for (const [parentId, group] of groups) {
+      const existing = [...next.folders, ...next.items]
+        .filter((node) => node.parentFolderId === parentId && !changedIds.has(node.id))
+        .sort(compareNodes)
+      const keys = orderKeysBetween(existing.at(-1)?.orderKey ?? null, null, group.length)
+      group.forEach((node, index) => {
+        node.orderKey = keys[index]
+      })
+    }
     return next
   }
   try {
@@ -218,6 +277,49 @@ export async function restoreBackup(
             )
         ).length
     }
+    const plannedFolderIds = map()
+    for (const folder of folders) {
+      const existing = workspace.getFolder(folder.id)
+      plannedFolderIds[folder.id] =
+        (existing && strategy === 'generate-new') || workspace.getPage(folder.id)
+          ? randomUUID()
+          : folder.id
+    }
+    const placements = new Map<string, { parentFolderId?: string; orderKey: string }>()
+    const groups = new Map<string | undefined, { head: Node[]; tail: Node[] }>()
+    for (const node of [...folders, ...pages].sort(compareNodes)) {
+      const existing =
+        node.kind === 'folder' ? workspace.getFolder(node.id) : workspace.getPage(node.id)
+      if (existing && strategy === 'skip') continue
+      const parentFolderId = parent(node.parentFolderId, plannedFolderIds, (id) =>
+        Boolean(workspace.getFolder(id))
+      )
+      const group = groups.get(parentFolderId) ?? { head: [], tail: [] }
+      const append = existing && strategy === 'overwrite'
+      group[append ? 'tail' : 'head'].push(node)
+      groups.set(parentFolderId, group)
+    }
+    for (const [parentFolderId, group] of groups) {
+      const siblings = childrenOf(workspace.getTree(), parentFolderId)
+      // 页面批量恢复置顶；纯子文件夹批量恢复沿用追加，混合批次保持导出次序。
+      if (parentFolderId && group.head.every((node) => 'kind' in node && node.kind === 'folder')) {
+        group.tail = [...group.head, ...group.tail].sort(compareNodes)
+        group.head = []
+      }
+      const head = orderKeysBetween(null, siblings[0]?.orderKey ?? null, group.head.length)
+      const tail = orderKeysBetween(
+        siblings.at(-1)?.orderKey ?? head.at(-1) ?? null,
+        null,
+        group.tail.length
+      )
+      for (const [nodes, keys] of [
+        [group.head, head],
+        [group.tail, tail]
+      ] as const)
+        nodes.forEach((node, index) =>
+          placements.set(node.id, { parentFolderId, orderKey: keys[index] })
+        )
+    }
     for (const folder of folders) {
       const existing = workspace.getFolder(folder.id)
       if (existing && strategy === 'skip') {
@@ -225,9 +327,7 @@ export async function restoreBackup(
         result.counts.skipped++
         continue
       }
-      const parentFolderId = parent(folder.parentFolderId, result.ids.folders, (id) =>
-        Boolean(workspace.getFolder(id))
-      )
+      const { parentFolderId, orderKey } = placements.get(folder.id)!
       const restoredId = await workspace.write(async () => {
         if (existing && strategy === 'overwrite') {
           await workspace.moveTreeNode(
@@ -237,18 +337,20 @@ export async function restoreBackup(
               placement: 'end',
               conflictPolicy: 'rename'
             },
-            Date.now()
+            Date.now(),
+            orderKey
           )
           await workspace.updateFolder(existing.id, { name: folder.name }, Date.now())
           return existing.id
         } else {
           const created = await workspace.createFolder(
             {
-              id: existing || workspace.getPage(folder.id) ? undefined : folder.id,
+              id: plannedFolderIds[folder.id],
               name: folder.name,
               parentFolderId
             },
-            folder.createdAt
+            folder.createdAt,
+            orderKey
           )
           return created.id
         }
@@ -256,7 +358,6 @@ export async function restoreBackup(
       result.ids.folders[folder.id] = restoredId
       result.counts.folders++
     }
-    const lastSibling = new Map<string, string>()
     for (const page of pages) {
       const existing = workspace.getPage(page.id)
       if (existing && strategy === 'skip') {
@@ -264,9 +365,7 @@ export async function restoreBackup(
         result.counts.skipped++
         continue
       }
-      const parentFolderId = parent(page.parentFolderId, result.ids.folders, (id) =>
-        Boolean(workspace.getFolder(id))
-      )
+      const { parentFolderId, orderKey } = placements.get(page.id)!
       const restoredId = await workspace.write(async () => {
         let id: string
         if (existing && strategy === 'overwrite') {
@@ -278,7 +377,8 @@ export async function restoreBackup(
               placement: 'end',
               conflictPolicy: 'rename'
             },
-            Date.now()
+            Date.now(),
+            orderKey
           )
           await workspace.updatePage(
             id,
@@ -292,10 +392,10 @@ export async function restoreBackup(
                 id: existing || workspace.getFolder(page.id) ? undefined : page.id,
                 name: page.name,
                 starred: page.starred,
-                parentFolderId,
-                afterNodeId: lastSibling.get(parentFolderId ?? '')
+                parentFolderId
               },
-              page.createdAt
+              page.createdAt,
+              orderKey
             )
           ).id
         }
@@ -314,7 +414,6 @@ export async function restoreBackup(
         return id
       })
       result.ids.pages[page.id] = restoredId
-      lastSibling.set(parentFolderId ?? '', restoredId)
       result.counts.pages++
       result.counts.messages += records.get(page.id)?.messages.length ?? 0
     }

@@ -3,11 +3,11 @@ import { computeWorkspaceLayout, directoryOfRelativePath } from './layout'
 import type { Folder, Page } from './page'
 
 function folder(id: string, name: string, parentFolderId?: string, order = 0): Folder {
-  return { id, kind: 'folder', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'folder', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 function page(id: string, name: string, parentFolderId?: string, order = 0): Page {
-  return { id, kind: 'page', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'page', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 describe('工作区布局', () => {
@@ -35,14 +35,14 @@ describe('工作区布局', () => {
     expect(layout.pagePaths.get('p2')).toBe('a b/同名 (1).pointer.md')
   })
 
-  it('排序决定目录与文件名的去重顺序', () => {
+  it('展示排序不改变文件名冲突的分配顺序', () => {
     const layout = computeWorkspaceLayout({
       folders: [],
       pages: [page('p1', '未命名', undefined, 1), page('p2', '未命名', undefined, 0)]
     })
 
-    expect(layout.pagePaths.get('p2')).toBe('未命名.pointer.md')
-    expect(layout.pagePaths.get('p1')).toBe('未命名 (1).pointer.md')
+    expect(layout.pagePaths.get('p1')).toBe('未命名.pointer.md')
+    expect(layout.pagePaths.get('p2')).toBe('未命名 (1).pointer.md')
   })
 
   it('文件夹名与页面文件名同名冲突时共享命名空间', () => {

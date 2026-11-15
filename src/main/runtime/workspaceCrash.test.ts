@@ -6,6 +6,12 @@ import { createKernel } from '../../../tests/helpers/kernel'
 import { testDirectory } from '../../../tests/helpers/temp'
 import { listDirectories } from './fsx'
 import { nodeWorkerPlugin } from '../../../scripts/worker-build.mjs'
+import { compareNodeIdentity, type PageTree } from '@shared/domain'
+
+const normalize = (tree: PageTree): PageTree => ({
+  pages: tree.pages.toSorted(compareNodeIdentity),
+  folders: tree.folders.toSorted(compareNodeIdentity)
+})
 
 let bundle: Awaited<ReturnType<typeof testDirectory>>
 beforeAll(async () => {
@@ -24,13 +30,14 @@ beforeAll(async () => {
 afterAll(async () => bundle?.remove())
 
 describe('真实进程中断后的工作区恢复', () => {
-  it.each([1, 2, 3, 4, 100])('交换第 %i 次移动后结束进程，重开保持完整状态', async (move) => {
+  it.each([1, 2, 3, 4, 100])('子树第 %i 次移动后结束进程，重开保持完整状态', async (move) => {
     const f = await createKernel()
     try {
       const a = await f.command('folder.create', { name: 'A?' })
       const b = await f.command('folder.create', { name: 'A*', afterNodeId: a.id })
       const pa = await f.command('page.create', { name: 'same', parentFolderId: a.id })
       const pb = await f.command('page.create', { name: 'same', parentFolderId: b.id })
+      await f.command('page.create', { name: 'another', parentFolderId: b.id })
       for (const page of [pa, pb]) {
         await f.command('conversation.append', {
           pageId: page.id,
@@ -44,7 +51,7 @@ describe('真实进程中断后的工作区恢复', () => {
         f.root,
         {
           name: 'tree.move',
-          payload: { nodeId: b.id, targetNodeId: a.id, placement: 'before' }
+          payload: { nodeId: b.id, targetNodeId: a.id, placement: 'inside' }
         },
         'layout-',
         move
@@ -52,11 +59,8 @@ describe('真实进程中断后的工作区恢复', () => {
       expect(result.code, result.output).toBe(move === 100 ? 0 : 99)
       await f.restart()
       const tree = await f.query('tree.get', undefined)
-      if (move !== 100) expect(tree).toEqual(before)
-      else
-        expect(tree.folders.find((folder) => folder.id === b.id)!.order).toBeLessThan(
-          tree.folders.find((folder) => folder.id === a.id)!.order
-        )
+      if (move !== 100) expect(normalize(tree)).toEqual(normalize(before))
+      else expect(tree.folders.find((folder) => folder.id === b.id)!.parentFolderId).toBe(a.id)
       for (const page of [pa, pb]) {
         expect(tree.pages.find((item) => item.id === page.id)?.parentFolderId).toBe(
           page.parentFolderId

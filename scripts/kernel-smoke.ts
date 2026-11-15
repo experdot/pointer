@@ -1,3 +1,4 @@
+import { compareOrderKeys } from '../src/shared/domain/ordering'
 /**
  * 内核冒烟测试
  *
@@ -65,15 +66,15 @@ async function run(): Promise<void> {
     })) as { id: string }
 
     const treeAfterInsert = (await runtime.query('tree.get', undefined)) as {
-      pages: Array<{ id: string; name: string; parentFolderId?: string; order: number }>
+      pages: Array<{ id: string; name: string; parentFolderId?: string; orderKey: string }>
     }
     const folderPages = treeAfterInsert.pages
       .filter((item) => item.parentFolderId === folder.id)
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => compareOrderKeys(a.orderKey, b.orderKey))
     check(
       '新建对话插到所在文件夹最前面',
       folderPages.map((item) => item.name).join(',') === '第二个对话,首个对话',
-      folderPages.map((item) => `${item.name}@${item.order}`).join(' | ')
+      folderPages.map((item) => `${item.name}@${item.orderKey}`).join(' | ')
     )
 
     // 回归：显式 afterNodeId 参照（导入等场景）仍插入到参照项之后
@@ -84,26 +85,26 @@ async function run(): Promise<void> {
     })) as { id: string }
 
     const treeAfterRef = (await runtime.query('tree.get', undefined)) as {
-      pages: Array<{ id: string; name: string; parentFolderId?: string; order: number }>
+      pages: Array<{ id: string; name: string; parentFolderId?: string; orderKey: string }>
     }
     const folderPagesRef = treeAfterRef.pages
       .filter((item) => item.parentFolderId === folder.id)
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => compareOrderKeys(a.orderKey, b.orderKey))
     check(
       'afterNodeId 参照插入到其后',
       folderPagesRef.map((item) => item.name).join(',') === '第二个对话,第三个对话,首个对话',
-      folderPagesRef.map((item) => `${item.name}@${item.order}`).join(' | ')
+      folderPagesRef.map((item) => `${item.name}@${item.orderKey}`).join(' | ')
     )
 
     // 回归：没有参照项时新建内容插到最前面（旧实现的 prepareInsertPosition 语义）
     const firstRoot = (await runtime.command('page.create', { name: '根一' })) as { id: string }
     const secondRoot = (await runtime.command('page.create', { name: '根二' })) as { id: string }
     const treeTop = (await runtime.query('tree.get', undefined)) as {
-      pages: Array<{ id: string; name: string; parentFolderId?: string; order: number }>
+      pages: Array<{ id: string; name: string; parentFolderId?: string; orderKey: string }>
     }
     const rootOrder = treeTop.pages
       .filter((item) => !item.parentFolderId)
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => compareOrderKeys(a.orderKey, b.orderKey))
       .map((item) => item.name)
     check('无参照时新建插到最前面', rootOrder[0] === '根二', rootOrder.join(' | '))
     await runtime.command('page.delete', { pageIds: [firstRoot.id, secondRoot.id] })
@@ -195,7 +196,7 @@ async function run(): Promise<void> {
             {
               id: 'llm-1',
               name: 'Local',
-              order: 0,
+              orderKey: 'a0',
               createdAt: Date.now(),
               baseUrl: 'http://127.0.0.1:1/v1',
               apiKey: 'sk-smoke',
@@ -232,7 +233,7 @@ async function run(): Promise<void> {
               baseUrl: '',
               apiKey: '',
               modelName: '',
-              order: 1,
+              orderKey: 'a1',
               createdAt: Date.now()
             }
           ] as never,
@@ -302,7 +303,7 @@ async function run(): Promise<void> {
     const content = pageFiles[0] ? await readFile(pageFiles[0].absolutePath, 'utf8') : ''
     check(
       '页面落盘为可读 Markdown',
-      pageFiles.length === 2 && content.includes('<pointer-page version="2">'),
+      pageFiles.length === 2 && content.includes('<pointer-page version="3">'),
       pageFiles.map((file) => file.relativePath).join(', ')
     )
     check(

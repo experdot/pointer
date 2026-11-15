@@ -28,7 +28,7 @@ const page: Page = {
   id: 'page-1',
   kind: 'page',
   name: '示例对话',
-  order: 0,
+  orderKey: 'a0',
   createdAt: 1
 }
 
@@ -336,7 +336,7 @@ describe('展示层镜像', () => {
     emit({
       type: 'tree.changed',
       payload: {
-        folders: [{ id: 'f1', kind: 'folder', name: '分组', order: 0, createdAt: 1 }],
+        folders: [{ id: 'f1', kind: 'folder', name: '分组', orderKey: 'a0', createdAt: 1 }],
         pages: [page, { ...page, id: 'page-2', name: '第二个' }]
       }
     })
@@ -548,7 +548,7 @@ describe('展示层镜像', () => {
 
   it('未指定参照时新建对话落在当前打开会话所在文件夹的最前面', async () => {
     currentTree = {
-      folders: [{ id: 'folder-1', kind: 'folder', name: '分组', order: 0, createdAt: 1 }],
+      folders: [{ id: 'folder-1', kind: 'folder', name: '分组', orderKey: 'a0', createdAt: 1 }],
       pages: [{ ...page, parentFolderId: 'folder-1' }]
     }
 

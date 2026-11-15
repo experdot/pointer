@@ -1,7 +1,9 @@
 import type { Conversation, Folder, Page, Settings } from '../domain'
 import type { ViewState } from './viewState'
 
-/** 保持既有 JSON 备份版本；附件仅保存引用。 */
+export const BACKUP_FORMAT_VERSION = '2.0.0'
+
+/** 树节点使用字符串排序键；附件仅保存引用。 */
 export interface BackupData {
   version: string
   exportedAt: number

@@ -4,12 +4,12 @@
  * 设计目标：
  * - 人类可读：正文就是 Markdown，可直接用编辑器打开、纳入 git
  * - 机器可解析：元数据放在 HTML 注释内的 XML 片段里，不会渲染到正文
- * - 可演进：文件头带 version，读侧拒绝 version 大于 PAGE_FILE_FORMAT_VERSION 的文件。
+ * - 格式明确：文件头带 version，只接受当前版本，不自动迁移旧数字排序文档。
  *
  * 结构：
  *
  *   <!--
- *   <pointer-page version="2">
+ *   <pointer-page version="3">
  *     ...页面元数据与 Topic...
  *   </pointer-page>
  *   -->
@@ -28,8 +28,9 @@
 import type { AttachmentRef, ChatMessage, MessageRole, Topic } from './chat'
 import { ROLE_DISPLAY_NAMES, roleFromDisplayName } from './chat'
 import type { Page } from './page'
+import { assertOrderKey, isOrderKey } from './ordering'
 
-export const PAGE_FILE_FORMAT_VERSION = 2
+export const PAGE_FILE_FORMAT_VERSION = 3
 
 const PAGE_BLOCK_START = '<!--\n<pointer-page version="'
 export const MESSAGE_HEADER_PREFIX = '<!-- [POINTER-MSG] -->'
@@ -153,12 +154,14 @@ function serializeTopics(topics: readonly Topic[]): string {
 }
 
 function serializePageBlock(doc: PageFileDocument): string {
+  assertOrderKey(doc.page.orderKey)
+  if (doc.version !== PAGE_FILE_FORMAT_VERSION) throw new Error('不支持的页面文件版本')
   let xml = `${PAGE_BLOCK_START}${doc.version}">\n`
   xml += element('id', doc.page.id)
   xml += element('name', doc.page.name)
   if (doc.page.starred) xml += element('starred', true)
   if (doc.page.parentFolderId) xml += element('parentFolderId', doc.page.parentFolderId)
-  xml += element('order', doc.page.order)
+  xml += element('orderKey', doc.page.orderKey)
   xml += element('createdAt', doc.page.createdAt)
   if (doc.page.updatedAt) xml += element('updatedAt', doc.page.updatedAt)
   if (doc.leafMessageId) xml += element('leafMessageId', doc.leafMessageId)
@@ -332,7 +335,7 @@ export function parsePageMetadata(text: string): ParseResult<PageMetadata> {
   }
 
   const version = Number.parseInt(match[1], 10)
-  if (version > PAGE_FILE_FORMAT_VERSION) {
+  if (version !== PAGE_FILE_FORMAT_VERSION) {
     return { ok: false, error: `unsupported-version:${version}` }
   }
 
@@ -340,6 +343,9 @@ export function parsePageMetadata(text: string): ParseResult<PageMetadata> {
   const id = readElement(xml, 'id')
   const name = readElement(xml, 'name')
   const createdAt = readNumber(xml, 'createdAt')
+  const orderKey = readElement(xml, 'orderKey')
+
+  if (!isOrderKey(orderKey)) return { ok: false, error: 'invalid-order-key' }
 
   if (!id || !name || createdAt === undefined) {
     return { ok: false, error: 'incomplete-page-block' }
@@ -354,7 +360,7 @@ export function parsePageMetadata(text: string): ParseResult<PageMetadata> {
         kind: 'page',
         starred: readBoolean(xml, 'starred'),
         parentFolderId: readElement(xml, 'parentFolderId'),
-        order: readNumber(xml, 'order') ?? 0,
+        orderKey,
         createdAt,
         updatedAt: readNumber(xml, 'updatedAt')
       },

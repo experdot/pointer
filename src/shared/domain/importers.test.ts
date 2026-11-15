@@ -283,7 +283,7 @@ describe('未知角色归一', () => {
     const conversation = parseImport(toolPayload, undefined, NOW).conversations[0]
     const text = serializePageFile({
       version: PAGE_FILE_FORMAT_VERSION,
-      page: { id: 'page-tool', kind: 'page', name: '工具', order: 0, createdAt: 1 },
+      page: { id: 'page-tool', kind: 'page', name: '工具', orderKey: 'a0', createdAt: 1 },
       messages: conversation.messages,
       topics: [],
       leafMessageId: conversation.leafMessageId

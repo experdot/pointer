@@ -75,7 +75,7 @@ export async function createKernel(): Promise<KernelFixture> {
           id: 'llm',
           kind: 'item',
           name: '测试模型',
-          order: 0,
+          orderKey: 'a0',
           createdAt: 1,
           apiKey: 'test-only',
           baseUrl,

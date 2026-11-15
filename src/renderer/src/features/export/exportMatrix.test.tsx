@@ -300,7 +300,7 @@ describe('导出语义边界', () => {
         baseUrl: 'test',
         apiKey: 'test-only',
         modelName: '<model>',
-        order: 0,
+        orderKey: 'a0',
         createdAt: 1
       }
     ]
@@ -312,7 +312,7 @@ describe('导出语义边界', () => {
         systemPrompt: '',
         temperature: 1,
         topP: 1,
-        order: 0,
+        orderKey: 'a0',
         createdAt: 1
       }
     ]

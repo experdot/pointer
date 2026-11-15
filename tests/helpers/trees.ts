@@ -34,8 +34,8 @@ export function treeDocument(
     })
   }
   return {
-    version: 2,
-    page: { id: `page-${seed}`, kind: 'page', name: '随机树', order: 0, createdAt: 1 },
+    version: 3,
+    page: { id: `page-${seed}`, kind: 'page', name: '随机树', orderKey: 'a0', createdAt: 1 },
     messages,
     topics: size ? [{ id: 'topic', name: '话题', startMessageId: 'm-0', collapsed: false }] : [],
     leafMessageId: messages.at(-1)?.id,

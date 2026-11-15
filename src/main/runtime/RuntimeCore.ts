@@ -12,6 +12,8 @@ import { randomUUID } from 'node:crypto'
 import type { ChatMessage, Conversation, Settings, Workspace } from '@shared/domain'
 import {
   appendMessage,
+  childrenOf,
+  orderKeysBetween,
   defaultSettings,
   createTopic,
   deleteMessage,
@@ -1061,15 +1063,19 @@ export class RuntimeCore {
 
     let importedPages = 0
     let importedMessages = 0
-    // 新页面默认落到最前面，这里以「上一个已导入的页面」为参照，保持导入顺序
-    let previousPageId: string | undefined
+    // 整批置于当前层级最前面，一次分配键并保持导入顺序。
+    const keys = orderKeysBetween(
+      null,
+      childrenOf(workspace.getTree(), folderId)[0]?.orderKey ?? null,
+      selected.length
+    )
 
-    for (const imported of selected) {
+    for (const [index, imported] of selected.entries()) {
       const page = await workspace.createPage(
-        { name: imported.title, parentFolderId: folderId, afterNodeId: previousPageId },
-        imported.createdAt
+        { name: imported.title, parentFolderId: folderId },
+        imported.createdAt,
+        keys[index]
       )
-      previousPageId = page.id
 
       const conversation: Conversation = {
         pageId: page.id,

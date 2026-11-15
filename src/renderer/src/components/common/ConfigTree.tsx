@@ -12,7 +12,7 @@ import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '@renderer/types/shared'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
-import { DEFAULT_FOLDER_NAME, compareNodes, type TreeMove } from '@shared/domain'
+import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
 import './ConfigTree.css'
 
 interface ConfigTreeProps<T extends ConfigItemBase> {
@@ -23,7 +23,7 @@ interface ConfigTreeProps<T extends ConfigItemBase> {
   itemIcon: React.ReactNode
   itemNameKey: keyof T
   isItem: (item: T | ConfigFolder) => item is T
-  batchUpdateItemsOrder: (items: (T | ConfigFolder)[], parentFolderId?: string) => void
+  moveNode: (move: TreeMove) => void
   createItem: (inFolderId?: string) => T
   updateItem: (id: string, updates: Partial<T>) => void
   deleteItem: (id: string) => void
@@ -48,7 +48,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   itemIcon,
   itemNameKey,
   isItem,
-  batchUpdateItemsOrder,
+  moveNode,
   createItem,
   updateItem,
   deleteItem,
@@ -102,27 +102,6 @@ export function ConfigTree<T extends ConfigItemBase>({
       updateItem(id, { [itemNameKey]: name } as Partial<T>)
     },
     [itemNameKey, updateItem]
-  )
-
-  // 设置树仍通过设置快照更新，不使用工作区页面树的移动命令。
-  const handleMove = useCallback(
-    ({ nodeId, targetNodeId, placement }: TreeMove): void => {
-      const nodes = [...folders, ...items]
-      const moved = nodes.find((node) => node.id === nodeId)
-      const target = nodes.find((node) => node.id === targetNodeId)
-      if (!moved || !target || moved.id === target.id) return
-      const parentFolderId = placement === 'inside' ? target.id : target.parentFolderId
-      const siblings = nodes
-        .filter((node) => node.parentFolderId === parentFolderId && node.id !== nodeId)
-        .sort(compareNodes)
-      const index =
-        placement === 'inside'
-          ? 0
-          : siblings.findIndex((node) => node.id === targetNodeId) + (placement === 'after' ? 1 : 0)
-      siblings.splice(index, 0, moved)
-      batchUpdateItemsOrder(siblings, parentFolderId)
-    },
-    [folders, items, batchUpdateItemsOrder]
   )
 
   const handleToggleMultiSelect = (): void => {
@@ -223,7 +202,7 @@ export function ConfigTree<T extends ConfigItemBase>({
         itemIcon={itemIcon}
         getItemName={getItemName}
         isItem={isItem}
-        onMove={handleMove}
+        onMove={moveNode}
         updateItem={handleUpdateItemName}
         deleteItem={deleteItem}
         updateFolder={(id, name) => updateFolder(id, { name })}

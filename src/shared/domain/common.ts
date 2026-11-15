@@ -5,6 +5,8 @@
  * 函数保持纯函数或接收显式时间戳，方便在任意进程与测试中复用。
  */
 
+import { compareNodeIdentity, compareOrderKeys } from './ordering'
+
 /** 带创建/更新时间戳的实体 */
 export interface Timestamps {
   createdAt: number
@@ -16,7 +18,7 @@ export interface TreeNodeBase extends Timestamps {
   id: string
   name: string
   parentFolderId?: string
-  order: number
+  orderKey: string
 }
 
 /** inside/end 表示移入目录首位/末尾；省略目标表示工作区根目录。 */
@@ -60,14 +62,12 @@ export function descendantFolderIds(
   return result
 }
 
-/** 同级节点排序：order、创建时间、id 依次比较，保证结果确定 */
+/** 同级节点按排序键比较；外部重复键暂以创建时间和 id 确定稳定次序。 */
 export function compareNodes(
-  a: { order: number; createdAt: number; id: string },
-  b: { order: number; createdAt: number; id: string }
+  a: { orderKey: string; createdAt: number; id: string },
+  b: { orderKey: string; createdAt: number; id: string }
 ): number {
-  if (a.order !== b.order) return a.order - b.order
-  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  return compareOrderKeys(a.orderKey, b.orderKey) || compareNodeIdentity(a, b)
 }
 
 /** 名称比较键：文件名与显示名称在各平台与大小写下的归一化形式 */

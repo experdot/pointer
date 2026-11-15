@@ -45,7 +45,8 @@
     "package:local": "pnpm build && electron-builder --publish=never"
   },
   "dependencies": {
-    "eventsource-parser": "^3.0.3"
+    "eventsource-parser": "^3.0.3",
+    "fractional-indexing": "4.0.0"
   },
   "devDependencies": {
     "@ant-design/icons": "^5.4.0",

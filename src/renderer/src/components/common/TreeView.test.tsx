@@ -17,9 +17,15 @@ vi.mock('antd', async (importOriginal) => {
   }
 })
 
-const source: Page = { id: 'source', kind: 'page', name: '源', order: 0, createdAt: 1 }
-const target: Page = { id: 'target', kind: 'page', name: '目标', order: 1, createdAt: 1 }
-const folder: Folder = { id: 'folder', kind: 'folder', name: '文件夹', order: 2, createdAt: 1 }
+const source: Page = { id: 'source', kind: 'page', name: '源', orderKey: 'a0', createdAt: 1 }
+const target: Page = { id: 'target', kind: 'page', name: '目标', orderKey: 'a1', createdAt: 1 }
+const folder: Folder = {
+  id: 'folder',
+  kind: 'folder',
+  name: '文件夹',
+  orderKey: 'a2',
+  createdAt: 1
+}
 const onMove = vi.fn<(move: TreeMove) => void>()
 const noop = (): void => undefined
 
@@ -84,7 +90,7 @@ describe('树组件只解释拖拽位置', () => {
           itemIcon={null}
           itemNameKey="name"
           isItem={(item): item is typeof first => item.kind === 'item'}
-          batchUpdateItemsOrder={update}
+          moveNode={update}
           createItem={() => first}
           updateItem={noop}
           deleteItem={noop}
@@ -96,6 +102,10 @@ describe('树组件只解释拖拽位置', () => {
       </App>
     )
     drop('after', last.id)
-    expect(update).toHaveBeenCalledExactlyOnceWith([last, first], undefined)
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      nodeId: first.id,
+      targetNodeId: last.id,
+      placement: 'after'
+    })
   })
 })

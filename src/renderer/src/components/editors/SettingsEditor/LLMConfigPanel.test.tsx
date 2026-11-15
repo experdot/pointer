@@ -22,7 +22,7 @@ beforeEach(() => {
       id: 'llm',
       kind: 'item',
       name: '测试',
-      order: 0,
+      orderKey: 'a0',
       createdAt: 1,
       baseUrl: 'http://old.invalid/v1',
       apiKey: 'old-key',

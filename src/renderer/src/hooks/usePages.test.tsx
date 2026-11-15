@@ -23,7 +23,9 @@ describe('资源管理器移动命令', () => {
   })
 
   it('失败由调用方处理，不自动重试或修改镜像；明确重命名时只发一条新命令', async () => {
-    const pages = [{ id: 'source', name: '原名', kind: 'page' as const, order: 0, createdAt: 1 }]
+    const pages = [
+      { id: 'source', name: '原名', kind: 'page' as const, orderKey: 'a0', createdAt: 1 }
+    ]
     usePagesStore.setState({ pages })
     const { result } = renderHook(usePages)
     const move = { nodeId: 'source', targetNodeId: 'target', placement: 'inside' as const }

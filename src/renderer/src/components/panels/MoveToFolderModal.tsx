@@ -1,3 +1,4 @@
+import { compareNodes } from '@shared/domain'
 import React, { useState, useMemo } from 'react'
 import { Modal, Tree } from 'antd'
 import type { TreeProps } from 'antd'
@@ -62,7 +63,7 @@ export function MoveToFolderModal({
     const buildTree = (parentId: string | undefined): TreeNode[] => {
       return folders
         .filter((f) => f.parentFolderId === parentId)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .sort(compareNodes)
         .map((folder) => ({
           key: folder.id,
           title: folder.name,

@@ -18,7 +18,7 @@ export function LLMConfigPanel(): React.JSX.Element {
   const {
     items,
     folders,
-    batchUpdateItemsOrder,
+    moveNode,
     createConfig,
     updateConfig,
     deleteConfig,
@@ -110,7 +110,7 @@ API Key: ${config.apiKey}
         itemIcon={<ApiOutlined />}
         itemNameKey="name"
         isItem={isItem}
-        batchUpdateItemsOrder={batchUpdateItemsOrder}
+        moveNode={moveNode}
         createItem={(inFolderId) =>
           createConfig({ name: '新配置', baseUrl: '', modelName: '' }, undefined, inFolderId)
         }

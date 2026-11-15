@@ -74,7 +74,7 @@ describe('单条树移动命令', () => {
     const { workspacePath } = await f.query('session.get', undefined)
     await fsx.writeJsonAtomic(join(workspacePath!, '.pointer', 'folders.json'), {
       folders: tree.folders.map((folder) =>
-        folder.id === d.id ? { ...folder, order: 100 } : folder
+        folder.id === d.id ? { ...folder, orderKey: 'b0c' } : folder
       )
     })
     await runtime.checkExternalChanges()
@@ -82,8 +82,8 @@ describe('单条树移动命令', () => {
     expect(f.events.filter((event) => event.type === 'tree.changed')).toHaveLength(3)
     expect(f.events.filter((event) => event.type === 'workspace.externalChange')).toHaveLength(1)
     expect(
-      (await f.query('tree.get', undefined)).folders.find((node) => node.id === d.id)?.order
-    ).toBe(100)
+      (await f.query('tree.get', undefined)).folders.find((node) => node.id === d.id)?.orderKey
+    ).toBe('b0c')
   })
 
   it('跨目录移动整个文件夹后，子页面路径、内容与搜索结果一致', async () => {
@@ -219,7 +219,7 @@ describe('单条树移动命令', () => {
   it.each(['metadata', 'layout', 'commit'] as const)(
     '%s 阶段失败恢复内存、所有文件和重启后的树，且不广播成功',
     async (stage) => {
-      const { a, d } = await seed()
+      const { a, c, d } = await seed()
       const target = stage === 'layout' ? await f.command('folder.create', { name: 'target' }) : a
       const before = await f.query('tree.get', undefined)
       const disk = await diskSnapshot()
@@ -228,7 +228,7 @@ describe('单条树移动命令', () => {
       if (stage === 'metadata') {
         const write = fsx.writeTextAtomic
         vi.spyOn(fsx, 'writeTextAtomic').mockImplementation(async (path, text) => {
-          if (path.endsWith('.pointer.md') && ++count === 2) {
+          if (path.endsWith('.pointer.md') && ++count === 1) {
             failed = true
             throw new Error('故障注入')
           }
@@ -260,7 +260,7 @@ describe('单条树移动命令', () => {
       f.events.length = 0
       await expect(
         f.command('tree.move', {
-          nodeId: d.id,
+          nodeId: stage === 'metadata' ? c.id : d.id,
           targetNodeId: target.id,
           placement: stage === 'layout' ? 'inside' : 'before'
         })

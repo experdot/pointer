@@ -55,8 +55,8 @@ beforeEach(() => {
         return {
           folders: [],
           pages: [
-            { id: 'p', name: 'page', kind: 'page', order: 0, createdAt: 1 },
-            { id: 'q', name: 'other', kind: 'page', order: 1, createdAt: 1 }
+            { id: 'p', name: 'page', kind: 'page', orderKey: 'a0', createdAt: 1 },
+            { id: 'q', name: 'other', kind: 'page', orderKey: 'a1', createdAt: 1 }
           ]
         }
       if (name === 'settings.get') return { settings: defaultSettings(), revision }
@@ -131,7 +131,7 @@ describe('镜像竞态回归', () => {
     })
     tree.resolve({
       folders: [],
-      pages: [{ id: 'p', kind: 'page', name: 'p', order: 0, createdAt: 1 }]
+      pages: [{ id: 'p', kind: 'page', name: 'p', orderKey: 'a0', createdAt: 1 }]
     })
     await boot
     expect(useMessagesStore.getState().get('p')?.messages[0].content).toBe('during snapshot')

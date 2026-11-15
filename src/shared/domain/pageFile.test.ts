@@ -61,7 +61,7 @@ function buildDocument(): PageFileDocument {
       name: '页面 <A> & "B"',
       starred: true,
       parentFolderId: 'folder-1',
-      order: 2,
+      orderKey: 'a2',
       createdAt: 100,
       updatedAt: 200
     },
@@ -131,7 +131,7 @@ describe('页面文件编解码', () => {
 
     const document: PageFileDocument = {
       version: PAGE_FILE_FORMAT_VERSION,
-      page: { id: 'p-escape', kind: 'page', name: '转义', order: 0, createdAt: 1 },
+      page: { id: 'p-escape', kind: 'page', name: '转义', orderKey: 'a0', createdAt: 1 },
       messages: [
         { id: 'm1', role: 'user', content: literal, createdAt: 1, branchIndex: 0 },
         {
@@ -176,16 +176,31 @@ describe('页面文件编解码', () => {
     expect(parsePageFile('# 普通 Markdown').ok).toBe(false)
     expect(parsePageMetadata('# 普通 Markdown').ok).toBe(false)
 
-    const future = serializePageFile(buildDocument()).replace('version="2"', 'version="99"')
+    const future = serializePageFile(buildDocument()).replace('version="3"', 'version="99"')
     const parsed = parsePageMetadata(future)
     expect(parsed.ok).toBe(false)
     if (!parsed.ok) expect(parsed.error).toBe('unsupported-version:99')
   })
 
+  it('旧数字排序格式、缺失及非法键明确拒绝', () => {
+    const text = serializePageFile(buildDocument())
+    for (const version of [1, 2, 4])
+      expect(parsePageMetadata(text.replace('version="3"', `version="${version}"`))).toEqual({
+        ok: false,
+        error: `unsupported-version:${version}`
+      })
+    for (const replacement of ['', '<order>2</order>', '<orderKey>invalid!</orderKey>'])
+      expect(parsePageMetadata(text.replace(/<orderKey>.*?<\/orderKey>/, replacement))).toEqual({
+        ok: false,
+        error: 'invalid-order-key'
+      })
+    expect(() => serializePageFile({ ...buildDocument(), version: 2 })).toThrow()
+  })
+
   it('空会话页面也能往返', () => {
     const document: PageFileDocument = {
       version: PAGE_FILE_FORMAT_VERSION,
-      page: { id: 'p', kind: 'page', name: '空页面', order: 0, createdAt: 1 },
+      page: { id: 'p', kind: 'page', name: '空页面', orderKey: 'a0', createdAt: 1 },
       messages: [],
       topics: []
     }

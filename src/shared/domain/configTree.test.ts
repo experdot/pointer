@@ -6,7 +6,7 @@ import {
   clearConfigFolder,
   configChildren,
   configDescendantFolderIds,
-  configNextOrder,
+  configNextOrderKey,
   emptyConfigTree,
   removeConfigFolder,
   removeConfigItem,
@@ -15,19 +15,19 @@ import {
 } from './configTree'
 
 function folder(id: string, name: string, parentFolderId?: string, order = 0): ConfigFolder {
-  return { id, kind: 'folder', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'folder', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 function item(id: string, name: string, parentFolderId?: string, order = 0): ConfigItemBase {
-  return { id, kind: 'item', name, parentFolderId, order, createdAt: 1 }
+  return { id, kind: 'item', name, parentFolderId, orderKey: `a${order}`, createdAt: 1 }
 }
 
 function fixture(): ConfigTree<ConfigItemBase> {
   let tree = emptyConfigTree<ConfigItemBase>()
   tree = addConfigFolder(tree, folder('f1', '主力'))
   tree = addConfigFolder(tree, folder('f2', '备用', 'f1'))
-  tree = addConfigItem(tree, item('i1', 'GPT', 'f1'))
-  tree = addConfigItem(tree, item('i2', 'Claude'))
+  tree = addConfigItem(tree, item('i1', 'GPT', 'f1', 1))
+  tree = addConfigItem(tree, item('i2', 'Claude', undefined, 1))
   return tree
 }
 
@@ -37,7 +37,7 @@ describe('配置树', () => {
     expect(configChildren(tree, undefined).map((node) => node.id)).toEqual(['f1', 'i2'])
     expect(configChildren(tree, 'f1').map((node) => node.id)).toEqual(['f2', 'i1'])
     expect(configDescendantFolderIds(tree, 'f1')).toEqual(['f2'])
-    expect(configNextOrder(tree, undefined)).toBe(1)
+    expect(configNextOrderKey(tree, undefined)).toBe('a2')
   })
 
   it('更新与删除条目', () => {

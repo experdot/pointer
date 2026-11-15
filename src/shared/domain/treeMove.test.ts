@@ -1,13 +1,14 @@
+import { compareNodes } from './common'
 import { describe, expect, it } from 'vitest'
 import { childrenOf, moveTreeNode, type Folder, type Page, type PageTree } from './page'
 import type { TreeMove } from './common'
 
 function folder(id: string, order = 0, parentFolderId?: string): Folder {
-  return { id, name: id, kind: 'folder', order, parentFolderId, createdAt: 1 }
+  return { id, name: id, kind: 'folder', orderKey: `a${order}`, parentFolderId, createdAt: 1 }
 }
 
 function page(id: string, order = 0, parentFolderId?: string): Page {
-  return { id, name: id, kind: 'page', order, parentFolderId, createdAt: 1 }
+  return { id, name: id, kind: 'page', orderKey: `a${order}`, parentFolderId, createdAt: 1 }
 }
 
 function apply(tree: PageTree, move: TreeMove): PageTree {
@@ -60,13 +61,13 @@ describe('页面树移动意图', () => {
       ])
       expect(nodes).toEqual(
         [...original.pages, ...original.folders.filter((node) => node.id !== parentFolderId)].sort(
-          (a, b) => a.order - b.order
+          compareNodes
         )
       )
     }
   )
 
-  it('跨文件夹移动后仅重排源层级与目标层级，子树保持不变', () => {
+  it('跨文件夹移动后只改变被移动节点，子树保持不变', () => {
     const tree = {
       folders: [folder('source'), folder('target', 1), folder('moving', 0, 'source')],
       pages: [
@@ -78,7 +79,7 @@ describe('页面树移动意图', () => {
     }
     const moved = apply(tree, { nodeId: 'moving', targetNodeId: 'b', placement: 'before' })
     expect(childrenOf(moved, 'target').map((node) => node.id)).toEqual(['a', 'moving', 'b'])
-    expect(childrenOf(moved, 'source').map((node) => node.order)).toEqual([0])
+    expect(childrenOf(moved, 'source').map((node) => node.orderKey)).toEqual(['a1'])
     expect(moved.pages.find((node) => node.id === 'child')).toBe(tree.pages[3])
     const first = apply(moved, { nodeId: 'moving', targetNodeId: 'target', placement: 'inside' })
     expect(childrenOf(first, 'target').map((node) => node.id)).toEqual(['moving', 'a', 'b'])

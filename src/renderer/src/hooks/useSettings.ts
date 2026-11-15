@@ -1,3 +1,4 @@
+import { compareNodes, type TreeMove } from '@shared/domain'
 import { useMemo, useCallback } from 'react'
 import { useSettingsStore } from '../stores/settingsStore'
 import type {
@@ -24,14 +25,14 @@ function useConfigTree<T extends ConfigItemBase>(tree: ConfigTree<T>): ConfigTre
   const rootItems = useMemo(() => {
     const items = tree.items.filter((item) => !item.parentFolderId)
     const folders = tree.folders.filter((f) => !f.parentFolderId)
-    return [...folders, ...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    return [...folders, ...items].sort(compareNodes)
   }, [tree.items, tree.folders])
 
   const getItemsInFolder = useCallback(
     (folderId: string | undefined): (T | ConfigFolder)[] => {
       const items = tree.items.filter((item) => item.parentFolderId === folderId)
       const folders = tree.folders.filter((f) => f.parentFolderId === folderId)
-      return [...folders, ...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      return [...folders, ...items].sort(compareNodes)
     },
     [tree.items, tree.folders]
   )
@@ -73,7 +74,7 @@ export function useSettings(): UseSettingsResult {
 }
 
 interface UseLLMConfigsResult extends ConfigTreeResult<LLMConfig> {
-  batchUpdateItemsOrder: (items: (LLMConfig | ConfigFolder)[], parentFolderId?: string) => void
+  moveNode: (move: TreeMove) => void
   createConfig: typeof settingsService.createLLMConfig
   updateConfig: typeof settingsService.updateLLMConfig
   deleteConfig: typeof settingsService.deleteLLMConfig
@@ -86,31 +87,12 @@ interface UseLLMConfigsResult extends ConfigTreeResult<LLMConfig> {
 }
 
 export function useLLMConfigs(): UseLLMConfigsResult {
-  const { settings, batchUpdateLLMConfigs, batchUpdateLLMConfigFolders } = useSettingsStore()
+  const { settings, moveLLMNode } = useSettingsStore()
   const tree = useConfigTree(settings.llmConfigs)
-
-  const batchUpdateItemsOrder = useCallback(
-    (items: (LLMConfig | ConfigFolder)[], parentFolderId?: string) => {
-      const itemUpdates: Array<{ id: string; changes: Partial<LLMConfig> }> = []
-      const folderUpdates: Array<{ id: string; changes: Partial<ConfigFolder> }> = []
-
-      items.forEach((item, index) => {
-        if ('baseUrl' in item) {
-          itemUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
-        } else {
-          folderUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
-        }
-      })
-
-      if (itemUpdates.length) batchUpdateLLMConfigs(itemUpdates)
-      if (folderUpdates.length) batchUpdateLLMConfigFolders(folderUpdates)
-    },
-    [batchUpdateLLMConfigs, batchUpdateLLMConfigFolders]
-  )
 
   return {
     ...tree,
-    batchUpdateItemsOrder,
+    moveNode: moveLLMNode,
     createConfig: settingsService.createLLMConfig,
     updateConfig: settingsService.updateLLMConfig,
     deleteConfig: settingsService.deleteLLMConfig,
@@ -124,7 +106,7 @@ export function useLLMConfigs(): UseLLMConfigsResult {
 }
 
 interface UseModelConfigsResult extends ConfigTreeResult<ModelConfig> {
-  batchUpdateItemsOrder: (items: (ModelConfig | ConfigFolder)[], parentFolderId?: string) => void
+  moveNode: (move: TreeMove) => void
   createConfig: typeof settingsService.createModelConfig
   updateConfig: typeof settingsService.updateModelConfig
   deleteConfig: typeof settingsService.deleteModelConfig
@@ -137,31 +119,12 @@ interface UseModelConfigsResult extends ConfigTreeResult<ModelConfig> {
 }
 
 export function useModelConfigs(): UseModelConfigsResult {
-  const { settings, batchUpdateModelConfigs, batchUpdateModelConfigFolders } = useSettingsStore()
+  const { settings, moveModelNode } = useSettingsStore()
   const tree = useConfigTree(settings.modelConfigs)
-
-  const batchUpdateItemsOrder = useCallback(
-    (items: (ModelConfig | ConfigFolder)[], parentFolderId?: string) => {
-      const itemUpdates: Array<{ id: string; changes: Partial<ModelConfig> }> = []
-      const folderUpdates: Array<{ id: string; changes: Partial<ConfigFolder> }> = []
-
-      items.forEach((item, index) => {
-        if ('systemPrompt' in item) {
-          itemUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
-        } else {
-          folderUpdates.push({ id: item.id, changes: { order: index, parentFolderId } })
-        }
-      })
-
-      if (itemUpdates.length) batchUpdateModelConfigs(itemUpdates)
-      if (folderUpdates.length) batchUpdateModelConfigFolders(folderUpdates)
-    },
-    [batchUpdateModelConfigs, batchUpdateModelConfigFolders]
-  )
 
   return {
     ...tree,
-    batchUpdateItemsOrder,
+    moveNode: moveModelNode,
     createConfig: settingsService.createModelConfig,
     updateConfig: settingsService.updateModelConfig,
     deleteConfig: settingsService.deleteModelConfig,

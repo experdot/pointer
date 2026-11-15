@@ -4,8 +4,8 @@ import type { ChatMessage } from './chat'
 
 function document(messages: ChatMessage[]): PageFileDocument {
   return {
-    version: 2,
-    page: { id: 'page', kind: 'page', name: '边界', order: 0, createdAt: 1 },
+    version: 3,
+    page: { id: 'page', kind: 'page', name: '边界', orderKey: 'a0', createdAt: 1 },
     messages,
     topics: [],
     leafMessageId: messages.at(-1)?.id

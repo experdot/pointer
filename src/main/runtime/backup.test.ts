@@ -11,7 +11,7 @@ import {
   type BackupRestoreResult,
   type SettingsSnapshot
 } from '@shared/contracts'
-import type { Conversation, PageTree } from '@shared/domain'
+import { childrenOf, validateOrderKeys, type Conversation, type PageTree } from '@shared/domain'
 
 const host: RuntimeHost = {
   getVersion: () => 'test',
@@ -24,7 +24,7 @@ const host: RuntimeHost = {
 let runtime: RuntimeCore
 let root: string
 const backup = (): BackupData => ({
-  version: '1.0',
+  version: '2.0.0',
   exportedAt: 1,
   data: {
     folders: [
@@ -33,10 +33,10 @@ const backup = (): BackupData => ({
         kind: 'folder',
         name: 'child',
         parentFolderId: 'parent',
-        order: 0,
+        orderKey: 'a0',
         createdAt: 1
       },
-      { id: 'parent', kind: 'folder', name: 'parent', order: 0, createdAt: 1 }
+      { id: 'parent', kind: 'folder', name: 'parent', orderKey: 'a0', createdAt: 1 }
     ],
     pages: [
       {
@@ -44,7 +44,7 @@ const backup = (): BackupData => ({
         kind: 'page',
         name: 'restored',
         parentFolderId: 'child',
-        order: 0,
+        orderKey: 'a0',
         createdAt: 1
       }
     ],
@@ -103,8 +103,15 @@ const backup = (): BackupData => ({
     settings: {
       llmConfigs: {
         folders: [
-          { id: 'lc', kind: 'folder', name: 'child', parentFolderId: 'lp', order: 0, createdAt: 1 },
-          { id: 'lp', kind: 'folder', name: 'parent', order: 0, createdAt: 1 }
+          {
+            id: 'lc',
+            kind: 'folder',
+            name: 'child',
+            parentFolderId: 'lp',
+            orderKey: 'a0',
+            createdAt: 1
+          },
+          { id: 'lp', kind: 'folder', name: 'parent', orderKey: 'a0', createdAt: 1 }
         ],
         items: [
           {
@@ -112,7 +119,7 @@ const backup = (): BackupData => ({
             kind: 'item',
             name: 'LLM',
             parentFolderId: 'lc',
-            order: 0,
+            orderKey: 'a0',
             createdAt: 1,
             apiKey: '',
             baseUrl: '',
@@ -165,7 +172,126 @@ afterEach(async () => {
 })
 
 describe('[R21] 内核备份恢复', () => {
-  it('父级先创建，保留旧版本消息、分支和话题；缺少附件不阻断文本', async () => {
+  it('只接受 2.0.0 备份和有效的字符串键', async () => {
+    for (const version of ['1.0', '1.0.0', '3.0.0'])
+      await expect(restore(input({ ...backup(), version }))).rejects.toMatchObject({
+        code: 'backup.invalid'
+      })
+    const invalid = backup()
+    invalid.data.pages![0].orderKey = ''
+    await expect(restore(input(invalid))).rejects.toMatchObject({ code: 'backup.invalid' })
+    expect(await runtime.query('tree.get', undefined)).toEqual({ pages: [], folders: [] })
+  })
+
+  it.each(['generate-new', 'skip', 'overwrite'] as const)(
+    '不同节点类型占用 ID 时 %s 策略不覆盖既有节点',
+    async (strategy) => {
+      const created = await runtime.command('page.create', { name: 'existing' })
+      const value = backup()
+      value.data = {
+        folders: [
+          { id: created.id, name: 'restored', kind: 'folder', orderKey: 'a0', createdAt: 1 }
+        ]
+      }
+      const result = await restore(input(value, strategy))
+      expect(result.error).toBeUndefined()
+      expect(result.ids.folders[created.id]).not.toBe(created.id)
+      const tree = (await runtime.query('tree.get', undefined)) as PageTree
+      expect(tree.pages).toEqual([created])
+      expect(tree.folders).toHaveLength(1)
+      const settings = ((await runtime.query('settings.get', undefined)) as SettingsSnapshot)
+        .settings
+      settings.llmConfigs.folders = [
+        {
+          id: 'config-collision',
+          name: 'existing-config-folder',
+          kind: 'folder',
+          createdAt: 1,
+          orderKey: 'a0'
+        }
+      ]
+      await runtime.command('settings.replace', { settings })
+      const configBackup = backup()
+      const config = configBackup.data.settings!.llmConfigs!.items[0]
+      configBackup.data = {
+        settings: { llmConfigs: { folders: [], items: [{ ...config, id: 'config-collision' }] } }
+      }
+      const configs = await restore(input(configBackup, strategy))
+      expect(configs.error).toBeUndefined()
+      expect(configs.ids.llm['config-collision']).not.toBe('config-collision')
+      const configTree = ((await runtime.query('settings.get', undefined)) as SettingsSnapshot)
+        .settings.llmConfigs
+      expect(configTree.folders).toEqual(settings.llmConfigs.folders)
+      expect(validateOrderKeys([...configTree.folders, ...configTree.items])).toEqual([])
+      const duplicate = backup()
+      duplicate.data.pages![0].id = duplicate.data.folders![0].id
+      await expect(restore(input(duplicate))).rejects.toMatchObject({ code: 'backup.invalid' })
+    }
+  )
+
+  it('混合树批量恢复保持同层级相对顺序，往返不修改既有节点的键', async () => {
+    const data = backup()
+    data.data.settings = undefined
+    data.data.viewState = undefined
+    data.data.folders = [
+      { id: 'root', kind: 'folder', name: 'root', orderKey: 'a0', createdAt: 1 },
+      {
+        id: 'nested',
+        kind: 'folder',
+        name: 'nested',
+        parentFolderId: 'root',
+        orderKey: 'a0',
+        createdAt: 2
+      }
+    ]
+    data.data.pages = [
+      {
+        id: 'one',
+        kind: 'page',
+        name: 'one',
+        parentFolderId: 'root',
+        orderKey: 'a1',
+        createdAt: 3
+      },
+      { id: 'two', kind: 'page', name: 'two', parentFolderId: 'root', orderKey: 'a2', createdAt: 4 }
+    ]
+    data.data.messages = []
+    expect((await restore(input(data))).error).toBeUndefined()
+    const tree = (await runtime.query('tree.get', undefined)) as PageTree
+    expect(childrenOf(tree, 'root').map((n) => n.name)).toEqual(['nested', 'one', 'two'])
+    const exported: BackupData = { version: '2.0.0', exportedAt: 9, data: tree }
+    const result = await restore(input(exported))
+    expect(result.error).toBeUndefined()
+    const next = (await runtime.query('tree.get', undefined)) as PageTree
+    expect(childrenOf(next, result.ids.folders.root).map((n) => n.name)).toEqual([
+      'nested',
+      'one',
+      'two'
+    ])
+    expect(validateOrderKeys([...next.folders, ...next.pages])).toEqual([])
+    for (const old of [...tree.folders, ...tree.pages])
+      expect([...next.folders, ...next.pages].find((n) => n.id === old.id)!.orderKey).toBe(
+        old.orderKey
+      )
+  })
+
+  it('不同缺失父级的配置提升到根时统一分配键', async () => {
+    const data = backup()
+    const original = data.data.settings!.llmConfigs!.items[0]
+    data.data.settings!.llmConfigs!.items.push({
+      ...original,
+      id: 'second',
+      parentFolderId: 'other-missing'
+    })
+    const value = input(data)
+    value.selection.llmFolders = []
+    expect((await restore(value)).error).toBeUndefined()
+    const tree = ((await runtime.query('settings.get', undefined)) as SettingsSnapshot).settings
+      .llmConfigs
+    expect(tree.items.every((n) => n.parentFolderId === undefined)).toBe(true)
+    expect(validateOrderKeys([...tree.folders, ...tree.items])).toEqual([])
+  })
+  it('父级先创建，保留消息、分支和话题；缺少附件不阻断文本', async () => {
     const data = backup(),
       result = await restore(input(data))
     expect(result.error).toBeUndefined()
@@ -239,8 +365,8 @@ describe('[R21] 内核备份恢复', () => {
   it('写入故障停止后续导入并报告完成数量，不自动重试', async () => {
     const data = backup()
     data.data.pages!.push(
-      { ...data.data.pages![0], id: 'second', name: 'second', order: 1 },
-      { ...data.data.pages![0], id: 'third', name: 'third', order: 2 }
+      { ...data.data.pages![0], id: 'second', name: 'second', orderKey: 'a1' },
+      { ...data.data.pages![0], id: 'third', name: 'third', orderKey: 'a2' }
     )
     data.data.messages!.push(
       { ...data.data.messages![0], pageId: 'second' },

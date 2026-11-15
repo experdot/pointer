@@ -37,8 +37,11 @@ import {
   isReservedDirectory,
   moveTreeNode,
   nameKey,
-  nextOrder,
+  nextOrderKey,
+  assertOrderKey,
   normalizeSiblingIndexes,
+  isOrderKey,
+  repairDuplicateOrderKeys,
   parsePageFile,
   parsePageMetadata,
   replacePageMetadata,
@@ -341,10 +344,12 @@ export class WorkspaceStore {
       afterNodeId?: string
       starred?: boolean
     },
-    at: number
+    at: number,
+    allocatedKey?: string
   ): Promise<Page> {
     this.requireTransaction()
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
+    if (allocatedKey !== undefined) this.assertAvailableKey(allocatedKey, parentFolderId)
     if (input.id) {
       assertSafeId(input.id)
       if (this.getPage(input.id) || this.getFolder(input.id))
@@ -356,7 +361,7 @@ export class WorkspaceStore {
       name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_PAGE_NAME),
       starred: input.starred,
       parentFolderId,
-      order: nextOrder(this.getTree(), parentFolderId),
+      orderKey: allocatedKey ?? nextOrderKey(this.getTree(), parentFolderId),
       createdAt: at,
       updatedAt: at
     }
@@ -364,7 +369,7 @@ export class WorkspaceStore {
     this.pages = addPage(this.getTree(), page).pages
     const pagesBefore = this.pages
     const foldersBefore = this.folders
-    this.positionNewNode(page.id, input.afterNodeId, at)
+    if (allocatedKey === undefined) this.positionNewNode(page.id, input.afterNodeId, at)
     await this.persistFoldersDiff(foldersBefore)
     await this.persistPageMetadataDiff(pagesBefore)
     await this.applyLayout()
@@ -393,16 +398,28 @@ export class WorkspaceStore {
     await this.syncIndexForPage(pageId)
   }
 
-  async moveTreeNode(input: RuntimeCommandPayload<'tree.move'>, at: number): Promise<boolean> {
+  async moveTreeNode(
+    input: RuntimeCommandPayload<'tree.move'>,
+    at: number,
+    allocatedKey?: string
+  ): Promise<boolean> {
     this.requireTransaction()
     const before = this.getTree()
     const result = moveTreeNode(before, input, at)
     if (!result.ok) {
       throw new RuntimeError(result.error.code, result.error.message)
     }
-    if (result.tree === before) return false
-
     let next = result.tree
+    if (allocatedKey !== undefined) {
+      const node = [...next.pages, ...next.folders].find((node) => node.id === input.nodeId)!
+      this.assertAvailableKey(allocatedKey, node.parentFolderId, node.id)
+      if (node.orderKey !== allocatedKey)
+        next =
+          node.kind === 'page'
+            ? updatePage(next, node.id, { orderKey: allocatedKey }, at)
+            : updateFolder(next, node.id, { orderKey: allocatedKey }, at)
+    }
+    if (next === before) return false
     const moved = [...next.pages, ...next.folders].find((node) => node.id === input.nodeId)!
     const name = this.uniqueNameAt(moved.parentFolderId, moved.name, moved.id)
     if (name !== moved.name) {
@@ -426,7 +443,9 @@ export class WorkspaceStore {
     await this.persistFoldersDiff(before.folders)
     await this.persistPageMetadataDiff(before.pages)
     const previousPaths = new Map(this.pagePaths)
-    await this.applyLayout()
+    const previousNode = [...before.pages, ...before.folders].find((node) => node.id === moved.id)!
+    if (previousNode.parentFolderId !== moved.parentFolderId || previousNode.name !== name)
+      await this.applyLayout()
     // 布局可能同时移动文件夹下的页面；只刷新路径索引，不重建消息全文索引。
     for (const page of this.pages) {
       const relativePath = this.pagePaths.get(page.id)
@@ -470,7 +489,8 @@ export class WorkspaceStore {
 
   async createFolder(
     input: { id?: string; name?: string; parentFolderId?: string; afterNodeId?: string },
-    at: number
+    at: number,
+    allocatedKey?: string
   ): Promise<Folder> {
     this.requireTransaction()
     this.assertFolderName(input.name ?? DEFAULT_FOLDER_NAME)
@@ -480,19 +500,20 @@ export class WorkspaceStore {
         throw new RuntimeError('folder.id-conflict', '标识已存在')
     }
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
+    if (allocatedKey !== undefined) this.assertAvailableKey(allocatedKey, parentFolderId)
     const folder: Folder = {
       id: input.id ?? randomUUID(),
       kind: 'folder',
       name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_FOLDER_NAME),
       parentFolderId,
-      order: nextOrder(this.getTree(), parentFolderId),
+      orderKey: allocatedKey ?? nextOrderKey(this.getTree(), parentFolderId),
       createdAt: at,
       updatedAt: at
     }
 
     this.folders = addFolder(this.getTree(), folder).folders
     const before = this.pages
-    this.positionNewNode(folder.id, input.afterNodeId, at)
+    if (allocatedKey === undefined) this.positionNewNode(folder.id, input.afterNodeId, at)
     await this.persistPageMetadataDiff(before)
     await this.persistFolders()
     await this.applyLayout()
@@ -719,7 +740,7 @@ export class WorkspaceStore {
   /**
    * 把发生变化的页面元数据写回文件
    *
-   * 页面文件里的 <pointer-page> 块才是元数据（name/starred/order/parentFolderId）的
+   * 页面文件里的 <pointer-page> 块才是元数据（name/starred/orderKey/parentFolderId）的
    * 权威副本；不写回的话，任何一次目录扫描都会用磁盘上的旧值覆盖内存
    * ——迁移前"加星后改名星标消失"就是这么来的。
    */
@@ -732,7 +753,7 @@ export class WorkspaceStore {
       if (
         old.name === page.name &&
         old.starred === page.starred &&
-        old.order === page.order &&
+        old.orderKey === page.orderKey &&
         old.parentFolderId === page.parentFolderId
       ) {
         continue
@@ -808,6 +829,9 @@ export class WorkspaceStore {
   private async loadFolders(): Promise<void> {
     const file = await readJson<FoldersFile>(this.paths.foldersFile(this.path))
     this.folders = file?.folders ?? []
+    for (const folder of this.folders)
+      if (!isOrderKey(folder.orderKey))
+        throw new RuntimeError('tree.invalid-order-key', '文件夹缺少有效的字符串排序键')
   }
 
   private async persistFolders(): Promise<void> {
@@ -834,7 +858,7 @@ export class WorkspaceStore {
   /**
    * 把顺序发生变化的文件夹元数据写回 folders.json
    *
-   * 在同级插入节点会重排后续兄弟的 order（文件夹也在内），不写回的话
+   * 只保存新增或移动文件夹的元数据；不修改其他兄弟的排序键。不写回的话
    * folders.json 会与内存状态漂移，重开工作区后顺序被打回旧值。
    */
   private async persistFoldersDiff(before: readonly Folder[]): Promise<void> {
@@ -844,7 +868,7 @@ export class WorkspaceStore {
       return (
         !old ||
         old.name !== folder.name ||
-        old.order !== folder.order ||
+        old.orderKey !== folder.orderKey ||
         old.parentFolderId !== folder.parentFolderId
       )
     })
@@ -872,7 +896,13 @@ export class WorkspaceStore {
       const text = await readText(file.absolutePath)
       if (text === null) continue
       const parsed = parsePageMetadata(text)
-      if (!parsed.ok) continue
+      if (!parsed.ok) {
+        if (parsed.error === 'invalid-order-key' || parsed.error.startsWith('unsupported-version:'))
+          throw new RuntimeError('page.parse-failed', '页面文件版本或排序键无效', {
+            reason: parsed.error
+          })
+        continue
+      }
       assertSafeId(parsed.value.page.id)
       if (pagePaths.has(parsed.value.page.id)) continue
 
@@ -887,11 +917,29 @@ export class WorkspaceStore {
 
     if (foldersChanged) await this.persistFolders()
     await this.removeOrphanFolders()
+    await this.repairOrderKeyCollisions()
 
     const diagnostics = validatePageTree(this.getTree())
     if (diagnostics.length > 0) {
       console.warn('[runtime] 页面树存在异常：', diagnostics.slice(0, 5))
     }
+  }
+
+  /** 外部文件的键冲突只修改冲突组；原有其他页面不重写。 */
+  private async repairOrderKeyCollisions(): Promise<void> {
+    const keys = repairDuplicateOrderKeys([...this.folders, ...this.pages])
+    if (!keys.size) return
+    const at = Date.now()
+    const foldersBefore = this.folders
+    const pagesBefore = this.pages
+    this.folders = this.folders.map((folder) =>
+      keys.has(folder.id) ? { ...folder, orderKey: keys.get(folder.id)!, updatedAt: at } : folder
+    )
+    this.pages = this.pages.map((page) =>
+      keys.has(page.id) ? { ...page, orderKey: keys.get(page.id)!, updatedAt: at } : page
+    )
+    await this.persistFoldersDiff(foldersBefore)
+    await this.persistPageMetadataDiff(pagesBefore)
   }
 
   private folderIdForDir(directory: string): string | undefined {
@@ -922,7 +970,7 @@ export class WorkspaceStore {
         kind: 'folder',
         name: segment,
         parentFolderId,
-        order: nextOrder(this.getTree(), parentFolderId),
+        orderKey: nextOrderKey(this.getTree(), parentFolderId),
         createdAt: at
       }
       this.folders = addFolder(this.getTree(), folder).folders
@@ -1072,6 +1120,17 @@ export class WorkspaceStore {
 
     if (unique.length === conversation.messages.length) return conversation
     return { ...conversation, messages: unique }
+  }
+
+  /** 仅供内核批量导入使用；普通命令通过移动意图计算键。 */
+  private assertAvailableKey(key: string, parentFolderId?: string, excludeId?: string): void {
+    assertOrderKey(key)
+    if (
+      childrenOf(this.getTree(), parentFolderId).some(
+        (node) => node.id !== excludeId && node.orderKey === key
+      )
+    )
+      throw new RuntimeError('tree.duplicate-order-key', '同级节点的排序键重复')
   }
 
   private validatedFolderId(folderId: string | undefined): string | undefined {

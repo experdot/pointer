@@ -6,6 +6,8 @@
 
 import type { Diagnostic, TreeMove, TreeNodeBase } from './common'
 import { compareNodes, descendantFolderIds, nameKey } from './common'
+import { orderKeyBetween, orderKeysBetween, validateOrderKeys } from './ordering'
+import { moveOrderedNode } from './treeOrder'
 
 export { descendantFolderIds } from './common'
 
@@ -23,17 +25,16 @@ export interface PageTree {
   pages: Page[]
 }
 
-/** 同级节点（文件夹 + 页面），按 order 排序 */
+/** 同级节点（文件夹 + 页面），按 orderKey 排序 */
 export function childrenOf(tree: PageTree, parentFolderId: string | undefined): TreeNodeBase[] {
   const folders = tree.folders.filter((folder) => folder.parentFolderId === parentFolderId)
   const pages = tree.pages.filter((page) => page.parentFolderId === parentFolderId)
   return [...folders, ...pages].sort(compareNodes)
 }
 
-/** 某层级下一个可用的 order 值 */
-export function nextOrder(tree: PageTree, parentFolderId: string | undefined): number {
-  const siblings = childrenOf(tree, parentFolderId)
-  return siblings.reduce((max, node) => Math.max(max, node.order + 1), 0)
+/** 某层级下一个可用的 orderKey 值 */
+export function nextOrderKey(tree: PageTree, parentFolderId: string | undefined): string {
+  return orderKeyBetween(childrenOf(tree, parentFolderId).at(-1)?.orderKey ?? null, null)
 }
 
 /** 判断 candidateAncestorId 是否是 nodeId 的祖先文件夹（含自身） */
@@ -56,18 +57,6 @@ export function isFolderAncestor(
   return false
 }
 
-function findFolder(tree: PageTree, folderId: string): Folder | undefined {
-  return tree.folders.find((folder) => folder.id === folderId)
-}
-
-function findPage(tree: PageTree, pageId: string): Page | undefined {
-  return tree.pages.find((page) => page.id === pageId)
-}
-
-function findNode(tree: PageTree, nodeId: string): Folder | Page | undefined {
-  return findFolder(tree, nodeId) ?? findPage(tree, nodeId)
-}
-
 export function addFolder(tree: PageTree, folder: Folder): PageTree {
   return { ...tree, folders: [...tree.folders, folder] }
 }
@@ -80,7 +69,7 @@ export function addPage(tree: PageTree, page: Page): PageTree {
 export function updatePage(
   tree: PageTree,
   pageId: string,
-  patch: Partial<Pick<Page, 'name' | 'parentFolderId' | 'order' | 'starred'>>,
+  patch: Partial<Pick<Page, 'name' | 'parentFolderId' | 'orderKey' | 'starred'>>,
   at: number
 ): PageTree {
   return {
@@ -95,7 +84,7 @@ export function updatePage(
 export function updateFolder(
   tree: PageTree,
   folderId: string,
-  patch: Partial<Pick<Folder, 'name' | 'parentFolderId' | 'order'>>,
+  patch: Partial<Pick<Folder, 'name' | 'parentFolderId' | 'orderKey'>>,
   at: number
 ): PageTree {
   return {
@@ -112,97 +101,17 @@ export function moveTreeNode(
   move: TreeMove,
   at: number
 ): { ok: true; tree: PageTree } | { ok: false; error: Diagnostic } {
-  const fail = (code: string, message: string): { ok: false; error: Diagnostic } => ({
-    ok: false,
-    error: { code, message, entityId: move.nodeId }
-  })
-  const node = findNode(tree, move.nodeId)
-  const target = move.targetNodeId ? findNode(tree, move.targetNodeId) : undefined
-  if (!node) return fail('tree.node-not-found', '移动的节点已不存在')
-  if (!['before', 'after', 'inside', 'end'].includes(move.placement)) {
-    return fail('tree.invalid-placement', '无效的放置位置')
-  }
-  const intoFolder = move.placement === 'inside' || move.placement === 'end'
-  if (!target && (move.targetNodeId !== undefined || !intoFolder))
-    return fail('tree.target-not-found', '目标节点已不存在')
-  if (intoFolder && target && !findFolder(tree, target.id)) {
-    return fail('tree.invalid-target', '只能移入文件夹')
-  }
-  if (node.id === target?.id && !intoFolder) return { ok: true, tree }
-
-  const parentId = intoFolder ? target?.id : target!.parentFolderId
-  if (parentId && !findFolder(tree, parentId)) {
-    return fail('tree.target-not-found', '目标文件夹已不存在')
-  }
-  if (findFolder(tree, node.id) && parentId && isFolderAncestor(tree, node.id, parentId)) {
-    return fail('tree.cycle', '不能把文件夹移入自身或其子文件夹')
-  }
-
-  const siblings = childrenOf(tree, parentId).filter((item) => item.id !== node.id)
-  const index =
-    move.placement === 'inside'
-      ? 0
-      : move.placement === 'end'
-        ? siblings.length
-        : siblings.findIndex((item) => item.id === target!.id) +
-          (move.placement === 'after' ? 1 : 0)
+  const nodes = [...tree.folders, ...tree.pages]
+  const result = moveOrderedNode(nodes, move, at)
+  if (!result.ok) return result
+  if (result.nodes === nodes) return { ok: true, tree }
   return {
     ok: true,
-    tree: insertNodeBefore(tree, node, parentId, siblings[index]?.id, at)
+    tree: {
+      folders: result.nodes.filter((node): node is Folder => node.kind === 'folder'),
+      pages: result.nodes.filter((node): node is Page => node.kind === 'page')
+    }
   }
-}
-
-/** beforeNodeId 为空时明确追加到末尾；只更新实际改变的节点。 */
-function insertNodeBefore(
-  tree: PageTree,
-  node: TreeNodeBase,
-  targetFolderId: string | undefined,
-  beforeNodeId: string | undefined,
-  at: number
-): PageTree {
-  const nodeId = node.id
-  const sourceParentId = node.parentFolderId
-  const sourceLevel = childrenOf(tree, sourceParentId).filter((item) => item.id !== nodeId)
-  const targetLevelBase =
-    sourceParentId === targetFolderId
-      ? sourceLevel
-      : childrenOf(tree, targetFolderId).filter((item) => item.id !== nodeId)
-
-  const rawIndex = beforeNodeId
-    ? targetLevelBase.findIndex((item) => item.id === beforeNodeId)
-    : targetLevelBase.length
-  const insertIndex = rawIndex < 0 ? targetLevelBase.length : rawIndex
-
-  const targetLevel = [...targetLevelBase]
-  targetLevel.splice(insertIndex, 0, node)
-
-  const orderById = new Map<string, number>()
-  const parentById = new Map<string, string | undefined>()
-
-  targetLevel.forEach((item, index) => {
-    orderById.set(item.id, index)
-    parentById.set(item.id, targetFolderId)
-  })
-  if (sourceParentId !== targetFolderId) {
-    sourceLevel.forEach((item, index) => {
-      orderById.set(item.id, index)
-      parentById.set(item.id, sourceParentId)
-    })
-  }
-
-  let changed = false
-  const apply = <T extends TreeNodeBase>(items: T[]): T[] =>
-    items.map((item) => {
-      const order = orderById.get(item.id)
-      if (order === undefined) return item
-      const parentFolderId = parentById.get(item.id)
-      if (item.order === order && item.parentFolderId === parentFolderId) return item
-      changed = true
-      return { ...item, order, parentFolderId, updatedAt: at }
-    })
-
-  const next = { folders: apply(tree.folders), pages: apply(tree.pages) }
-  return changed ? next : tree
 }
 
 /**
@@ -226,17 +135,23 @@ export function removeFolder(
     }
   }
 
-  let offset = nextOrder(tree, undefined)
+  const promoted = childrenOf(tree, folderId)
+  const keys = orderKeysBetween(
+    childrenOf(tree, undefined).at(-1)?.orderKey ?? null,
+    null,
+    promoted.length
+  )
+  const byId = new Map(promoted.map((node, index) => [node.id, keys[index]]))
   const folders = tree.folders
     .filter((folder) => folder.id !== folderId)
     .map((folder) =>
       folder.parentFolderId === folderId
-        ? { ...folder, parentFolderId: undefined, order: offset++, updatedAt: at }
+        ? { ...folder, parentFolderId: undefined, orderKey: byId.get(folder.id)!, updatedAt: at }
         : folder
     )
   const pages = tree.pages.map((page) =>
     page.parentFolderId === folderId
-      ? { ...page, parentFolderId: undefined, order: offset++, updatedAt: at }
+      ? { ...page, parentFolderId: undefined, orderKey: byId.get(page.id)!, updatedAt: at }
       : page
   )
 
@@ -263,7 +178,7 @@ export function removePages(tree: PageTree, pageIds: readonly string[]): PageTre
 
 /** 校验页面树不变量：id 唯一、父节点存在、无环、同级名称唯一 */
 export function validatePageTree(tree: PageTree): Diagnostic[] {
-  const diagnostics: Diagnostic[] = []
+  const diagnostics: Diagnostic[] = validateOrderKeys([...tree.folders, ...tree.pages])
   const folderIds = new Set(tree.folders.map((folder) => folder.id))
 
   for (const node of [...tree.folders, ...tree.pages]) {

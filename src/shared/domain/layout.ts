@@ -5,7 +5,8 @@
  * 同样的数据必然得到同样的目录与文件名，因此外部改动后重新扫描即可对齐。
  */
 
-import { compareNodes, nameKey } from './common'
+import { nameKey } from './common'
+import { compareNodeIdentity } from './ordering'
 import { sanitizeFileName, uniquePageFileName, uniqueName } from './naming'
 import type { Folder, Page } from './page'
 
@@ -32,7 +33,7 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
 
     const childFolders = folders
       .filter((folder) => folder.parentFolderId === parentFolderId)
-      .sort(compareNodes)
+      .sort(compareNodeIdentity)
     for (const folder of childFolders) {
       const dirName = uniqueName(taken, sanitizeFileName(folder.name))
       taken.add(nameKey(dirName))
@@ -43,7 +44,7 @@ export function computeWorkspaceLayout({ folders, pages }: WorkspaceLayoutInput)
 
     const childPages = pages
       .filter((page) => page.parentFolderId === parentFolderId)
-      .sort(compareNodes)
+      .sort(compareNodeIdentity)
     for (const page of childPages) {
       const fileName = uniquePageFileName(taken, page.name)
       taken.add(nameKey(fileName))
