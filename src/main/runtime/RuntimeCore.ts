@@ -6,6 +6,7 @@
  */
 
 import { watch, type FSWatcher } from 'node:fs'
+import { relative } from 'node:path'
 import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
 import { randomUUID } from 'node:crypto'
 import type { ChatMessage, Conversation, Settings, Workspace } from '@shared/domain'
@@ -896,6 +897,15 @@ export class RuntimeCore {
     try {
       this.watcher = watch(workspacePath, { recursive: true }, (event, fileName) => {
         if (isWorkspaceFileChange(event, fileName)) this.scheduleExternalCheck()
+      })
+      this.watcher.on('error', (error: NodeJS.ErrnoException) => {
+        // 递归扫描期间目录可能已被删除；沿用变更过滤，私有事务目录无需同步。
+        if (error.code === 'ENOENT' && error.syscall === 'scandir') {
+          const fileName = error.path ? relative(workspacePath, error.path) : null
+          if (isWorkspaceFileChange('rename', fileName)) this.scheduleExternalCheck()
+          return
+        }
+        console.warn('[runtime] 工作区监听失败：', error)
       })
     } catch (error) {
       console.warn('[runtime] 无法监听工作区目录，外部改动需要手动刷新：', error)

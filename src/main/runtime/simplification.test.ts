@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readFile, utimes, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import type { FSWatcher } from 'node:fs'
+import { readFile, rmdir, unlink, utimes, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { DEFAULT_SEARCH_OPTIONS, childrenOf } from '@shared/domain'
 import { createKernel, controlledProvider, type KernelFixture } from '../../../tests/helpers/kernel'
 import type { WorkspaceStore } from './WorkspaceStore'
@@ -17,6 +18,7 @@ afterEach(async () => {
 
 function internals(): {
   workspace: WorkspaceStore
+  watcher: FSWatcher
   checkExternalChanges: () => Promise<void>
   stopWatcher: () => void
 } {
@@ -71,6 +73,81 @@ describe('读取、监听与事务边界', () => {
     await f.command('viewState.replace', { viewState })
     await new Promise((resolve) => setTimeout(resolve, 800))
     expect(scan).not.toHaveBeenCalled()
+  })
+
+  it('事务目录消失的监听错误不触发扫描，之后仍能同步外部正文修改', async () => {
+    const page = await f.command('page.create', { name: 'page' })
+    await f.command('conversation.append', {
+      pageId: page.id,
+      draft: { id: 'm', role: 'user', content: 'before' }
+    })
+    await f.restart()
+    const { watcher, workspace } = internals()
+    const scan = vi.spyOn(workspace, 'reconcileExternalChanges')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const error = Object.assign(new Error('目录已删除'), {
+      code: 'ENOENT',
+      syscall: 'scandir',
+      path: join(workspace.path, '.pointer', 'transactions', 'removed')
+    })
+    expect(() => watcher.emit('error', error)).not.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    expect(scan).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
+
+    const file = join(workspace.path, workspace.relativePathOf(page.id)!)
+    await writeFile(file, (await readFile(file, 'utf8')).replace('before', 'after'))
+    await vi.waitFor(
+      () =>
+        expect(f.events).toContainEqual(
+          expect.objectContaining({
+            type: 'workspace.externalChange',
+            payload: { pageIds: [page.id] }
+          })
+        ),
+      { timeout: 3000 }
+    )
+    expect(
+      await f.query('search.workspace', { query: 'after', options: DEFAULT_SEARCH_OPTIONS })
+    ).toMatchObject({ total: 1 })
+  })
+
+  it('普通目录消失的监听错误触发同步，清除已删除页面和索引', async () => {
+    const folder = await f.command('folder.create', { name: 'external' })
+    const page = await f.command('page.create', { name: 'page', parentFolderId: folder.id })
+    await f.command('conversation.append', {
+      pageId: page.id,
+      draft: { id: 'm', role: 'user', content: 'deleted-needle' }
+    })
+    await f.restart()
+    const { watcher, workspace } = internals()
+    // 只保留 error 通道，确保同步由目录消失的错误触发，而非正常变更事件。
+    watcher.removeAllListeners('change')
+    const file = join(workspace.path, workspace.relativePathOf(page.id)!)
+    await unlink(file)
+    await rmdir(dirname(file))
+    const error = Object.assign(new Error('目录已删除'), {
+      code: 'ENOENT',
+      syscall: 'scandir',
+      path: dirname(file)
+    })
+    expect(() => watcher.emit('error', error)).not.toThrow()
+    await vi.waitFor(async () => expect((await f.query('tree.get', undefined)).pages).toEqual([]), {
+      timeout: 3000
+    })
+    expect(
+      await f.query('search.workspace', {
+        query: 'deleted-needle',
+        options: DEFAULT_SEARCH_OPTIONS
+      })
+    ).toMatchObject({ total: 0 })
+  })
+
+  it.each(['EACCES', 'ENOSPC'])('监听器的 %s 错误记录警告，不成为未捕获异常', (code) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const error = Object.assign(new Error(code), { code, syscall: 'watch' })
+    expect(() => internals().watcher.emit('error', error)).not.toThrow()
+    expect(warn).toHaveBeenCalledWith('[runtime] 工作区监听失败：', error)
   })
 
   it('拒绝事务外、只读上下文和嵌套写入；并发调用不能借用正在运行的事务', async () => {
