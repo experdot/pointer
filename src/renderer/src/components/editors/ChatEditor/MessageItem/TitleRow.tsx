@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { Input, Tooltip, Dropdown, Button } from 'antd'
 import type { InputRef } from 'antd'
@@ -15,9 +16,11 @@ import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation
 
 export const TitleRow = React.memo(
   forwardRef<TitleRowRef, TitleRowProps>(function TitleRow(
-    { messageId, title, titleCallbacks },
+    { messageId, title, titleCallbacks }: TitleRowProps,
     ref
   ): React.JSX.Element | null {
+    useI18n()
+
     // 编辑状态在组件内部管理
     const [isEditing, setIsEditing] = useState(false)
     const [editValue, setEditValue] = useState(title || '')
@@ -87,7 +90,7 @@ export const TitleRow = React.memo(
                 handleSave()
               }
             }}
-            placeholder="输入标题..."
+            placeholder={t('chat.titlePlaceholder')}
             style={{ width: 180 }}
             suffix={
               titleCallbacks.onGenerateTitle ? (
@@ -101,7 +104,7 @@ export const TitleRow = React.memo(
                   }}
                   placement="bottomRight"
                 >
-                  <Tooltip title="AI 生成">
+                  <Tooltip title={t('ai.generateLabel')}>
                     <ThunderboltOutlined
                       className="rename-input__ai-btn"
                       onClick={(e) => {
@@ -123,14 +126,14 @@ export const TitleRow = React.memo(
                 items: [
                   {
                     key: 'rename',
-                    label: '重命名',
+                    label: t('common.rename'),
                     icon: <EditOutlined />,
                     onClick: () => handleStartEdit()
                   },
                   { type: 'divider' },
                   {
                     key: 'delete',
-                    label: '删除',
+                    label: t('common.delete'),
                     icon: <DeleteOutlined />,
                     danger: true,
                     onClick: () => titleCallbacks.onDeleteTitle?.(messageId)

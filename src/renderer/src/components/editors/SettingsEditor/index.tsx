@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useEffect } from 'react'
 import { Tabs } from 'antd'
 import type { TabsProps } from 'antd'
@@ -20,6 +21,8 @@ import { useSettingsUIStore } from '../../../stores/settingsUIStore'
 import './SettingsEditor.css'
 
 export function SettingsEditor(): React.JSX.Element {
+  useI18n()
+
   const [activeKey, setActiveKey] = useState('general')
 
   const pendingTab = useSettingsUIStore((state) => state.pendingTab)
@@ -35,7 +38,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'general',
       label: (
         <span>
-          <SettingOutlined /> 通用
+          <SettingOutlined /> {t('settings.general')}
         </span>
       ),
       children: <GeneralPanel />
@@ -44,7 +47,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'llm',
       label: (
         <span>
-          <ApiOutlined /> LLM 配置
+          <ApiOutlined /> {t('settings.llm')}
         </span>
       ),
       children: <LLMConfigPanel />
@@ -53,7 +56,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'model',
       label: (
         <span>
-          <RobotOutlined /> 模型配置
+          <RobotOutlined /> {t('config.model')}
         </span>
       ),
       children: <ModelConfigPanel />
@@ -62,7 +65,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'data',
       label: (
         <span>
-          <DatabaseOutlined /> 数据
+          <DatabaseOutlined /> {t('settings.data')}
         </span>
       ),
       children: <DataPanel />
@@ -71,7 +74,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'shortcuts',
       label: (
         <span>
-          <KeyOutlined /> 快捷键
+          <KeyOutlined /> {t('settings.shortcuts')}
         </span>
       ),
       children: <ShortcutsPanel />
@@ -80,7 +83,7 @@ export function SettingsEditor(): React.JSX.Element {
       key: 'about',
       label: (
         <span>
-          <InfoCircleOutlined /> 关于
+          <InfoCircleOutlined /> {t('settings.about')}
         </span>
       ),
       children: <AboutPanel />

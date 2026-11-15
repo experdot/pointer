@@ -6,6 +6,7 @@
  */
 
 import { nameKey } from './common'
+import { en, zh } from '../i18n/resources'
 
 const PAGE_FILE_EXTENSION = '.pointer.md'
 const RESERVED_DIRECTORIES = new Set(['.pointer', '.git', '.hg', '.svn'])
@@ -16,15 +17,18 @@ export function isReservedDirectory(name: string): boolean {
 export const MAX_FILE_BASE_LENGTH = 80
 
 /** 新建页面与文件夹的默认名称（内核创建时使用，展示层据此判断"尚未改名"） */
-export const DEFAULT_PAGE_NAME = '新对话'
-export const DEFAULT_FOLDER_NAME = '新建文件夹'
+export const DEFAULT_PAGE_NAME = zh['defaults.conversation']
+export const DEFAULT_FOLDER_NAME = zh['defaults.folder']
 
 /** 与 uniqueName 生成的唯一化后缀保持一致：默认名本身或"默认名 (n)" */
 const DEFAULT_PAGE_NAME_PATTERN = new RegExp(`^${DEFAULT_PAGE_NAME}(?: \\(\\d+\\))?$`)
 
 /** 页面是否仍是新建时的默认名（决定首条消息是否需要自动改名） */
 export function isDefaultPageName(name: string): boolean {
-  return DEFAULT_PAGE_NAME_PATTERN.test(name)
+  return (
+    DEFAULT_PAGE_NAME_PATTERN.test(name) ||
+    new RegExp(`^${en['defaults.conversation']}(?: \\(\\d+\\))?$`).test(name)
+  )
 }
 
 /** Windows 保留设备名 */

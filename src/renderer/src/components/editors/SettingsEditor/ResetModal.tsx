@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState } from 'react'
 import { App, Modal, Checkbox, Space, Typography, Alert } from 'antd'
 import { command } from '../../../runtime/client'
@@ -17,32 +18,54 @@ type ResetType = 'conversations' | 'folders' | 'tabs' | 'settings' | 'layout'
 const RESET_OPTIONS: Array<{ value: ResetType; label: string; description: string }> = [
   {
     value: 'conversations',
-    label: '对话数据',
-    description: '当前工作区的聊天对话、消息和队列'
+    get label(): string {
+      return t('reset.conversations')
+    },
+    get description(): string {
+      return t('reset.conversationsHelp')
+    }
   },
   {
     value: 'folders',
-    label: '文件夹',
-    description: '移除文件夹，将对话提升到根目录'
+    get label(): string {
+      return t('common.folders')
+    },
+    get description(): string {
+      return t('reset.foldersHelp')
+    }
   },
   {
     value: 'tabs',
-    label: '标签页状态',
-    description: '当前打开的标签页'
+    get label(): string {
+      return t('reset.tabs')
+    },
+    get description(): string {
+      return t('reset.tabsHelp')
+    }
   },
   {
     value: 'settings',
-    label: '应用设置',
-    description: 'API 密钥、模型配置、主题等设置'
+    get label(): string {
+      return t('reset.settings')
+    },
+    get description(): string {
+      return t('reset.settingsHelp')
+    }
   },
   {
     value: 'layout',
-    label: '界面布局',
-    description: '侧边栏宽度、面板状态等布局信息'
+    get label(): string {
+      return t('reset.layout')
+    },
+    get description(): string {
+      return t('reset.layoutHelp')
+    }
   }
 ]
 
 export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Element {
+  useI18n()
+
   const [selected, setSelected] = useState<ResetType[]>([])
   const [resetting, setResetting] = useState(false)
   const { message } = App.useApp()
@@ -77,15 +100,15 @@ export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Elemen
 
   return (
     <Modal
-      title="重置数据"
+      title={t('data.reset')}
       open={open}
       onCancel={handleClose}
       onOk={handleReset}
       confirmLoading={resetting}
-      okText="确定重置"
+      okText={t('reset.confirm')}
       okType="danger"
       okButtonProps={{ disabled: selected.length === 0 }}
-      cancelText="取消"
+      cancelText={t('common.cancel')}
       width={480}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -93,8 +116,8 @@ export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Elemen
           type="warning"
           showIcon
           icon={<ExclamationCircleOutlined />}
-          message="此操作无法恢复"
-          description="选中的数据将被永久删除，请谨慎操作。"
+          message={t('reset.irreversible')}
+          description={t('reset.warning')}
         />
 
         <div>
@@ -104,7 +127,7 @@ export function ResetModal({ open, onClose }: ResetModalProps): React.JSX.Elemen
             onChange={handleSelectAll}
             style={{ marginBottom: 8 }}
           >
-            <Text strong>全选</Text>
+            <Text strong>{t('common.selectAll')}</Text>
           </Checkbox>
 
           <Checkbox.Group

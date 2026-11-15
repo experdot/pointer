@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useMemo, useState, useCallback, useRef } from 'react'
 import { Dropdown, Button, Tooltip, Progress } from 'antd'
 import {
@@ -43,6 +44,8 @@ export function OutlineDropdown({
   isSegmenting,
   untitledCount = 0
 }: OutlineDropdownProps): React.JSX.Element {
+  useI18n()
+
   const isGenerating = !!batchProgress
 
   // Dropdown 状态
@@ -176,9 +179,9 @@ export function OutlineDropdown({
       <div className="outline-dropdown__content">
         {outline.length === 0 ? (
           <div className="outline-dropdown__empty">
-            暂无大纲
+            {t('chat.noOutline')}
             <br />
-            <small>右键消息可添加标题或分组</small>
+            <small>{t('chat.outlineHint')}</small>
           </div>
         ) : (
           renderOutlineItems
@@ -215,7 +218,8 @@ export function OutlineDropdown({
                     disabled={untitledCount === 0}
                     className="outline-dropdown__action-btn"
                   >
-                    生成标题{untitledCount > 0 ? ` (${untitledCount})` : ''}
+                    {t('chat.generateTitle')}
+                    {untitledCount > 0 ? ` (${untitledCount})` : ''}
                   </Button>
                 </AIGeneratePopover>
               )}
@@ -236,7 +240,7 @@ export function OutlineDropdown({
                     disabled={outline.length === 0}
                     className="outline-dropdown__action-btn"
                   >
-                    智能分组
+                    {t('chat.smartGroups')}
                   </Button>
                 </AIGeneratePopover>
               )}
@@ -255,7 +259,7 @@ export function OutlineDropdown({
       open={dropdownOpen}
       onOpenChange={handleDropdownOpenChange}
     >
-      <Tooltip title="大纲">
+      <Tooltip title={t('chat.outline')}>
         <Button
           type="text"
           size="small"

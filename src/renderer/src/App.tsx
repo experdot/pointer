@@ -1,6 +1,9 @@
+import { t } from '@renderer/i18n'
 import React, { useEffect, useState } from 'react'
 import { ConfigProvider, theme, App as AntdApp, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import enUS from 'antd/locale/en_US'
+import { useI18n } from './i18n'
 import './App.css'
 import { initializeTabTypes } from './utils/tabTypeRegistrations'
 import { initializeExportPlugins } from './features/export'
@@ -16,6 +19,8 @@ initializeTabTypes()
 initializeExportPlugins()
 
 function AppContent(): React.JSX.Element {
+  useI18n()
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const initialized = useSessionStore((state) => state.initialized)
@@ -44,7 +49,8 @@ function AppContent(): React.JSX.Element {
       <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}
       >
-        内核加载失败：{error ?? sessionError}
+        {t('app.loadFailed')}
+        {error ?? sessionError}
       </div>
     )
   }
@@ -59,10 +65,11 @@ function AppContent(): React.JSX.Element {
 }
 
 function App(): React.JSX.Element {
+  const { language } = useI18n()
   return (
     <ErrorBoundary>
       <ConfigProvider
-        locale={zhCN}
+        locale={language === 'zh-CN' ? zhCN : enUS}
         theme={{
           cssVar: true,
           algorithm: theme.defaultAlgorithm,

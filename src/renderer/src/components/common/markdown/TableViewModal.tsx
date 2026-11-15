@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useRef } from 'react'
 import { Markdown } from './Markdown'
 import { screenshotElement } from '../../../utils/screenshot'
@@ -23,6 +24,8 @@ export default function TableViewModal({
   tableMarkdown,
   tableTextMarkdown
 }: TableViewModalProps): React.JSX.Element | null {
+  useI18n()
+
   const [viewMode, setViewMode] = useState<'table' | 'text'>('table')
   const [isExportingImage, setIsExportingImage] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +36,7 @@ export default function TableViewModal({
     const contentToCopy = viewMode === 'table' ? tableMarkdown : tableTextMarkdown
     setError(null)
     if (contentToCopy) {
-      if (!(await copyToClipboard(contentToCopy))) setError('复制失败，请重试')
+      if (!(await copyToClipboard(contentToCopy))) setError(t('common.copyRetry'))
     }
   }
 
@@ -46,12 +49,12 @@ export default function TableViewModal({
         suggestedName: `table-${timestamp}.csv`,
         content: csv,
         filters: [
-          { name: 'CSV Files', extensions: ['csv'] },
-          { name: 'All Files', extensions: ['*'] }
+          { name: t('files.type', { type: 'CSV' }), extensions: ['csv'] },
+          { name: t('files.all'), extensions: ['*'] }
         ]
       })
     } catch (error) {
-      setError(error instanceof Error ? error.message : '导出 CSV 失败')
+      setError(error instanceof Error ? error.message : t('table.csvFailed'))
     }
   }
 
@@ -103,7 +106,7 @@ export default function TableViewModal({
       const dataBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
-        reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'))
+        reader.onerror = () => reject(reader.error ?? new Error(t('image.readFailed')))
         reader.readAsDataURL(blob)
       })
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
@@ -113,12 +116,12 @@ export default function TableViewModal({
         content: dataBase64,
         encoding: 'base64',
         filters: [
-          { name: 'PNG Images', extensions: ['png'] },
-          { name: 'All Files', extensions: ['*'] }
+          { name: t('files.png'), extensions: ['png'] },
+          { name: t('files.all'), extensions: ['*'] }
         ]
       })
     } catch (error) {
-      setError(error instanceof Error ? error.message : '导出图片失败')
+      setError(error instanceof Error ? error.message : t('image.exportFailed'))
     } finally {
       setIsExportingImage(false)
     }
@@ -131,14 +134,14 @@ export default function TableViewModal({
       <div
         className="table-modal-overlay"
         role="dialog"
-        aria-label="表格查看"
+        aria-label={t('table.viewer')}
         data-shortcut-blocking-overlay="true"
         onClick={onClose}
       >
         <div className="table-modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="table-modal-header">
-            <span className="table-modal-title">表格查看</span>
-            <span className="table-modal-close" onClick={onClose} title="关闭">
+            <span className="table-modal-title">{t('table.viewer')}</span>
+            <span className="table-modal-close" onClick={onClose} title={t('common.close')}>
               ×
             </span>
           </div>
@@ -150,13 +153,13 @@ export default function TableViewModal({
                   className={`mode-switch-btn ${viewMode === 'table' ? 'active' : ''}`}
                   onClick={() => setViewMode('table')}
                 >
-                  表格
+                  {t('common.table')}
                 </button>
                 <button
                   className={`mode-switch-btn ${viewMode === 'text' ? 'active' : ''}`}
                   onClick={() => setViewMode('text')}
                 >
-                  文本
+                  {t('common.text')}
                 </button>
               </div>
             </div>
@@ -172,10 +175,10 @@ export default function TableViewModal({
           </div>
           <div className="table-modal-footer">
             <button className="table-modal-button" onClick={onClose}>
-              取消
+              {t('common.cancel')}
             </button>
             <button className="table-modal-button" onClick={handleCopyMarkdown}>
-              复制Markdown
+              {t('table.copyMarkdown')}
             </button>
             <button
               className="table-modal-button"
@@ -183,14 +186,14 @@ export default function TableViewModal({
               disabled={viewMode === 'text'}
               style={{ opacity: viewMode === 'text' ? 0.5 : 1 }}
             >
-              导出CSV
+              {t('table.exportCsv')}
             </button>
             <button
               className="table-modal-button table-modal-button-primary"
               onClick={handleExportImage}
               disabled={isExportingImage}
             >
-              {isExportingImage ? '导出中...' : '导出图片'}
+              {isExportingImage ? t('common.exporting') : t('image.export')}
             </button>
           </div>
         </div>

@@ -6,6 +6,8 @@
  */
 
 import type { ChatMessage, MessageRole } from './chat'
+import type { Translate } from '../i18n'
+import { sourceTranslate } from '../i18n/message'
 
 export type ImportFormat = 'openai' | 'deepseek' | 'pointer'
 
@@ -146,20 +148,21 @@ export function detectFormat(payload: unknown): ImportFormat | null {
 export function parseImport(
   payload: unknown,
   format: ImportFormat | undefined,
-  now: number
+  now: number,
+  t: Translate = sourceTranslate
 ): ImportParseResult {
   const resolved = format ?? detectFormat(payload)
   if (!resolved) {
-    return { format: 'pointer', conversations: [], errors: ['无法识别的导出格式'] }
+    return { format: 'pointer', conversations: [], errors: [t('errors.import.unknownFormat')] }
   }
 
   switch (resolved) {
     case 'openai':
-      return parseOpenAI(payload as OpenAIExport[], now)
+      return parseOpenAI(payload as OpenAIExport[], now, t)
     case 'deepseek':
-      return parseDeepSeek(payload as DeepSeekExport[], now)
+      return parseDeepSeek(payload as DeepSeekExport[], now, t)
     case 'pointer':
-      return parsePointer(payload as PointerExport, now)
+      return parsePointer(payload as PointerExport, now, t)
   }
 }
 
@@ -190,17 +193,17 @@ interface OpenAIExport {
   current_node?: string
 }
 
-function parseOpenAI(payload: OpenAIExport[], now: number): ImportParseResult {
+function parseOpenAI(payload: OpenAIExport[], now: number, t: Translate): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
   if (!Array.isArray(payload)) {
-    return { format: 'openai', conversations: [], errors: ['导出文件不是数组'] }
+    return { format: 'openai', conversations: [], errors: [t('errors.import.notArray')] }
   }
 
   for (const conversation of payload) {
     if (!conversation?.mapping) {
-      errors.push('跳过缺少 mapping 的对话')
+      errors.push(t('import.skippedMissingMapping'))
       continue
     }
 
@@ -258,7 +261,7 @@ function parseOpenAI(payload: OpenAIExport[], now: number): ImportParseResult {
 
     conversations.push({
       id: conversation.conversation_id ?? conversation.id ?? `openai-${conversations.length}`,
-      title: conversation.title?.trim() || '未命名对话',
+      title: conversation.title?.trim() || t('chat.untitled'),
       createdAt: timestampToMillis(conversation.create_time, now),
       updatedAt: conversation.update_time
         ? timestampToMillis(conversation.update_time, now)
@@ -324,17 +327,17 @@ function parseDeepSeekFragments(
   }
 }
 
-function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResult {
+function parseDeepSeek(payload: DeepSeekExport[], now: number, t: Translate): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
   if (!Array.isArray(payload)) {
-    return { format: 'deepseek', conversations: [], errors: ['导出文件不是数组'] }
+    return { format: 'deepseek', conversations: [], errors: [t('errors.import.notArray')] }
   }
 
   for (const conversation of payload) {
     if (!conversation?.mapping) {
-      errors.push('跳过缺少 mapping 的对话')
+      errors.push(t('import.skippedMissingMapping'))
       continue
     }
 
@@ -360,7 +363,7 @@ function parseDeepSeek(payload: DeepSeekExport[], now: number): ImportParseResul
 
     conversations.push({
       id: conversation.id ?? `deepseek-${conversations.length}`,
-      title: conversation.title?.trim() || '未命名对话',
+      title: conversation.title?.trim() || t('chat.untitled'),
       createdAt: timestampToMillis(conversation.inserted_at, now),
       updatedAt: conversation.updated_at
         ? timestampToMillis(conversation.updated_at, now)
@@ -401,12 +404,12 @@ interface PointerExport {
   pages: PointerPage[]
 }
 
-function parsePointer(payload: PointerExport, now: number): ImportParseResult {
+function parsePointer(payload: PointerExport, now: number, t: Translate): ImportParseResult {
   const errors: string[] = []
   const conversations: ImportedConversation[] = []
 
   if (!payload?.pages || !Array.isArray(payload.pages)) {
-    return { format: 'pointer', conversations: [], errors: ['导出文件缺少 pages 数组'] }
+    return { format: 'pointer', conversations: [], errors: [t('errors.import.missingPages')] }
   }
 
   for (const page of payload.pages) {
@@ -415,7 +418,7 @@ function parsePointer(payload: PointerExport, now: number): ImportParseResult {
       : Object.values(page.messageMap ?? {})
 
     if (source.length === 0) {
-      errors.push(`跳过空对话：${page.title ?? page.id}`)
+      errors.push(t('import.skippedEmpty', { v0: String(page.title ?? page.id) }))
       continue
     }
 
@@ -446,7 +449,7 @@ function parsePointer(payload: PointerExport, now: number): ImportParseResult {
     const lastPathId = page.currentPath?.[page.currentPath.length - 1]
     conversations.push({
       id: page.id,
-      title: page.title?.trim() || '未命名对话',
+      title: page.title?.trim() || t('chat.untitled'),
       createdAt: page.createdAt ?? now,
       updatedAt: page.updatedAt,
       messages: withBranchIndexes(raw),

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useMemo } from 'react'
 import { TreeSelect, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
@@ -25,6 +26,8 @@ export function ModelSelector({
   variant = 'borderless',
   disabled
 }: ModelSelectorProps): React.JSX.Element {
+  useI18n()
+
   const { settings, setDefaultLLMId } = useSettingsStore()
   const { items, folders } = settings.llmConfigs
 
@@ -46,7 +49,7 @@ export function ModelSelector({
       {menu}
       <Divider style={{ margin: '4px 0' }} />
       <div className="model-selector__settings-link" onClick={() => openSettings('llm')}>
-        <SettingOutlined /> 管理 LLM 配置
+        <SettingOutlined /> {t('config.manageLlm')}
       </div>
     </>
   )
@@ -58,7 +61,7 @@ export function ModelSelector({
       style={style}
       value={currentValue}
       onChange={handleChange}
-      placeholder="选择模型"
+      placeholder={t('config.selectModel')}
       variant={variant}
       disabled={disabled}
       treeData={treeData}

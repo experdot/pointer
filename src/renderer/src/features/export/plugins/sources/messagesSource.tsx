@@ -1,3 +1,4 @@
+import { rendererI18n, t } from '@renderer/i18n'
 import { MessageOutlined } from '@ant-design/icons'
 import type { SourcePlugin, MessagesSourceData, ExtractedContent, ExportOptions } from '../../types'
 import { MessagesSourceSelector } from '../../../../components/editors/ExportEditor/sources/MessagesSource'
@@ -19,7 +20,9 @@ import { buildIndex, pathToMessage } from '@shared/domain'
  */
 export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
   id: 'messages',
-  name: '消息',
+  get name(): string {
+    return t('common.messages')
+  },
   icon: <MessageOutlined />,
   supportedFormats: ['markdown', 'txt', 'html'],
 
@@ -56,7 +59,7 @@ export const messagesSourcePlugin: SourcePlugin<MessagesSourceData> = {
       case 'topic-messages':
         {
           const topic = topics.find((t) => t.id === topicId)
-          if (!topic) throw new Error('话题不存在，请重新选择导出范围')
+          if (!topic) throw new Error(t('export.topicMissing'))
           filteredMessages = getTopicMessages(messages, topic.startMessageId, topic.endMessageId)
         }
         break
@@ -171,7 +174,7 @@ function generateMessagesMarkdown(
 
   // Add topics outline if enabled
   if (metadata?.showTopicsOutline && topics.length > 0) {
-    lines.push('# 目录')
+    lines.push(t('export.markdownContents'))
     lines.push('')
 
     // Build a set of all topic start message IDs for boundary detection
@@ -208,7 +211,7 @@ function generateMessagesMarkdown(
     // Add timestamp if enabled
     if (metadata?.showTimestamp && message.createdAt) {
       const date = new Date(message.createdAt)
-      header += ` \`${date.toLocaleString()}\``
+      header += ` \`${date.toLocaleString(rendererI18n.language)}\``
     }
 
     // Add model name if enabled
@@ -235,7 +238,7 @@ function generateMessagesMarkdown(
     // Add reasoning content if enabled
     if (metadata?.showReasoningContent && message.reasoning) {
       lines.push('<details>')
-      lines.push('<summary>思考过程</summary>')
+      lines.push(t('export.reasoningSummary'))
       lines.push('')
       lines.push(message.reasoning)
       lines.push('')

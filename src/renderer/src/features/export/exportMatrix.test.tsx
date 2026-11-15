@@ -20,6 +20,7 @@ import {
 import { useMessagesStore } from '../../stores/messagesStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { parseCsv } from './parseCsv'
+import { rendererI18n } from '../../i18n'
 
 const client = vi.hoisted(() => ({ query: vi.fn(), command: vi.fn() }))
 vi.mock('../../runtime/client', () => client)
@@ -76,7 +77,8 @@ const cases = Object.entries(formats).flatMap(([source, formats]) =>
   formats.map((format) => [source as SourceType, format] as const)
 )
 
-beforeEach(() => {
+beforeEach(async () => {
+  await rendererI18n.changeLanguage('zh-CN')
   registerSourcePlugins()
   registerFormatPlugins()
   useMessagesStore.getState().reset()
@@ -85,6 +87,29 @@ beforeEach(() => {
 })
 
 describe('导出来源 × 格式的完整流程', () => {
+  it.each(['zh-CN', 'en-US'] as const)(
+    'HTML 导出使用 %s 标签和日期，原文保持不变',
+    async (language) => {
+      await rendererI18n.changeLanguage(language)
+      const result = await exportManager.generatePreview('messages', sources.messages, 'html', {
+        ...DEFAULT_EXPORT_OPTIONS,
+        metadata: {
+          ...DEFAULT_EXPORT_OPTIONS.metadata,
+          showTimestamp: true,
+          showReasoningContent: true
+        }
+      })
+      const document = new DOMParser().parseFromString(String(result.content), 'text/html')
+      expect(document.documentElement.lang).toBe(language)
+      expect(document.body.textContent).toContain('中文🧪 $1')
+      expect(document.body.textContent).toContain('思考')
+      expect(document.querySelector('summary')?.textContent).toBe(
+        language === 'zh-CN' ? '思考过程' : 'Reasoning'
+      )
+      expect(document.body.textContent).toContain(language === 'zh-CN' ? '用户' : 'User')
+      expect(document.body.textContent).toContain(new Date(1).toLocaleString(language))
+    }
+  )
   it('注册表与类型声明一致，明确覆盖全部 13 种组合', () => {
     expect(cases).toHaveLength(13)
     for (const [source, supported] of Object.entries(formats)) {

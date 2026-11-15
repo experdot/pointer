@@ -4,15 +4,11 @@
  * 生成由内核完成（模型调用在主进程），这里只负责组织输入与后续写入。
  */
 
+import { t, rendererI18n } from '@renderer/i18n'
+import type { SupportedLanguage } from '@shared/domain/locale'
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage } from '@shared/domain'
-import {
-  TOPIC_SEGMENTATION_PROMPT,
-  applySegmentationRequirements,
-  buildPrompt,
-  parseTopicSegments,
-  truncateForPrompt
-} from '@shared/domain'
+import { buildLocalizedTitlePrompt, parseTopicSegments, truncateForPrompt } from '@shared/domain'
 import { command } from '../runtime/client'
 import * as messagesService from './messagesService'
 
@@ -117,12 +113,12 @@ export async function analyzeTopicSegments(
   error?: string
 }> {
   if (currentPath.length === 0) {
-    return { success: false, created: 0, segments: [], error: '当前会话为空' }
+    return { success: false, created: 0, segments: [], error: t('chat.empty') }
   }
 
   const transcript = currentPath
     .map((message, index) => {
-      const role = message.role === 'user' ? '用户' : '助手'
+      const role = message.role === 'user' ? t('roles.user') : t('roles.assistant')
       return `${index}. ${role}：${truncateForPrompt(message.content, 150)}`
     })
     .join('\n\n')
@@ -131,9 +127,12 @@ export async function analyzeTopicSegments(
   let segments: Array<{ index: number; topic: string }> = []
   try {
     const { content } = await command('ai.generateText', {
-      prompt: applySegmentationRequirements(
-        buildPrompt(TOPIC_SEGMENTATION_PROMPT, transcript, 4000),
-        options.extraRequirements
+      prompt: buildLocalizedTitlePrompt(
+        'segmentation',
+        rendererI18n.language as SupportedLanguage,
+        transcript,
+        options.extraRequirements,
+        4000
       ),
       llmId: options.llmId,
       modelConfigId: options.modelConfigId
@@ -153,7 +152,7 @@ export async function analyzeTopicSegments(
       })
       .sort((a, b) => a.index - b.index)
     if (segments.length === 0) {
-      return { success: false, created: 0, segments: [], error: '模型未返回可用分段' }
+      return { success: false, created: 0, segments: [], error: t('chat.noSegments') }
     }
 
     for (const segment of segments) {

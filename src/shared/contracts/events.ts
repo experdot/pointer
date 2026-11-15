@@ -9,6 +9,7 @@ import type { Account, ChatMessage, Page, WorkspaceSummary } from '../domain'
 import type { PageTreeSnapshot, SessionSnapshot, SettingsSnapshot, UpdateStatus } from './queries'
 
 interface RuntimeEventMap {
+  'app.locale.changed': import('./locale').LocaleSnapshot
   'accounts.changed': Account[]
   'workspaces.changed': WorkspaceSummary[]
   'session.changed': SessionSnapshot
@@ -18,9 +19,16 @@ interface RuntimeEventMap {
   'chat.delta': { requestId: string; pageId: string; messageId: string; text: string }
   'chat.reasoning': { requestId: string; pageId: string; messageId: string; text: string }
   'chat.completed': { requestId: string; pageId: string; messageId: string }
-  'chat.failed': { requestId: string; pageId: string; messageId: string; error: string }
+  'chat.failed': {
+    requestId: string
+    pageId: string
+    messageId: string
+    error: string
+    localized?: import('../i18n/message').LocalizedMessage
+  }
   'chat.aborted': { requestId: string; pageId: string; messageId: string }
   'chat.saveFailed': {
+    localized?: import('../i18n/message').LocalizedMessage
     requestId: string
     pageId: string
     messageId: string

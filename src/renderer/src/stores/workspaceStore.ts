@@ -2,6 +2,7 @@
  * 工作区 Store（镜像 + 命令）
  */
 
+import { t } from '@renderer/i18n'
 import { create } from 'zustand'
 import type { WorkspacePathValidation, WorkspaceSummary } from '@shared/domain'
 import { command } from '../runtime/client'
@@ -46,14 +47,16 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   openCustomWorkspace: async (dirPath, name) =>
     command('workspace.create', {
-      name: name?.trim() || dirPath.split(/[\\/]/).pop() || '工作区',
+      name: name?.trim() || dirPath.split(/[\\/]/).pop() || t('workspace.title'),
       type: 'custom',
       path: dirPath
     }),
 
   createWorkspace: async (name) => {
-    const dirPath = await command('workspace.pickDirectory', { title: '选择工作区目录' })
-    if (!dirPath) throw new Error('已取消选择目录')
+    const dirPath = await command('workspace.pickDirectory', {
+      title: t('workspace.selectDirectory')
+    })
+    if (!dirPath) throw new Error(t('workspace.selectionCanceled'))
     return command('workspace.create', { name, type: 'custom', path: dirPath })
   },
 

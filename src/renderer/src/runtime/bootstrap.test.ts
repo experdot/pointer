@@ -53,6 +53,8 @@ function fakePort(): void {
   const runtime = {
     query: vi.fn(async (name: string) => {
       switch (name) {
+        case 'app.locale.get':
+          return { preference: 'system', language: 'zh-CN', systemLanguage: 'zh-CN', revision: 0 }
         case 'session.get':
           return {
             scopeId: 'scope-1',

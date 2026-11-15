@@ -4,6 +4,7 @@
  * 解析与写盘都在内核完成，这里只做文件内容搬运与结果汇总。
  */
 
+import { t } from '@renderer/i18n'
 import { command } from '../runtime/client'
 
 type ImportPlatform = 'openai' | 'deepseek' | 'pointer'
@@ -23,7 +24,9 @@ interface ImportSummary {
 const PLATFORM_LABELS: Record<ImportPlatform, string> = {
   openai: 'ChatGPT',
   deepseek: 'DeepSeek',
-  pointer: 'Pointer 旧版'
+  get pointer(): string {
+    return t('import.legacyPointer')
+  }
 }
 
 /** 内核使用 chatgpt 作为 ChatGPT 的来源标识 */
@@ -61,7 +64,7 @@ export async function importConversations(
 
       if (result.importedPages === 0) {
         summary.skipped += 1
-        summary.errors.push(`${file.name}：没有可导入的对话`)
+        summary.errors.push(t('import.fileEmpty', { v0: String(file.name) }))
       } else {
         summary.success += result.importedPages
       }

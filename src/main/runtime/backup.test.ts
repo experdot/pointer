@@ -14,6 +14,7 @@ import {
 import { childrenOf, validateOrderKeys, type Conversation, type PageTree } from '@shared/domain'
 
 const host: RuntimeHost = {
+  getPreferredSystemLanguages: () => ['zh-CN'],
   getVersion: () => 'test',
   saveFile: async () => ({}),
   openTextFile: async () => null,

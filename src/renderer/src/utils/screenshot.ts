@@ -1,3 +1,4 @@
+import { t } from '@renderer/i18n'
 import html2canvas from 'html2canvas'
 
 interface ScreenshotOptions {
@@ -63,7 +64,7 @@ export async function screenshotElement(
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Failed to create blob'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(t('image.blobFailed')))),
       'image/png'
     )
   })

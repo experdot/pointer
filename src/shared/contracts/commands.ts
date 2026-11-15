@@ -88,6 +88,10 @@ interface FileFilter {
 }
 
 interface RuntimeCommandMap {
+  'app.locale.set': {
+    payload: { preference: import('../domain/locale').LanguagePreference }
+    result: import('./locale').LocaleSnapshot
+  }
   // 会话与账户
   'session.selectAccount': { payload: { accountId: string }; result: void }
   'session.selectWorkspace': { payload: { workspaceId: string }; result: void }

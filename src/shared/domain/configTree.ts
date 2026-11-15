@@ -4,6 +4,8 @@
  * 配置树只是「文件夹 + 条目」的两级结构，用于设置面板的归类展示。
  */
 
+import { msg, LocalizedError } from '@shared/i18n/message'
+
 import type { Diagnostic, TreeMove, TreeNodeBase } from './common'
 import { compareNodes, descendantFolderIds } from './common'
 import { orderKeyBetween, orderKeysBetween } from './ordering'
@@ -57,10 +59,11 @@ export function configInsertPosition<T extends ConfigItemBase>(
   const reference = position.afterNodeId
     ? [...tree.folders, ...tree.items].find((node) => node.id === position.afterNodeId)
     : undefined
-  if (position.afterNodeId && !reference) throw new Error('配置插入参照项已不存在')
+  if (position.afterNodeId && !reference)
+    throw new LocalizedError(msg('errors.config.referenceMissing'))
   const parentFolderId = position.parentFolderId ?? reference?.parentFolderId
   if (parentFolderId && !tree.folders.some((folder) => folder.id === parentFolderId))
-    throw new Error('配置目标文件夹已不存在')
+    throw new LocalizedError(msg('errors.config.folderMissing'))
   const siblings = configChildren(tree, parentFolderId)
   if (!reference || position.parentFolderId !== undefined)
     return { parentFolderId, orderKey: orderKeyBetween(siblings.at(-1)?.orderKey ?? null, null) }

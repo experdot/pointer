@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Flex, Typography } from 'antd'
 import { getShortcutLabel, type ShortcutLabelId } from '../../../utils/shortcutPresentation'
@@ -16,61 +17,168 @@ interface ShortcutGroup {
 
 const shortcutGroups: ShortcutGroup[] = [
   {
-    title: '通用',
+    get title(): string {
+      return t('settings.general')
+    },
     items: [
-      { label: '新建对话', keys: ['tabNew'] },
-      { label: '切换侧边栏', keys: ['toggleSidebar'] },
-      { label: '全局搜索', keys: ['globalSearch'] }
+      {
+        get label(): string {
+          return t('chat.newConversation')
+        },
+        keys: ['tabNew']
+      },
+      {
+        get label(): string {
+          return t('layout.toggleSidebar')
+        },
+        keys: ['toggleSidebar']
+      },
+      {
+        get label(): string {
+          return t('search.global')
+        },
+        keys: ['globalSearch']
+      }
     ]
   },
   {
-    title: '标签页与会话历史',
+    get title(): string {
+      return t('shortcuts.tabsHistory')
+    },
     items: [
-      { label: '关闭标签页', keys: ['tabClose'] },
-      { label: '下一个标签页', keys: ['tabNext', 'editorNext'] },
-      { label: '上一个标签页', keys: ['tabPrev', 'editorPrev'] },
-      { label: '后退（历史导航）', keys: ['tabHistoryBack'] },
-      { label: '前进（历史导航）', keys: ['tabHistoryForward'] }
+      {
+        get label(): string {
+          return t('tabs.close')
+        },
+        keys: ['tabClose']
+      },
+      {
+        get label(): string {
+          return t('tabs.next')
+        },
+        keys: ['tabNext', 'editorNext']
+      },
+      {
+        get label(): string {
+          return t('tabs.previous')
+        },
+        keys: ['tabPrev', 'editorPrev']
+      },
+      {
+        get label(): string {
+          return t('shortcuts.historyBack')
+        },
+        keys: ['tabHistoryBack']
+      },
+      {
+        get label(): string {
+          return t('shortcuts.historyForward')
+        },
+        keys: ['tabHistoryForward']
+      }
     ]
   },
   {
-    title: '聊天阅读',
+    get title(): string {
+      return t('shortcuts.reading')
+    },
     items: [
-      { label: '查找', keys: ['chatFind'] },
-      { label: '上一条消息', keys: ['messagePrev'] },
-      { label: '下一条消息', keys: ['messageNext'] },
-      { label: '第一条消息', keys: ['messageFirst'] },
-      { label: '最后一条消息', keys: ['messageLast'] },
-      { label: '复制消息', keys: ['messageCopy'] }
+      {
+        get label(): string {
+          return t('search.find')
+        },
+        keys: ['chatFind']
+      },
+      {
+        get label(): string {
+          return t('chat.previousMessage')
+        },
+        keys: ['messagePrev']
+      },
+      {
+        get label(): string {
+          return t('chat.nextMessage')
+        },
+        keys: ['messageNext']
+      },
+      {
+        get label(): string {
+          return t('chat.firstMessage')
+        },
+        keys: ['messageFirst']
+      },
+      {
+        get label(): string {
+          return t('chat.lastMessage')
+        },
+        keys: ['messageLast']
+      },
+      {
+        get label(): string {
+          return t('chat.copyMessage')
+        },
+        keys: ['messageCopy']
+      }
     ]
   },
   {
-    title: '查找工具栏',
+    get title(): string {
+      return t('shortcuts.findToolbar')
+    },
     items: [
-      { label: '区分大小写', keys: ['findMatchCase'] },
-      { label: '使用正则表达式', keys: ['findRegex'] },
-      { label: '全词匹配', keys: ['findWholeWord'] }
+      {
+        get label(): string {
+          return t('search.matchCase')
+        },
+        keys: ['findMatchCase']
+      },
+      {
+        get label(): string {
+          return t('search.regex')
+        },
+        keys: ['findRegex']
+      },
+      {
+        get label(): string {
+          return t('search.wholeWord')
+        },
+        keys: ['findWholeWord']
+      }
     ]
   },
   {
-    title: '资源管理器',
+    get title(): string {
+      return t('layout.explorer')
+    },
     items: [
-      { label: '重命名', keys: ['treeRename'] },
-      { label: '删除', keys: ['treeDelete'] }
+      {
+        get label(): string {
+          return t('common.rename')
+        },
+        keys: ['treeRename']
+      },
+      {
+        get label(): string {
+          return t('common.delete')
+        },
+        keys: ['treeDelete']
+      }
     ]
   }
 ]
 
 export function ShortcutsPanel(): React.JSX.Element {
+  useI18n()
+
   return (
     <Flex vertical gap={24} className="settings-shortcuts-panel">
       <div>
         <Text strong style={{ fontSize: 16 }}>
-          快捷键
+          {t('settings.shortcuts')}
         </Text>
         <br />
         <Text type="secondary" style={{ fontSize: 12 }}>
-          当前默认快捷键
+          {t('shortcuts.defaults')}
         </Text>
       </div>
 

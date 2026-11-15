@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import type { FC } from 'react'
 import type {
   SourcePlugin,
@@ -14,6 +15,8 @@ import type {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const TableBlockSourceSelector: FC<SourceSelectorProps<TableBlockSourceData>> = () => {
+  useI18n()
+
   return null
 }
 
@@ -24,7 +27,9 @@ const TableBlockSourceSelector: FC<SourceSelectorProps<TableBlockSourceData>> = 
  */
 export const tableBlockSourcePlugin: SourcePlugin<TableBlockSourceData> = {
   id: 'table-block',
-  name: '表格',
+  get name(): string {
+    return t('common.table')
+  },
   icon: '📊',
   supportedFormats: ['markdown', 'txt', 'html', 'csv'],
 

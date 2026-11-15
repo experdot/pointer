@@ -8,6 +8,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   RUNTIME_CHANNELS,
+  isApplicationLocaleOperation,
   type RuntimeCommandName,
   type RuntimeCommandPayload,
   type RuntimeCommandResult,
@@ -19,11 +20,17 @@ import {
   type RuntimeResponse
 } from '@shared/contracts'
 import type { ForwardedShortcutAction } from '@shared/shortcuts'
+import type { LocalizedMessage } from '@shared/i18n/message'
 
 function unwrap<T>(response: RuntimeResponse<T>, expectedScope?: string | null): T {
   if (response.ok) {
     if (expectedScope !== undefined && response.scopeId !== expectedScope) {
-      throw { name: 'RuntimeError', code: 'runtime.stale-response', message: '已忽略过期响应' }
+      throw {
+        name: 'RuntimeError',
+        code: 'runtime.stale-response',
+        message: 'Runtime response is stale',
+        localized: { key: 'errors.runtime.staleResponse' } satisfies LocalizedMessage
+      }
     }
     return response.value
   }
@@ -33,7 +40,8 @@ function unwrap<T>(response: RuntimeResponse<T>, expectedScope?: string | null):
     name: 'RuntimeError',
     code: response.code,
     message: response.message,
-    details: response.details
+    details: response.details,
+    ...(response.localized ? { localized: response.localized } : {})
   }
 }
 
@@ -48,7 +56,10 @@ const runtime: RuntimePort = {
       scopeId,
       payload
     })) as RuntimeResponse<RuntimeQueryResult<K>>
-    return unwrap(response, name === 'session.get' ? undefined : scopeId)
+    return unwrap(
+      response,
+      name === 'session.get' || isApplicationLocaleOperation(name) ? undefined : scopeId
+    )
   },
   command: async <K extends RuntimeCommandName>(
     name: K,
@@ -60,7 +71,12 @@ const runtime: RuntimePort = {
       scopeId,
       payload
     })) as RuntimeResponse<RuntimeCommandResult<K>>
-    return unwrap(response, /^(session\.|account\.|workspace\.)/.test(name) ? undefined : scopeId)
+    return unwrap(
+      response,
+      /^(session\.|account\.|workspace\.)/.test(name) || isApplicationLocaleOperation(name)
+        ? undefined
+        : scopeId
+    )
   },
   onFlush: (handler): (() => void) => {
     const listener = async (_event: Electron.IpcRendererEvent, id: string): Promise<void> => {

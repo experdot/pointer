@@ -4,6 +4,8 @@
  * API Key 以明文随 LLM 配置保存在 settings.json 中（保持与迁移前一致的简单机制）。
  */
 
+import { msg } from '@shared/i18n/message'
+
 import type { LLMConfig, Settings } from '@shared/domain'
 import {
   defaultSettings,
@@ -45,7 +47,11 @@ export class SettingsStore {
       const nodes = [...tree.folders, ...tree.items]
       const invalid = validateOrderKeys(nodes).filter((d) => d.code === 'tree.invalid-order-key')
       if (invalid.length)
-        throw new RuntimeError('settings.invalid-order-key', '配置缺少有效的字符串排序键', invalid)
+        throw new RuntimeError(
+          'settings.invalid-order-key',
+          msg('errors.settings.invalidOrder'),
+          invalid
+        )
       const keys = repairDuplicateOrderKeys(nodes)
       for (const node of nodes) {
         const key = keys.get(node.id)
@@ -70,7 +76,11 @@ export class SettingsStore {
   ): Promise<SettingsSnapshot> {
     return this.writes.run(async () => {
       if (baseRevision !== undefined && baseRevision !== this.revision) {
-        throw new RuntimeError('settings.conflict', '设置已更新，请重新应用修改', this.snapshot())
+        throw new RuntimeError(
+          'settings.conflict',
+          msg('errors.settings.conflict'),
+          this.snapshot()
+        )
       }
       const incoming = normalizeSettings(settings)
       assertSettingsOrderKeys(incoming)
@@ -97,7 +107,11 @@ function assertSettingsOrderKeys(settings: Settings): void {
     ...validateOrderKeys([...settings.modelConfigs.folders, ...settings.modelConfigs.items])
   ]
   if (diagnostics.length)
-    throw new RuntimeError('settings.invalid-order-key', '配置包含无效或重复的排序键', diagnostics)
+    throw new RuntimeError(
+      'settings.invalid-order-key',
+      msg('errors.settings.duplicateOrder'),
+      diagnostics
+    )
 }
 
 function normalizeSettings(file: Settings | null): Settings {

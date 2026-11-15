@@ -1,3 +1,5 @@
+import { t, useI18n, rendererI18n } from '@renderer/i18n'
+import type { SupportedLanguage } from '@shared/domain/locale'
 import { useCallback, useState } from 'react'
 import { App } from 'antd'
 import type { ChatMessage, Topic } from '@shared/domain'
@@ -34,6 +36,8 @@ export function useChatTopics({
   currentPath,
   topics
 }: UseChatTopicsOptions): UseChatTopicsResult {
+  useI18n()
+
   const { message } = App.useApp()
   const [isSegmenting, setIsSegmenting] = useState(false)
 
@@ -90,37 +94,45 @@ export function useChatTopics({
           const result = await generateTopicTitle(pageId, existing.id, options)
           if (!result.success) {
             console.error('生成话题名称失败：', result.error)
-            message.error(`生成话题名称失败：${result.error ?? '未知原因'}`)
+            message.error(
+              t('chat.topicTitleFailed', { v0: String(result.error ?? t('common.unknownReason')) })
+            )
           }
           return
         }
 
         // 尚无 Topic：先由内核基于消息内容生成名称，再创建
         const { command } = await import('../runtime/client')
-        const { TOPIC_TITLE_PROMPT, applyExtraRequirements, buildPrompt, normalizeTitle } =
-          await import('@shared/domain')
+        const { buildLocalizedTitlePrompt, normalizeTitle } = await import('@shared/domain')
         const targetMessage = currentPath.find((item) => item.id === messageId)
         if (!targetMessage) return
 
+        const language = rendererI18n.language as SupportedLanguage
         const { content } = await command('ai.generateText', {
-          prompt: applyExtraRequirements(
-            buildPrompt(TOPIC_TITLE_PROMPT, targetMessage.content),
+          prompt: buildLocalizedTitlePrompt(
+            'topic',
+            language,
+            targetMessage.content,
             options.extraRequirements
           ),
           llmId: options.llmId,
           modelConfigId: options.modelConfigId
         })
 
-        const name = normalizeTitle(content, 15)
+        const name = normalizeTitle(content, language === 'zh-CN' ? 15 : 60)
         if (generation !== currentGeneration()) return
         if (!name) {
-          message.error('生成话题名称失败：模型未返回有效内容')
+          message.error(t('chat.topicEmpty'))
           return
         }
         await messagesService.createTopic(pageId, { name, startMessageId: messageId })
       } catch (error) {
         console.error('生成话题失败：', error)
-        message.error(`生成话题失败：${error instanceof Error ? error.message : String(error)}`)
+        message.error(
+          t('chat.topicFailed', {
+            v0: String(error instanceof Error ? error.message : String(error))
+          })
+        )
       }
     },
     [currentPath, message, pageId, topics]
@@ -137,7 +149,9 @@ export function useChatTopics({
         if (generation !== currentGeneration()) return
         if (!result.success) {
           console.error('智能分段失败：', result.error)
-          message.error(`智能分段失败：${result.error ?? '未知原因'}`)
+          message.error(
+            t('chat.segmentationFailed', { v0: String(result.error ?? t('common.unknownReason')) })
+          )
           return
         }
 
@@ -154,7 +168,11 @@ export function useChatTopics({
         }
       } catch (error) {
         console.error('智能分段失败：', error)
-        message.error(`智能分段失败：${error instanceof Error ? error.message : String(error)}`)
+        message.error(
+          t('chat.segmentationFailed', {
+            v0: String(error instanceof Error ? error.message : String(error))
+          })
+        )
       } finally {
         setIsSegmenting(false)
       }

@@ -5,6 +5,10 @@
  * 避免两个账户同时接管同一目录。
  */
 
+import { msg, sourceTranslate, LocalizedAggregateError } from '@shared/i18n/message'
+import { en, zh } from '@shared/i18n/resources'
+import type { Translate } from '@shared/i18n'
+
 import { randomUUID } from 'node:crypto'
 import { basename } from 'node:path'
 import type {
@@ -50,7 +54,8 @@ export class WorkspaceRegistry {
 
   constructor(
     private readonly paths: PathResolver,
-    private accountId: string
+    private accountId: string,
+    private readonly t: Translate = sourceTranslate
   ) {}
 
   get account(): string {
@@ -60,7 +65,14 @@ export class WorkspaceRegistry {
   async load(accountId: string): Promise<void> {
     this.accountId = accountId
     const file = await readJson<WorkspacesFile>(this.paths.workspacesFile(accountId))
-    this.workspaces = file?.workspaces ?? []
+    // 兼容旧版系统默认名；自定义目录和显式改名的工作区保持原文。
+    this.workspaces = (file?.workspaces ?? []).map((workspace) => ({
+      ...workspace,
+      usesDefaultName:
+        workspace.usesDefaultName ??
+        (workspace.type === 'default' &&
+          [zh['defaults.workspace'], en['defaults.workspace']].includes(workspace.name))
+    }))
 
     // 指针失效（如工作区被外部移除）时回退到列表中的第一个工作区
     this.currentWorkspaceId =
@@ -89,7 +101,11 @@ export class WorkspaceRegistry {
 
   async setCurrent(workspaceId: string): Promise<Workspace> {
     const workspace = this.getById(workspaceId)
-    if (!workspace) throw new RuntimeError('workspace.not-found', `工作区不存在：${workspaceId}`)
+    if (!workspace)
+      throw new RuntimeError(
+        'workspace.not-found',
+        msg('errors.workspace.missingId', { v0: String(workspaceId) })
+      )
     await this.persist(workspaceId)
     this.currentWorkspaceId = workspaceId
     return workspace
@@ -113,8 +129,9 @@ export class WorkspaceRegistry {
       {
         id: randomUUID(),
         accountId: this.accountId,
-        name: '默认工作区',
+        name: this.t('defaults.workspace'),
         type: 'default',
+        usesDefaultName: true,
         path: dirPath
       },
       at
@@ -130,7 +147,7 @@ export class WorkspaceRegistry {
 
     const validation = await this.validatePath(dirPath)
     if (validation.lockedByAccountId && validation.lockedByAccountId !== this.accountId) {
-      throw new RuntimeError('workspace.locked', '该目录已被其他账户使用')
+      throw new RuntimeError('workspace.locked', msg('workspace.directoryInUse'))
     }
 
     const existing = this.workspaces.find((item) => item.path === dirPath)
@@ -155,9 +172,18 @@ export class WorkspaceRegistry {
 
   async rename(workspaceId: string, name: string, at: number): Promise<Workspace> {
     const workspace = this.getById(workspaceId)
-    if (!workspace) throw new RuntimeError('workspace.not-found', `工作区不存在：${workspaceId}`)
+    if (!workspace)
+      throw new RuntimeError(
+        'workspace.not-found',
+        msg('errors.workspace.missingId', { v0: String(workspaceId) })
+      )
 
-    const updated: Workspace = { ...workspace, name: name.trim() || workspace.name, updatedAt: at }
+    const trimmedName = name.trim()
+    const updated: Workspace = {
+      ...workspace,
+      ...(trimmedName ? { name: trimmedName, usesDefaultName: false } : {}),
+      updatedAt: at
+    }
     await this.commitWorkspace(
       updated,
       this.workspaces.map((item) => (item.id === workspaceId ? updated : item))
@@ -168,9 +194,13 @@ export class WorkspaceRegistry {
   /** 注销工作区；默认工作区连同磁盘目录一起删除 */
   async remove(workspaceId: string): Promise<void> {
     const workspace = this.getById(workspaceId)
-    if (!workspace) throw new RuntimeError('workspace.not-found', `工作区不存在：${workspaceId}`)
+    if (!workspace)
+      throw new RuntimeError(
+        'workspace.not-found',
+        msg('errors.workspace.missingId', { v0: String(workspaceId) })
+      )
     if (this.workspaces.length <= 1) {
-      throw new RuntimeError('workspace.last-workspace', '至少需要保留一个工作区')
+      throw new RuntimeError('workspace.last-workspace', msg('errors.workspace.last'))
     }
 
     const workspaces = this.workspaces.filter((item) => item.id !== workspaceId)
@@ -196,7 +226,7 @@ export class WorkspaceRegistry {
 
   async validatePath(dirPath: string): Promise<WorkspacePathValidation> {
     if (!(await isDirectory(dirPath))) {
-      return { valid: false, isWorkspace: false, error: '目录不存在或不是文件夹' }
+      return { valid: false, isWorkspace: false, error: this.t('errors.workspace.notDirectory') }
     }
 
     const identityPath = this.paths.workspaceConfigFile(dirPath)
@@ -211,7 +241,7 @@ export class WorkspaceRegistry {
         isWorkspace: true,
         workspaceId: identity.id,
         lockedByAccountId: identity.accountId,
-        error: '该工作区属于其他账户'
+        error: this.t('errors.workspace.otherAccount')
       }
     }
 
@@ -280,7 +310,10 @@ export class WorkspaceRegistry {
         if (previous === null) await removePath(identityPath)
         else await writeTextAtomic(identityPath, previous)
       } catch (failure) {
-        throw new AggregateError([error, failure], '注册失败且工作区身份恢复失败')
+        throw new LocalizedAggregateError(
+          [error, failure],
+          msg('errors.workspace.registrationRecovery')
+        )
       }
       throw error
     }

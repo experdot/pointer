@@ -19,6 +19,7 @@ import {
 import type { RuntimeEvent, SessionSnapshot, SettingsSnapshot } from '@shared/contracts'
 
 const host: RuntimeHost = {
+  getPreferredSystemLanguages: () => ['zh-CN'],
   getVersion: () => 'test',
   saveFile: async () => ({}),
   openTextFile: async () => null,

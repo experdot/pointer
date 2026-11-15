@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useEffect } from 'react'
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
 import type { AttachmentRef } from '@renderer/types/shared'
@@ -10,6 +11,8 @@ interface AttachmentPreviewProps {
 }
 
 export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachments, onRemove }) => {
+  useI18n()
+
   if (attachments.length === 0) return null
 
   return (
@@ -29,6 +32,8 @@ const AttachmentPreviewItem: React.FC<{
   attachment: AttachmentRef
   onRemove: () => void
 }> = ({ attachment, onRemove }) => {
+  useI18n()
+
   const [thumbnail, setThumbnail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -79,7 +84,7 @@ const AttachmentPreviewItem: React.FC<{
           e.stopPropagation()
           onRemove()
         }}
-        title="移除"
+        title={t('common.remove')}
       >
         <CloseOutlined />
       </button>

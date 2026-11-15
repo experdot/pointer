@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { BACKUP_FORMAT_VERSION } from '@shared/contracts'
 import React, { useState, useMemo, useCallback } from 'react'
 import { Modal, Tabs, Tree, Checkbox, Button, Space, Typography, App, Flex, Divider } from 'antd'
@@ -24,6 +25,8 @@ interface ExportModalProps {
 type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 
 export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Element {
+  useI18n()
+
   const { message } = App.useApp()
   const pages = usePagesStore((s) => s.pages)
   const folders = useFoldersStore((s) => s.folders)
@@ -170,10 +173,13 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
         URL.revokeObjectURL(url)
       }
 
-      message.success('导出成功')
+      message.success(t('export.success'))
       onClose()
     } catch (error) {
-      message.error('导出失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      message.error(
+        t('export.errorPrefix') +
+          (error instanceof Error ? error.message : t('common.unknownError'))
+      )
     } finally {
       setExporting(false)
     }
@@ -195,7 +201,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
           indeterminate={isIndeterminate}
           onChange={(e) => setChecked(e.target.checked ? allKeys : [])}
         >
-          全选 / 取消全选
+          {t('common.toggleAll')}
         </Checkbox>
         {tree.length > 0 ? (
           <Tree
@@ -207,7 +213,7 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
             treeData={tree}
           />
         ) : (
-          <Text type="secondary">暂无数据</Text>
+          <Text type="secondary">{t('common.noData')}</Text>
         )}
       </Flex>
     )
@@ -216,24 +222,24 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
   const tabItems = [
     {
       key: 'chats',
-      label: `对话 (${stats.pageIds.length})`,
+      label: t('backup.conversations', { v0: String(stats.pageIds.length) }),
       children: (
         <Flex vertical gap={8}>
           {renderTree(chatsTree, checkedChats, setCheckedChats)}
-          <Text type="secondary">图片附件暂不支持导出</Text>
+          <Text type="secondary">{t('backup.noImages')}</Text>
         </Flex>
       )
     },
     {
       key: 'llm',
-      label: `LLM配置 (${stats.llmIds.length})`,
+      label: t('backup.llms', { v0: String(stats.llmIds.length) }),
       children: (
         <>
           <Checkbox
             checked={includeApiKeys}
             onChange={(event) => setIncludeApiKeys(event.target.checked)}
           >
-            包含 API Key（明文）
+            {t('backup.includeKeys')}
           </Checkbox>
           <Divider style={{ margin: '8px 0' }} />
           {renderTree(llmTree, checkedLLM, setCheckedLLM)}
@@ -242,18 +248,18 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
     },
     {
       key: 'model',
-      label: `模型配置 (${stats.modelIds.length})`,
+      label: t('backup.models', { v0: String(stats.modelIds.length) }),
       children: renderTree(modelTree, checkedModel, setCheckedModel)
     },
     {
       key: 'ui',
-      label: '界面',
+      label: t('backup.interface'),
       children: (
         <Flex vertical gap={8}>
           <Checkbox checked={includeUI} onChange={(e) => setIncludeUI(e.target.checked)}>
-            包含标签页和布局设置
+            {t('backup.includeLayout')}
           </Checkbox>
-          <Text type="secondary">导出当前打开的标签页、侧边栏宽度等界面状态</Text>
+          <Text type="secondary">{t('backup.layoutDescription')}</Text>
         </Flex>
       )
     }
@@ -261,20 +267,20 @@ export function ExportModal({ open, onClose }: ExportModalProps): React.JSX.Elem
 
   return (
     <Modal
-      title="导出数据"
+      title={t('data.export')}
       open={open}
       onCancel={onClose}
       width={600}
       footer={
         <Space>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button
             type="primary"
             onClick={handleExport}
             loading={exporting}
             disabled={!hasSelection}
           >
-            导出选中项
+            {t('backup.exportSelected')}
           </Button>
         </Space>
       }

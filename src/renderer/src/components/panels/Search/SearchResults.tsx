@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback, useState } from 'react'
 import { Typography } from 'antd'
 import {
@@ -27,6 +28,8 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({ results, onItemClick }: SearchResultsProps): React.JSX.Element {
+  useI18n()
+
   const { toggleGroupExpanded, toggleMessageExpanded, selectedIndex } = useGlobalSearchStore()
   const [visiblePageCount, setVisiblePageCount] = useState(PAGE_SIZE)
 
@@ -82,11 +85,11 @@ interface LoadMoreButtonProps {
 }
 
 function LoadMoreButton({ current, total, onLoadMore }: LoadMoreButtonProps): React.JSX.Element {
+  useI18n()
+
   return (
     <div className="search-load-more" onClick={onLoadMore}>
-      <span>
-        已显示 {Math.min(current, total)}/{total} 项，点击加载更多
-      </span>
+      <span>{t('search.loadMore', { shown: Math.min(current, total), total })}</span>
     </div>
   )
 }
@@ -113,6 +116,8 @@ function SearchResultPageGroup({
   onMessageClick,
   onItemClick
 }: SearchResultPageGroupProps): React.JSX.Element {
+  useI18n()
+
   const [visibleMessageCount, setVisibleMessageCount] = useState(PAGE_SIZE)
 
   // 计算该页面的总匹配数
@@ -191,6 +196,8 @@ function SearchResultMessageGroup({
   onMessageClick,
   onItemClick
 }: SearchResultMessageGroupProps): React.JSX.Element {
+  useI18n()
+
   const [visibleMatchCount, setVisibleMatchCount] = useState(PAGE_SIZE)
 
   const roleIcon = messageGroup.role === 'user' ? <UserOutlined /> : <RobotOutlined />
@@ -261,6 +268,8 @@ function SearchResultItem({
   isSelected,
   onClick
 }: SearchResultItemProps): React.JSX.Element {
+  useI18n()
+
   // 渲染带高亮的片段
   const renderSnippet = (): React.JSX.Element => {
     const { snippet, matchStart, matchEnd } = match

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Modal, Button } from 'antd'
 import {
@@ -23,6 +24,8 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   name,
   onClose
 }) => {
+  useI18n()
+
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -154,14 +157,22 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       title={name}
     >
       <div className="image-preview-modal__toolbar">
-        <Button icon={<ZoomOutOutlined />} onClick={handleZoomOut} title="缩小 (-)" />
+        <Button icon={<ZoomOutOutlined />} onClick={handleZoomOut} title={t('image.zoomOut')} />
         <span className="image-preview-modal__scale">{Math.round(scale * 100)}%</span>
-        <Button icon={<ZoomInOutlined />} onClick={handleZoomIn} title="放大 (+)" />
+        <Button icon={<ZoomInOutlined />} onClick={handleZoomIn} title={t('image.zoomIn')} />
         <div className="image-preview-modal__divider" />
-        <Button icon={<RotateLeftOutlined />} onClick={handleRotateLeft} title="向左旋转 (←)" />
-        <Button icon={<RotateRightOutlined />} onClick={handleRotateRight} title="向右旋转 (→)" />
+        <Button
+          icon={<RotateLeftOutlined />}
+          onClick={handleRotateLeft}
+          title={t('image.rotateLeft')}
+        />
+        <Button
+          icon={<RotateRightOutlined />}
+          onClick={handleRotateRight}
+          title={t('image.rotateRight')}
+        />
         <div className="image-preview-modal__divider" />
-        <Button icon={<FullscreenOutlined />} onClick={handleReset} title="重置 (0)" />
+        <Button icon={<FullscreenOutlined />} onClick={handleReset} title={t('image.reset')} />
       </div>
 
       <div

@@ -1,3 +1,4 @@
+import { t } from '@renderer/i18n'
 import { create } from 'zustand'
 import type { Tab, TabHistoryEntry } from '@shared/contracts'
 import { tryRestoreTab, filterValidTabs } from '../utils/tabRegistry'
@@ -8,7 +9,9 @@ export type { Tab, TabHistoryEntry }
 const WELCOME_TAB: Tab = {
   id: 'welcome',
   type: 'welcome',
-  title: '欢迎',
+  get title(): string {
+    return t('welcome.tab')
+  },
   closable: true
 }
 

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback, useRef, useEffect } from 'react'
 import { Input, Button, Tooltip } from 'antd'
 import type { InputRef } from 'antd'
@@ -6,6 +7,8 @@ import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
 import { useLayoutStore } from '../../../stores/layoutStore'
 
 export function SearchInput(): React.JSX.Element {
+  useI18n()
+
   const { query, setQuery, options, setOptions, clearSearch, triggerSearch, focusRequestKey } =
     useGlobalSearchStore()
   const activePanel = useLayoutStore((state) => state.activePanel)
@@ -63,11 +66,11 @@ export function SearchInput(): React.JSX.Element {
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="搜索消息内容..."
+        placeholder={t('search.messagesPlaceholder')}
         allowClear={false}
         suffix={
           <div className="search-input-actions">
-            <Tooltip title="区分大小写">
+            <Tooltip title={t('search.matchCase')}>
               <Button
                 type={options.matchCase ? 'primary' : 'text'}
                 size="small"
@@ -76,7 +79,7 @@ export function SearchInput(): React.JSX.Element {
                 Aa
               </Button>
             </Tooltip>
-            <Tooltip title="使用正则表达式">
+            <Tooltip title={t('search.regex')}>
               <Button
                 type={options.useRegex ? 'primary' : 'text'}
                 size="small"
@@ -85,7 +88,7 @@ export function SearchInput(): React.JSX.Element {
                 .*
               </Button>
             </Tooltip>
-            <Tooltip title="全词匹配">
+            <Tooltip title={t('search.wholeWord')}>
               <Button
                 type={options.matchWholeWord ? 'primary' : 'text'}
                 size="small"
@@ -95,7 +98,7 @@ export function SearchInput(): React.JSX.Element {
               </Button>
             </Tooltip>
             {query && (
-              <Tooltip title="清除 (Esc)">
+              <Tooltip title={t('search.clearShortcut')}>
                 <Button type="text" size="small" icon={<CloseOutlined />} onClick={handleClear} />
               </Tooltip>
             )}

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useCallback } from 'react'
 import { Drawer, Button, Input, List, Popconfirm, Typography, Empty } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ClearOutlined } from '@ant-design/icons'
@@ -26,6 +27,8 @@ export function MessageQueueDrawer({
   onUpdate,
   onClear
 }: MessageQueueDrawerProps): React.JSX.Element {
+  useI18n()
+
   const [newContent, setNewContent] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
@@ -83,11 +86,16 @@ export function MessageQueueDrawer({
     <Drawer
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>消息队列 ({items.length})</span>
+          <span>{t('queue.count', { count: items.length })}</span>
           {items.length > 0 && (
-            <Popconfirm title="确定清空队列？" onConfirm={onClear} okText="确定" cancelText="取消">
+            <Popconfirm
+              title={t('queue.confirmClear')}
+              onConfirm={onClear}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
               <Button type="text" danger icon={<ClearOutlined />} size="small">
-                清空
+                {t('common.clear')}
               </Button>
             </Popconfirm>
           )}
@@ -100,7 +108,7 @@ export function MessageQueueDrawer({
     >
       <div className="message-queue-drawer">
         {items.length === 0 ? (
-          <Empty description="队列为空" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description={t('queue.empty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           <List
             className="message-queue-drawer__list"
@@ -112,10 +120,10 @@ export function MessageQueueDrawer({
                   editingId === item.id
                     ? [
                         <Button key="save" type="link" size="small" onClick={handleSaveEdit}>
-                          保存
+                          {t('common.save')}
                         </Button>,
                         <Button key="cancel" type="link" size="small" onClick={handleCancelEdit}>
-                          取消
+                          {t('common.cancel')}
                         </Button>
                       ]
                     : [
@@ -128,10 +136,10 @@ export function MessageQueueDrawer({
                         />,
                         <Popconfirm
                           key="delete"
-                          title="确定删除？"
+                          title={t('common.deleteQuestion')}
                           onConfirm={() => onRemove(item.id)}
-                          okText="确定"
-                          cancelText="取消"
+                          okText={t('common.confirm')}
+                          cancelText={t('common.cancel')}
                         >
                           <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
@@ -169,7 +177,7 @@ export function MessageQueueDrawer({
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="添加新消息到队列..."
+            placeholder={t('queue.addPlaceholder')}
             autoSize={{ minRows: 1, maxRows: 3 }}
           />
           <Button
@@ -178,7 +186,7 @@ export function MessageQueueDrawer({
             onClick={handleAdd}
             disabled={!newContent.trim()}
           >
-            添加
+            {t('common.add')}
           </Button>
         </div>
       </div>

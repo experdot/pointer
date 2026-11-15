@@ -28,6 +28,11 @@ Pointer does not support MCP, include built-in web search, or process audio and 
 
 ## Features
 
+### Interface language
+
+- English and Simplified Chinese, following your preferred system languages by default
+- Switch in **Settings → General → Interface language**: Follow system, 简体中文, or English
+
 ### Models
 
 - Configure multiple LLMs (base URL, API key, model name) and reusable model parameter configs (system prompt, temperature, top-p)

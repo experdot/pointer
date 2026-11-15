@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback } from 'react'
 import { Empty, Spin, Button } from 'antd'
 import { useGlobalSearchStore } from '../../../stores/globalSearchStore'
@@ -9,6 +10,8 @@ import type { SearchMatch } from '@renderer/types/shared'
 import './index.css'
 
 export function Search(): React.JSX.Element {
+  useI18n()
+
   const { query, results, totalCount, isSearching, setSelectedIndex, expandAll, collapseAll } =
     useGlobalSearchStore()
   const { navigateToResult } = useGlobalSearch()
@@ -32,21 +35,24 @@ export function Search(): React.JSX.Element {
         {isSearching && (
           <div className="search-loading">
             <Spin size="small" />
-            <span>搜索中...</span>
+            <span>{t('search.searching')}</span>
           </div>
         )}
 
         {!isSearching && totalCount > 0 && (
           <div className="search-summary">
             <span>
-              共 {totalCount} 个结果，来自 {results.length} 个会话
+              {t('search.summary', {
+                matches: t('search.matches', { count: totalCount }),
+                conversations: t('common.conversationCount', { count: results.length })
+              })}
             </span>
             <div className="search-summary-actions">
               <Button type="text" size="small" onClick={expandAll}>
-                展开
+                {t('common.expand')}
               </Button>
               <Button type="text" size="small" onClick={collapseAll}>
-                折叠
+                {t('common.collapse')}
               </Button>
             </div>
           </div>
@@ -57,12 +63,12 @@ export function Search(): React.JSX.Element {
         )}
 
         {!isSearching && query && totalCount === 0 && (
-          <Empty description="未找到匹配结果" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description={t('search.noResults')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
 
         {!isSearching && !query && (
           <div className="search-placeholder">
-            <p>输入关键词搜索所有会话</p>
+            <p>{t('search.hint')}</p>
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useCallback } from 'react'
 import { Button, Tooltip, Input } from 'antd'
 import { CloseOutlined, CheckOutlined, SendOutlined, PictureOutlined } from '@ant-design/icons'
@@ -22,6 +23,8 @@ export const MessageEditMode = React.memo(function MessageEditMode({
   onSave,
   onSaveAndResend
 }: MessageEditModeProps): React.JSX.Element {
+  useI18n()
+
   const [isEditDragOver, setIsEditDragOver] = useState(false)
 
   const handleRemoveAttachment = useCallback(
@@ -121,19 +124,19 @@ export const MessageEditMode = React.memo(function MessageEditMode({
       />
       <div className="message-item__edit-actions">
         {isUser && (
-          <Tooltip title="添加图片">
+          <Tooltip title={t('attachment.addImage')}>
             <Button type="text" icon={<PictureOutlined />} onClick={handleAddAttachments} />
           </Tooltip>
         )}
         <Button icon={<CloseOutlined />} onClick={onCancel}>
-          取消
+          {t('common.cancel')}
         </Button>
         <Button icon={<CheckOutlined />} onClick={onSave}>
-          保存
+          {t('common.save')}
         </Button>
         {isUser && onSaveAndResend && (
           <Button type="primary" icon={<SendOutlined />} onClick={onSaveAndResend}>
-            保存并重发
+            {t('chat.saveResend')}
           </Button>
         )}
       </div>
@@ -141,7 +144,7 @@ export const MessageEditMode = React.memo(function MessageEditMode({
       {isUser && isEditDragOver && (
         <div className="message-item__edit-drag-overlay">
           <PictureOutlined />
-          <span>释放以添加图片</span>
+          <span>{t('attachment.dropImages')}</span>
         </div>
       )}
     </div>

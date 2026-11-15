@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button, Dropdown, Input, Tooltip, type InputRef } from 'antd'
 import {
@@ -33,6 +34,8 @@ export function Header({
   onExport,
   onGenerate
 }: HeaderProps): React.JSX.Element {
+  useI18n()
+
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(page.name)
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -111,7 +114,7 @@ export function Header({
           <Input
             ref={inputRef}
             className="chat-editor__title-input"
-            aria-label="会话标题"
+            aria-label={t('chat.sessionTitle')}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={(e) => {
@@ -136,7 +139,7 @@ export function Header({
                   onGenerate={handleAIGenerate}
                   placement="bottomRight"
                 >
-                  <Tooltip title="AI 生成">
+                  <Tooltip title={t('ai.generateLabel')}>
                     <ThunderboltOutlined
                       className="rename-input__ai-btn"
                       onClick={(e) => {
@@ -152,7 +155,7 @@ export function Header({
         ) : (
           <div className="chat-editor__title-wrapper">
             <span className="chat-editor__title">{page.name}</span>
-            <Tooltip title={page.starred ? '取消星标' : '添加星标'}>
+            <Tooltip title={page.starred ? t('common.unstar') : t('common.star')}>
               <span
                 className={`chat-editor__title-star ${page.starred ? 'is-starred' : ''}`}
                 onClick={handleToggleStar}
@@ -168,8 +171,8 @@ export function Header({
         <Dropdown.Button
           {...getStandardDropdownProps({
             items: [
-              { key: 'expand-all', label: '展开全部消息', onClick: onExpandAll },
-              { key: 'collapse-ai', label: '仅折叠 AI 消息', onClick: onCollapseAI }
+              { key: 'expand-all', label: t('chat.expandAll'), onClick: onExpandAll },
+              { key: 'collapse-ai', label: t('chat.collapseAssistant'), onClick: onCollapseAI }
             ]
           })}
           type="text"
@@ -182,21 +185,25 @@ export function Header({
           buttonsRender={([left, right]) => [
             left,
             React.cloneElement(right as React.ReactElement<React.AriaAttributes>, {
-              'aria-label': '更多折叠操作'
+              'aria-label': t('chat.collapseOptions')
             })
           ]}
         >
-          折叠全部
+          {t('common.collapseAll')}
         </Dropdown.Button>
         <Dropdown
           {...getStandardDropdownProps({
             items: [
               {
                 key: 'current-branch',
-                label: '当前分支消息',
+                label: t('export.currentBranchMessages'),
                 onClick: () => onExport('current-branch')
               },
-              { key: 'free-select', label: '自由选择', onClick: () => onExport('free-select') }
+              {
+                key: 'free-select',
+                label: t('export.freeSelect'),
+                onClick: () => onExport('free-select')
+              }
             ]
           })}
           disabled={actionsDisabled}
@@ -204,7 +211,8 @@ export function Header({
           autoFocus
         >
           <Button type="text" size="small" icon={<ExportOutlined />} disabled={actionsDisabled}>
-            导出 <DownOutlined />
+            {t('common.export')}
+            <DownOutlined />
           </Button>
         </Dropdown>
       </div>

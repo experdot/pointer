@@ -1,4 +1,5 @@
 import React from 'react'
+import { useI18n } from '../../i18n'
 import { Tooltip } from 'antd'
 import { formatLongDateTime, formatSemanticDateTime, parseDateLike } from '../../utils/dateTime'
 
@@ -17,6 +18,7 @@ export function DateTimeText({
   tooltip = true,
   emptyText = '-'
 }: DateTimeTextProps): React.JSX.Element {
+  useI18n()
   const date = parseDateLike(value)
   const mergedStyle = { whiteSpace: 'nowrap', ...style }
 

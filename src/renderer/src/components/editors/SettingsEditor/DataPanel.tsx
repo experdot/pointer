@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState } from 'react'
 import { Button, Flex, Typography, Space, Divider } from 'antd'
 import {
@@ -14,6 +15,8 @@ import { ResetModal } from './ResetModal'
 const { Text } = Typography
 
 export function DataPanel(): React.JSX.Element {
+  useI18n()
+
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [thirdPartyImportOpen, setThirdPartyImportOpen] = useState(false)
@@ -23,23 +26,23 @@ export function DataPanel(): React.JSX.Element {
     <Flex vertical gap={24}>
       <div>
         <Text strong style={{ fontSize: 16 }}>
-          数据管理
+          {t('data.title')}
         </Text>
         <br />
         <Text type="secondary" style={{ fontSize: 12 }}>
-          导入、导出或重置应用数据
+          {t('data.description')}
         </Text>
       </div>
 
       <Space size="middle">
         <Button icon={<ExportOutlined />} onClick={() => setExportModalOpen(true)}>
-          导出数据
+          {t('data.export')}
         </Button>
         <Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)}>
-          导入数据
+          {t('data.import')}
         </Button>
         <Button danger icon={<DeleteOutlined />} onClick={() => setResetModalOpen(true)}>
-          重置数据
+          {t('data.reset')}
         </Button>
       </Space>
 
@@ -47,17 +50,17 @@ export function DataPanel(): React.JSX.Element {
 
       <div>
         <Text strong style={{ fontSize: 16 }}>
-          第三方数据导入
+          {t('data.thirdPartyTitle')}
         </Text>
         <br />
         <Text type="secondary" style={{ fontSize: 12 }}>
-          从其他平台导入聊天记录（支持 OpenAI、DeepSeek 等）
+          {t('data.thirdPartyDescription')}
         </Text>
       </div>
 
       <Space>
         <Button icon={<CloudDownloadOutlined />} onClick={() => setThirdPartyImportOpen(true)}>
-          导入第三方数据
+          {t('data.thirdPartyImport')}
         </Button>
       </Space>
 

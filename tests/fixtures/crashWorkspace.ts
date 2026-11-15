@@ -8,6 +8,7 @@ async function main(): Promise<void> {
     appDataPath: root,
     host: {
       getVersion: () => 'test',
+      getPreferredSystemLanguages: () => ['zh-CN'],
       saveFile: async () => ({}),
       openTextFile: async () => null,
       pickDirectory: async () => null,

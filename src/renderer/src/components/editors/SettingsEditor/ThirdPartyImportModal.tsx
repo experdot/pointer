@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useMemo, useCallback } from 'react'
 import {
   Modal,
@@ -47,10 +48,30 @@ type Step = 'upload' | 'select' | 'importing' | 'done'
 
 // 时间范围预设
 const TIME_PRESETS = [
-  { label: '全部时间', value: 'all' },
-  { label: '最近 7 天', value: '7d' },
-  { label: '最近 30 天', value: '30d' },
-  { label: '最近 1 年', value: '1y' }
+  {
+    get label(): string {
+      return t('time.all')
+    },
+    value: 'all'
+  },
+  {
+    get label(): string {
+      return t('time.last7Days')
+    },
+    value: '7d'
+  },
+  {
+    get label(): string {
+      return t('time.last30Days')
+    },
+    value: '30d'
+  },
+  {
+    get label(): string {
+      return t('time.lastYear')
+    },
+    value: '1y'
+  }
 ]
 
 function getTimeRange(preset: string): [number, number] | null {
@@ -71,6 +92,8 @@ export function ThirdPartyImportModal({
   open,
   onClose
 }: ThirdPartyImportModalProps): React.JSX.Element {
+  useI18n()
+
   const { message } = App.useApp()
 
   // 状态
@@ -115,13 +138,13 @@ export function ThirdPartyImportModal({
 
       const format = detectFormat(data)
       if (!format) {
-        message.error('无法识别文件格式，请确保上传正确的导出文件')
+        message.error(t('import.unrecognized'))
         return false
       }
 
-      const parsed = parseImport(data, format, Date.now())
+      const parsed = parseImport(data, format, Date.now(), t)
       if (parsed.conversations.length === 0) {
-        message.error('文件中没有可导入的对话')
+        message.error(t('import.emptyFile'))
         return false
       }
 
@@ -134,7 +157,7 @@ export function ThirdPartyImportModal({
 
       return false
     } catch {
-      message.error('文件解析失败，请确保是有效的 JSON 文件')
+      message.error(t('import.invalidJson'))
       return false
     }
   }
@@ -167,7 +190,7 @@ export function ThirdPartyImportModal({
   // 开始导入
   const handleImport = async (): Promise<void> => {
     if (selectedIds.size === 0) {
-      message.warning('请至少选择一个对话')
+      message.warning(t('import.selectConversation'))
       return
     }
 
@@ -176,7 +199,7 @@ export function ThirdPartyImportModal({
 
     try {
       if (!pendingPayload) {
-        message.error('请先上传导出文件')
+        message.error(t('import.uploadFirst'))
         return
       }
 
@@ -189,7 +212,9 @@ export function ThirdPartyImportModal({
       setResult(result)
       setStep('done')
     } catch (err) {
-      message.error('导入失败: ' + (err instanceof Error ? err.message : '未知错误'))
+      message.error(
+        t('import.errorColon') + (err instanceof Error ? err.message : t('common.unknownError'))
+      )
       setStep('select')
     }
   }
@@ -233,19 +258,19 @@ export function ThirdPartyImportModal({
       )
     },
     {
-      title: '标题',
+      title: t('common.title'),
       dataIndex: 'title',
       ellipsis: true,
-      render: (title) => title || '未命名对话'
+      render: (title) => title || t('chat.untitled')
     },
     {
-      title: '时间',
+      title: t('common.time'),
       dataIndex: 'createdAt',
       width: 120,
       render: (time) => <DateTimeText value={time} style={{ whiteSpace: 'nowrap' }} />
     },
     {
-      title: '消息数',
+      title: t('import.messageCount'),
       dataIndex: 'messages',
       width: 80,
       render: (messages) => messages?.length || 0
@@ -260,13 +285,13 @@ export function ThirdPartyImportModal({
           <InboxOutlined />
         </p>
         <p className="ant-upload-text" style={{ fontSize: 14 }}>
-          点击或拖拽文件到此处
+          {t('import.dropFile')}
         </p>
-        <p className="ant-upload-hint">支持 .json 格式的导出文件</p>
+        <p className="ant-upload-hint">{t('import.exportFormat')}</p>
       </Dragger>
 
       <Flex align="center" gap={8}>
-        <Text type="secondary">支持的平台：</Text>
+        <Text type="secondary">{t('import.platforms')}</Text>
         {getSupportedPlatforms().map((p) => (
           <Tag key={p.platform} color="blue">
             {p.name}
@@ -284,16 +309,18 @@ export function ThirdPartyImportModal({
         showIcon
         message={
           <Space>
-            <Text>检测到平台:</Text>
+            <Text>{t('import.detectedPlatform')}</Text>
             <Tag color="blue">{importer ? getPlatformName(importer) : ''}</Tag>
-            <Text type="secondary">共 {conversations.length} 个对话</Text>
+            <Text type="secondary">
+              {t('import.conversationTotal', { count: conversations.length })}
+            </Text>
           </Space>
         }
       />
 
       <Flex gap={12}>
         <Input
-          placeholder="搜索标题..."
+          placeholder={t('import.searchTitles')}
           prefix={<SearchOutlined />}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -303,7 +330,7 @@ export function ThirdPartyImportModal({
         <Select
           value={timePreset}
           onChange={setTimePreset}
-          options={TIME_PRESETS}
+          options={TIME_PRESETS.map((option) => ({ ...option }))}
           style={{ width: 140 }}
           suffixIcon={<CalendarOutlined />}
         />
@@ -320,12 +347,14 @@ export function ThirdPartyImportModal({
 
       <Flex justify="space-between" align="center">
         <Text type="secondary">
-          已选择 {filteredConversations.filter((c) => selectedIds.has(c.id)).length} /{' '}
-          {filteredConversations.length} 个对话
+          {t('import.selectionCount', {
+            selected: filteredConversations.filter((c) => selectedIds.has(c.id)).length,
+            total: filteredConversations.length
+          })}
           {selectedIds.size > 0 &&
             selectedIds.size !==
               filteredConversations.filter((c) => selectedIds.has(c.id)).length && (
-              <span>（总共选择 {selectedIds.size} 个）</span>
+              <span>{t('import.totalSelected', { count: selectedIds.size })}</span>
             )}
         </Text>
       </Flex>
@@ -335,13 +364,13 @@ export function ThirdPartyImportModal({
   // 渲染导入进度
   const renderImporting = (): React.ReactNode => (
     <Flex vertical gap={16} align="center" style={{ padding: 12 }}>
-      <Title level={4}>正在导入...</Title>
+      <Title level={4}>{t('import.importing')}</Title>
       <Progress
         type="circle"
         percent={Math.round((progress.current / progress.total) * 100)}
         format={() => `${progress.current}/${progress.total}`}
       />
-      <Text type="secondary">请勿关闭窗口</Text>
+      <Text type="secondary">{t('import.keepOpen')}</Text>
     </Flex>
   )
 
@@ -354,42 +383,44 @@ export function ThirdPartyImportModal({
     return (
       <Result
         status={hasErrors ? 'warning' : 'success'}
-        title="导入完成"
+        title={t('import.complete')}
         subTitle={
           <Flex vertical gap={8}>
             <Space>
               <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text>成功: {result.success} 个</Text>
+              <Text>{t('import.successful', { count: result.success })}</Text>
             </Space>
             {result.skipped > 0 && (
               <Space>
-                <Text type="secondary">跳过: {result.skipped} 个</Text>
+                <Text type="secondary">{t('import.skipped', { count: result.skipped })}</Text>
               </Space>
             )}
             {result.failed > 0 && (
               <Space>
                 <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-                <Text type="danger">失败: {result.failed} 个</Text>
+                <Text type="danger">{t('import.failed', { count: result.failed })}</Text>
               </Space>
             )}
           </Flex>
         }
         extra={
           <Button type="primary" onClick={handleClose}>
-            完成
+            {t('common.done')}
           </Button>
         }
       >
         {result.errors.length > 0 && (
           <Alert
             type="error"
-            message="错误详情"
+            message={t('common.errorDetails')}
             description={
               <ul style={{ margin: 0, paddingLeft: 20 }}>
                 {result.errors.slice(0, 5).map((err, i) => (
                   <li key={i}>{err}</li>
                 ))}
-                {result.errors.length > 5 && <li>... 还有 {result.errors.length - 5} 个错误</li>}
+                {result.errors.length > 5 && (
+                  <li>{t('import.moreErrors', { count: result.errors.length - 5 })}</li>
+                )}
               </ul>
             }
           />
@@ -416,13 +447,13 @@ export function ThirdPartyImportModal({
   const renderFooter = (): React.ReactNode => {
     switch (step) {
       case 'upload':
-        return <Button onClick={handleClose}>取消</Button>
+        return <Button onClick={handleClose}>{t('common.cancel')}</Button>
       case 'select':
         return (
           <Space>
-            <Button onClick={() => setStep('upload')}>返回</Button>
+            <Button onClick={() => setStep('upload')}>{t('common.back')}</Button>
             <Button type="primary" onClick={handleImport} disabled={selectedIds.size === 0}>
-              导入 {selectedIds.size} 个对话
+              {t('import.conversations', { count: selectedIds.size })}
             </Button>
           </Space>
         )
@@ -435,7 +466,9 @@ export function ThirdPartyImportModal({
 
   return (
     <Modal
-      title={`导入第三方数据${importer ? ` - ${getPlatformName(importer)}` : ''}`}
+      title={t('import.titleSuffix', {
+        v0: String(importer ? ` - ${getPlatformName(importer)}` : '')
+      })}
       open={open}
       onCancel={step === 'importing' ? undefined : handleClose}
       closable={step !== 'importing'}

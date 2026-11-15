@@ -1,3 +1,4 @@
+import { t } from '@renderer/i18n'
 import type {
   SourceType,
   FormatType,
@@ -128,7 +129,7 @@ class ExportManager {
   ): Promise<ExtractedContent> {
     const source = this.getSource(sourceType)
     if (!source) {
-      throw new Error(`Source plugin not found: ${sourceType}`)
+      throw new Error(t('export.sourceMissing', { type: sourceType }))
     }
     return source.extract(sourceData, options)
   }
@@ -143,7 +144,7 @@ class ExportManager {
   ): Promise<ConvertResult> {
     const format = this.getFormat(formatType)
     if (!format) {
-      throw new Error(`Format plugin not found: ${formatType}`)
+      throw new Error(t('export.formatMissing', { type: formatType }))
     }
     return format.convert(content, options)
   }

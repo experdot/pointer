@@ -4,6 +4,7 @@
  * 只负责发起命令与维护请求句柄；流式内容与最终结果由内核事件写入镜像。
  */
 
+import { t, useI18n } from '@renderer/i18n'
 import { useCallback } from 'react'
 import { App } from 'antd'
 import type { AttachmentRef, ChatMessage, Conversation } from '@shared/domain'
@@ -39,6 +40,8 @@ export function useChatStreaming({
   pageId,
   messages
 }: UseChatStreamingOptions): UseChatStreamingResult {
+  useI18n()
+
   const { message: messageApi } = App.useApp()
 
   const sendMessage = useCallback(
@@ -66,7 +69,7 @@ export function useChatStreaming({
         })
       } catch (error) {
         console.error('发送消息失败：', error)
-        messageApi.error(`发送失败：${errorMessage(error)}`)
+        messageApi.error(t('chat.sendFailed', { v0: String(errorMessage(error)) }))
         throw error
       }
     },
@@ -89,7 +92,7 @@ export function useChatStreaming({
         })
       } catch (error) {
         console.error('重新生成失败：', error)
-        messageApi.error(`重新生成失败：${errorMessage(error)}`)
+        messageApi.error(t('chat.regenerateFailed', { v0: String(errorMessage(error)) }))
       }
     },
     [messageApi, pageId]
@@ -101,7 +104,7 @@ export function useChatStreaming({
         await command('chat.continue', { pageId, messageId })
       } catch (error) {
         console.error('继续生成失败：', error)
-        messageApi.error(`继续生成失败：${errorMessage(error)}`)
+        messageApi.error(t('chat.continueFailed', { v0: String(errorMessage(error)) }))
       }
     },
     [messageApi, pageId]

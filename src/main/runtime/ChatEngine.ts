@@ -5,6 +5,10 @@
  * 落盘策略：流式过程中不写盘；用户消息立即落盘，助手消息在结束（完成/中止/失败）时落盘一次。
  */
 
+import { msg, formatError, LocalizedError } from '@shared/i18n/message'
+import type { Translate } from '@shared/i18n'
+import type { SupportedLanguage } from '@shared/domain/locale'
+
 import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
 import { randomUUID } from 'node:crypto'
 import type {
@@ -31,17 +35,11 @@ import type { WorkspaceStore } from './WorkspaceStore'
 import type { QueueStore } from './QueueStore'
 import type { ProviderMessage } from './providers'
 import { isAbortError, streamChat } from './providers'
-import {
-  MESSAGE_TITLE_PROMPT,
-  SESSION_TITLE_PROMPT,
-  TOPIC_TITLE_PROMPT,
-  applyExtraRequirements,
-  buildPrompt,
-  normalizeTitle,
-  truncateForPrompt
-} from '@shared/domain'
+import { buildLocalizedTitlePrompt, normalizeTitle, truncateForPrompt } from '@shared/domain'
 
 interface ChatEngineDeps {
+  t: Translate
+  language: () => SupportedLanguage
   workspace: () => WorkspaceStore | null
   settings: () => SettingsStore | null
   scope: () => string | null
@@ -95,9 +93,7 @@ export class ChatEngine {
 
   assertSaved(): void {
     if (this.unsaved.size)
-      throw new RuntimeError('chat.unsaved', '回答尚未保存，请重试保存后再切换或关闭', [
-        ...this.unsaved.keys()
-      ])
+      throw new RuntimeError('chat.unsaved', msg('errors.chat.unsaved'), [...this.unsaved.keys()])
   }
 
   isPageBusy(pageId: string): boolean {
@@ -141,10 +137,11 @@ export class ChatEngine {
 
   private assertReady(workspace: WorkspaceStore, pageId?: string): void {
     if (this.suspended || workspace !== this.deps.workspace())
-      throw new RuntimeError('runtime.stale-scope', '当前工作区正在关闭')
-    if (pageId && !workspace.getPage(pageId)) throw new RuntimeError('page.not-found', '目标不存在')
+      throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.closing'))
+    if (pageId && !workspace.getPage(pageId))
+      throw new RuntimeError('page.not-found', msg('errors.chat.targetMissing'))
     if (pageId && this.isPageBusy(pageId))
-      throw new RuntimeError('chat.busy', '此页面已有生成或尚未保存的回答')
+      throw new RuntimeError('chat.busy', msg('errors.chat.alreadyGenerating'))
   }
 
   async send(input: SendInput): Promise<ChatRequestHandle> {
@@ -165,7 +162,7 @@ export class ChatEngine {
         ? undefined
         : (input.parentMessageId ?? conversation.leafMessageId)
     if (parentMessageId && !conversation.messages.some((message) => message.id === parentMessageId))
-      throw new RuntimeError('chat.message-not-found', '目标消息不存在')
+      throw new RuntimeError('chat.message-not-found', msg('errors.chat.messageMissing'))
     let user: ChatMessage | undefined
     if (input.content.trim() || input.attachments?.length) {
       const appended = appendMessage(
@@ -197,7 +194,8 @@ export class ChatEngine {
       this.assertReady(workspace, input.pageId)
       const conversation = await workspace.readConversation(input.pageId)
       const message = conversation.messages.find((item) => item.id === input.messageId)
-      if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
+      if (!message)
+        throw new RuntimeError('chat.message-not-found', msg('errors.chat.targetMissing'))
       return this.startGeneration(workspace, conversation, message.parentMessageId, {
         llmId: input.llmId ?? message.llmId,
         modelConfigId: input.modelConfigId ?? message.modelConfigId
@@ -218,7 +216,8 @@ export class ChatEngine {
       const message = conversation.messages.find(
         (item) => item.id === (input.messageId ?? conversation.leafMessageId)
       )
-      if (!message) throw new RuntimeError('chat.message-not-found', '目标不存在')
+      if (!message)
+        throw new RuntimeError('chat.message-not-found', msg('errors.chat.targetMissing'))
       return this.startGeneration(
         workspace,
         conversation,
@@ -352,10 +351,21 @@ export class ChatEngine {
       if (isAbortError(error) || controller.signal.aborted)
         terminal = { type: 'chat.aborted', payload, scopeId }
       else {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = formatError(error, this.deps.t)
         assistant.hasError = true
-        assistant.content += `${assistant.content ? '\n\n---\n\n' : ''}**错误:** ${message}`
-        terminal = { type: 'chat.failed', payload: { ...payload, error: message }, scopeId }
+        assistant.content += this.deps.t('chat.savedError', {
+          v0: assistant.content ? '\n\n---\n\n' : '',
+          v1: message
+        })
+        terminal = {
+          type: 'chat.failed',
+          payload: {
+            ...payload,
+            error: message,
+            ...(error instanceof LocalizedError ? { localized: error.localized } : {})
+          },
+          scopeId
+        }
       }
     }
     try {
@@ -373,7 +383,8 @@ export class ChatEngine {
         {
           ...payload,
           message: { ...assistant },
-          error: error instanceof Error ? error.message : String(error)
+          error: formatError(error, this.deps.t),
+          ...(error instanceof LocalizedError ? { localized: error.localized } : {})
         },
         scopeId
       )
@@ -411,19 +422,19 @@ export class ChatEngine {
   private resolveConfig(llmId?: string, modelConfigId?: string): ResolvedConfig {
     const settingsStore = this.deps.settings()
     if (!settingsStore) {
-      throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
+      throw new RuntimeError('settings.unavailable', msg('errors.settings.notLoaded'))
     }
 
     const settings: Settings = settingsStore.get()
     const targetLlmId = llmId ?? settings.defaultLLMId ?? settings.llmConfigs.items[0]?.id
     const llm = settings.llmConfigs.items.find((item) => item.id === targetLlmId)
     if (!llm) {
-      throw new RuntimeError('ai.no-llm-config', '未找到可用的 LLM 配置')
+      throw new RuntimeError('ai.no-llm-config', msg('errors.ai.noConfig'))
     }
 
     const apiKey = llm.apiKey
     if (!apiKey) {
-      throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
+      throw new RuntimeError('ai.no-api-key', msg('errors.ai.noKey', { v0: String(llm.name) }))
     }
 
     const targetModelConfigId =
@@ -449,7 +460,7 @@ export class ChatEngine {
     llmId?: string
     modelConfigId?: string
   }): Promise<{ content: string; reasoning?: string }> {
-    if (this.suspended) throw new RuntimeError('runtime.closing', '工作区或目标已变化')
+    if (this.suspended) throw new RuntimeError('runtime.closing', msg('errors.chat.targetChanged'))
     const config = this.resolveConfig(input.llmId, input.modelConfigId)
     const controller = new AbortController()
     let resolveFinished = (): void => undefined
@@ -467,7 +478,8 @@ export class ChatEngine {
         controller.signal,
         { onDelta: () => undefined, onReasoning: () => undefined }
       )
-      if (controller.signal.aborted) throw new RuntimeError('chat.aborted', '目标不存在')
+      if (controller.signal.aborted)
+        throw new RuntimeError('chat.aborted', msg('errors.chat.targetMissing'))
       return { content: result.content.trim(), reasoning: result.reasoning || undefined }
     } finally {
       this.auxiliary.delete(controller)
@@ -485,22 +497,28 @@ export class ChatEngine {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
-      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
+      throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.changed'))
     const message = conversation.messages.find((item) => item.id === input.messageId)
     if (!message) {
-      throw new RuntimeError('chat.message-not-found', `消息不存在：${input.messageId}`)
+      throw new RuntimeError(
+        'chat.message-not-found',
+        msg('errors.chat.messageMissingId', { v0: String(input.messageId) })
+      )
     }
 
+    const language = this.deps.language()
     const { content } = await this.generateText({
-      prompt: applyExtraRequirements(
-        buildPrompt(MESSAGE_TITLE_PROMPT, message.content),
+      prompt: buildLocalizedTitlePrompt(
+        'message',
+        language,
+        message.content,
         input.extraRequirements
       ),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const title = normalizeTitle(content, 15)
-    if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
+    const title = normalizeTitle(content, language === 'zh-CN' ? 15 : 60)
+    if (!title) throw new RuntimeError('chat.title-empty', msg('errors.ai.emptyTitle'))
 
     await workspace.write(() =>
       workspace.mutateConversation(input.pageId, (current) => {
@@ -509,7 +527,7 @@ export class ChatEngine {
           this.suspended ||
           !current.messages.some((item) => item.id === message.id)
         )
-          throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+          throw new RuntimeError('runtime.stale-scope', msg('errors.chat.targetChanged'))
         return {
           conversation: updateMessage(current, message.id, { title }, Date.now()),
           result: undefined
@@ -530,10 +548,13 @@ export class ChatEngine {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
-      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
+      throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.changed'))
     const topic = conversation.topics.find((item) => item.id === input.topicId)
     if (!topic) {
-      throw new RuntimeError('topic.not-found', `Topic 不存在：${input.topicId}`)
+      throw new RuntimeError(
+        'topic.not-found',
+        msg('errors.chat.topicMissingId', { v0: String(input.topicId) })
+      )
     }
 
     const index = buildIndex(conversation.messages)
@@ -545,19 +566,20 @@ export class ChatEngine {
     const content = ids
       .map((id) => index.byId.get(id))
       .filter((message): message is ChatMessage => Boolean(message))
-      .map((message) => `${message.role === 'user' ? '用户' : '助手'}：${message.content}`)
+      .map(
+        (message) =>
+          `${message.role === 'user' ? this.deps.t('roles.user') : this.deps.t('roles.assistant')}：${message.content}`
+      )
       .join('\n\n')
 
+    const language = this.deps.language()
     const { content: generated } = await this.generateText({
-      prompt: applyExtraRequirements(
-        buildPrompt(TOPIC_TITLE_PROMPT, content),
-        input.extraRequirements
-      ),
+      prompt: buildLocalizedTitlePrompt('topic', language, content, input.extraRequirements),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const name = normalizeTitle(generated, 15)
-    if (!name) throw new RuntimeError('chat.title-empty', '模型未返回有效话题名称')
+    const name = normalizeTitle(generated, language === 'zh-CN' ? 15 : 60)
+    if (!name) throw new RuntimeError('chat.title-empty', msg('errors.ai.emptyTopic'))
 
     await workspace.write(() =>
       workspace.mutateConversation(input.pageId, (current) => {
@@ -566,7 +588,7 @@ export class ChatEngine {
           this.suspended ||
           !current.topics.some((item) => item.id === topic.id)
         )
-          throw new RuntimeError('runtime.stale-scope', '工作区或目标已变化')
+          throw new RuntimeError('runtime.stale-scope', msg('errors.chat.targetChanged'))
         return {
           conversation: updateTopic(current, topic.id, { name }, Date.now()),
           result: undefined
@@ -586,30 +608,34 @@ export class ChatEngine {
     const workspace = this.requireWorkspace()
     const conversation = await workspace.read(() => workspace.readConversation(input.pageId))
     if (workspace !== this.deps.workspace() || this.suspended)
-      throw new RuntimeError('runtime.stale-scope', '工作区已变化')
+      throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.changed'))
     const path = currentPath(conversation)
     const content = path
       .slice(0, 10)
       .map(
         (message) =>
-          `${message.role === 'user' ? '用户' : '助手'}：${truncateForPrompt(message.content, 200)}`
+          `${message.role === 'user' ? this.deps.t('roles.user') : this.deps.t('roles.assistant')}：${truncateForPrompt(message.content, 200)}`
       )
       .join('\n')
 
+    const language = this.deps.language()
     const { content: generated } = await this.generateText({
-      prompt: applyExtraRequirements(
-        buildPrompt(SESSION_TITLE_PROMPT, content, 1500),
-        input.extraRequirements
+      prompt: buildLocalizedTitlePrompt(
+        'session',
+        language,
+        content,
+        input.extraRequirements,
+        1500
       ),
       llmId: input.llmId,
       modelConfigId: input.modelConfigId
     })
-    const title = normalizeTitle(generated, 20)
-    if (!title) throw new RuntimeError('chat.title-empty', '模型未返回有效标题')
+    const title = normalizeTitle(generated, language === 'zh-CN' ? 20 : 80)
+    if (!title) throw new RuntimeError('chat.title-empty', msg('errors.ai.emptyTitle'))
 
     await workspace.write(async () => {
       if (workspace !== this.deps.workspace() || this.suspended)
-        throw new RuntimeError('runtime.stale-scope', '目标消息不存在')
+        throw new RuntimeError('runtime.stale-scope', msg('errors.chat.messageMissing'))
       await workspace.updatePage(input.pageId, { name: title }, Date.now())
     })
     const page = workspace.getPage(input.pageId)
@@ -657,7 +683,7 @@ export class ChatEngine {
   private requireWorkspace(): WorkspaceStore {
     const workspace = this.deps.workspace()
     if (!workspace) {
-      throw new RuntimeError('workspace.unavailable', '尚未打开工作区')
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.notOpen'))
     }
     return workspace
   }

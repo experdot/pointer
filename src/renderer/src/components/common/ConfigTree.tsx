@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useCallback } from 'react'
 import { Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
@@ -12,7 +13,7 @@ import { useConfirmDialog } from './ConfirmDialog'
 import { TreeView } from './TreeView'
 import type { ConfigFolder, ConfigItemBase } from '@renderer/types/shared'
 import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
-import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
+import type { TreeMove } from '@shared/domain'
 import './ConfigTree.css'
 
 interface ConfigTreeProps<T extends ConfigItemBase> {
@@ -59,11 +60,13 @@ export function ConfigTree<T extends ConfigItemBase>({
   clearFolder,
   toggleFolderExpanded,
   defaultItemId,
-  emptyText = '暂无配置',
-  addItemText = '新建配置',
-  createItemLabel = '新建配置',
-  createFolderLabel = DEFAULT_FOLDER_NAME
+  emptyText = t('config.empty'),
+  addItemText = t('config.create'),
+  createItemLabel = t('config.create'),
+  createFolderLabel = t('tree.newFolder')
 }: ConfigTreeProps<T>): React.JSX.Element {
+  useI18n()
+
   const { showDeleteConfirm } = useConfirmDialog()
   const [multiSelect, setMultiSelect] = useState(false)
   const [checkedKeys, setCheckedKeys] = useState<string[]>([])
@@ -74,7 +77,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   }
 
   const handleCreateFolder = (): void => {
-    const folder = createFolder('新文件夹')
+    const folder = createFolder(t('common.newFolder'))
     onSelect(folder.id)
   }
 
@@ -88,7 +91,7 @@ export function ConfigTree<T extends ConfigItemBase>({
 
   const handleCreateSubFolder = useCallback(
     (parentFolderId: string): void => {
-      const folder = createFolder('新文件夹', parentFolderId)
+      const folder = createFolder(t('common.newFolder'), parentFolderId)
       onSelect(folder.id)
     },
     [createFolder, onSelect]
@@ -114,7 +117,7 @@ export function ConfigTree<T extends ConfigItemBase>({
   const handleBatchDelete = (): void => {
     if (checkedKeys.length === 0) return
     showDeleteConfirm({
-      title: `删除 ${checkedKeys.length} 个项目`,
+      title: t('common.deleteItems', { count: checkedKeys.length }),
       onOk: () => {
         const itemIds = checkedKeys.filter((key) => items.some((i) => i.id === key))
         const folderIds = checkedKeys.filter((key) => folders.some((f) => f.id === key))
@@ -142,7 +145,7 @@ export function ConfigTree<T extends ConfigItemBase>({
     return [
       {
         key: 'copy',
-        label: '复制为副本',
+        label: t('common.duplicate'),
         icon: <CopyOutlined />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
@@ -154,8 +157,8 @@ export function ConfigTree<T extends ConfigItemBase>({
   }
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
-    { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
+    { key: 'folder', label: createFolderLabel, icon: <FolderOutlined /> },
+    { key: 'multiSelect', label: t('common.multiDelete'), icon: <CheckSquareOutlined /> }
   ]
 
   const onMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -174,13 +177,13 @@ export function ConfigTree<T extends ConfigItemBase>({
               onClick={handleSelectAll}
               disabled={allKeys.length === 0}
             >
-              {isAllSelected ? '取消全选' : '全选'}
+              {isAllSelected ? t('common.deselectAll') : t('common.selectAll')}
             </Button>
             <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
-              删除 ({checkedKeys.length})
+              {t('common.deleteCount', { count: checkedKeys.length })}
             </Button>
             <Button type="text" onClick={handleToggleMultiSelect}>
-              取消
+              {t('common.cancel')}
             </Button>
           </>
         ) : (

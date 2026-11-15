@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback, useState } from 'react'
 import { Form, Button, Input, Flex, Empty, Space, App, AutoComplete, Tooltip } from 'antd'
 import { ApiOutlined, CopyOutlined } from '@ant-design/icons'
@@ -8,13 +9,17 @@ import { useDraftField } from '../../../hooks/useDraftField'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import type { LLMConfig, ConfigFolder } from '@renderer/types/shared'
 
-const BASE_URL_PRESETS = [
-  { value: 'https://api.openai.com/v1', label: 'OpenAI' },
-  { value: 'https://openrouter.ai/api/v1', label: 'OpenRouter' },
-  { value: 'http://localhost:11434/v1', label: 'Ollama Local' }
-]
+function getBaseUrlPresets(): { value: string; label: string }[] {
+  return [
+    { value: 'https://api.openai.com/v1', label: 'OpenAI' },
+    { value: 'https://openrouter.ai/api/v1', label: 'OpenRouter' },
+    { value: 'http://localhost:11434/v1', label: t('config.ollamaLocal') }
+  ]
+}
 
 export function LLMConfigPanel(): React.JSX.Element {
+  useI18n()
+
   const {
     items,
     folders,
@@ -62,12 +67,12 @@ export function LLMConfigPanel(): React.JSX.Element {
       await useSettingsStore.getState().flush()
       const result = await query('ai.test', { llmId: config.id })
       if (result.ok) {
-        message.success('连接成功')
+        message.success(t('config.connected'))
       } else {
-        message.error(result.message || '连接失败')
+        message.error(result.message || t('config.connectionFailed'))
       }
     } catch {
-      message.error('测试失败')
+      message.error(t('config.testFailed'))
     } finally {
       setTesting(false)
     }
@@ -92,12 +97,14 @@ export function LLMConfigPanel(): React.JSX.Element {
   }
 
   const handleCopyAsText = (config: LLMConfig): void => {
-    const text = `名称: ${config.name}
-API Base URL: ${config.baseUrl}
-API Key: ${config.apiKey}
-模型名称: ${config.modelName}`
+    const text = t('config.copyLlmText', {
+      v0: String(config.name),
+      v1: String(config.baseUrl),
+      v2: String(config.apiKey),
+      v3: String(config.modelName)
+    })
     navigator.clipboard.writeText(text)
-    message.success('已复制到剪贴板')
+    message.success(t('common.copiedClipboard'))
   }
 
   return (
@@ -112,7 +119,11 @@ API Key: ${config.apiKey}
         isItem={isItem}
         moveNode={moveNode}
         createItem={(inFolderId) =>
-          createConfig({ name: '新配置', baseUrl: '', modelName: '' }, undefined, inFolderId)
+          createConfig(
+            { name: t('config.newName'), baseUrl: '', modelName: '' },
+            undefined,
+            inFolderId
+          )
         }
         updateItem={updateConfig}
         deleteItem={deleteConfig}
@@ -123,16 +134,16 @@ API Key: ${config.apiKey}
         clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         defaultItemId={defaultLLMId}
-        emptyText="暂无配置"
-        addItemText="新建配置"
+        emptyText={t('config.empty')}
+        addItemText={t('config.create')}
       />
 
       <div className="settings-config-detail">
         {selectedConfig ? (
           <Form layout="vertical" key={selectedConfig.id}>
-            <Form.Item label="名称">
+            <Form.Item label={t('common.name')}>
               <Input
-                aria-label="配置名称"
+                aria-label={t('config.name')}
                 value={nameField.value}
                 onChange={(e) => nameField.setValue(e.target.value)}
                 onFocus={nameField.handlers.onFocus}
@@ -141,31 +152,31 @@ API Key: ${config.apiKey}
                 onCompositionEnd={nameField.handlers.onCompositionEnd}
               />
             </Form.Item>
-            <Form.Item label="API Base URL">
+            <Form.Item label={t('config.baseUrl')}>
               <AutoComplete
-                aria-label="API Base URL"
+                aria-label={t('config.baseUrl')}
                 value={baseUrlField.value}
                 onChange={(v) => baseUrlField.setValue(v)}
                 onFocus={baseUrlField.handlers.onFocus}
                 onBlur={baseUrlField.handlers.onBlur}
-                options={BASE_URL_PRESETS}
-                placeholder="选择或输入 API Base URL"
+                options={getBaseUrlPresets()}
+                placeholder={t('config.baseUrlPlaceholder')}
               />
             </Form.Item>
-            <Form.Item label="API Key">
+            <Form.Item label={t('config.apiKey')}>
               <Input.Password
-                aria-label="API Key"
+                aria-label={t('config.apiKey')}
                 value={selectedConfig.apiKey}
                 onChange={(e) => updateConfig(selectedConfig.id, { apiKey: e.target.value })}
               />
             </Form.Item>
-            <Form.Item label="模型名称">
+            <Form.Item label={t('config.modelName')}>
               <AutoComplete
-                aria-label="模型名称"
+                aria-label={t('config.modelName')}
                 value={modelNameField.value}
                 onChange={(v) => modelNameField.setValue(v)}
                 options={modelOptions.map((m) => ({ value: m, label: m }))}
-                placeholder="选择或输入模型名称"
+                placeholder={t('config.modelNamePlaceholder')}
                 onFocus={() => {
                   modelNameField.handlers.onFocus()
                   handleFetchModels(selectedConfig)
@@ -187,24 +198,26 @@ API Key: ${config.apiKey}
                       )
                     }
                   >
-                    {defaultLLMId === selectedConfig.id ? '已设为默认' : '设为默认'}
+                    {defaultLLMId === selectedConfig.id
+                      ? t('config.isDefault')
+                      : t('config.setDefault')}
                   </Button>
-                  <Tooltip title="复制配置文本到剪贴板">
+                  <Tooltip title={t('config.copyText')}>
                     <Button
-                      aria-label="复制配置文本到剪贴板"
+                      aria-label={t('config.copyText')}
                       icon={<CopyOutlined />}
                       onClick={() => handleCopyAsText(selectedConfig)}
                     />
                   </Tooltip>
                 </Space>
                 <Button onClick={() => handleTest(selectedConfig)} loading={testing}>
-                  测试连接
+                  {t('config.test')}
                 </Button>
               </Flex>
             </Form.Item>
           </Form>
         ) : (
-          <Empty description="选择或创建配置" />
+          <Empty description={t('config.selectOrCreate')} />
         )}
       </div>
     </Flex>

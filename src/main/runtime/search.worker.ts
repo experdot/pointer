@@ -1,3 +1,4 @@
+import { msg, LocalizedError } from '@shared/i18n/message'
 import { parentPort, workerData } from 'node:worker_threads'
 import { compileMatcher, type SearchMatchOptions } from '@shared/domain/search'
 
@@ -21,10 +22,13 @@ try {
   for (let index = 0; index < input.texts.length; index++) {
     const ranges = matcher(input.texts[index])
     count += ranges.length
-    if (count > input.maxResults) throw new Error('匹配结果过多，请缩小搜索范围')
+    if (count > input.maxResults) throw new LocalizedError(msg('errors.search.tooManyResults'))
     if (ranges.length) result.push({ index, ranges })
   }
   parentPort!.postMessage({ result })
 } catch (error) {
-  parentPort!.postMessage({ error: error instanceof Error ? error.message : String(error) })
+  parentPort!.postMessage({
+    error: error instanceof Error ? error.message : String(error),
+    ...(error instanceof LocalizedError ? { localized: error.localized } : {})
+  })
 }

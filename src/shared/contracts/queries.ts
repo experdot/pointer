@@ -81,6 +81,7 @@ export interface UpdateCheckResult {
 }
 
 interface RuntimeQueryMap {
+  'app.locale.get': { payload: void; result: import('./locale').LocaleSnapshot }
   'session.get': { payload: void; result: SessionSnapshot }
   'accounts.list': { payload: void; result: Account[] }
   'workspaces.list': { payload: void; result: WorkspaceSummary[] }

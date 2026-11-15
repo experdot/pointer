@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { memo, useEffect, useRef, useState } from 'react'
 import { Empty } from 'antd'
 import { Tabs } from '../Tabs'
@@ -19,6 +20,8 @@ type PaneTab = Tab & { context?: unknown }
  */
 const TabPaneContent = memo(
   function TabPaneContent({ tab }: { tab: PaneTab }): React.JSX.Element {
+    useI18n()
+
     return <>{renderTabEditor(tab)}</>
   },
   (prev, next) =>
@@ -29,6 +32,8 @@ const TabPaneContent = memo(
 )
 
 export function EditorArea(): React.JSX.Element {
+  useI18n()
+
   const tabs = useTabsStore((state) => state.tabs)
   const activeTabId = useTabsStore((state) => state.activeTabId)
   const cleanupInvalidTabs = useTabsStore((state) => state.cleanupInvalidTabs)
@@ -82,7 +87,7 @@ export function EditorArea(): React.JSX.Element {
       </div>
       <div className="editor-content">
         {tabsToRender.length === 0 ? (
-          <Empty description="打开一个聊天开始对话" style={{ marginTop: 100 }} />
+          <Empty description={t('chat.openHint')} style={{ marginTop: 100 }} />
         ) : (
           tabsToRender.map((tab) => (
             <div

@@ -11,6 +11,8 @@ export interface Workspace extends Timestamps {
   accountId: string
   name: string
   type: WorkspaceType
+  /** 系统默认名称在展示时翻译；旧数据可能没有此字段。 */
+  usesDefaultName?: boolean
   /** 工作区根目录的绝对路径，仅内核层可见 */
   path: string
 }
@@ -20,6 +22,7 @@ export interface WorkspaceSummary {
   id: string
   name: string
   type: WorkspaceType
+  usesDefaultName?: boolean
   path: string
 }
 
@@ -47,6 +50,7 @@ interface CreateWorkspaceInput {
   accountId: string
   name: string
   type: WorkspaceType
+  usesDefaultName?: boolean
   path: string
 }
 
@@ -56,6 +60,7 @@ export function createWorkspace(input: CreateWorkspaceInput, at: number): Worksp
     accountId: input.accountId,
     name: input.name,
     type: input.type,
+    usesDefaultName: input.usesDefaultName ?? false,
     path: input.path,
     createdAt: at
   }
@@ -66,6 +71,7 @@ export function toWorkspaceSummary(workspace: Workspace): WorkspaceSummary {
     id: workspace.id,
     name: workspace.name,
     type: workspace.type,
+    usesDefaultName: workspace.usesDefaultName,
     path: workspace.path
   }
 }

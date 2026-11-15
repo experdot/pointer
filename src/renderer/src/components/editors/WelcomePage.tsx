@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Typography, Flex, Button } from 'antd'
 import { PlusOutlined, SettingOutlined } from '@ant-design/icons'
@@ -11,20 +12,22 @@ interface WelcomePageProps {
 }
 
 export function WelcomePage({ onNewChat, onOpenSettings }: WelcomePageProps): React.JSX.Element {
+  useI18n()
+
   return (
     <Flex className="welcome-page" vertical align="center" justify="center">
       <Title level={2} className="welcome-title">
-        欢迎使用 Pointer
+        {t('welcome.title')}
       </Title>
       <Text type="secondary" className="welcome-subtitle">
-        专注纯文本 AI 聊天体验的应用
+        {t('welcome.description')}
       </Text>
       <Flex gap={12} className="welcome-actions">
         <Button type="primary" icon={<PlusOutlined />} size="large" onClick={onNewChat}>
-          新建对话
+          {t('chat.newConversation')}
         </Button>
         <Button icon={<SettingOutlined />} size="large" onClick={onOpenSettings}>
-          设置
+          {t('settings.title')}
         </Button>
       </Flex>
     </Flex>

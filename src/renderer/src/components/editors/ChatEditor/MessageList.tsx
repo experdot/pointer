@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useLayoutEffect } from 'react'
 import { Empty } from 'antd'
 import { MessageItem } from './MessageItem'
@@ -92,6 +93,8 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   },
   ref
 ) {
+  useI18n()
+
   const containerRef = useRef<HTMLDivElement>(null)
   const shouldAutoScroll = useRef(true)
   const lastScrollTop = useRef(0)
@@ -365,7 +368,7 @@ export const MessageList = forwardRef<MessageListRef, MessageListProps>(function
   if (messages.length === 0 && !isStreaming) {
     return (
       <div className="chat-editor__messages chat-editor__messages--empty">
-        <Empty description="开始新对话" />
+        <Empty description={t('chat.start')} />
       </div>
     )
   }

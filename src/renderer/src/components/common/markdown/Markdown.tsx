@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import './markdown.scss'
 import './highlight.scss'
 
@@ -20,6 +21,8 @@ import TableViewModal from './TableViewModal'
 import { prepareMarkdown } from './prepareMarkdown'
 
 function Mermaid(props: { code: string }): React.JSX.Element | null {
+  useI18n()
+
   const ref = useRef<HTMLDivElement>(null)
   const [hasError, setHasError] = useState(false)
 
@@ -60,6 +63,8 @@ function Mermaid(props: { code: string }): React.JSX.Element | null {
 }
 
 function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
+  useI18n()
+
   const ref = useRef<HTMLDivElement>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [tableMarkdown, setTableMarkdown] = useState('')
@@ -171,12 +176,12 @@ function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
         <span
           className="view-table-button"
           onClick={handleViewFullscreen}
-          title="全屏查看表格"
+          title={t('table.fullscreen')}
         ></span>
         <span
           className={`copy-table-button ${isCopied ? 'copied' : ''}`}
           onClick={handleCopy}
-          title={isCopied ? '已复制!' : '复制表格'}
+          title={isCopied ? t('common.copiedExclamation') : t('table.copy')}
         ></span>
         {props.children}
       </div>
@@ -193,6 +198,8 @@ function TableWrapper(props: { children: ReactElement }): React.JSX.Element {
 }
 
 function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
+  useI18n()
+
   const ref = useRef<HTMLPreElement>(null)
   const [mermaidCode, setMermaidCode] = useState('')
   const [isCopied, setIsCopied] = useState(false)
@@ -268,8 +275,8 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
           suggestedName: `code-${timestamp}.${extension}`,
           content: code,
           filters: [
-            { name: `${language.toUpperCase()} Files`, extensions: [extension] },
-            { name: 'All Files', extensions: ['*'] }
+            { name: t('files.type', { type: language.toUpperCase() }), extensions: [extension] },
+            { name: t('files.all'), extensions: ['*'] }
           ]
         })
       } catch (error) {
@@ -287,12 +294,12 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
         <span
           className={`download-code-button ${isDownloading ? 'downloading' : ''}`}
           onClick={handleDownload}
-          title={isDownloading ? '下载中...' : '下载代码'}
+          title={isDownloading ? t('common.downloading') : t('code.download')}
         ></span>
         <span
           className={`copy-code-button ${isCopied ? 'copied' : ''}`}
           onClick={handleCopy}
-          title={isCopied ? '已复制!' : '复制代码'}
+          title={isCopied ? t('common.copiedExclamation') : t('code.copy')}
         ></span>
         {props.children}
       </pre>
@@ -301,6 +308,8 @@ function PreCode(props: { children?: React.ReactNode }): React.JSX.Element {
 }
 
 function MarkdownContentImpl(props: { content: string }): React.JSX.Element {
+  useI18n()
+
   const escapedContent = useMemo(() => {
     return prepareMarkdown(props.content)
   }, [props.content])
@@ -344,6 +353,8 @@ interface MarkdownProps {
 }
 
 export function Markdown({ content, loading, fontSize }: MarkdownProps): React.JSX.Element {
+  useI18n()
+
   return (
     <div
       className="markdown-body"

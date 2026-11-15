@@ -5,6 +5,7 @@
  * 展示层只持有引用（相对工作区根目录的路径）。
  */
 
+import { t, useI18n } from '@renderer/i18n'
 import { useCallback } from 'react'
 import type { AttachmentRef, PickedImage } from '@renderer/types/shared'
 import { command, query } from '../runtime/client'
@@ -20,7 +21,7 @@ function readFileAsBase64(file: File): Promise<string> {
       const result = String(reader.result)
       resolve(result.split(',')[1] ?? '')
     }
-    reader.onerror = () => reject(reader.error ?? new Error('读取文件失败'))
+    reader.onerror = () => reject(reader.error ?? new Error(t('attachment.readFailed')))
     reader.readAsDataURL(file)
   })
 }
@@ -48,6 +49,8 @@ interface UseAttachmentResult {
 }
 
 export function useAttachment(pageId: string): UseAttachmentResult {
+  useI18n()
+
   const pendingAttachments = useChatUIStore((state) => state.getState(pageId).pendingAttachments)
   const addPendingAttachment = useChatUIStore((state) => state.addPendingAttachment)
   const removePendingAttachment = useChatUIStore((state) => state.removePendingAttachment)

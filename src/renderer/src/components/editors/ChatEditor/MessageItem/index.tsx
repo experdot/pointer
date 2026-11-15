@@ -1,3 +1,4 @@
+import { useI18n } from '@renderer/i18n'
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Avatar } from 'antd'
 import { UserOutlined, RobotOutlined } from '@ant-design/icons'
@@ -28,6 +29,8 @@ export const MessageItem = React.memo(function MessageItem({
   topicCallbacks,
   exportCallbacks
 }: MessageItemProps): React.JSX.Element {
+  const { t } = useI18n()
+
   // 编辑状态
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -55,10 +58,10 @@ export const MessageItem = React.memo(function MessageItem({
   // 折叠预览文本
   const collapsedPreview = useMemo(() => {
     if (!message.collapsed) return ''
-    if (isStreaming) return '流式输出中...'
+    if (isStreaming) return t('chat.streaming')
     const text = displayContent.replace(/\s+/g, ' ').trim()
     return text.length > 80 ? text.slice(0, 80) + '...' : text
-  }, [message.collapsed, displayContent, isStreaming])
+  }, [message.collapsed, displayContent, isStreaming, t])
 
   // streaming 时有 reasoning 就展开
   useEffect(() => {

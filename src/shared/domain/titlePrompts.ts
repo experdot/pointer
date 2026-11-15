@@ -4,6 +4,8 @@
  * 放在领域层是因为它只是纯字符串：内核与展示层共用同一份定义。
  */
 
+import type { SupportedLanguage } from './locale'
+
 export const MESSAGE_TITLE_PROMPT = `请为以下消息生成一个简短的标题（不超过15个字），要求：
 1. 准确概括消息的核心主题
 2. 使用名词短语或动宾短语
@@ -70,23 +72,68 @@ export function buildPrompt(template: string, content: string, maxLength?: numbe
  *
  * 与迁移前一致：插在输出锚点（"标题：" / "话题名称："）之前。
  */
-export function applyExtraRequirements(prompt: string, extraRequirements?: string): string {
+export function applyExtraRequirements(
+  prompt: string,
+  extraRequirements?: string,
+  language: SupportedLanguage = 'zh-CN'
+): string {
   const extra = extraRequirements?.trim()
   if (!extra) return prompt
-  return prompt.replace(
-    /(标题|话题名称)：$/,
-    (_match, anchor: string) => `\n额外要求：${extra}\n\n${anchor}：`
-  )
+  const label = language === 'zh-CN' ? '额外要求：' : 'Additional requirements: '
+  const boundary = prompt.lastIndexOf('\n\n')
+  if (boundary < 0) return `${prompt}\n\n${label}${extra}`
+  return `${prompt.slice(0, boundary)}\n${label}${extra}${prompt.slice(boundary)}`
 }
 
 /** 智能分段的额外要求：作为第 5 条注意项追加（与迁移前一致） */
-export function applySegmentationRequirements(prompt: string, extraRequirements?: string): string {
+export function applySegmentationRequirements(
+  prompt: string,
+  extraRequirements?: string,
+  language: SupportedLanguage = 'zh-CN'
+): string {
   const extra = extraRequirements?.trim()
   if (!extra) return prompt
-  return prompt.replace(
-    '4. 直接输出JSON数组，不要有任何其他内容',
-    (match) => `${match}\n5. 额外要求：${extra}`
-  )
+  return `${prompt}\n5. ${language === 'zh-CN' ? '额外要求：' : 'Additional requirements: '}${extra}`
+}
+
+type TitlePromptKind = 'message' | 'topic' | 'session' | 'segmentation'
+
+const ENGLISH_TITLE_PROMPTS: Record<TitlePromptKind, string> = {
+  message:
+    'Write a short title for the following message (at most 8 words and 60 characters). Summarize its central subject using a noun phrase or verb phrase. Do not use punctuation. Output only the title, without explanation.\n\nMessage:\n{content}\n\nTitle:',
+  topic:
+    'Write a short topic name for the following conversation excerpt (at most 8 words and 60 characters). Summarize the main subject using a noun phrase. Do not use punctuation. Output only the name.\n\nConversation:\n{content}\n\nTopic name:',
+  session:
+    'Write a short title for the following conversation (at most 10 words and 80 characters). Summarize its central subject using a noun phrase or verb phrase. Do not use punctuation. Output only the title.\n\nConversation:\n{content}\n\nTitle:',
+  segmentation:
+    'Identify topic changes in the following numbered conversation. Give each topic a short name (at most 8 words and 60 characters).\n\nConversation:\n{content}\n\nReturn a JSON array: [{"index": 0, "topic": "Topic name"}, ...]\n\nRules:\n1. Message 0 normally starts the first topic.\n2. Mark only meaningful topic changes.\n3. A topic typically covers 3–10 messages.\n4. Output only the JSON array.'
+}
+
+const CHINESE_TITLE_PROMPTS: Record<TitlePromptKind, string> = {
+  message: MESSAGE_TITLE_PROMPT,
+  topic: TOPIC_TITLE_PROMPT,
+  session: SESSION_TITLE_PROMPT,
+  segmentation: TOPIC_SEGMENTATION_PROMPT
+}
+
+/** 模板语言跟随界面，生成结果跟随对话内容；额外要求作为独立结构插入。 */
+export function buildLocalizedTitlePrompt(
+  kind: TitlePromptKind,
+  language: SupportedLanguage,
+  content: string,
+  extraRequirements?: string,
+  maxLength?: number
+): string {
+  const template = (language === 'zh-CN' ? CHINESE_TITLE_PROMPTS : ENGLISH_TITLE_PROMPTS)[kind]
+  const languageRequirement =
+    language === 'zh-CN'
+      ? '生成的标题或话题名称使用对话内容的主要语言；无法判断时使用简体中文。'
+      : 'Write titles and topic names in the predominant language of the conversation; use English only if its language cannot be determined.'
+  const requirements = [languageRequirement, extraRequirements?.trim()].filter(Boolean).join('\n')
+  const prompt = buildPrompt(template, content, maxLength)
+  return kind === 'segmentation'
+    ? applySegmentationRequirements(prompt, requirements, language)
+    : applyExtraRequirements(prompt, requirements, language)
 }
 
 /** 清理模型返回的标题文本 */

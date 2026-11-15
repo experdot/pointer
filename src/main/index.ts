@@ -14,11 +14,21 @@ import { setupRuntimeIpc } from './ipc/runtimeIpc'
 import { RuntimeCore } from './runtime'
 import { createRuntimeHost } from './runtimeHost'
 import { createWindow } from './window'
+import { installApplicationMenu } from './applicationMenu'
+import { createI18n, type Translate } from '@shared/i18n'
+import { resolveLanguage } from '@shared/domain/locale'
+import { formatError } from '@shared/i18n/message'
 
 let startupRuntime: RuntimeCore | undefined
+const startupTranslations = createI18n('en-US')
+const t: Translate = (key, values) =>
+  (startupRuntime?.locale?.translations ?? startupTranslations).t(key, values)
 
 async function startApplication(): Promise<void> {
   await app.whenReady()
+  await startupTranslations.instance.changeLanguage(
+    resolveLanguage('system', app.getPreferredSystemLanguages())
+  )
   electronApp.setAppUserModelId('com.experdot.pointer')
 
   app.on('browser-window-created', (_, window) => {
@@ -29,7 +39,7 @@ async function startApplication(): Promise<void> {
 
   const runtime = new RuntimeCore({
     appDataPath: app.getPath('userData'),
-    host: createRuntimeHost()
+    host: createRuntimeHost(t)
   })
   startupRuntime = runtime
 
@@ -38,6 +48,10 @@ async function startApplication(): Promise<void> {
 
   setupRuntimeIpc(runtime)
   await runtime.init()
+  installApplicationMenu(t)
+  runtime.subscribe((event) => {
+    if (event.type === 'app.locale.changed') installApplicationMenu(t)
+  })
 
   let quitting = false
   let closing: Promise<boolean> | null = null
@@ -51,9 +65,9 @@ async function startApplication(): Promise<void> {
         } catch (error) {
           const result = await dialog.showMessageBox({
             type: 'error',
-            title: '尚未完成保存',
-            message: error instanceof Error ? error.message : String(error),
-            buttons: ['重试保存', '取消'],
+            title: t('native.unsaved'),
+            message: formatError(error, t),
+            buttons: [t('common.retrySave'), t('common.cancel')],
             defaultId: 0,
             cancelId: 1
           })
@@ -118,7 +132,7 @@ void startApplication().catch(async (error: unknown) => {
     console.error('[runtime] 启动失败后释放资源失败：', disposeError)
   }
 
-  const message = error instanceof Error ? error.message : String(error)
+  const message = formatError(error, t)
   const unsupportedData =
     error instanceof RuntimeError &&
     ['settings.invalid-order-key', 'tree.invalid-order-key', 'page.parse-failed'].includes(
@@ -126,12 +140,12 @@ void startApplication().catch(async (error: unknown) => {
     )
   try {
     dialog.showErrorBox(
-      'Pointer 启动失败',
-      `${message}\n\n数据目录：${app.getPath('userData')}${
-        unsupportedData
-          ? '\n\n当前版本要求字符串排序键和 v3 页面格式，不支持旧版数字排序数据。请使用当前格式的数据重新启动。'
-          : '\n\n请检查数据目录和访问权限后重新启动。'
-      }`
+      t('native.startupFailed'),
+      t('native.startupDetails', {
+        v0: message,
+        v1: app.getPath('userData'),
+        v2: '\n\n' + t(unsupportedData ? 'native.unsupportedData' : 'native.checkData')
+      })
     )
   } catch (dialogError) {
     console.error('[runtime] 显示启动错误失败：', dialogError)

@@ -4,6 +4,8 @@
  * API Key 以明文随 LLM 配置保存在 settings.json 中（保持与迁移前一致的简单机制）。
  */
 
+import { describe } from '@shared/i18n/message'
+
 import type { Diagnostic } from './common'
 import type { ConfigItemBase, ConfigTree } from './configTree'
 import { emptyConfigTree } from './configTree'
@@ -64,7 +66,7 @@ export function validateSettings(settings: Settings): Diagnostic[] {
   if (settings.defaultLLMId && !llmIds.has(settings.defaultLLMId)) {
     diagnostics.push({
       code: 'settings.default-llm-missing',
-      message: '默认 LLM 配置不存在',
+      ...describe('errors.settings.defaultLlmMissing'),
       entityId: settings.defaultLLMId
     })
   }
@@ -73,7 +75,7 @@ export function validateSettings(settings: Settings): Diagnostic[] {
   if (settings.defaultModelConfigId && !modelIds.has(settings.defaultModelConfigId)) {
     diagnostics.push({
       code: 'settings.default-model-missing',
-      message: '默认模型配置不存在',
+      ...describe('errors.settings.defaultModelMissing'),
       entityId: settings.defaultModelConfigId
     })
   }
@@ -82,14 +84,14 @@ export function validateSettings(settings: Settings): Diagnostic[] {
     if (!item.baseUrl.trim()) {
       diagnostics.push({
         code: 'settings.llm-base-url-required',
-        message: `LLM 配置「${item.name}」缺少 API 地址`,
+        ...describe('errors.settings.baseUrlRequired', { v0: String(item.name) }),
         entityId: item.id
       })
     }
     if (!item.modelName.trim()) {
       diagnostics.push({
         code: 'settings.llm-model-required',
-        message: `LLM 配置「${item.name}」缺少模型名`,
+        ...describe('errors.settings.modelRequired', { v0: String(item.name) }),
         entityId: item.id
       })
     }
@@ -99,14 +101,14 @@ export function validateSettings(settings: Settings): Diagnostic[] {
     if (item.temperature < 0 || item.temperature > 2) {
       diagnostics.push({
         code: 'settings.temperature-range',
-        message: `模型配置「${item.name}」的 temperature 应在 0~2 之间`,
+        ...describe('errors.settings.temperatureRange', { v0: String(item.name) }),
         entityId: item.id
       })
     }
     if (item.topP <= 0 || item.topP > 1) {
       diagnostics.push({
         code: 'settings.top-p-range',
-        message: `模型配置「${item.name}」的 topP 应在 (0, 1] 之间`,
+        ...describe('errors.settings.topPRange', { v0: String(item.name) }),
         entityId: item.id
       })
     }

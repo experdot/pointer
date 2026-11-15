@@ -4,6 +4,8 @@
  * 只做三件事：把通道映射到内核调用、把异常转换为可序列化失败、把事件广播给所有窗口。
  */
 
+import { msg, LocalizedError } from '@shared/i18n/message'
+
 import { BrowserWindow, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type {
@@ -36,8 +38,10 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
                   cleanup()
                   reject(error)
                 }
-                const destroyed = (): void => fail(new Error('窗口已关闭，无法确认界面状态保存'))
-                const canceled = (): void => fail(new Error('其他窗口保存失败，已取消等待'))
+                const destroyed = (): void =>
+                  fail(new LocalizedError(msg('errors.flush.windowClosed')))
+                const canceled = (): void =>
+                  fail(new LocalizedError(msg('errors.flush.otherWindow')))
                 const listener = (
                   event: Electron.IpcMainEvent,
                   reply: { id: string; ok: boolean; message?: string }
@@ -45,11 +49,11 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
                   if (event.sender !== window.webContents || reply.id !== id) return
                   cleanup()
                   if (reply.ok) resolve()
-                  else reject(new Error(reply.message ?? '界面状态保存失败'))
+                  else reject(new LocalizedError(reply.message ?? msg('errors.flush.failed')))
                 }
                 const timer = setTimeout(() => {
                   cleanup()
-                  reject(new Error('等待界面保存超时'))
+                  reject(new LocalizedError(msg('errors.flush.timeout')))
                 }, 15000)
                 ipcMain.on(RUNTIME_CHANNELS.flushed, listener)
                 window.webContents.once('destroyed', destroyed)

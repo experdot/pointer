@@ -50,6 +50,8 @@ beforeEach(() => {
   revision = 0
   port = {
     query: vi.fn(async (name: string) => {
+      if (name === 'app.locale.get')
+        return { preference: 'system', language: 'zh-CN', systemLanguage: 'zh-CN', revision: 0 }
       if (name === 'session.get') return session
       if (name === 'tree.get')
         return {

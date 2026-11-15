@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import type { FC } from 'react'
 import type {
   SourcePlugin,
@@ -14,6 +15,8 @@ import type {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const CodeBlockSourceSelector: FC<SourceSelectorProps<CodeBlockSourceData>> = () => {
+  useI18n()
+
   return null
 }
 
@@ -24,7 +27,9 @@ const CodeBlockSourceSelector: FC<SourceSelectorProps<CodeBlockSourceData>> = ()
  */
 export const codeBlockSourcePlugin: SourcePlugin<CodeBlockSourceData> = {
   id: 'code-block',
-  name: '代码块',
+  get name(): string {
+    return t('export.codeSource')
+  },
   icon: '💻',
   supportedFormats: ['markdown', 'txt', 'html'],
 

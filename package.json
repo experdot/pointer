@@ -46,7 +46,9 @@
   },
   "dependencies": {
     "eventsource-parser": "^3.0.3",
-    "fractional-indexing": "4.0.0"
+    "fractional-indexing": "4.0.0",
+    "i18next": "^27.1.1",
+    "react-i18next": "^18.0.1"
   },
   "devDependencies": {
     "@ant-design/icons": "^5.4.0",

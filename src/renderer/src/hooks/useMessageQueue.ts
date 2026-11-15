@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useMessageQueueStore } from '../stores/messageQueueStore'
 import type { AttachmentRef, MessageQueue, QueueItem } from '@renderer/types/shared'
@@ -38,6 +39,8 @@ export function useMessageQueue({
   isStreaming,
   onSendMessage
 }: UseMessageQueueOptions): UseMessageQueueResult {
+  useI18n()
+
   // 只订阅本页队列：别的会话的队列变化不再重渲染这个编辑器
   const queue = useMessageQueueStore((state) => state.cache[pageId]) ?? EMPTY_QUEUE
   const addItem = useMessageQueueStore((state) => state.addItem)
@@ -99,7 +102,7 @@ export function useMessageQueue({
   const handleSend = useCallback(
     async (content: string, attachments?: AttachmentRef[]) => {
       if (isStreaming) {
-        if (attachments?.length) throw new Error('消息队列暂不支持附件，请等待当前回答结束后发送')
+        if (attachments?.length) throw new Error(t('queue.noAttachments'))
         // AI 正在输出，消息入队（队列目前不支持附件，仅文本）
         await enqueue(content)
       } else {

@@ -14,6 +14,7 @@ import { testDirectory } from './temp'
 
 export function runtimeHost(): RuntimeHost {
   return {
+    getPreferredSystemLanguages: vi.fn(() => ['zh-CN']),
     getVersion: vi.fn(() => '2.0.0-test'),
     saveFile: vi.fn(async () => ({})),
     openTextFile: vi.fn(async () => null),

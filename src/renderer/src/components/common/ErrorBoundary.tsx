@@ -1,5 +1,5 @@
 import React, { Component, type ReactNode } from 'react'
-import { Result, Button } from 'antd'
+import { ErrorFallback } from './ErrorFallback'
 
 interface Props {
   children: ReactNode
@@ -35,18 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      return (
-        <Result
-          status="error"
-          title="出错了"
-          subTitle={this.state.error?.message || '应用发生了未知错误'}
-          extra={
-            <Button type="primary" onClick={this.handleReload}>
-              重新加载
-            </Button>
-          }
-        />
-      )
+      return <ErrorFallback error={this.state.error} onReload={this.handleReload} />
     }
 
     return this.props.children

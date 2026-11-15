@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { compareNodes } from '@shared/domain'
 import React, { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Input, Empty, Tree, Dropdown, Button, Tooltip } from 'antd'
@@ -20,7 +21,7 @@ import {
   getShortcutLabel,
   getStandardDropdownProps
 } from '../../utils/shortcutPresentation'
-import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
+import type { TreeMove } from '@shared/domain'
 import './TreeView.css'
 
 // ==================== 类型定义 ====================
@@ -138,17 +139,14 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
   onCreateItemInFolder,
   createItemLabel
 }: TreeNodeTitleProps<TItem, TFolder>): React.JSX.Element => {
-  // 延迟计算菜单项 - 只在 Dropdown 展开时才计算
-  const [menuItems, setMenuItems] = useState<MenuProps['items']>(undefined)
+  useI18n()
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open) {
-        setMenuItems(getContextMenuItems(treeNode))
-      }
-    },
-    [getContextMenuItems, treeNode]
-  )
+  // 首次展开后再计算菜单；不缓存已翻译的文案，确保打开期间也能切换语言。
+  const [menuInitialized, setMenuInitialized] = useState(false)
+  const menuItems = menuInitialized ? getContextMenuItems(treeNode) : undefined
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open) setMenuInitialized(true)
+  }, [])
 
   return (
     <Dropdown
@@ -165,7 +163,7 @@ const TreeNodeTitleInner = <TItem extends ItemLike, TFolder extends FolderLike>(
           {title}
         </span>
         {treeNode.isFolder && onCreateItemInFolder && (
-          <Tooltip title={createItemLabel || '新建项目'}>
+          <Tooltip title={createItemLabel || t('tree.newItem')}>
             <Button
               type="text"
               size="small"
@@ -226,6 +224,8 @@ function TreeViewEditInput({
   onCancelAndExit,
   onGenerateItemName
 }: TreeViewEditInputProps): React.JSX.Element {
+  useI18n()
+
   const [popoverOpen, setPopoverOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const exitModeRef = useRef<'idle' | 'save' | 'cancel'>('idle')
@@ -328,7 +328,7 @@ function TreeViewEditInput({
               onGenerate={handleGenerate}
               placement="bottomRight"
             >
-              <Tooltip title="AI 生成">
+              <Tooltip title={t('ai.generateLabel')}>
                 <ThunderboltOutlined
                   className="rename-input__ai-btn"
                   onClick={(e) => {
@@ -374,12 +374,14 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   createItemLabel,
   createFolderLabel,
   highlightId,
-  emptyText = '暂无数据',
+  emptyText = t('common.noData'),
   className = '',
   checkable = false,
   checkedKeys = [],
   onCheck
 }: TreeViewProps<TItem, TFolder>): React.JSX.Element {
+  useI18n()
+
   const { showDeleteConfirm } = useConfirmDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
@@ -568,7 +570,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   const handleDeleteItem = useCallback(
     (item: TItem): void => {
       showDeleteConfirm({
-        title: `删除 "${getItemName(item)}"`,
+        title: t('tree.deleteNamed', { v0: String(getItemName(item)) }),
         onOk: () => {
           if (activeTreeKeyRef.current === item.id) {
             setActiveTreeKey(null)
@@ -585,8 +587,8 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   const handleDeleteFolder = useCallback(
     (folder: TFolder): void => {
       showDeleteConfirm({
-        title: `删除文件夹 "${getFolderName(folder)}"`,
-        content: '将同时删除文件夹内的所有项目',
+        title: t('tree.deleteFolderNamed', { v0: String(getFolderName(folder)) }),
+        content: t('tree.deleteFolderContents'),
         onOk: () => {
           if (activeTreeKeyRef.current === folder.id) {
             setActiveTreeKey(null)
@@ -623,8 +625,8 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
   const handleClearFolder = useCallback(
     (folder: TFolder): void => {
       showDeleteConfirm({
-        title: `清空文件夹 "${getFolderName(folder)}"`,
-        content: '将删除文件夹内的所有项目，但保留文件夹',
+        title: t('tree.clearFolderNamed', { v0: String(getFolderName(folder)) }),
+        content: t('tree.clearFolderContents'),
         onOk: () => {
           clearFolder?.(folder.id)
         }
@@ -719,7 +721,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
           ? [
               {
                 key: 'createItem',
-                label: createItemLabel || '新建项目',
+                label: createItemLabel || t('tree.newItem'),
                 icon: <PlusOutlined />,
                 onClick: ({ domEvent }) => {
                   domEvent.stopPropagation()
@@ -732,7 +734,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
           ? [
               {
                 key: 'createFolder',
-                label: createFolderLabel || DEFAULT_FOLDER_NAME,
+                label: createFolderLabel || t('tree.newFolder'),
                 icon: <FolderAddOutlined />,
                 onClick: ({ domEvent }) => {
                   domEvent.stopPropagation()
@@ -744,7 +746,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
         ...(onCreateItemInFolder || onCreateSubFolder ? [{ type: 'divider' as const }] : []),
         {
           key: 'rename',
-          label: '重命名',
+          label: t('common.rename'),
           icon: <EditOutlined />,
           extra: getShortcutLabel('treeRename'),
           onClick: ({ domEvent }) => {
@@ -758,7 +760,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
           ? [
               {
                 key: 'clear',
-                label: '清空文件夹',
+                label: t('tree.clearFolder'),
                 icon: <ClearOutlined />,
                 danger: true,
                 onClick: ({ domEvent }) => {
@@ -770,7 +772,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
           : []),
         {
           key: 'delete',
-          label: '删除',
+          label: t('common.delete'),
           icon: <DeleteOutlined />,
           extra: getShortcutLabel('treeDelete'),
           danger: true,
@@ -788,7 +790,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
         ...leadingItems,
         {
           key: 'rename',
-          label: '重命名',
+          label: t('common.rename'),
           icon: <EditOutlined />,
           extra: getShortcutLabel('treeRename'),
           onClick: ({ domEvent }) => {
@@ -800,7 +802,7 @@ function TreeViewInner<TItem extends ItemLike, TFolder extends FolderLike>({
         { type: 'divider' },
         {
           key: 'delete',
-          label: '删除',
+          label: t('common.delete'),
           icon: <DeleteOutlined />,
           extra: getShortcutLabel('treeDelete'),
           danger: true,

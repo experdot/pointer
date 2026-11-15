@@ -23,6 +23,7 @@ import { useTabsStore } from '../stores/tabsStore'
 import { useUpdateStore } from '../stores/updateStore'
 import { useViewStateStore } from '../stores/viewStateStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useLocaleStore } from '../stores/localeStore'
 
 let started = false
 let unsubscribe: (() => void) | null = null
@@ -254,6 +255,10 @@ async function loadQueue(pageId: string): Promise<void> {
 }
 
 function handleEvent(event: RuntimeEvent): void {
+  if (event.type === 'app.locale.changed') {
+    useLocaleStore.getState().accept(event.payload)
+    return
+  }
   if (
     event.type !== 'session.changed' &&
     event.type !== 'accounts.changed' &&
@@ -385,7 +390,8 @@ function handleEvent(event: RuntimeEvent): void {
           event.payload.pageId,
           event.payload.requestId,
           event.payload.message,
-          event.payload.error
+          event.payload.error,
+          event.payload.localized
         )
       break
 
@@ -426,6 +432,7 @@ export async function bootstrapRuntime(): Promise<void> {
     await useViewStateStore.getState().flush()
   })
   try {
+    useLocaleStore.getState().accept(await query('app.locale.get', undefined))
     const session = await query('session.get', undefined)
     initializing = false
     handleEvent({ type: 'session.changed', payload: session, scopeId: session.scopeId })

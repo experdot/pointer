@@ -28,6 +28,7 @@ import {
   updateConfigItem
 } from '@shared/domain'
 import type { SettingsSnapshot } from '@shared/contracts'
+import { LocalizedError } from '@shared/i18n/message'
 import { command, query } from '../runtime/client'
 
 interface SettingsState {
@@ -206,7 +207,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     moveLLMNode: (move) =>
       mutateLlmTree((tree, at) => {
         const result = moveConfigNode(tree, move, at)
-        if (!result.ok) throw new Error(result.error.message)
+        if (!result.ok) throw new LocalizedError(result.error.localized ?? result.error.message)
         return result.tree
       }),
     updateLLMConfig: (id, changes) =>
@@ -235,7 +236,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => {
     moveModelNode: (move) =>
       mutateModelTree((tree, at) => {
         const result = moveConfigNode(tree, move, at)
-        if (!result.ok) throw new Error(result.error.message)
+        if (!result.ok) throw new LocalizedError(result.error.localized ?? result.error.message)
         return result.tree
       }),
     updateModelConfig: (id, changes) =>

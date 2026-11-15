@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Spin } from 'antd'
 import { buildIndex, pathToMessage } from '@shared/domain'
@@ -18,6 +19,8 @@ import './ExportEditor.css'
  * - Right: Preview panel (with edit capability and export actions)
  */
 export function ExportEditor({ context }: ExportEditorProps): React.JSX.Element {
+  useI18n()
+
   return (
     <ExportStoreProvider>
       <ExportEditorContent context={context} />
@@ -26,6 +29,8 @@ export function ExportEditor({ context }: ExportEditorProps): React.JSX.Element 
 }
 
 function ExportEditorContent({ context }: ExportEditorProps): React.JSX.Element {
+  useI18n()
+
   const { setSourceType, setSourceData, reset, generatePreview, sourceData } = useExportStore()
   const hasAutoPreviewedRef = useRef(false)
   const initializedContextRef = useRef<ExportEditorContext | undefined>(undefined)
@@ -164,7 +169,7 @@ function ExportEditorContent({ context }: ExportEditorProps): React.JSX.Element 
   if (initializing) {
     return (
       <div className="export-editor">
-        <Spin tip="正在读取消息">
+        <Spin tip={t('export.loadingMessages')}>
           <div style={{ padding: 48 }} />
         </Spin>
       </div>
@@ -176,9 +181,11 @@ function ExportEditorContent({ context }: ExportEditorProps): React.JSX.Element 
       <div className="export-editor">
         <Alert
           type="error"
-          message="读取导出消息失败"
+          message={t('export.loadFailed')}
           description={initializationError}
-          action={<Button onClick={() => setRetry((value) => value + 1)}>重试</Button>}
+          action={
+            <Button onClick={() => setRetry((value) => value + 1)}>{t('common.retry')}</Button>
+          }
         />
       </div>
     )

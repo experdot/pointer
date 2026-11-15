@@ -4,6 +4,7 @@
  * 状态来自内核事件（app.updateStatus），操作通过内核命令发起。
  */
 
+import { t, useI18n } from '@renderer/i18n'
 import React, { useEffect, useState } from 'react'
 import { App, Button, Progress } from 'antd'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -12,6 +13,8 @@ import { command } from '../../runtime/client'
 import { useSavedAction } from '../../hooks/useSavedAction'
 
 export function UpdateNotification(): React.JSX.Element | null {
+  useI18n()
+
   const { notification } = App.useApp()
   const runSaved = useSavedAction()
   const autoCheckUpdate = useSettingsStore((state) => state.settings.autoCheckUpdate ?? true)
@@ -38,19 +41,24 @@ export function UpdateNotification(): React.JSX.Element | null {
   useEffect(() => {
     if (!updateAvailable) return
     notification.info({
-      message: '发现新版本',
-      description: `版本 ${updateVersion ?? '未知'} 可用`,
+      message: t('update.available'),
+      description: t('update.versionAvailable', {
+        v0: String(updateVersion ?? t('common.unknown'))
+      }),
       btn: (
         <Button
           type="primary"
           size="small"
           onClick={() => {
             void command('app.downloadUpdate', undefined).catch((error) => {
-              notification.error({ message: '下载失败', description: String(error) })
+              notification.error({
+                message: t('common.downloadFailed'),
+                description: String(error)
+              })
             })
           }}
         >
-          下载更新
+          {t('update.download')}
         </Button>
       ),
       duration: 0
@@ -60,19 +68,19 @@ export function UpdateNotification(): React.JSX.Element | null {
   useEffect(() => {
     if (!updateDownloaded) return
     notification.success({
-      message: '更新已下载',
-      description: '重启应用以完成更新',
+      message: t('update.downloaded'),
+      description: t('update.restartToComplete'),
       btn: (
         <Button
           type="primary"
           size="small"
           onClick={() => {
             void runSaved(() => command('app.quitAndInstall', undefined)).catch((error) => {
-              notification.error({ message: '安装失败', description: String(error) })
+              notification.error({ message: t('update.installFailed'), description: String(error) })
             })
           }}
         >
-          立即重启
+          {t('update.restartNow')}
         </Button>
       ),
       duration: 0
@@ -81,7 +89,7 @@ export function UpdateNotification(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!updateError) return
-    notification.error({ message: '更新失败', description: updateError })
+    notification.error({ message: t('update.failed'), description: updateError })
   }, [notification, updateError])
 
   if (downloading) {

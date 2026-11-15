@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useMemo } from 'react'
 import { Dropdown, Tooltip } from 'antd'
 import {
@@ -56,6 +57,8 @@ export function BranchPathBar({
   batchProgress,
   isSegmenting
 }: BranchPathBarProps): React.JSX.Element {
+  useI18n()
+
   // 筛选关键节点：根节点、叶子节点、有分支的节点
   const keyNodes = useMemo(() => {
     if (messages.length === 0) return []
@@ -194,10 +197,10 @@ export function BranchPathBar({
       </div>
       <div className="branch-path-bar__nav">
         <span className="branch-path-bar__nav-divider" />
-        <Tooltip title={formatShortcutTooltip('上一条', 'messagePrev')}>
+        <Tooltip title={formatShortcutTooltip(t('common.previous'), 'messagePrev')}>
           <ArrowUpOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToPrev} />
         </Tooltip>
-        <Tooltip title={formatShortcutTooltip('下一条', 'messageNext')}>
+        <Tooltip title={formatShortcutTooltip(t('common.next'), 'messageNext')}>
           <ArrowDownOutlined className="branch-path-bar__nav-btn" onClick={onNavigateToNext} />
         </Tooltip>
       </div>

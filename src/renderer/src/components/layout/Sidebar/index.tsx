@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { Typography, Drawer } from 'antd'
 import {
@@ -12,8 +13,12 @@ import './Sidebar.css'
 const { Text } = Typography
 
 const panelTitles: Record<ActivityPanel, string> = {
-  explorer: '资源管理器',
-  search: '搜索'
+  get explorer(): string {
+    return t('layout.explorer')
+  },
+  get search(): string {
+    return t('search.title')
+  }
 }
 
 const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
@@ -22,6 +27,8 @@ const panelComponents: Record<ActivityPanel, React.ComponentType | null> = {
 }
 
 export function Sidebar(): React.JSX.Element {
+  useI18n()
+
   const {
     sidebarWidth,
     sidebarVisible,

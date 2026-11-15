@@ -5,6 +5,8 @@
  * 会话切换（账户、工作区）由内核完成资源的打开与关闭，展示层只需重新订阅并按作用域丢弃缓存。
  */
 
+import { msg, formatError, LocalizedAggregateError } from '@shared/i18n/message'
+
 import { watch, type FSWatcher } from 'node:fs'
 import { relative } from 'node:path'
 import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
@@ -42,7 +44,8 @@ import type {
   UpdateCheckResult,
   UpdateStatus
 } from '@shared/contracts'
-import { RuntimeError, defaultViewState } from '@shared/contracts'
+import { RuntimeError, defaultViewState, isApplicationLocaleOperation } from '@shared/contracts'
+import { LocaleService } from './LocaleService'
 import { SerialExecutor } from './SerialExecutor'
 import { AccountStore } from './AccountStore'
 import { ChatEngine } from './ChatEngine'
@@ -124,6 +127,7 @@ const FLUSH_COMMANDS = new Set<RuntimeCommandName>([
 
 export interface RuntimeHost {
   getVersion(): string
+  getPreferredSystemLanguages(): string[]
   saveFile(options: RuntimeCommandPayload<'dialog.saveFile'>): Promise<{ savedPath?: string }>
   openTextFile(options?: {
     filters?: Array<{ name: string; extensions: string[] }>
@@ -147,6 +151,7 @@ export interface RuntimeCoreOptions {
 }
 
 export class RuntimeCore {
+  readonly locale: LocaleService
   private scopeId: string | null = null
   private readonly lifecycle = new SerialExecutor()
   private transitioning = false
@@ -172,9 +177,14 @@ export class RuntimeCore {
   private readonly listeners = new Set<(event: RuntimeEvent) => void>()
 
   constructor(private readonly options: RuntimeCoreOptions) {
+    this.locale = new LocaleService(options.appDataPath, () =>
+      options.host.getPreferredSystemLanguages()
+    )
     this.paths = new PathResolver(options.appDataPath)
-    this.accounts = new AccountStore(this.paths)
+    this.accounts = new AccountStore(this.paths, this.locale.translations.t)
     this.chat = new ChatEngine({
+      t: this.locale.translations.t,
+      language: () => this.locale.snapshot().language,
       workspace: () => this.workspace,
       settings: () => this.settingsStore,
       queues: () => this.queues,
@@ -186,6 +196,7 @@ export class RuntimeCore {
   // ==================== 生命周期 ====================
 
   async init(): Promise<void> {
+    await this.locale.load()
     await this.accounts.load()
     const account = await this.accounts.ensureDefaultAccount()
     await this.openAccount(account.id)
@@ -230,6 +241,7 @@ export class RuntimeCore {
       // 准入任务可能正在保存用户消息；待其退出写队列后再收拢一次新登记的请求。
       await this.chat.abortAll()
       await this.settingsStore?.idle()
+      await this.locale.idle()
       this.chat.assertSaved()
     } catch (error) {
       this.transitioning = false
@@ -240,7 +252,7 @@ export class RuntimeCore {
 
   private assertScope(scopeId?: string | null): void {
     if (scopeId !== undefined && scopeId !== this.scopeId) {
-      throw new RuntimeError('runtime.stale-scope', '工作区已切换，请重试')
+      throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.switchedRetry'))
     }
   }
 
@@ -269,18 +281,19 @@ export class RuntimeCore {
     payload: RuntimeQueryPayload<K>,
     scopeId?: string | null
   ): Promise<RuntimeQueryResult<K>> {
-    if (name !== 'session.get') this.assertScope(scopeId)
+    if (name !== 'session.get' && !isApplicationLocaleOperation(name)) this.assertScope(scopeId)
     const workspace = this.workspace
     const read = async (): Promise<RuntimeQueryResult<K>> => {
-      if (name !== 'session.get') this.assertScope(scopeId)
+      if (name !== 'session.get' && !isApplicationLocaleOperation(name)) this.assertScope(scopeId)
       const result = await this.executeQuery(name, payload)
-      if (name !== 'session.get') this.assertScope(scopeId)
+      if (name !== 'session.get' && !isApplicationLocaleOperation(name)) this.assertScope(scopeId)
       return result
     }
     return workspace && WORKSPACE_QUERIES.has(name) ? workspace.read(read) : read()
   }
 
   private readonly queryHandlers: QueryHandlers = {
+    'app.locale.get': async () => this.locale.snapshot(),
     'session.get': async () => {
       return this.snapshot()
     },
@@ -333,7 +346,10 @@ export class RuntimeCore {
     payload: RuntimeQueryPayload<K>
   ): Promise<RuntimeQueryResult<K>> {
     if (!Object.hasOwn(this.queryHandlers, name))
-      throw new RuntimeError('runtime.unknown-query', `未知查询：${name}`)
+      throw new RuntimeError(
+        'runtime.unknown-query',
+        msg('errors.runtime.unknownQuery', { v0: String(name) })
+      )
     // 分发表中的每个处理器分别校验参数和返回值，分发时保持关联。
     const handler = this.queryHandlers[name] as (
       input: RuntimeQueryPayload<K>
@@ -348,14 +364,15 @@ export class RuntimeCore {
     payload: RuntimeCommandPayload<K>,
     scopeId?: string | null
   ): Promise<RuntimeCommandResult<K>> {
-    this.assertScope(scopeId)
     if (this.closingRequested && !FLUSH_COMMANDS.has(name))
-      throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+      throw new RuntimeError('runtime.closing', msg('errors.runtime.closing'))
+    if (isApplicationLocaleOperation(name)) return this.executeCommand(name, payload)
+    this.assertScope(scopeId)
     if (LIFECYCLE_COMMANDS.has(name))
       return this.lifecycle.run(async () => {
         this.assertScope(scopeId)
         if (this.closingRequested)
-          throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+          throw new RuntimeError('runtime.closing', msg('errors.runtime.closing'))
         const transition = this.changesSession(name, payload)
         if (transition) await this.quiesce()
         try {
@@ -370,13 +387,13 @@ export class RuntimeCore {
         }
       })
     if (this.transitioning && !FLUSH_COMMANDS.has(name)) {
-      throw new RuntimeError('runtime.closing', '正在保存并关闭当前工作区')
+      throw new RuntimeError('runtime.closing', msg('errors.runtime.closing'))
     }
     const workspace = this.workspace
     const write = async (): Promise<RuntimeCommandResult<K>> => {
       this.assertScope(scopeId)
       if (workspace !== this.workspace)
-        throw new RuntimeError('runtime.stale-scope', '工作区已切换')
+        throw new RuntimeError('runtime.stale-scope', msg('errors.workspace.switched'))
       return this.executeCommand(name, payload)
     }
     return workspace && WORKSPACE_COMMANDS.has(name) ? workspace.write(write) : write()
@@ -401,6 +418,11 @@ export class RuntimeCore {
   }
 
   private readonly commandHandlers: CommandHandlers = {
+    'app.locale.set': async (input) => {
+      const snapshot = await this.locale.set(input.preference)
+      this.dispatchEvent({ type: 'app.locale.changed', payload: snapshot, scopeId: null })
+      return snapshot
+    },
     'session.selectAccount': async (input) => {
       return this.selectAccount(readString(input, 'accountId'))
     },
@@ -429,9 +451,9 @@ export class RuntimeCore {
       const accountId = readString(input, 'accountId')
       const accounts = this.accounts.list()
       if (!accounts.some((item) => item.id === accountId))
-        throw new RuntimeError('account.not-found', '账户不存在')
+        throw new RuntimeError('account.not-found', msg('errors.account.missing'))
       if (accounts.length <= 1)
-        throw new RuntimeError('account.last-account', '至少需要保留一个账户')
+        throw new RuntimeError('account.last-account', msg('errors.account.last'))
       if (accountId === this.accounts.getCurrentId())
         await this.openAccount(accounts.find((item) => item.id !== accountId)!.id)
       await this.accounts.remove(accountId)
@@ -474,9 +496,9 @@ export class RuntimeCore {
       const workspaceId = readString(input, 'workspaceId')
       const registry = this.requireRegistry()
       if (!registry.getById(workspaceId))
-        throw new RuntimeError('workspace.not-found', '工作区不存在')
+        throw new RuntimeError('workspace.not-found', msg('errors.workspace.missing'))
       if (registry.list().length <= 1)
-        throw new RuntimeError('workspace.last-workspace', '至少需要保留一个工作区')
+        throw new RuntimeError('workspace.last-workspace', msg('errors.workspace.last'))
       if (registry.getCurrentId() === workspaceId)
         await this.selectWorkspace(registry.list().find((item) => item.id !== workspaceId)!.id)
       await registry.remove(workspaceId)
@@ -488,7 +510,7 @@ export class RuntimeCore {
       const workspace = id
         ? this.requireRegistry().getById(id)
         : this.requireRegistry().getCurrent()
-      if (!workspace) throw new RuntimeError('workspace.not-found', '工作区不存在')
+      if (!workspace) throw new RuntimeError('workspace.not-found', msg('errors.workspace.missing'))
       return this.options.host.openInFileManager(workspace.path)
     },
     'workspace.pickDirectory': async (input) => {
@@ -502,7 +524,7 @@ export class RuntimeCore {
         !['before', 'after', 'inside', 'end'].includes(input.placement) ||
         (input.conflictPolicy !== undefined && !['error', 'rename'].includes(input.conflictPolicy))
       ) {
-        throw new RuntimeError('tree.invalid-move', '无效的节点移动请求')
+        throw new RuntimeError('tree.invalid-move', msg('errors.tree.invalidMove'))
       }
       if (await this.requireWorkspace().moveTreeNode(input, Date.now())) this.emitTreeChanged()
       return undefined
@@ -554,7 +576,10 @@ export class RuntimeCore {
     'conversation.replace': async (input) => {
       const workspace = this.requireWorkspace()
       if (!workspace.getPage(input.pageId)) {
-        throw new RuntimeError('page.not-found', `页面不存在：${input.pageId}`)
+        throw new RuntimeError(
+          'page.not-found',
+          msg('errors.page.missingId', { v0: String(input.pageId) })
+        )
       }
       await workspace.writeConversation({ ...input.conversation, pageId: input.pageId })
       this.chat.abortMissingParents(input.pageId, input.conversation)
@@ -703,7 +728,7 @@ export class RuntimeCore {
     },
     'attachment.import': async (input) => {
       if (!this.requireWorkspace().getPage(input.pageId))
-        throw new RuntimeError('page.not-found', '页面不存在')
+        throw new RuntimeError('page.not-found', msg('chat.pageMissing'))
       return this.requireWorkspace().importAttachments(input.files, Date.now())
     },
     'attachment.delete': async (input) => {
@@ -726,7 +751,8 @@ export class RuntimeCore {
         this.requireWorkspace(),
         this.requireSettings(),
         this.requireViewState(),
-        input
+        input,
+        this.locale.translations.t
       )
       this.emitTreeChanged()
       this.emit('settings.changed', this.requireSettings().snapshot())
@@ -743,7 +769,7 @@ export class RuntimeCore {
     },
     'app.quitAndInstall': async () => {
       if (!this.updater || this.updateStatus.state !== 'downloaded')
-        throw new RuntimeError('app.update-not-ready', '更新尚未下载完成')
+        throw new RuntimeError('app.update-not-ready', msg('errors.update.notDownloaded'))
       await this.prepareClose()
       try {
         this.updater.quitAndInstall()
@@ -760,7 +786,10 @@ export class RuntimeCore {
     payload: RuntimeCommandPayload<K>
   ): Promise<RuntimeCommandResult<K>> {
     if (!Object.hasOwn(this.commandHandlers, name))
-      throw new RuntimeError('runtime.unknown-command', `未知命令：${name}`)
+      throw new RuntimeError(
+        'runtime.unknown-command',
+        msg('errors.runtime.unknownCommand', { v0: String(name) })
+      )
     // 分发表中的每个处理器分别校验参数和返回值，分发时保持关联。
     const handler = this.commandHandlers[name] as (
       input: RuntimeCommandPayload<K>
@@ -771,11 +800,12 @@ export class RuntimeCore {
   // ==================== 会话管理 ====================
 
   private async openAccount(accountId: string): Promise<void> {
-    if (!this.accounts.getById(accountId)) throw new RuntimeError('account.not-found', '账户不存在')
+    if (!this.accounts.getById(accountId))
+      throw new RuntimeError('account.not-found', msg('errors.account.missing'))
     const settingsStore = new SettingsStore(this.paths, accountId)
     await settingsStore.load(accountId)
 
-    const registry = new WorkspaceRegistry(this.paths, accountId)
+    const registry = new WorkspaceRegistry(this.paths, accountId, this.locale.translations.t)
     await registry.load(accountId)
 
     const workspace = await registry.ensureDefault(Date.now())
@@ -789,7 +819,7 @@ export class RuntimeCore {
 
   private async selectWorkspace(workspaceId: string): Promise<void> {
     const workspace = this.requireRegistry().getById(workspaceId)
-    if (!workspace) throw new RuntimeError('workspace.not-found', '工作区不存在')
+    if (!workspace) throw new RuntimeError('workspace.not-found', msg('errors.workspace.missing'))
     await this.openWorkspace(workspace)
   }
 
@@ -809,7 +839,7 @@ export class RuntimeCore {
     const previousAccountId = this.accounts.getCurrentId()
     try {
       index = IndexDb.open(this.paths.indexFile(workspace.path))
-      store = new WorkspaceStore(this.paths, workspace, index)
+      store = new WorkspaceStore(this.paths, workspace, index, this.locale.translations.t)
       await store.open()
       await viewState.load()
       await account.registry.setCurrent(workspace.id)
@@ -840,7 +870,7 @@ export class RuntimeCore {
         }
       }
       if (failures.length)
-        throw new AggregateError([error, ...failures], '会话切换失败且选择记录恢复失败')
+        throw new LocalizedAggregateError([error, ...failures], msg('errors.session.restoreFailed'))
       throw error
     }
 
@@ -1009,16 +1039,16 @@ export class RuntimeCore {
       const connection = this.resolveConnection(llmId)
       return { models: await listModels(connection) }
     } catch (error) {
-      return { models: [], error: error instanceof Error ? error.message : String(error) }
+      return { models: [], error: formatError(error, this.locale.translations.t) }
     }
   }
 
   private async testConnection(llmId: string): Promise<{ ok: boolean; message: string }> {
     try {
       await testProviderConnection(this.resolveConnection(llmId))
-      return { ok: true, message: '连接成功' }
+      return { ok: true, message: this.locale.translations.t('config.connected') }
     } catch (error) {
-      return { ok: false, message: error instanceof Error ? error.message : String(error) }
+      return { ok: false, message: formatError(error, this.locale.translations.t) }
     }
   }
 
@@ -1027,7 +1057,10 @@ export class RuntimeCore {
     const absolutePath = await workspace.validateAttachmentPath(relativePath, true)
     const buffer = await readBinary(absolutePath)
     if (!buffer) {
-      throw new RuntimeError('attachment.not-found', `附件不存在：${relativePath}`)
+      throw new RuntimeError(
+        'attachment.not-found',
+        msg('errors.attachment.missing', { v0: String(relativePath) })
+      )
     }
 
     return {
@@ -1043,18 +1076,18 @@ export class RuntimeCore {
     try {
       payload = JSON.parse(input.payload)
     } catch {
-      throw new RuntimeError('library.invalid-json', '导入文件不是合法 JSON')
+      throw new RuntimeError('library.invalid-json', msg('errors.import.invalidJson'))
     }
 
     const format = input.source === 'chatgpt' ? 'openai' : input.source
-    const parsed = parseImport(payload, format, Date.now())
+    const parsed = parseImport(payload, format, Date.now(), this.locale.translations.t)
     const selected =
       input.ids !== undefined
         ? parsed.conversations.filter((conversation) => input.ids?.includes(conversation.id))
         : parsed.conversations
 
     if (selected.length === 0) {
-      throw new RuntimeError('library.empty', parsed.errors[0] ?? '没有可导入的对话')
+      throw new RuntimeError('library.empty', parsed.errors[0] ?? msg('errors.import.empty'))
     }
 
     const folderId = input.folderName?.trim()
@@ -1102,12 +1135,12 @@ export class RuntimeCore {
     const current: Settings = settings.get()
     const llm = current.llmConfigs.items.find((item) => item.id === llmId)
     if (!llm) {
-      throw new RuntimeError('ai.no-llm-config', '未找到指定的 LLM 配置')
+      throw new RuntimeError('ai.no-llm-config', msg('errors.ai.configMissing'))
     }
 
     const apiKey = llm.apiKey
     if (!apiKey) {
-      throw new RuntimeError('ai.no-api-key', `LLM 配置「${llm.name}」缺少 API Key`)
+      throw new RuntimeError('ai.no-api-key', msg('errors.ai.noKey', { v0: String(llm.name) }))
     }
 
     return { baseUrl: llm.baseUrl, apiKey, modelName: llm.modelName }
@@ -1116,7 +1149,7 @@ export class RuntimeCore {
   // ==================== 工具方法 ====================
 
   private dispatchEvent(event: RuntimeEvent): void {
-    event = { ...event, scopeId: event.scopeId ?? this.scopeId }
+    event = { ...event, scopeId: event.scopeId === undefined ? this.scopeId : event.scopeId }
     for (const listener of this.listeners) {
       try {
         listener(event)
@@ -1143,32 +1176,38 @@ export class RuntimeCore {
   }
 
   private requireWorkspace(): WorkspaceStore {
-    if (!this.workspace) throw new RuntimeError('workspace.unavailable', '尚未打开工作区')
+    if (!this.workspace)
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.notOpen'))
     return this.workspace
   }
 
   private requireSettings(): SettingsStore {
-    if (!this.settingsStore) throw new RuntimeError('settings.unavailable', '尚未加载账户设置')
+    if (!this.settingsStore)
+      throw new RuntimeError('settings.unavailable', msg('errors.settings.notLoaded'))
     return this.settingsStore
   }
 
   private requireRegistry(): WorkspaceRegistry {
-    if (!this.registry) throw new RuntimeError('workspace.unavailable', '尚未加载工作区列表')
+    if (!this.registry)
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.listNotLoaded'))
     return this.registry
   }
 
   private requireViewState(): ViewStateStore {
-    if (!this.viewState) throw new RuntimeError('workspace.unavailable', '尚未打开工作区')
+    if (!this.viewState)
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.notOpen'))
     return this.viewState
   }
 
   private requireQueues(): QueueStore {
-    if (!this.queues) throw new RuntimeError('workspace.unavailable', '尚未打开工作区')
+    if (!this.queues)
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.notOpen'))
     return this.queues
   }
 
   private requireSearch(): SearchService {
-    if (!this.search) throw new RuntimeError('workspace.unavailable', '尚未打开工作区')
+    if (!this.search)
+      throw new RuntimeError('workspace.unavailable', msg('errors.workspace.notOpen'))
     return this.search
   }
 }
@@ -1176,7 +1215,10 @@ export class RuntimeCore {
 function readString(payload: unknown, key: string): string {
   const value = (payload as Record<string, unknown> | undefined)?.[key]
   if (typeof value !== 'string') {
-    throw new RuntimeError('runtime.invalid-payload', `命令参数缺少 ${key}`)
+    throw new RuntimeError(
+      'runtime.invalid-payload',
+      msg('errors.runtime.missingParameter', { v0: String(key) })
+    )
   }
   return value
 }

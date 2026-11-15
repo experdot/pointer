@@ -5,6 +5,7 @@
  * 导出面板与导入面板的差别只有「是否给已存在的 id 加冲突标记」，用 decorate 注入。
  */
 
+import { LocalizedText } from '../components/common/LocalizedText'
 import { FileTextOutlined, FolderOutlined, SettingOutlined } from '@ant-design/icons'
 import type { Key, ReactNode } from 'react'
 import type { TreeDataNode } from 'antd'
@@ -108,7 +109,14 @@ export function buildPageTreeNodes(
   pages.forEach((page) => {
     const pageNode: TreeDataNode = {
       key: `page:${page.id}`,
-      title: buildTitle(page.name || '未命名对话', 'item', page.id, decorate),
+      title: page.name ? (
+        buildTitle(page.name, 'item', page.id, decorate)
+      ) : (
+        <span>
+          <LocalizedText translationKey="chat.untitled" />
+          {decorate?.({ kind: 'item', id: page.id, name: '' })}
+        </span>
+      ),
       icon: <FileTextOutlined />,
       isLeaf: true
     }

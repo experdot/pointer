@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState } from 'react'
 import { Flex, Typography, Button, Divider, List, App, Tooltip } from 'antd'
 import { FolderOutlined, FolderOpenOutlined, DeleteOutlined } from '@ant-design/icons'
@@ -17,11 +18,17 @@ import './WorkspaceCard.css'
 
 const { Text } = Typography
 
+function getWorkspaceName(workspace: WorkspaceSummary): string {
+  return workspace.usesDefaultName ? t('defaults.workspace') : workspace.name
+}
+
 interface WorkspaceCardProps {
   onClose: () => void
 }
 
 export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Element {
+  useI18n()
+
   const { workspaces, currentWorkspaceId, currentWorkspace } = useWorkspaceStore()
   const [switching, setSwitching] = useState(false)
   const { message, modal } = App.useApp()
@@ -33,7 +40,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
     try {
       if (await runSaved(() => switchWorkspace(workspaceId))) onClose()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '切换工作区失败')
+      message.error(error instanceof Error ? error.message : t('workspace.switchFailed'))
       console.error('Failed to switch workspace:', error)
     } finally {
       setSwitching(false)
@@ -43,7 +50,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
   const handleOpenFolder = async (): Promise<void> => {
     if (switching) return
     try {
-      const selectedPath = await pickWorkspaceDirectory('选择工作区文件夹')
+      const selectedPath = await pickWorkspaceDirectory(t('workspace.selectFolder'))
       if (!selectedPath) return
 
       try {
@@ -52,17 +59,17 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         const validation = await validateWorkspacePath(selectedPath).catch(() => null)
         if (validation?.repairable) {
           modal.confirm({
-            title: '工作区需要修复',
-            content: '检测到该工作区缺少部分内部目录或元数据。确认后会补齐缺失项，然后继续打开。',
-            okText: '修复并打开',
-            cancelText: '取消',
+            title: t('workspace.needsRepair'),
+            content: t('workspace.repairDescription'),
+            okText: t('workspace.repairOpen'),
+            cancelText: t('common.cancel'),
             onOk: async () => {
               try {
                 if (!(await runSaved(() => repairWorkspacePath(selectedPath)))) return
                 if (await runSaved(() => openFolderAsWorkspace(selectedPath))) onClose()
               } catch (repairError) {
                 const repairMessage =
-                  repairError instanceof Error ? repairError.message : '修复工作区失败'
+                  repairError instanceof Error ? repairError.message : t('workspace.repairFailed')
                 message.error(repairMessage)
                 console.error('Failed to repair workspace:', repairError)
               }
@@ -74,9 +81,9 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
       }
       onClose()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '打开文件夹失败'
+      const errorMessage = error instanceof Error ? error.message : t('workspace.openFailed')
       if (errorMessage.includes('locked by another account')) {
-        message.error('该文件夹已被其他账户占用')
+        message.error(t('workspace.folderInUse'))
       } else {
         message.error(errorMessage)
       }
@@ -88,7 +95,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
     e.stopPropagation()
     const workspacePath = currentWorkspace?.path
     if (!workspacePath) {
-      message.warning('当前没有可打开的工作区')
+      message.warning(t('workspace.noneToOpen'))
       return
     }
 
@@ -96,7 +103,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
       void workspacePath
       await openWorkspaceInFileManager()
     } catch (error) {
-      message.error('打开文件夹失败')
+      message.error(t('workspace.openFailed'))
       console.error('Failed to open workspace in file manager:', error)
     }
   }
@@ -107,20 +114,21 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
   ): Promise<void> => {
     e.stopPropagation()
     if (workspace.type === 'default') {
-      message.warning('默认工作区不能删除')
+      message.warning(t('workspace.cannotDeleteDefault'))
       return
     }
 
     modal.confirm({
-      title: '移除工作区',
-      content: `确定要从列表中移除工作区 "${workspace.name}" 吗？这不会删除文件夹中的文件。`,
-      okText: '移除',
-      cancelText: '取消',
+      title: t('workspace.remove'),
+      content: t('workspace.removeConfirm', { v0: getWorkspaceName(workspace) }),
+      okText: t('common.remove'),
+      cancelText: t('common.cancel'),
       onOk: async () => {
         try {
-          if (await runSaved(() => deleteWorkspace(workspace.id))) message.success('工作区已移除')
+          if (await runSaved(() => deleteWorkspace(workspace.id)))
+            message.success(t('workspace.removed'))
         } catch (error) {
-          message.error('移除工作区失败')
+          message.error(t('workspace.removeFailed'))
           console.error('Failed to delete workspace:', error)
         }
       }
@@ -133,7 +141,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         <FolderOutlined style={{ fontSize: 24 }} />
         <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
           <Text strong ellipsis>
-            {currentWorkspace?.name || '未选择工作区'}
+            {currentWorkspace ? getWorkspaceName(currentWorkspace) : t('workspace.notSelected')}
           </Text>
           {currentWorkspace?.type === 'custom' && (
             <Text
@@ -145,7 +153,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             </Text>
           )}
         </Flex>
-        <Tooltip title="在文件资源管理器中打开">
+        <Tooltip title={t('workspace.openInExplorer')}>
           <Button
             type="text"
             size="small"
@@ -157,7 +165,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         </Tooltip>
       </Flex>
       <Divider style={{ margin: '8px 0' }} />
-      <Text type="secondary">切换工作区</Text>
+      <Text type="secondary">{t('workspace.switch')}</Text>
       <List
         size="small"
         style={{
@@ -166,7 +174,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
           overflowX: 'hidden'
         }}
         dataSource={workspaces.filter((workspace) => workspace.id !== currentWorkspaceId)}
-        locale={{ emptyText: '暂无其他工作区' }}
+        locale={{ emptyText: t('workspace.noOthers') }}
         renderItem={(workspace) => (
           <List.Item
             className="workspace-card__item"
@@ -176,7 +184,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
             <Flex align="center" gap={8} flex={1} style={{ minWidth: 0 }}>
               <FolderOutlined style={{ fontSize: 16 }} />
               <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
-                <Text ellipsis>{workspace.name}</Text>
+                <Text ellipsis>{getWorkspaceName(workspace)}</Text>
                 {workspace.type === 'custom' && (
                   <Text
                     type="secondary"
@@ -209,7 +217,7 @@ export function WorkspaceCard({ onClose }: WorkspaceCardProps): React.JSX.Elemen
         onClick={handleOpenFolder}
         loading={switching}
       >
-        打开文件夹...
+        {t('workspace.openFolder')}
       </Button>
     </Flex>
   )

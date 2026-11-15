@@ -137,6 +137,7 @@ async function convertReplica(replica) {
 
 const host = {
   getVersion: () => 'benchmark',
+  getPreferredSystemLanguages: () => ['zh-CN'],
   saveFile: async () => ({}),
   openTextFile: async () => null,
   pickDirectory: async () => null,

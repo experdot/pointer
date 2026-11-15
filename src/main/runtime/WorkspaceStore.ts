@@ -8,6 +8,9 @@
  * - 磁盘布局是「文件夹 + 页面元数据」的纯函数（见 shared/domain/layout.ts）
  */
 
+import { msg, sourceTranslate, LocalizedAggregateError } from '@shared/i18n/message'
+import type { Translate } from '@shared/i18n'
+
 import { randomUUID } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { rmdir } from 'node:fs/promises'
@@ -24,8 +27,6 @@ import type {
 } from '@shared/domain'
 import {
   PAGE_FILE_FORMAT_VERSION,
-  DEFAULT_FOLDER_NAME,
-  DEFAULT_PAGE_NAME,
   addFolder,
   addPage,
   childrenOf,
@@ -144,9 +145,9 @@ export class WorkspaceStore {
           }
         }
         if (failures.length)
-          throw new AggregateError(
+          throw new LocalizedAggregateError(
             [error, ...failures],
-            '操作失败且部分文件恢复失败，请保留工作区并重试',
+            msg('errors.workspace.rollbackFailed'),
             { cause: error }
           )
         throw error
@@ -162,17 +163,23 @@ export class WorkspaceStore {
 
   private assertReady(): void {
     if (this.recoveryRequired)
-      throw new RuntimeError('workspace.recovery-required', '文件恢复未完成，请重新打开工作区')
+      throw new RuntimeError(
+        'workspace.recovery-required',
+        msg('errors.workspace.recoveryRequired')
+      )
   }
 
   private assertNotNested(): void {
     if (this.access.getStore())
-      throw new RuntimeError('workspace.nested-operation', '工作区操作不能重复入队')
+      throw new RuntimeError('workspace.nested-operation', msg('errors.workspace.nestedOperation'))
   }
 
   private requireTransaction(): WorkspaceTransaction {
     if (!this.transaction || this.access.getStore() !== this.transaction)
-      throw new RuntimeError('workspace.transaction-required', '工作区修改必须在写事务中执行')
+      throw new RuntimeError(
+        'workspace.transaction-required',
+        msg('errors.workspace.transactionRequired')
+      )
     return this.transaction
   }
 
@@ -191,7 +198,7 @@ export class WorkspaceStore {
     change: (current: Conversation) => { conversation: Conversation; result: T }
   ): Promise<T> {
     this.requireTransaction()
-    if (!this.getPage(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
+    if (!this.getPage(pageId)) throw new RuntimeError('page.not-found', msg('chat.pageMissing'))
     const next = change(await this.readConversation(pageId))
     await this.writeConversation(next.conversation)
     return next.result
@@ -210,7 +217,8 @@ export class WorkspaceStore {
   constructor(
     private readonly paths: PathResolver,
     private readonly workspace: Workspace,
-    private readonly index: IndexDb
+    private readonly index: IndexDb,
+    private readonly t: Translate = sourceTranslate
   ) {}
 
   get path(): string {
@@ -282,9 +290,13 @@ export class WorkspaceStore {
 
     const parsed = parsePageFile(text)
     if (!parsed.ok) {
-      throw new RuntimeError('page.parse-failed', `页面文件无法解析：${relativePath}`, {
-        reason: parsed.error
-      })
+      throw new RuntimeError(
+        'page.parse-failed',
+        msg('errors.page.parseFailed', { v0: String(relativePath) }),
+        {
+          reason: parsed.error
+        }
+      )
     }
 
     const conversation = this.repairConversation({
@@ -307,12 +319,18 @@ export class WorkspaceStore {
     }
     const page = this.pages.find((item) => item.id === conversation.pageId)
     if (!page) {
-      throw new RuntimeError('page.not-found', `页面不存在：${conversation.pageId}`)
+      throw new RuntimeError(
+        'page.not-found',
+        msg('errors.page.missingId', { v0: String(conversation.pageId) })
+      )
     }
 
     const relativePath = this.pagePaths.get(page.id)
     if (!relativePath) {
-      throw new RuntimeError('page.path-missing', `页面缺少文件路径：${page.id}`)
+      throw new RuntimeError(
+        'page.path-missing',
+        msg('errors.page.pathMissing', { v0: String(page.id) })
+      )
     }
 
     const content = serializePageFile({
@@ -353,12 +371,15 @@ export class WorkspaceStore {
     if (input.id) {
       assertSafeId(input.id)
       if (this.getPage(input.id) || this.getFolder(input.id))
-        throw new RuntimeError('page.id-conflict', '标识已存在')
+        throw new RuntimeError('page.id-conflict', msg('errors.tree.duplicateId'))
     }
     const page: Page = {
       id: input.id ?? randomUUID(),
       kind: 'page',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_PAGE_NAME),
+      name: this.uniqueNameAt(
+        parentFolderId,
+        input.name?.trim() || this.t('defaults.conversation')
+      ),
       starred: input.starred,
       parentFolderId,
       orderKey: allocatedKey ?? nextOrderKey(this.getTree(), parentFolderId),
@@ -380,7 +401,8 @@ export class WorkspaceStore {
   async updatePage(pageId: string, patch: NodePatch, at: number): Promise<void> {
     this.requireTransaction()
     const page = this.pages.find((item) => item.id === pageId)
-    if (!page) throw new RuntimeError('page.not-found', `页面不存在：${pageId}`)
+    if (!page)
+      throw new RuntimeError('page.not-found', msg('errors.page.missingId', { v0: String(pageId) }))
 
     const updates: Partial<Page> = {}
     if (patch.name !== undefined && patch.name.trim() !== page.name) {
@@ -407,7 +429,7 @@ export class WorkspaceStore {
     const before = this.getTree()
     const result = moveTreeNode(before, input, at)
     if (!result.ok) {
-      throw new RuntimeError(result.error.code, result.error.message)
+      throw new RuntimeError(result.error.code, result.error.localized ?? result.error.message)
     }
     let next = result.tree
     if (allocatedKey !== undefined) {
@@ -430,7 +452,7 @@ export class WorkspaceStore {
           name: moved.name,
           targetFolderId: moved.parentFolderId
         }
-        throw new RuntimeError('tree.name-conflict', '目标位置已有同名节点', conflict)
+        throw new RuntimeError('tree.name-conflict', msg('errors.tree.nameConflict'), conflict)
       }
       next =
         moved.kind === 'page'
@@ -493,18 +515,18 @@ export class WorkspaceStore {
     allocatedKey?: string
   ): Promise<Folder> {
     this.requireTransaction()
-    this.assertFolderName(input.name ?? DEFAULT_FOLDER_NAME)
+    this.assertFolderName(input.name ?? this.t('defaults.folder'))
     if (input.id) {
       assertSafeId(input.id)
       if (this.getPage(input.id) || this.getFolder(input.id))
-        throw new RuntimeError('folder.id-conflict', '标识已存在')
+        throw new RuntimeError('folder.id-conflict', msg('errors.tree.duplicateId'))
     }
     const parentFolderId = this.validatedFolderId(input.parentFolderId)
     if (allocatedKey !== undefined) this.assertAvailableKey(allocatedKey, parentFolderId)
     const folder: Folder = {
       id: input.id ?? randomUUID(),
       kind: 'folder',
-      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || DEFAULT_FOLDER_NAME),
+      name: this.uniqueNameAt(parentFolderId, input.name?.trim() || this.t('defaults.folder')),
       parentFolderId,
       orderKey: allocatedKey ?? nextOrderKey(this.getTree(), parentFolderId),
       createdAt: at,
@@ -524,7 +546,11 @@ export class WorkspaceStore {
     this.requireTransaction()
     if (patch.name !== undefined) this.assertFolderName(patch.name)
     const folder = this.folders.find((item) => item.id === folderId)
-    if (!folder) throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
+    if (!folder)
+      throw new RuntimeError(
+        'folder.not-found',
+        msg('errors.folder.missing', { v0: String(folderId) })
+      )
     if (patch.name === undefined || patch.name.trim() === folder.name) return
 
     const name = this.uniqueNameAt(folder.parentFolderId, patch.name.trim(), folderId)
@@ -592,7 +618,10 @@ export class WorkspaceStore {
   async clearFolder(folderId: string): Promise<string[]> {
     this.requireTransaction()
     if (!this.folders.some((folder) => folder.id === folderId)) {
-      throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
+      throw new RuntimeError(
+        'folder.not-found',
+        msg('errors.folder.missing', { v0: String(folderId) })
+      )
     }
 
     const tree = clearFolderInTree(this.getTree(), folderId)
@@ -654,7 +683,10 @@ export class WorkspaceStore {
     const normalized = relativePath.replace(/\\/g, '/')
     const parts = normalized.split('/')
     if (parts.length !== 3 || parts[0] !== '.pointer' || parts[1] !== 'attachments') {
-      throw new RuntimeError('attachment.invalid-path', `非法附件路径：${relativePath}`)
+      throw new RuntimeError(
+        'attachment.invalid-path',
+        msg('errors.attachment.invalidPath', { v0: String(relativePath) })
+      )
     }
     assertSafeId(parts[2])
     const target = this.absPath(normalized)
@@ -686,16 +718,16 @@ export class WorkspaceStore {
       }
       const extension = extensions[file.mimeType]
       if (!extension)
-        throw new RuntimeError('attachment.invalid-type', '仅支持 PNG、JPEG、GIF 和 WebP 图片')
+        throw new RuntimeError('attachment.invalid-type', msg('errors.attachment.invalidType'))
       if (file.dataBase64.length > Math.ceil((10 * 1024 * 1024) / 3) * 4)
-        throw new RuntimeError('attachment.too-large', '附件不能超过 10 MB')
+        throw new RuntimeError('attachment.too-large', msg('errors.attachment.tooLarge'))
       const id = randomUUID()
       const fileName = `${id}-${sanitizeFileName(file.name)}.${extension}`
       const buffer = Buffer.from(file.dataBase64, 'base64')
       if (!file.dataBase64 || buffer.toString('base64') !== file.dataBase64)
-        throw new RuntimeError('attachment.invalid-data', '附件内容不是有效的 Base64')
+        throw new RuntimeError('attachment.invalid-data', msg('errors.attachment.invalidData'))
       if (buffer.byteLength > 10 * 1024 * 1024)
-        throw new RuntimeError('attachment.too-large', '附件不能超过 10 MB')
+        throw new RuntimeError('attachment.too-large', msg('errors.attachment.tooLarge'))
       await this.validateAttachmentPath(this.paths.attachmentRelativePath(fileName), true)
       const target = join(attachmentsDir, fileName)
       await this.requireTransaction().capture(target)
@@ -802,7 +834,7 @@ export class WorkspaceStore {
       afterNodeId &&
       !childrenOf(tree, node.parentFolderId).some((item) => item.id === afterNodeId)
     )
-      throw new RuntimeError('tree.invalid-target', '新建节点的参照项必须位于同一文件夹')
+      throw new RuntimeError('tree.invalid-target', msg('errors.tree.referenceFolder'))
     const result = moveTreeNode(
       tree,
       afterNodeId
@@ -814,7 +846,8 @@ export class WorkspaceStore {
           },
       at
     )
-    if (!result.ok) throw new RuntimeError(result.error.code, result.error.message)
+    if (!result.ok)
+      throw new RuntimeError(result.error.code, result.error.localized ?? result.error.message)
     this.pages = result.tree.pages
     this.folders = result.tree.folders
   }
@@ -831,7 +864,7 @@ export class WorkspaceStore {
     this.folders = file?.folders ?? []
     for (const folder of this.folders)
       if (!isOrderKey(folder.orderKey))
-        throw new RuntimeError('tree.invalid-order-key', '文件夹缺少有效的字符串排序键')
+        throw new RuntimeError('tree.invalid-order-key', msg('errors.folder.invalidOrder'))
   }
 
   private async persistFolders(): Promise<void> {
@@ -898,7 +931,7 @@ export class WorkspaceStore {
       const parsed = parsePageMetadata(text)
       if (!parsed.ok) {
         if (parsed.error === 'invalid-order-key' || parsed.error.startsWith('unsupported-version:'))
-          throw new RuntimeError('page.parse-failed', '页面文件版本或排序键无效', {
+          throw new RuntimeError('page.parse-failed', msg('errors.page.invalidFormat'), {
             reason: parsed.error
           })
         continue
@@ -1030,7 +1063,10 @@ export class WorkspaceStore {
         const desired = layout.pagePaths.get(page.id)!
         const target = this.absPath(desired)
         if (await pathExists(target))
-          throw new RuntimeError('workspace.path-conflict', `目标文件已存在：${desired}`)
+          throw new RuntimeError(
+            'workspace.path-conflict',
+            msg('errors.workspace.pathConflict', { v0: String(desired) })
+          )
         const temporary = staged.get(page.id)
         if (temporary) await this.trackMove(temporary, target)
         this.pagePaths.set(page.id, desired)
@@ -1130,20 +1166,23 @@ export class WorkspaceStore {
         (node) => node.id !== excludeId && node.orderKey === key
       )
     )
-      throw new RuntimeError('tree.duplicate-order-key', '同级节点的排序键重复')
+      throw new RuntimeError('tree.duplicate-order-key', msg('errors.tree.duplicateOrder'))
   }
 
   private validatedFolderId(folderId: string | undefined): string | undefined {
     if (!folderId) return undefined
     if (!this.folders.some((folder) => folder.id === folderId)) {
-      throw new RuntimeError('folder.not-found', `文件夹不存在：${folderId}`)
+      throw new RuntimeError(
+        'folder.not-found',
+        msg('errors.folder.missing', { v0: String(folderId) })
+      )
     }
     return folderId
   }
 
   private assertFolderName(name: string): void {
     if (isReservedDirectory(sanitizeFileName(name))) {
-      throw new RuntimeError('folder.reserved-name', '该名称保留给系统目录')
+      throw new RuntimeError('folder.reserved-name', msg('errors.folder.reservedName'))
     }
   }
 

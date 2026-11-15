@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import type { FC } from 'react'
 import type {
   SourcePlugin,
@@ -14,6 +15,8 @@ import type {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const TextSnippetSourceSelector: FC<SourceSelectorProps<TextSnippetSourceData>> = () => {
+  useI18n()
+
   return null
 }
 
@@ -24,7 +27,9 @@ const TextSnippetSourceSelector: FC<SourceSelectorProps<TextSnippetSourceData>> 
  */
 export const textSnippetSourcePlugin: SourcePlugin<TextSnippetSourceData> = {
   id: 'text-snippet',
-  name: '文本片段',
+  get name(): string {
+    return t('export.textSource')
+  },
   icon: '📝',
   supportedFormats: ['markdown', 'txt', 'html'],
 

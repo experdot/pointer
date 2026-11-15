@@ -50,10 +50,10 @@ describe('模型配置的真实表单与设置提交', () => {
         <LLMConfigPanel />
       </App>
     )
-    fireEvent.change(screen.getByLabelText('API Base URL', { selector: 'input' }), {
+    fireEvent.change(screen.getByLabelText('API 基础地址', { selector: 'input' }), {
       target: { value: 'http://new.invalid/v1' }
     })
-    fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'new-key' } })
+    fireEvent.change(screen.getByLabelText('API 密钥'), { target: { value: 'new-key' } })
     fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
     await waitFor(() => expect(client.command).toHaveBeenCalledTimes(1))
     expect(client.query).not.toHaveBeenCalled()
@@ -76,11 +76,11 @@ describe('模型配置的真实表单与设置提交', () => {
         <LLMConfigPanel />
       </App>
     )
-    fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'retry-key' } })
+    fireEvent.change(screen.getByLabelText('API 密钥'), { target: { value: 'retry-key' } })
     fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
     expect(await screen.findByText('测试失败')).toBeTruthy()
     expect(client.query).not.toHaveBeenCalled()
-    expect((screen.getByLabelText('API Key') as HTMLInputElement).value).toBe('retry-key')
+    expect((screen.getByLabelText('API 密钥') as HTMLInputElement).value).toBe('retry-key')
     fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
     expect(await screen.findByText('连接成功')).toBeTruthy()
     expect(client.query).toHaveBeenCalledTimes(1)
@@ -92,7 +92,7 @@ describe('模型配置的真实表单与设置提交', () => {
         <LLMConfigPanel />
       </App>
     )
-    fireEvent.change(screen.getByLabelText('API Base URL', { selector: 'input' }), {
+    fireEvent.change(screen.getByLabelText('API 基础地址', { selector: 'input' }), {
       target: { value: 'http://models.invalid/v1' }
     })
     fireEvent.focus(screen.getByLabelText('模型名称', { selector: 'input' }))

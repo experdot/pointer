@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import { createContext, createElement, useContext, useState, type ReactNode } from 'react'
@@ -40,8 +41,8 @@ export const createExportStore = (): StoreApi<ExportStore> =>
     const requireMessagePreview = (): void => {
       const { sourceData, isPreviewStale, isGenerating } = get()
       if (sourceData?.type !== 'messages') return
-      if (!isSourceDataReady(sourceData)) throw new Error('请选择要导出的消息')
-      if (isPreviewStale || isGenerating) throw new Error('请重新生成预览后再导出')
+      if (!isSourceDataReady(sourceData)) throw new Error(t('export.selectMessages'))
+      if (isPreviewStale || isGenerating) throw new Error(t('export.regenerateBeforeExport'))
     }
     return {
       // ==================== Initial State ====================
@@ -162,12 +163,12 @@ export const createExportStore = (): StoreApi<ExportStore> =>
         const { sourceType, sourceData, formatType, exportOptions } = get()
 
         if (!sourceType || !sourceData) {
-          set({ error: 'Please select a source first' })
+          set({ error: t('export.selectSourceFirst') })
           return
         }
 
         if (sourceData.type === 'messages' && !isSourceDataReady(sourceData)) {
-          set({ error: '请选择要导出的消息' })
+          set({ error: t('export.selectMessages') })
           return
         }
 
@@ -192,7 +193,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
         } catch (error) {
           if (generation !== revision) return
           set({
-            error: error instanceof Error ? error.message : 'Failed to generate preview',
+            error: error instanceof Error ? error.message : t('export.previewFailed'),
             isGenerating: false
           })
         }
@@ -235,14 +236,14 @@ export const createExportStore = (): StoreApi<ExportStore> =>
           isDirty && editedContent !== null ? editedContent : previewResult?.content
 
         if (contentToExport === undefined || contentToExport === null) {
-          set({ error: 'No content to export' })
-          throw new Error('没有可导出的内容')
+          set({ error: t('export.nothingToExport') })
+          throw new Error(t('export.nothingToExport'))
         }
 
         try {
           const format = exportManager.getFormat(formatType)
           if (!format) {
-            throw new Error(`Format plugin not found: ${formatType}`)
+            throw new Error(t('export.formatMissing', { type: formatType }))
           }
 
           // Generate filename
@@ -258,7 +259,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
           set({ error: null })
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to export'
+            error: error instanceof Error ? error.message : t('export.failed')
           })
           throw error
         }
@@ -272,18 +273,18 @@ export const createExportStore = (): StoreApi<ExportStore> =>
           isDirty && editedContent !== null ? editedContent : previewResult?.content
 
         if (contentToCopy === undefined || contentToCopy === null) {
-          set({ error: 'No content to copy' })
-          throw new Error('没有可复制的内容')
+          set({ error: t('export.nothingToCopy') })
+          throw new Error(t('export.nothingToCopy'))
         }
 
         try {
           const text =
             typeof contentToCopy === 'string' ? contentToCopy : await contentToCopy.text()
-          if (!(await copyToClipboard(text))) throw new Error('复制失败，请重试')
+          if (!(await copyToClipboard(text))) throw new Error(t('common.copyRetry'))
           set({ error: null })
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to copy to clipboard'
+            error: error instanceof Error ? error.message : t('common.copyFailed')
           })
           throw error
         }
@@ -294,7 +295,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
         const { previewContainerElement } = get()
 
         if (!previewContainerElement) {
-          throw new Error('请先生成预览')
+          throw new Error(t('export.generateFirst'))
         }
 
         const blob = await screenshotElement(previewContainerElement)
@@ -307,7 +308,7 @@ export const createExportStore = (): StoreApi<ExportStore> =>
         const { previewContainerElement } = get()
 
         if (!previewContainerElement) {
-          throw new Error('请先生成预览')
+          throw new Error(t('export.generateFirst'))
         }
 
         const blob = await screenshotElement(previewContainerElement)
@@ -341,12 +342,16 @@ const ExportStoreContext = createContext<ReturnType<typeof createExportStore> | 
 
 /** 每个已挂载导出页签持有独立状态，关闭页签后释放。 */
 export function ExportStoreProvider({ children }: { children: ReactNode }): ReactNode {
+  useI18n()
+
   const [store] = useState(createExportStore)
   return createElement(ExportStoreContext.Provider, { value: store }, children)
 }
 
 export function useExportStore(): ExportStore {
+  useI18n()
+
   const store = useContext(ExportStoreContext)
-  if (!store) throw new Error('导出编辑器缺少状态容器')
+  if (!store) throw new Error(t('export.missingState'))
   return useStore(store)
 }

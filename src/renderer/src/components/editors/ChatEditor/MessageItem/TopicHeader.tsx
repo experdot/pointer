@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { Button, Input, Tooltip, Dropdown } from 'antd'
 import type { InputRef } from 'antd'
@@ -17,9 +18,11 @@ import { getStandardDropdownProps } from '../../../../utils/shortcutPresentation
 
 export const TopicHeader = React.memo(
   forwardRef<TopicHeaderRef, TopicHeaderProps>(function TopicHeader(
-    { topic, topicMessageCount, messageId, topicCallbacks },
+    { topic, topicMessageCount, messageId, topicCallbacks }: TopicHeaderProps,
     ref
   ): React.JSX.Element {
+    useI18n()
+
     // 编辑状态在组件内部管理
     const [isEditing, setIsEditing] = useState(false)
     const [editValue, setEditValue] = useState(topic.name)
@@ -97,7 +100,7 @@ export const TopicHeader = React.memo(
                 handleSave()
               }
             }}
-            placeholder="输入 Topic 名称..."
+            placeholder={t('chat.topicPlaceholder')}
             className="message-item__topic-input"
             suffix={
               topicCallbacks.onGenerateTopic ? (
@@ -111,7 +114,7 @@ export const TopicHeader = React.memo(
                   }}
                   placement="bottomRight"
                 >
-                  <Tooltip title="AI 生成">
+                  <Tooltip title={t('ai.generateLabel')}>
                     <ThunderboltOutlined
                       className="rename-input__ai-btn"
                       onClick={(e) => {
@@ -135,14 +138,14 @@ export const TopicHeader = React.memo(
                 items: [
                   {
                     key: 'rename',
-                    label: '重命名',
+                    label: t('common.rename'),
                     icon: <EditOutlined />,
                     onClick: () => handleStartEdit()
                   },
                   { type: 'divider' },
                   {
                     key: 'delete',
-                    label: '删除',
+                    label: t('common.delete'),
                     icon: <DeleteOutlined />,
                     danger: true,
                     onClick: () => topicCallbacks.onDeleteTopic?.(topic.id)

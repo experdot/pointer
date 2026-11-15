@@ -4,6 +4,7 @@
  * 配置树的位置计算使用领域层纯函数，写入交给 settingsStore（内部走命令）。
  */
 
+import { t } from '@renderer/i18n'
 import { v4 as uuidv4 } from 'uuid'
 import type { ConfigFolder, LLMConfig, ModelConfig, Settings } from '@shared/domain'
 import { configInsertPosition } from '@shared/domain'
@@ -66,7 +67,7 @@ export function deleteLLMConfig(id: string): void {
 export function copyLLMConfig(config: LLMConfig): LLMConfig {
   return createLLMConfig(
     {
-      name: `${config.name} 副本`,
+      name: t('common.copyName', { v0: String(config.name) }),
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
       modelName: config.modelName
@@ -87,7 +88,7 @@ export function createLLMConfigFolder(
   const folder: ConfigFolder = {
     id: uuidv4(),
     kind: 'folder',
-    name: name || '新文件夹',
+    name: name || t('common.newFolder'),
     parentFolderId: position.parentFolderId,
     orderKey: position.orderKey,
     createdAt: Date.now()
@@ -157,7 +158,7 @@ export function deleteModelConfig(id: string): void {
 export function copyModelConfig(config: ModelConfig): ModelConfig {
   return createModelConfig(
     {
-      name: `${config.name} 副本`,
+      name: t('common.copyName', { v0: String(config.name) }),
       systemPrompt: config.systemPrompt,
       topP: config.topP,
       temperature: config.temperature
@@ -178,7 +179,7 @@ export function createModelConfigFolder(
   const folder: ConfigFolder = {
     id: uuidv4(),
     kind: 'folder',
-    name: name || '新文件夹',
+    name: name || t('common.newFolder'),
     parentFolderId: position.parentFolderId,
     orderKey: position.orderKey,
     createdAt: Date.now()
@@ -229,7 +230,7 @@ export function openSettings(tab?: string): void {
   useTabsStore.getState().openTab({
     id: 'settings',
     type: 'settings',
-    title: '设置',
+    title: t('settings.title'),
     closable: true
   })
 }

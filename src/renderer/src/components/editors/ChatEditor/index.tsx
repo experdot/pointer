@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Alert, App, Button } from 'antd'
 import { command, errorMessage } from '../../../runtime/client'
@@ -26,6 +27,8 @@ interface ChatEditorProps {
 }
 
 export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
+  useI18n()
+
   const { message: notify } = App.useApp()
   const {
     page,
@@ -264,7 +267,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
   })
 
   if (!page) {
-    return <div className="chat-editor chat-editor--empty">页面不存在</div>
+    return <div className="chat-editor chat-editor--empty">{t('chat.pageMissing')}</div>
   }
 
   return (
@@ -274,8 +277,8 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
           key={item.requestId}
           type="error"
           showIcon
-          message="回答尚未保存"
-          description={item.error}
+          message={t('chat.unsaved')}
+          description={errorMessage({ message: item.error, localized: item.localized })}
           action={
             <Button
               onClick={() => {
@@ -284,7 +287,7 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
                 )
               }}
             >
-              重试保存
+              {t('common.retrySave')}
             </Button>
           }
         />
@@ -300,7 +303,11 @@ export function ChatEditor({ pageId }: ChatEditorProps): React.JSX.Element {
           const result = await generateSessionTitle(page.id, options)
           if (!result.success) {
             console.error('生成会话标题失败：', result.error)
-            notify.error(`生成会话标题失败：${result.error ?? '未知原因'}`)
+            notify.error(
+              t('chat.sessionTitleFailed', {
+                v0: String(result.error ?? t('common.unknownReason'))
+              })
+            )
           }
         }}
       />

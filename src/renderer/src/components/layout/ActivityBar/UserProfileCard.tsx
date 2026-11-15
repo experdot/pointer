@@ -1,3 +1,5 @@
+import { t, useI18n } from '@renderer/i18n'
+import type { Account } from '@shared/domain'
 import React, { useState } from 'react'
 import { Flex, Avatar, Typography, Button, Divider, List, Input, App } from 'antd'
 import {
@@ -56,11 +58,17 @@ export function getAvatarConfig(avatarKey?: string): AvatarConfig {
 
 const { Text } = Typography
 
+function getAccountName(account: Account): string {
+  return account.usesDefaultName ? t('defaults.account') : account.name
+}
+
 interface UserProfileCardProps {
   onClose: () => void
 }
 
 export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.Element {
+  useI18n()
+
   const { accounts, currentAccountId } = useAccountStore()
   const currentAccount = accounts.find((a) => a.id === currentAccountId)
   const [showAccountList, setShowAccountList] = useState(false)
@@ -68,6 +76,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
   const [showEditForm, setShowEditForm] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [editName, setEditName] = useState('')
+  const [initialEditName, setInitialEditName] = useState('')
   const [editAvatar, setEditAvatar] = useState('')
   const [avatarHovered, setAvatarHovered] = useState(false)
   const [switching, setSwitching] = useState(false)
@@ -80,7 +89,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     try {
       if (await runSaved(() => switchAccount(accountId))) onClose()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '切换账户失败')
+      message.error(error instanceof Error ? error.message : t('account.switchFailed'))
     } finally {
       setSwitching(false)
     }
@@ -93,7 +102,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     try {
       if (await runSaved(() => createAccount(name))) onClose()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '创建账户失败')
+      message.error(error instanceof Error ? error.message : t('account.createFailed'))
     } finally {
       setSwitching(false)
     }
@@ -105,14 +114,16 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     try {
       if (await runSaved(logout)) onClose()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '退出登录失败')
+      message.error(error instanceof Error ? error.message : t('account.signOutFailed'))
     } finally {
       setSwitching(false)
     }
   }
 
   const handleStartEdit = (): void => {
-    setEditName(currentAccount?.name || '')
+    const name = currentAccount ? getAccountName(currentAccount) : ''
+    setEditName(name)
+    setInitialEditName(name)
     setEditAvatar(currentAccount?.avatar || 'user')
     setShowEditForm(true)
   }
@@ -122,12 +133,15 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
     if (!name || !currentAccountId || switching) return
     setSwitching(true)
     try {
-      await updateAccount(currentAccountId, { name, avatar: editAvatar })
+      await updateAccount(currentAccountId, {
+        ...(name !== initialEditName ? { name } : {}),
+        avatar: editAvatar
+      })
       setShowEditForm(false)
       setAvatarHovered(false)
-      message.success('账户信息已更新')
+      message.success(t('account.updated'))
     } catch {
-      message.error('更新失败')
+      message.error(t('update.failed'))
     } finally {
       setSwitching(false)
     }
@@ -147,7 +161,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
               setAvatarHovered(false)
             }}
           />
-          <Text strong>编辑账户</Text>
+          <Text strong>{t('account.edit')}</Text>
         </Flex>
         <Divider style={{ margin: '4px 0' }} />
         <Flex justify="center">
@@ -158,7 +172,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
           />
         </Flex>
         <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
-          选择头像
+          {t('account.selectAvatar')}
         </Text>
         <Flex wrap="wrap" gap={8} justify="center">
           {DEFAULT_AVATARS.map((avatar) => (
@@ -177,13 +191,13 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
         </Flex>
         <Divider style={{ margin: '4px 0' }} />
         <Input
-          placeholder="输入账户名称"
+          placeholder={t('account.namePlaceholder')}
           value={editName}
           onChange={(e) => setEditName(e.target.value)}
           onPressEnter={handleSaveEdit}
         />
         <Button type="primary" block onClick={handleSaveEdit} loading={switching}>
-          保存
+          {t('common.save')}
         </Button>
       </Flex>
     )
@@ -202,18 +216,18 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
               setNewAccountName('')
             }}
           />
-          <Text strong>新建账户</Text>
+          <Text strong>{t('account.create')}</Text>
         </Flex>
         <Divider style={{ margin: '4px 0' }} />
         <Input
-          placeholder="输入账户名称"
+          placeholder={t('account.namePlaceholder')}
           value={newAccountName}
           onChange={(e) => setNewAccountName(e.target.value)}
           onPressEnter={handleCreateAccount}
           autoFocus
         />
         <Button type="primary" block onClick={handleCreateAccount} loading={switching}>
-          创建并切换
+          {t('account.createSwitch')}
         </Button>
       </Flex>
     )
@@ -229,7 +243,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
             icon={<ArrowLeftOutlined />}
             onClick={() => setShowAccountList(false)}
           />
-          <Text strong>选择账户</Text>
+          <Text strong>{t('account.select')}</Text>
         </Flex>
         <Divider style={{ margin: '4px 0' }} />
         <List
@@ -248,7 +262,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
                     icon={<avatarConfig.icon />}
                     style={{ backgroundColor: avatarConfig.color }}
                   />
-                  <Text>{account.name}</Text>
+                  <Text>{getAccountName(account)}</Text>
                   {account.id === currentAccountId && (
                     <CheckOutlined style={{ marginLeft: 'auto', color: '#1677ff' }} />
                   )}
@@ -259,7 +273,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
         />
         <Divider style={{ margin: '4px 0' }} />
         <Button type="dashed" icon={<PlusOutlined />} block onClick={() => setShowCreateForm(true)}>
-          新建账户
+          {t('account.create')}
         </Button>
       </Flex>
     )
@@ -298,9 +312,11 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
           )}
         </div>
         <Flex vertical>
-          <Text strong>{currentAccount?.name || '未知用户'}</Text>
+          <Text strong>
+            {currentAccount ? getAccountName(currentAccount) : t('account.unknown')}
+          </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {accounts.length} 个账户
+            {t('account.count', { count: accounts.length })}
           </Text>
         </Flex>
       </Flex>
@@ -312,7 +328,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
         style={{ justifyContent: 'flex-start' }}
         onClick={() => setShowAccountList(true)}
       >
-        切换账户
+        {t('account.switch')}
       </Button>
       <Button
         type="text"
@@ -323,7 +339,7 @@ export function UserProfileCard({ onClose }: UserProfileCardProps): React.JSX.El
         loading={switching}
         disabled={currentAccountId === getDefaultAccountId()}
       >
-        退出登录
+        {t('account.signOut')}
       </Button>
     </Flex>
   )

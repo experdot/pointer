@@ -1,3 +1,4 @@
+import { rendererI18n, t } from '@renderer/i18n'
 import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
@@ -11,7 +12,9 @@ import { getDirectTopicMessages } from '../../messageTraversal'
  */
 export const txtFormatPlugin: FormatPlugin = {
   id: 'txt',
-  name: 'Text',
+  get name(): string {
+    return t('common.text')
+  },
   extension: 'txt',
   mimeType: 'text/plain',
 
@@ -74,7 +77,7 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
 
   // Add topics outline if enabled
   if (metadata?.showTopicsOutline && topics && topics.length > 0) {
-    lines.push('目录')
+    lines.push(t('export.contents'))
     lines.push('='.repeat(50))
     lines.push('')
 
@@ -103,14 +106,18 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
 
   for (const message of messages) {
     const roleLabel =
-      message.role === 'user' ? '用户' : message.role === 'assistant' ? '助手' : '系统'
+      message.role === 'user'
+        ? t('roles.user')
+        : message.role === 'assistant'
+          ? t('roles.assistant')
+          : t('roles.system')
 
     // Build header
     let header = `[${roleLabel}]`
 
     if (metadata?.showTimestamp && message.createdAt) {
       const date = new Date(message.createdAt)
-      header += ` ${date.toLocaleString()}`
+      header += ` ${date.toLocaleString(rendererI18n.language)}`
     }
 
     if (metadata?.showModelName && message.llmId) {
@@ -127,16 +134,16 @@ function convertMessagesToText(content: ExtractedContent, options: ExportOptions
 
     // Add title if enabled
     if (metadata?.showMessageTitle && message.title) {
-      lines.push(`标题：${message.title}`)
+      lines.push(t('export.messageTitle', { v0: String(message.title) }))
     }
 
     lines.push('')
 
     // Add reasoning content if enabled
     if (metadata?.showReasoningContent && message.reasoning) {
-      lines.push('--- 思考过程 > 开始 ---')
+      lines.push(t('export.reasoningStart'))
       lines.push(message.reasoning)
-      lines.push('--- 思考过程 > 结束---')
+      lines.push(t('export.reasoningEnd'))
       lines.push('')
     }
 

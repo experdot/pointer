@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState } from 'react'
 import { Flex, Tooltip, Popover, Avatar } from 'antd'
 import { MessageOutlined, SearchOutlined, SettingOutlined, FolderOutlined } from '@ant-design/icons'
@@ -15,11 +16,25 @@ interface ActivityItem {
 }
 
 const activities: ActivityItem[] = [
-  { key: 'explorer', icon: <MessageOutlined />, title: '资源管理器' },
-  { key: 'search', icon: <SearchOutlined />, title: '搜索' }
+  {
+    key: 'explorer',
+    icon: <MessageOutlined />,
+    get title(): string {
+      return t('layout.explorer')
+    }
+  },
+  {
+    key: 'search',
+    icon: <SearchOutlined />,
+    get title(): string {
+      return t('search.title')
+    }
+  }
 ]
 
 export function ActivityBar(): React.JSX.Element {
+  useI18n()
+
   const { activePanel, sidebarVisible, setActivePanel } = useLayoutStore()
   const { accounts, currentAccountId } = useAccountStore()
   const currentAccount = accounts.find((a) => a.id === currentAccountId)
@@ -52,14 +67,18 @@ export function ActivityBar(): React.JSX.Element {
           onOpenChange={setWorkspacePopoverOpen}
           destroyOnHidden
         >
-          <Tooltip title="工作区" placement="right">
-            <button aria-label="工作区" className="activity-bar-item">
+          <Tooltip title={t('workspace.title')} placement="right">
+            <button aria-label={t('workspace.title')} className="activity-bar-item">
               <FolderOutlined />
             </button>
           </Tooltip>
         </Popover>
-        <Tooltip title="设置" placement="right">
-          <button aria-label="设置" className="activity-bar-item" onClick={() => openSettings()}>
+        <Tooltip title={t('settings.title')} placement="right">
+          <button
+            aria-label={t('settings.title')}
+            className="activity-bar-item"
+            onClick={() => openSettings()}
+          >
             <SettingOutlined />
           </button>
         </Tooltip>
@@ -72,7 +91,7 @@ export function ActivityBar(): React.JSX.Element {
           onOpenChange={setUserPopoverOpen}
           destroyOnHidden
         >
-          <button aria-label="账户" className="activity-bar-item activity-bar-avatar">
+          <button aria-label={t('account.title')} className="activity-bar-item activity-bar-avatar">
             <Avatar
               size={28}
               icon={<avatarConfig.icon />}

@@ -5,6 +5,8 @@
  * 协议差异全部收敛在本文件，ChatEngine 只面对统一接口。
  */
 
+import { msg } from '@shared/i18n/message'
+
 import { createParser } from 'eventsource-parser'
 import type { MessageRole, ModelParameters, ProviderConnection } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
@@ -89,7 +91,7 @@ export async function streamChat(
 
   const reader = response.body?.getReader()
   if (!reader) {
-    throw new RuntimeError('ai.no-body', '响应缺少可读流')
+    throw new RuntimeError('ai.no-body', msg('errors.ai.noBody'))
   }
 
   let content = ''

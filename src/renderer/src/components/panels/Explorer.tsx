@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useEffect, useCallback } from 'react'
 import { App, Flex, Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
@@ -25,7 +26,7 @@ import { getStandardDropdownProps } from '../../utils/shortcutPresentation'
 import { MoveToFolderModal } from './MoveToFolderModal'
 import { MoveConflictModal, type MoveConflictInfo } from './MoveConflictModal'
 import type { Page, Folder } from '@renderer/types/shared'
-import { DEFAULT_FOLDER_NAME, type TreeMove } from '@shared/domain'
+import type { TreeMove } from '@shared/domain'
 import { RuntimeError, type TreeMoveConflict } from '@shared/contracts'
 import { errorMessage } from '../../runtime/client'
 import { resolveFolderCreationTarget, resolvePageCreationTarget } from '../../utils/creationTarget'
@@ -39,6 +40,8 @@ function pageName(page: Page): string {
 }
 
 export function Explorer(): React.JSX.Element {
+  useI18n()
+
   const {
     pages,
     folders,
@@ -158,7 +161,7 @@ export function Explorer(): React.JSX.Element {
   const handleBatchDelete = (): void => {
     if (checkedKeys.length === 0) return
     showDeleteConfirm({
-      title: `删除 ${checkedKeys.length} 个项目`,
+      title: t('common.deleteItems', { count: checkedKeys.length }),
       onOk: async () => {
         const pageIds = checkedKeys.filter((key) => pages.some((p) => p.id === key))
         const folderIds = checkedKeys.filter((key) => folders.some((f) => f.id === key))
@@ -197,7 +200,7 @@ export function Explorer(): React.JSX.Element {
     (page: Page): MenuProps['items'] => [
       {
         key: 'star',
-        label: page.starred ? '取消星标' : '标记为星标',
+        label: page.starred ? t('common.unstar') : t('common.markStarred'),
         icon: page.starred ? <StarFilled /> : <StarOutlined />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
@@ -214,7 +217,7 @@ export function Explorer(): React.JSX.Element {
     (page: Page): MenuProps['items'] => [
       {
         key: 'move',
-        label: '移动至...',
+        label: t('tree.moveTo'),
         icon: <DragOutlined />,
         disabled: folders.length === 0,
         onClick: ({ domEvent }) => {
@@ -242,7 +245,7 @@ export function Explorer(): React.JSX.Element {
     (folder: Folder): MenuProps['items'] => [
       {
         key: 'move',
-        label: '移动至...',
+        label: t('tree.moveTo'),
         icon: <DragOutlined />,
         disabled: folders.length === 0,
         onClick: ({ domEvent }) => {
@@ -258,7 +261,7 @@ export function Explorer(): React.JSX.Element {
       { type: 'divider' },
       {
         key: 'search',
-        label: '在文件夹中查找...',
+        label: t('tree.findInFolder'),
         icon: <SearchOutlined />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
@@ -323,8 +326,8 @@ export function Explorer(): React.JSX.Element {
   }, [pendingMoveOperation, moveNode, message])
 
   const menuItems: MenuProps['items'] = [
-    { key: 'folder', label: DEFAULT_FOLDER_NAME, icon: <FolderOutlined /> },
-    { key: 'multiSelect', label: '多选删除', icon: <CheckSquareOutlined /> }
+    { key: 'folder', label: t('tree.newFolder'), icon: <FolderOutlined /> },
+    { key: 'multiSelect', label: t('common.multiDelete'), icon: <CheckSquareOutlined /> }
   ]
 
   const onMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -345,13 +348,13 @@ export function Explorer(): React.JSX.Element {
               onClick={handleSelectAll}
               disabled={allKeys.length === 0}
             >
-              {isAllSelected ? '取消全选' : '全选'}
+              {isAllSelected ? t('common.deselectAll') : t('common.selectAll')}
             </Button>
             <Button danger onClick={handleBatchDelete} disabled={checkedKeys.length === 0}>
-              删除 ({checkedKeys.length})
+              {t('common.deleteCount', { count: checkedKeys.length })}
             </Button>
             <Button type="text" onClick={handleToggleMultiSelect}>
-              取消
+              {t('common.cancel')}
             </Button>
           </>
         ) : (
@@ -361,7 +364,7 @@ export function Explorer(): React.JSX.Element {
             {...getStandardDropdownProps({ items: menuItems, onClick: onMenuClick })}
             onClick={handleCreatePage}
           >
-            <PlusOutlined /> 新建对话
+            <PlusOutlined /> {t('chat.newConversation')}
           </Dropdown.Button>
         )}
       </Flex>
@@ -385,12 +388,12 @@ export function Explorer(): React.JSX.Element {
         onGenerateItemName={handleGenerateItemName}
         onCreateItemInFolder={handleCreatePageInFolder}
         onCreateSubFolder={handleCreateSubFolder}
-        createItemLabel="新建对话"
-        createFolderLabel={DEFAULT_FOLDER_NAME}
+        createItemLabel={t('chat.newConversation')}
+        createFolderLabel={t('tree.newFolder')}
         getItemLeadingMenuItems={getItemLeadingMenuItems}
         getItemMenuItems={getItemMenuItems}
         getFolderMenuItems={getFolderMenuItems}
-        emptyText={isEmpty ? '暂无对话' : undefined}
+        emptyText={isEmpty ? t('tree.noConversations') : undefined}
         className="explorer-tree"
         checkable={multiSelect}
         checkedKeys={checkedKeys}

@@ -1,3 +1,4 @@
+import { rendererI18n, t } from '@renderer/i18n'
 import { parseMarkdownTable } from '../../parseMarkdownTable'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
 import { useSettingsStore } from '../../../../stores/settingsStore'
@@ -28,22 +29,25 @@ export const htmlFormatPlugin: FormatPlugin = {
         break
 
       case 'text':
-        html = wrapInHtml(escapeHtml(content.rawContent).replace(/\n/g, '<br>'), 'Text Export')
+        html = wrapInHtml(
+          escapeHtml(content.rawContent).replace(/\n/g, '<br>'),
+          t('export.textTitle')
+        )
         break
 
       case 'code':
         html = wrapInHtml(
           `<pre><code class="language-${escapeHtml(content.language || 'text')}">${escapeHtml(content.rawContent)}</code></pre>`,
-          'Code Export'
+          t('export.codeTitle')
         )
         break
 
       case 'table':
-        html = wrapInHtml(markdownTableToHtml(content.rawContent), 'Table Export')
+        html = wrapInHtml(markdownTableToHtml(content.rawContent), t('export.tableTitle'))
         break
 
       default:
-        html = wrapInHtml(escapeHtml(content.rawContent), 'Export')
+        html = wrapInHtml(escapeHtml(content.rawContent), t('common.export'))
     }
 
     return {
@@ -112,7 +116,7 @@ function markdownTableToHtml(markdown: string): string {
 function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions): string {
   const { messages } = content
   if (!messages || messages.length === 0) {
-    return wrapInHtml(`<pre>${escapeHtml(content.rawContent)}</pre>`, 'Export')
+    return wrapInHtml(`<pre>${escapeHtml(content.rawContent)}</pre>`, t('common.export'))
   }
 
   const { metadata } = options
@@ -128,7 +132,7 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
 
   if (metadata?.showTopicsOutline && content.topics?.length) {
     const starts = new Set(content.topics.map((topic) => topic.startMessageId))
-    parts.push('<nav aria-label="目录"><h1>目录</h1><ul>')
+    parts.push(t('export.htmlContents'))
     for (const topic of content.topics) {
       const titles = getDirectTopicMessages(
         messages,
@@ -146,7 +150,11 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
 
   for (const message of messages) {
     const roleLabel =
-      message.role === 'user' ? 'User' : message.role === 'assistant' ? 'Assistant' : 'System'
+      message.role === 'user'
+        ? t('roles.user')
+        : message.role === 'assistant'
+          ? t('roles.assistant')
+          : t('roles.system')
     const bgColor =
       message.role === 'user' ? '#e3f2fd' : message.role === 'assistant' ? '#f5f5f5' : '#fff3e0'
 
@@ -156,7 +164,7 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
     msgHtml += `<div style="font-weight: bold; margin-bottom: 8px;">${roleLabel}`
     if (metadata?.showTimestamp && message.createdAt) {
       const date = new Date(message.createdAt)
-      msgHtml += ` <span style="font-weight: normal; color: #666; font-size: 0.9em;">${date.toLocaleString()}</span>`
+      msgHtml += ` <span style="font-weight: normal; color: #666; font-size: 0.9em;">${date.toLocaleString(rendererI18n.language)}</span>`
     }
     if (metadata?.showModelName && message.llmId) {
       const modelName = modelNameMap.get(message.llmId) || message.llmId
@@ -176,7 +184,7 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
     // Reasoning
     if (metadata?.showReasoningContent && message.reasoning) {
       msgHtml += `<details style="margin-bottom: 8px; background: #fff; padding: 8px; border-radius: 4px;">
-        <summary style="cursor: pointer; font-weight: 500;">Reasoning</summary>
+        <summary style="cursor: pointer; font-weight: 500;">${escapeHtml(t('chat.reasoning'))}</summary>
         <div style="margin-top: 8px; white-space: pre-wrap;">${escapeHtml(message.reasoning)}</div>
       </details>`
     }
@@ -188,7 +196,7 @@ function convertMessagesToHtml(content: ExtractedContent, options: ExportOptions
     parts.push(msgHtml)
   }
 
-  return wrapInHtml(parts.join('\n'), 'Messages Export')
+  return wrapInHtml(parts.join('\n'), t('export.messagesTitle'))
 }
 
 /**
@@ -206,7 +214,7 @@ function simpleMarkdownToHtml(markdown: string): string {
  */
 function wrapInHtml(content: string, title: string): string {
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${rendererI18n.language}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">

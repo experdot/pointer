@@ -130,7 +130,7 @@ test('真实关闭保存失败可取消，重试保存后关闭并恢复刚编�
       return { response: fault.response, checkboxChecked: false }
     }
   })
-  await desktop.page.getByLabel('API Key').fill('edited-before-close')
+  await desktop.page.getByLabel('API 密钥').fill('edited-before-close')
   await desktop.app.evaluate(({ app }) => {
     app.quit()
   })
@@ -141,7 +141,7 @@ test('真实关闭保存失败可取消，重试保存后关闭并恢复刚编�
       )
     )
     .toBe(1)
-  await expect(desktop.page.getByLabel('API Key')).toHaveValue('edited-before-close')
+  await expect(desktop.page.getByLabel('API 密钥')).toHaveValue('edited-before-close')
   await desktop.page.evaluate(async () => {
     const { scopeId } = await window.runtime.query('session.get', undefined)
     await window.runtime.command('page.create', { name: '取消关闭后可继续工作' }, scopeId)

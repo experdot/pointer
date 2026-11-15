@@ -1,3 +1,4 @@
+import { useI18n } from '@renderer/i18n'
 import { compareNodes } from '@shared/domain'
 import React, { useState, useMemo } from 'react'
 import { Modal, Tree } from 'antd'
@@ -35,6 +36,8 @@ export function MoveToFolderModal({
   excludeFolderIds = [],
   currentFolderId
 }: MoveToFolderModalProps): React.JSX.Element {
+  const { t } = useI18n()
+
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined)
 
   // 构建文件夹树
@@ -77,14 +80,14 @@ export function MoveToFolderModal({
     // 根节点
     const rootNode: TreeNode = {
       key: ROOT_KEY,
-      title: '根目录',
+      title: t('tree.root'),
       icon: <HomeOutlined />,
       disabled: currentFolderId === undefined, // 已在根目录则禁用
       children: buildTree(undefined)
     }
 
     return [rootNode]
-  }, [folders, excludeFolderIds, currentFolderId])
+  }, [folders, excludeFolderIds, currentFolderId, t])
 
   const handleSelect: TreeProps['onSelect'] = (keys) => {
     if (keys.length > 0) {
@@ -107,13 +110,13 @@ export function MoveToFolderModal({
 
   return (
     <Modal
-      title="移动至..."
+      title={t('tree.moveTo')}
       open={open}
       onCancel={handleClose}
       onOk={handleConfirm}
-      okText="移动"
+      okText={t('tree.move')}
       okButtonProps={{ disabled: selectedKey === undefined }}
-      cancelText="取消"
+      cancelText={t('common.cancel')}
       width={360}
     >
       <Tree

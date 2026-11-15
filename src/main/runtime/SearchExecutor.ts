@@ -1,3 +1,4 @@
+import { msg, type LocalizedMessage } from '@shared/i18n/message'
 import type { SearchMatchOptions } from '@shared/domain'
 import { RuntimeError } from '@shared/contracts'
 import createSearchWorker from './search.worker?nodeWorker'
@@ -18,12 +19,12 @@ export class SearchExecutor {
   ) {}
 
   async run(texts: string[], query: string, options: SearchMatchOptions): Promise<TextRanges[]> {
-    if (this.disposed) throw new RuntimeError('search.closed', '搜索已关闭')
+    if (this.disposed) throw new RuntimeError('search.closed', msg('errors.search.closed'))
     const bytes = texts.reduce((sum, text) => sum + text.length * 2, query.length * 2)
     if (bytes > this.limits.maxBytes)
-      throw new RuntimeError('search.input-limit', '搜索内容过大，请缩小搜索范围')
+      throw new RuntimeError('search.input-limit', msg('errors.search.inputTooLarge'))
     while (this.jobs.size >= 2) await this.jobs.values().next().value!.cancel()
-    if (this.disposed) throw new RuntimeError('search.closed', '搜索已关闭')
+    if (this.disposed) throw new RuntimeError('search.closed', msg('errors.search.closed'))
     const worker = createSearchWorker({
       workerData: { texts, query, options, maxResults: this.limits.maxResults } satisfies SearchWork
     })
@@ -35,7 +36,10 @@ export class SearchExecutor {
     const job: Job = {
       finished,
       cancel: async () => {
-        await settle(undefined, new RuntimeError('search.superseded', '搜索已取消'))
+        await settle(
+          undefined,
+          new RuntimeError('search.superseded', msg('errors.search.canceled'))
+        )
         await finished
       }
     }
@@ -60,20 +64,25 @@ export class SearchExecutor {
         }
       }
       const timeout = (): void => {
-        void settle(
-          undefined,
-          new RuntimeError('search.timeout', '搜索耗时过长，请简化正则表达式或缩小范围')
-        )
+        void settle(undefined, new RuntimeError('search.timeout', msg('errors.search.timeout')))
       }
       timer = setTimeout(timeout, 5000)
       worker.on(
         'message',
-        (message: { ready?: boolean; result?: TextRanges[]; error?: string }) => {
+        (message: {
+          ready?: boolean
+          result?: TextRanges[]
+          error?: string
+          localized?: LocalizedMessage
+        }) => {
           if (message.ready) {
             clearTimeout(timer)
             timer = setTimeout(timeout, this.limits.timeoutMs)
           } else if (message.error)
-            void settle(undefined, new RuntimeError('search.result-limit', message.error))
+            void settle(
+              undefined,
+              new RuntimeError('search.result-limit', message.localized ?? message.error)
+            )
           else void settle(message.result)
         }
       )
@@ -81,7 +90,10 @@ export class SearchExecutor {
         void settle(undefined, error)
       })
       worker.on('exit', () => {
-        void settle(undefined, new RuntimeError('search.worker-exited', '搜索线程提前退出'))
+        void settle(
+          undefined,
+          new RuntimeError('search.worker-exited', msg('errors.search.workerExited'))
+        )
       })
     })
     this.jobs.add(job)

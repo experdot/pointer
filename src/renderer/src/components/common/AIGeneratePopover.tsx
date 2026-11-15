@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { Popover, Input, Button, type PopoverProps } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
@@ -29,11 +30,21 @@ interface AIGeneratePopoverProps {
 }
 
 const MODE_PLACEHOLDERS: Record<GenerateMode, string> = {
-  title: '额外要求（可选），如：使用英文、不超过5个字...',
-  topic: '额外要求（可选），如：突出关键词、使用动词开头...',
-  'batch-title': '额外要求（可选），将应用于所有消息...',
-  'smart-segment': '额外要求（可选），如：更细粒度分段、合并相似话题...',
-  'session-title': '额外要求（可选），如：简洁概括、突出主题...'
+  get title(): string {
+    return t('ai.requirements.title')
+  },
+  get topic(): string {
+    return t('ai.requirements.topic')
+  },
+  get 'batch-title'() {
+    return t('ai.requirements.all')
+  },
+  get 'smart-segment'() {
+    return t('ai.requirements.segment')
+  },
+  get 'session-title'() {
+    return t('ai.requirements.session')
+  }
 }
 
 export function AIGeneratePopover({
@@ -45,6 +56,8 @@ export function AIGeneratePopover({
   placement = 'bottomLeft',
   getPopupContainer
 }: AIGeneratePopoverProps): React.JSX.Element {
+  useI18n()
+
   const [extraRequirements, setExtraRequirements] = useState('')
   const [llmId, setLlmId] = useState<string | undefined>(undefined)
   const [modelConfigId, setModelConfigId] = useState<string | undefined>(undefined)
@@ -104,20 +117,20 @@ export function AIGeneratePopover({
     if (!hasLLMConfig) {
       return (
         <span className="ai-generate-popover__no-config-text">
-          未配置模型，请先
+          {t('ai.notConfigured')}
           <a
             onClick={() => {
               onOpenChange(false)
               openSettings('llm')
             }}
           >
-            配置 LLM
+            {t('ai.configure')}
           </a>
         </span>
       )
     }
     if (!hasDefaultLLM) {
-      return <span className="ai-generate-popover__no-config-text">请先在下方选择一个模型</span>
+      return <span className="ai-generate-popover__no-config-text">{t('ai.selectFirst')}</span>
     }
     return null
   }
@@ -154,7 +167,7 @@ export function AIGeneratePopover({
           loading={loading}
           disabled={needsOverlay}
         >
-          生成
+          {t('ai.generate')}
         </Button>
       </div>
     </div>

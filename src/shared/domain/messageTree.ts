@@ -4,6 +4,8 @@
  * 所有变更函数返回新的 Conversation，不修改入参。
  */
 
+import { describe } from '@shared/i18n/message'
+
 import type { Diagnostic } from './common'
 import type { ChatMessage, Conversation, MessageDraft, Topic } from './chat'
 
@@ -176,7 +178,7 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
       if (seen.has(message.id)) {
         diagnostics.push({
           code: 'chat.duplicate-id',
-          message: `存在重复的消息 id：${message.id}`,
+          ...describe('errors.message.duplicateId', { v0: String(message.id) }),
           entityId: message.id
         })
       }
@@ -188,14 +190,14 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
     if (message.parentMessageId && !index.byId.has(message.parentMessageId)) {
       diagnostics.push({
         code: 'chat.missing-parent',
-        message: `消息 ${message.id} 的父消息不存在`,
+        ...describe('errors.message.parentMissing', { v0: String(message.id) }),
         entityId: message.id
       })
     }
     if (cyclic.get(message.id)) {
       diagnostics.push({
         code: 'chat.cycle',
-        message: `消息树存在循环引用：${message.id}`,
+        ...describe('errors.message.cycle', { v0: String(message.id) }),
         entityId: message.id
       })
     }
@@ -207,7 +209,10 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
       if (seen.has(sibling.branchIndex)) {
         diagnostics.push({
           code: 'chat.branch-index-conflict',
-          message: `父节点 ${parentId ?? '(root)'} 下存在重复分支序号 ${sibling.branchIndex}`,
+          ...describe('errors.message.duplicateBranch', {
+            v0: String(parentId ?? '(root)'),
+            v1: String(sibling.branchIndex)
+          }),
           entityId: sibling.id
         })
       }
@@ -218,7 +223,7 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
   if (conversation.leafMessageId && !index.byId.has(conversation.leafMessageId)) {
     diagnostics.push({
       code: 'chat.leaf-not-found',
-      message: `leafMessageId 指向不存在的消息：${conversation.leafMessageId}`,
+      ...describe('errors.message.leafMissing', { v0: String(conversation.leafMessageId) }),
       entityId: conversation.leafMessageId
     })
   }
@@ -226,7 +231,9 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
   if (conversation.selectedMessageId && !index.byId.has(conversation.selectedMessageId)) {
     diagnostics.push({
       code: 'chat.selected-not-found',
-      message: `selectedMessageId 指向不存在的消息：${conversation.selectedMessageId}`,
+      ...describe('errors.message.selectionMissing', {
+        v0: String(conversation.selectedMessageId)
+      }),
       entityId: conversation.selectedMessageId
     })
   }
@@ -236,14 +243,14 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
     if (!index.byId.has(topic.startMessageId)) {
       diagnostics.push({
         code: 'topic.start-not-found',
-        message: `Topic「${topic.name}」的起始消息不存在`,
+        ...describe('errors.topic.startMissing', { v0: String(topic.name) }),
         entityId: topic.id
       })
     }
     if (topicStartIds.has(topic.startMessageId)) {
       diagnostics.push({
         code: 'topic.duplicate-start',
-        message: `存在多个 Topic 以同一消息起始：${topic.startMessageId}`,
+        ...describe('errors.topic.duplicateStart', { v0: String(topic.startMessageId) }),
         entityId: topic.id
       })
     }
@@ -253,13 +260,13 @@ export function validateConversation(conversation: Conversation): Diagnostic[] {
       if (!index.byId.has(topic.endMessageId)) {
         diagnostics.push({
           code: 'topic.end-not-found',
-          message: `Topic「${topic.name}」的结束消息不存在`,
+          ...describe('errors.topic.endMissing', { v0: String(topic.name) }),
           entityId: topic.id
         })
       } else if (!isDescendantOf(index, topic.startMessageId, topic.endMessageId)) {
         diagnostics.push({
           code: 'topic.range-not-on-path',
-          message: `Topic「${topic.name}」的结束消息不在起始消息的路径上`,
+          ...describe('errors.topic.invalidPath', { v0: String(topic.name) }),
           entityId: topic.id
         })
       }

@@ -1,3 +1,4 @@
+import { msg, LocalizedError } from '@shared/i18n/message'
 import { randomUUID } from 'node:crypto'
 import { lstat, readdir, rmdir, unlink } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
@@ -30,7 +31,7 @@ export class WorkspaceTransaction {
     private readonly root: string,
     id: string = randomUUID()
   ) {
-    if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error('非法事务标识')
+    if (!/^[a-f0-9-]{36}$/.test(id)) throw new LocalizedError(msg('errors.transaction.invalidId'))
     this.directory = join(root, '.pointer', 'transactions', id)
     assertWithin(root, this.directory)
   }
@@ -71,7 +72,7 @@ export class WorkspaceTransaction {
       throw error
     })
     if (info && (kind === 'file' ? !info.isFile() : !info.isDirectory()))
-      throw new RuntimeError('workspace.invalid-path', '文件类型不符合预期')
+      throw new RuntimeError('workspace.invalid-path', msg('errors.transaction.fileType'))
     let entry: Entry
     if (kind === 'directory') entry = { path: key, kind, existed: info !== null }
     else {
@@ -107,7 +108,7 @@ export class WorkspaceTransaction {
         const backup = join(this.directory, entry.backup)
         await checkPath(this.root, backup)
         const bytes = await readBinary(backup)
-        if (bytes === null) throw new Error('恢复备份缺失，请保留工作区以便修复')
+        if (bytes === null) throw new LocalizedError(msg('errors.transaction.missingBackup'))
         originals.set(entry.path, bytes)
       }
     }
@@ -138,22 +139,23 @@ export class WorkspaceTransaction {
       typeof this.manifest.committed !== 'boolean' ||
       !Array.isArray(this.manifest.entries)
     )
-      throw new Error('不支持的工作区恢复记录')
+      throw new LocalizedError(msg('errors.transaction.unsupportedRecord'))
     const seen = new Set<string>()
     for (const entry of this.manifest.entries) {
-      if (!entry || typeof entry.path !== 'string') throw new Error('损坏的恢复路径')
+      if (!entry || typeof entry.path !== 'string')
+        throw new LocalizedError(msg('errors.transaction.invalidPath'))
       const path = resolve(this.root, entry.path)
       assertWithin(this.root, path)
       const transactionRoot = join(this.root, '.pointer', 'transactions')
       if (path === transactionRoot || path.startsWith(`${transactionRoot}${sep}`))
-        throw new Error('恢复记录不能修改事务目录')
-      if (seen.has(path)) throw new Error('重复的恢复路径')
+        throw new LocalizedError(msg('errors.transaction.selfModification'))
+      if (seen.has(path)) throw new LocalizedError(msg('errors.transaction.duplicatePath'))
       seen.add(path)
       if (entry.kind === 'file') {
         if (entry.backup !== null && !/^\d+\.bin$/.test(entry.backup))
-          throw new Error('损坏的备份路径')
+          throw new LocalizedError(msg('errors.transaction.invalidBackupPath'))
       } else if (entry.kind !== 'directory' || typeof entry.existed !== 'boolean') {
-        throw new Error('损坏的恢复记录')
+        throw new LocalizedError(msg('errors.transaction.invalidRecord'))
       }
     }
   }
@@ -167,7 +169,7 @@ export class WorkspaceTransaction {
       }
     )
     for (const entry of entries) {
-      if (!entry.isFile()) throw new Error('事务目录中有未知内容，已保留')
+      if (!entry.isFile()) throw new LocalizedError(msg('errors.transaction.unknownFiles'))
       await unlink(join(this.directory, entry.name))
     }
     await rmdir(this.directory).catch(ignoreMissing)
@@ -183,7 +185,7 @@ async function checkPath(root: string, target: string): Promise<void> {
       if (error.code === 'ENOENT') return null
       throw error
     })
-    if (info?.isSymbolicLink()) throw new Error('恢复路径包含符号链接')
+    if (info?.isSymbolicLink()) throw new LocalizedError(msg('errors.transaction.symlink'))
     path = dirname(path)
     if (path === resolve(root)) return
   }

@@ -8,6 +8,7 @@
 import type { RuntimeCommandName, RuntimeCommandPayload, RuntimeCommandResult } from './commands'
 import type { RuntimeEvent } from './events'
 import type { RuntimeQueryName, RuntimeQueryPayload, RuntimeQueryResult } from './queries'
+import { LocalizedError, LocalizedAggregateError, type LocalizedMessage } from '../i18n/message'
 
 export interface RuntimePort {
   query<K extends RuntimeQueryName>(
@@ -56,16 +57,17 @@ interface RuntimeFailure {
   code: string
   message: string
   details?: unknown
+  localized?: LocalizedMessage
 }
 
 export type RuntimeResponse<T = unknown> = RuntimeSuccess<T> | RuntimeFailure
 
 /** 内核抛出的领域错误，携带稳定错误码 */
-export class RuntimeError extends Error {
+export class RuntimeError extends LocalizedError {
   readonly code: string
   readonly details?: unknown
 
-  constructor(code: string, message: string, details?: unknown) {
+  constructor(code: string, message: string | LocalizedMessage, details?: unknown) {
     super(message)
     this.name = 'RuntimeError'
     this.code = code
@@ -75,10 +77,24 @@ export class RuntimeError extends Error {
 
 export function toFailure(error: unknown): RuntimeFailure {
   if (error instanceof RuntimeError) {
-    return { ok: false, code: error.code, message: error.message, details: error.details }
+    return {
+      ok: false,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      ...(error.localized ? { localized: error.localized } : {})
+    }
   }
   if (error instanceof Error) {
-    return { ok: false, code: 'runtime.error', message: error.message }
+    return {
+      ok: false,
+      code: 'runtime.error',
+      message: error.message,
+      ...((error instanceof LocalizedError || error instanceof LocalizedAggregateError) &&
+      error.localized
+        ? { localized: error.localized }
+        : {})
+    }
   }
   return { ok: false, code: 'runtime.error', message: String(error) }
 }

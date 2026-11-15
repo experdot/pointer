@@ -1,3 +1,4 @@
+import { t } from '@renderer/i18n'
 import { parseMarkdownTable } from '../../parseMarkdownTable'
 import { encodeCsvRows } from '../../csv'
 import type { FormatPlugin, ExtractedContent, ExportOptions, ConvertResult } from '../../types'
@@ -17,7 +18,7 @@ export const csvFormatPlugin: FormatPlugin = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async convert(content: ExtractedContent, _: ExportOptions): Promise<ConvertResult> {
     if (content.contentType !== 'table') {
-      throw new Error('CSV format only supports table content')
+      throw new Error(t('export.csvOnlyTable'))
     }
 
     const csv = markdownTableToCsv(content.rawContent)

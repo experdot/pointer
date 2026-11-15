@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Modal } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
@@ -22,33 +23,37 @@ export function MoveConflictModal({
   onCancel,
   onAutoRename
 }: MoveConflictModalProps): React.JSX.Element {
-  const typeLabel = conflict?.type === 'folder' ? '文件夹' : '对话'
+  useI18n()
 
   return (
     <Modal
       title={
         <span>
           <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: 8 }} />
-          名称冲突
+          {t('tree.nameConflict')}
         </span>
       }
       open={open}
       onCancel={onCancel}
-      okText="自动重命名"
-      cancelText="取消"
+      okText={t('tree.autoRename')}
+      cancelText={t('common.cancel')}
       onOk={onAutoRename}
       width={400}
     >
       <p>
-        目标位置已存在同名{typeLabel} &ldquo;{conflict?.name}&rdquo;。
+        {t(conflict?.type === 'folder' ? 'tree.folderConflict' : 'tree.pageConflict', {
+          name: conflict?.name ?? ''
+        })}
       </p>
-      <p>请选择：</p>
+      <p>{t('tree.chooseAction')}</p>
       <ul style={{ paddingLeft: 20, margin: '8px 0' }}>
         <li>
-          <strong>自动重命名</strong>：自动添加编号后缀
+          <strong>{t('tree.autoRename')}</strong>
+          {t('tree.autoRenameDescription')}
         </li>
         <li>
-          <strong>取消</strong>：放弃移动操作
+          <strong>{t('common.cancel')}</strong>
+          {t('tree.cancelMoveDescription')}
         </li>
       </ul>
     </Modal>

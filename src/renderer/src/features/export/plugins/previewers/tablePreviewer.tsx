@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import type { FC } from 'react'
 import { Table } from 'antd'
 import { useMemo } from 'react'
@@ -11,13 +12,15 @@ import { parseCsv } from '../../parseCsv'
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const TablePreviewerComponent: FC<PreviewerProps> = ({ result }) => {
+  useI18n()
+
   const content = typeof result.content === 'string' ? result.content : ''
 
   const { headers, rows } = useMemo(() => parseCsv(content), [content])
 
   // Build Ant Design Table columns and data
   const columns = headers.map((header, index) => ({
-    title: header || `Column ${index + 1}`,
+    title: header || t('table.columnName', { index: index + 1 }),
     dataIndex: `col${index}`,
     key: `col${index}`,
     ellipsis: true
@@ -42,7 +45,7 @@ const TablePreviewerComponent: FC<PreviewerProps> = ({ result }) => {
           color: 'var(--ant-color-text-secondary)'
         }}
       >
-        无法解析表格内容
+        {t('table.parseFailed')}
       </div>
     )
   }

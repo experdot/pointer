@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   createWindow: vi.fn(),
   createRuntime: vi.fn(),
   setupRuntimeIpc: vi.fn(),
+  installApplicationMenu: vi.fn(),
   runtime: {
     init: vi.fn(),
     dispose: vi.fn(),
-    setUpdater: vi.fn()
+    setUpdater: vi.fn(),
+    subscribe: vi.fn()
   }
 }))
 
@@ -18,6 +20,7 @@ vi.mock('electron', () => ({
   app: {
     whenReady: mocks.ready,
     getPath: () => 'test-data',
+    getPreferredSystemLanguages: () => ['zh-CN'],
     on: vi.fn(),
     exit: mocks.exit
   },
@@ -33,6 +36,7 @@ vi.mock('./ipc/windowIpc', () => ({ setupWindowIpc: vi.fn() }))
 vi.mock('./ipc/runtimeIpc', () => ({ setupRuntimeIpc: mocks.setupRuntimeIpc }))
 vi.mock('./runtimeHost', () => ({ createRuntimeHost: vi.fn() }))
 vi.mock('./window', () => ({ createWindow: mocks.createWindow }))
+vi.mock('./applicationMenu', () => ({ installApplicationMenu: mocks.installApplicationMenu }))
 vi.mock('./runtime', () => ({
   RuntimeCore: vi.fn(function (options: unknown) {
     mocks.createRuntime(options)
@@ -57,11 +61,22 @@ describe('主进程启动', () => {
     await vi.waitFor(() => expect(mocks.createWindow).toHaveBeenCalledOnce())
     expect(mocks.createRuntime).toHaveBeenCalledWith({ appDataPath: 'test-data', host: undefined })
     expect(mocks.setupRuntimeIpc).toHaveBeenCalledWith(mocks.runtime)
+    expect(mocks.installApplicationMenu).toHaveBeenCalledOnce()
     expect(mocks.runtime.init.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.createWindow.mock.invocationCallOrder[0]
     )
     expect(mocks.dialog).not.toHaveBeenCalled()
     expect(mocks.exit).not.toHaveBeenCalled()
+  })
+
+  it('仅在语言事件到来时重建原生菜单', async () => {
+    await import('./index')
+    await vi.waitFor(() => expect(mocks.createWindow).toHaveBeenCalledOnce())
+    const listener = mocks.runtime.subscribe.mock.calls[0][0]
+    listener({ type: 'tree.changed' })
+    expect(mocks.installApplicationMenu).toHaveBeenCalledTimes(1)
+    listener({ type: 'app.locale.changed' })
+    expect(mocks.installApplicationMenu).toHaveBeenCalledTimes(2)
   })
 
   it.each(['settings.invalid-order-key', 'tree.invalid-order-key', 'page.parse-failed'])(
@@ -88,7 +103,7 @@ describe('主进程启动', () => {
     expect(mocks.createRuntime).not.toHaveBeenCalled()
     expect(mocks.runtime.dispose).not.toHaveBeenCalled()
     expect(mocks.dialog).toHaveBeenCalledWith(
-      'Pointer 启动失败',
+      'Pointer could not start',
       expect.stringContaining('Electron 初始化失败')
     )
     expect(mocks.createWindow).not.toHaveBeenCalled()

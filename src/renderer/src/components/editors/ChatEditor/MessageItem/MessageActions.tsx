@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Button, Tooltip, Popconfirm } from 'antd'
 import {
@@ -21,20 +22,22 @@ export const MessageActions = React.memo(function MessageActions({
   onContinue,
   onDelete
 }: MessageActionsProps): React.JSX.Element {
+  useI18n()
+
   return (
     <div className="message-item__actions">
-      <Tooltip title={copied ? '已复制' : '复制'}>
+      <Tooltip title={copied ? t('common.copied') : t('common.copy')}>
         <Button
-          aria-label={copied ? '已复制' : '复制'}
+          aria-label={copied ? t('common.copied') : t('common.copy')}
           type="text"
           size="small"
           icon={copied ? <CheckOutlined /> : <CopyOutlined />}
           onClick={onCopy}
         />
       </Tooltip>
-      <Tooltip title="编辑">
+      <Tooltip title={t('common.edit')}>
         <Button
-          aria-label="编辑"
+          aria-label={t('common.edit')}
           type="text"
           size="small"
           icon={<EditOutlined />}
@@ -42,9 +45,9 @@ export const MessageActions = React.memo(function MessageActions({
         />
       </Tooltip>
       {isAssistant && (
-        <Tooltip title="重试">
+        <Tooltip title={t('common.retry')}>
           <Button
-            aria-label="重试"
+            aria-label={t('common.retry')}
             type="text"
             size="small"
             icon={<ReloadOutlined />}
@@ -53,9 +56,9 @@ export const MessageActions = React.memo(function MessageActions({
         </Tooltip>
       )}
       {isUser && isLeaf && (
-        <Tooltip title="继续生成">
+        <Tooltip title={t('chat.continue')}>
           <Button
-            aria-label="继续生成"
+            aria-label={t('chat.continue')}
             type="text"
             size="small"
             icon={<ArrowDownOutlined />}
@@ -63,9 +66,19 @@ export const MessageActions = React.memo(function MessageActions({
           />
         </Tooltip>
       )}
-      <Popconfirm title="确定删除此消息？" onConfirm={onDelete} okText="删除" cancelText="取消">
-        <Tooltip title="删除">
-          <Button aria-label="删除" type="text" size="small" icon={<DeleteOutlined />} />
+      <Popconfirm
+        title={t('chat.deleteMessage')}
+        onConfirm={onDelete}
+        okText={t('common.delete')}
+        cancelText={t('common.cancel')}
+      >
+        <Tooltip title={t('common.delete')}>
+          <Button
+            aria-label={t('common.delete')}
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+          />
         </Tooltip>
       </Popconfirm>
     </div>

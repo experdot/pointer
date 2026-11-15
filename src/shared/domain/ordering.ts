@@ -1,3 +1,4 @@
+import { msg, LocalizedError, describe } from '@shared/i18n/message'
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing'
 import type { Diagnostic } from './common'
 
@@ -24,7 +25,7 @@ export function isOrderKey(value: unknown): value is string {
 }
 
 export function assertOrderKey(value: unknown): asserts value is string {
-  if (!isOrderKey(value)) throw new Error('无效的字符串排序键')
+  if (!isOrderKey(value)) throw new LocalizedError(msg('errors.order.invalid'))
 }
 
 export function orderKeysBetween(
@@ -34,8 +35,9 @@ export function orderKeysBetween(
 ): string[] {
   if (left !== null) assertOrderKey(left)
   if (right !== null) assertOrderKey(right)
-  if (left !== null && right !== null && left >= right) throw new Error('排序键边界必须严格递增')
-  if (!Number.isSafeInteger(count) || count < 0) throw new Error('排序键数量必须为非负整数')
+  if (left !== null && right !== null && left >= right)
+    throw new LocalizedError(msg('errors.order.bounds'))
+  if (!Number.isSafeInteger(count) || count < 0) throw new LocalizedError(msg('errors.order.count'))
   return generateNKeysBetween(left, right, count)
 }
 
@@ -57,7 +59,7 @@ export function validateOrderKeys(nodes: readonly OrderedNode[]): Diagnostic[] {
     if (!isOrderKey(node.orderKey)) {
       diagnostics.push({
         code: 'tree.invalid-order-key',
-        message: '节点缺少有效的字符串排序键',
+        ...describe('errors.order.nodeMissingKey'),
         entityId: node.id
       })
       continue
@@ -66,7 +68,7 @@ export function validateOrderKeys(nodes: readonly OrderedNode[]): Diagnostic[] {
     if (keys.has(node.orderKey))
       diagnostics.push({
         code: 'tree.duplicate-order-key',
-        message: '同级节点的排序键重复',
+        ...describe('errors.tree.duplicateOrder'),
         entityId: node.id
       })
     keys.add(node.orderKey)

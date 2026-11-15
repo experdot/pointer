@@ -10,11 +10,21 @@ import type { ChatMessage, Conversation, MessageDraft, Topic } from '@shared/dom
 import { emptyConversation } from '@shared/domain'
 import type { MessagePatch } from '@shared/contracts'
 import { command, query } from '../runtime/client'
+import type { LocalizedMessage } from '@shared/i18n/message'
 
 interface MessagesState {
   cache: Record<string, Conversation>
   snapshots: Record<string, Conversation>
-  live: Record<string, { pageId: string; requestId: string; message: ChatMessage; error?: string }>
+  live: Record<
+    string,
+    {
+      pageId: string
+      requestId: string
+      message: ChatMessage
+      error?: string
+      localized?: LocalizedMessage
+    }
+  >
   /** messageId -> 是否正在生成 */
   streaming: Record<string, boolean>
 }
@@ -26,7 +36,13 @@ interface MessagesActions {
   setConversation: (conversation: Conversation) => void
   upsertMessage: (pageId: string, message: ChatMessage, requestId?: string) => void
   finishRequest: (requestId: string) => void
-  saveFailed: (pageId: string, requestId: string, message: ChatMessage, error: string) => void
+  saveFailed: (
+    pageId: string,
+    requestId: string,
+    message: ChatMessage,
+    error: string,
+    localized?: LocalizedMessage
+  ) => void
   /** 批量追加流式增量（镜像层合并后一次性写入，避免每个分片都触发渲染） */
   applyDeltas: (entries: DeltaBatchEntry[]) => void
   setStreaming: (messageId: string, streaming: boolean) => void
@@ -181,10 +197,13 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       delete live[requestId]
       return { live, streaming }
     }),
-  saveFailed: (pageId, requestId, message, error) => {
+  saveFailed: (pageId, requestId, message, error, localized) => {
     get().upsertMessage(pageId, message, requestId)
     set((state) => ({
-      live: { ...state.live, [requestId]: { pageId, requestId, message, error } }
+      live: {
+        ...state.live,
+        [requestId]: { pageId, requestId, message, error, ...(localized ? { localized } : {}) }
+      }
     }))
     get().setStreaming(message.id, false)
   },

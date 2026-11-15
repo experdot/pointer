@@ -1,3 +1,4 @@
+import { msg } from '@shared/i18n/message'
 import { lstat, realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { RuntimeError } from '@shared/contracts'
@@ -13,13 +14,13 @@ export function assertSafeId(id: string): void {
     /[. ]$/.test(id) ||
     /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(id)
   )
-    throw new RuntimeError('runtime.invalid-id', '非法实体标识')
+    throw new RuntimeError('runtime.invalid-id', msg('errors.path.invalidId'))
 }
 
 export function assertWithin(root: string, target: string): void {
   const part = relative(resolve(root), resolve(target))
   if (!part || part === '..' || part.startsWith(`..${sep}`) || isAbsolute(part)) {
-    throw new RuntimeError('attachment.invalid-path', '路径超出允许的目录')
+    throw new RuntimeError('attachment.invalid-path', msg('errors.path.outsideRoot'))
   }
 }
 
@@ -51,7 +52,7 @@ export async function assertRegularPath(
       info.isSymbolicLink() ||
       (index === parts.length - 1 ? !info.isFile() : !info.isDirectory())
     ) {
-      throw new RuntimeError('attachment.invalid-path', '路径不是允许的普通文件')
+      throw new RuntimeError('attachment.invalid-path', msg('errors.path.notRegularFile'))
     }
     assertWithin(realRoot, await realpath(current))
   }

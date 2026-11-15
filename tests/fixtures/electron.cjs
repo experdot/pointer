@@ -7,6 +7,8 @@ if (dirname(data) !== resolve(tmpdir()) || !basename(data).startsWith('pointer-t
   throw new Error('Electron 测试必须提供独立临时数据目录')
 }
 app.setPath('userData', data)
+app.getPreferredSystemLanguages = () =>
+  JSON.parse(process.env.POINTER_TEST_LANGUAGES || '["zh-CN"]')
 app.commandLine.appendSwitch('disable-gpu')
 app.on('browser-window-created', (_event, window) => {
   window.webContents.setBackgroundThrottling(false)

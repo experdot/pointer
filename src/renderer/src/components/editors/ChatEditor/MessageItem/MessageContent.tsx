@@ -1,3 +1,4 @@
+import { useI18n } from '@renderer/i18n'
 import React, { useState, useMemo, useCallback } from 'react'
 import type { MenuProps } from 'antd'
 import {
@@ -50,6 +51,8 @@ export const MessageContent = React.memo(function MessageContent({
   exportCallbacks,
   onQuote
 }: MessageContentProps): React.JSX.Element {
+  const { t } = useI18n()
+
   const { showDeleteConfirm } = useConfirmDialog()
   const [contextMenuInfo, setContextMenuInfo] = useState<ContextMenuInfo>({ type: 'default' })
 
@@ -73,7 +76,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (contextMenuInfo.type === 'code' && contextMenuInfo.content) {
       return {
         key: 'export-code',
-        label: '导出代码块',
+        label: t('export.codeBlock'),
         icon: <ExportOutlined />,
         onClick: () => {
           exportCallbacks.onExportCode?.(
@@ -87,7 +90,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (contextMenuInfo.type === 'table' && contextMenuInfo.content) {
       return {
         key: 'export-table',
-        label: '导出表格',
+        label: t('export.table'),
         icon: <ExportOutlined />,
         onClick: () => {
           exportCallbacks.onExportTable?.(contextMenuInfo.content!)
@@ -98,7 +101,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (contextMenuInfo.type === 'text' && contextMenuInfo.content) {
       return {
         key: 'export-text',
-        label: '导出选中文本',
+        label: t('export.selection'),
         icon: <ExportOutlined />,
         onClick: () => {
           exportCallbacks.onExportText?.(contextMenuInfo.content!)
@@ -107,7 +110,7 @@ export const MessageContent = React.memo(function MessageContent({
     }
 
     return null
-  }, [contextMenuInfo, exportCallbacks])
+  }, [contextMenuInfo, exportCallbacks, t])
 
   // 检测右键点击的元素类型
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -149,7 +152,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (!isStreaming) {
       operationChildren.push({
         key: 'edit',
-        label: '编辑',
+        label: t('common.edit'),
         icon: <EditOutlined />,
         onClick: onStartEdit
       })
@@ -158,7 +161,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (isAssistant && !isStreaming) {
       operationChildren.push({
         key: 'retry',
-        label: '重试',
+        label: t('common.retry'),
         icon: <ReloadOutlined />,
         onClick: onRetry
       })
@@ -167,7 +170,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (isUser && isLeaf && !isStreaming) {
       operationChildren.push({
         key: 'continue',
-        label: '继续生成',
+        label: t('chat.continue'),
         icon: <ArrowDownOutlined />,
         onClick: onContinue
       })
@@ -176,7 +179,7 @@ export const MessageContent = React.memo(function MessageContent({
     if (!isStreaming) {
       operationChildren.push({
         key: 'delete',
-        label: '删除',
+        label: t('common.delete'),
         icon: <DeleteOutlined />,
         danger: true,
         onClick: handleDelete
@@ -186,20 +189,20 @@ export const MessageContent = React.memo(function MessageContent({
     const outlineChildren: NonNullable<MenuProps['items']> = [
       {
         key: 'set-title',
-        label: message.title ? '编辑标题' : '添加标题',
+        label: message.title ? t('chat.editTitle') : t('chat.addTitle'),
         icon: <TagOutlined />,
         onClick: onStartTitleEdit
       },
       topic
         ? {
             key: 'edit-topic',
-            label: '编辑分组',
+            label: t('chat.editGroup'),
             icon: <FolderOutlined />,
             onClick: onStartTopicEdit
           }
         : {
             key: 'set-topic',
-            label: '添加分组',
+            label: t('chat.addGroup'),
             icon: <FolderOutlined />,
             onClick: () => {
               const topicName = message.title || displayContent.slice(0, 15).replace(/\s+/g, ' ')
@@ -211,7 +214,7 @@ export const MessageContent = React.memo(function MessageContent({
     const exportChildren: NonNullable<MenuProps['items']> = [
       {
         key: 'export',
-        label: '导出整条消息',
+        label: t('export.message'),
         icon: <ExportOutlined />,
         onClick: () => {
           exportCallbacks.onExport?.(message.id)
@@ -223,14 +226,14 @@ export const MessageContent = React.memo(function MessageContent({
     const items: MenuProps['items'] = [
       {
         key: 'copy',
-        label: '复制',
+        label: t('common.copy'),
         icon: <CopyOutlined />,
         extra: getShortcutLabel('messageCopy'),
         onClick: handleCopy
       },
       {
         key: 'quote',
-        label: '引用',
+        label: t('chat.quote'),
         icon: <EnterOutlined />,
         onClick: handleQuote
       }
@@ -240,7 +243,7 @@ export const MessageContent = React.memo(function MessageContent({
       items.push({ type: 'divider' })
       items.push({
         key: 'actions',
-        label: '操作',
+        label: t('common.actions'),
         icon: <AppstoreOutlined />,
         children: operationChildren
       })
@@ -248,7 +251,7 @@ export const MessageContent = React.memo(function MessageContent({
 
     items.push({
       key: 'outline',
-      label: '大纲',
+      label: t('chat.outline'),
       icon: <ProfileOutlined />,
       children: outlineChildren
     })
@@ -257,7 +260,7 @@ export const MessageContent = React.memo(function MessageContent({
 
     items.push({
       key: 'export-group',
-      label: '导出',
+      label: t('common.export'),
       icon: <ExportOutlined />,
       children: exportChildren
     })
@@ -282,7 +285,8 @@ export const MessageContent = React.memo(function MessageContent({
     onStartTopicEdit,
     topic,
     topicCallbacks,
-    contextualExportItem
+    contextualExportItem,
+    t
   ])
 
   if (isEditing) {

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Tabs as AntTabs, Dropdown, Button, Tooltip } from 'antd'
 import type { TabsProps, MenuProps } from 'antd'
@@ -30,6 +31,14 @@ import {
   getShortcutLabel
 } from '../../../utils/shortcutPresentation'
 import './Tabs.css'
+import type { Tab } from '@shared/contracts'
+
+function displayTabTitle(tab: Tab): string {
+  if (tab.type === 'welcome') return t('welcome.tab')
+  if (tab.type === 'settings') return t('settings.title')
+  if (tab.type === 'export') return t('common.export')
+  return tab.title
+}
 
 interface DraggableTabProps {
   id: string
@@ -37,6 +46,8 @@ interface DraggableTabProps {
 }
 
 function DraggableTab({ id, children }: DraggableTabProps): React.JSX.Element {
+  useI18n()
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id
   })
@@ -56,6 +67,8 @@ function DraggableTab({ id, children }: DraggableTabProps): React.JSX.Element {
 }
 
 export function Tabs(): React.JSX.Element {
+  useI18n()
+
   const {
     tabs,
     activeTabId,
@@ -102,7 +115,7 @@ export function Tabs(): React.JSX.Element {
     if (tab?.preview) {
       items.push({
         key: 'keep',
-        label: '保持打开',
+        label: t('tabs.keepOpen'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           keepTab(tabId)
@@ -114,7 +127,7 @@ export function Tabs(): React.JSX.Element {
     items.push(
       {
         key: 'close',
-        label: '关闭',
+        label: t('common.close'),
         extra: getShortcutLabel('tabClose'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
@@ -123,7 +136,7 @@ export function Tabs(): React.JSX.Element {
       },
       {
         key: 'closeOthers',
-        label: '关闭其他',
+        label: t('tabs.closeOthers'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           closeOtherTabs(tabId)
@@ -131,7 +144,7 @@ export function Tabs(): React.JSX.Element {
       },
       {
         key: 'closeRight',
-        label: '关闭右侧',
+        label: t('tabs.closeRight'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           closeRightTabs(tabId)
@@ -139,7 +152,7 @@ export function Tabs(): React.JSX.Element {
       },
       {
         key: 'closeAll',
-        label: '关闭全部',
+        label: t('tabs.closeAll'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           closeAllTabs()
@@ -148,7 +161,7 @@ export function Tabs(): React.JSX.Element {
       { type: 'divider' },
       {
         key: 'pin',
-        label: tab?.pinned ? '取消固定' : '固定',
+        label: tab?.pinned ? t('tabs.unpin') : t('tabs.pin'),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation()
           togglePinTab(tabId)
@@ -162,7 +175,7 @@ export function Tabs(): React.JSX.Element {
         { type: 'divider' },
         {
           key: 'revealInExplorer',
-          label: '在资源管理器中显示',
+          label: t('tabs.reveal'),
           onClick: ({ domEvent }) => {
             domEvent.stopPropagation()
             revealPanel('explorer')
@@ -187,7 +200,7 @@ export function Tabs(): React.JSX.Element {
         >
           {tab.pinned && <PushpinFilled className="tab-pin-icon" />}
           <span className="tab-icon">{getTabIcon(tab.type)}</span>
-          <span className="tab-title">{tab.title}</span>
+          <span className="tab-title">{displayTabTitle(tab)}</span>
         </span>
       </Dropdown>
     ),
@@ -224,12 +237,14 @@ export function Tabs(): React.JSX.Element {
     // 获取历史条目的标题：优先从打开的 tab 获取，其次从 pages 获取
     const getEntryTitle = (entry: (typeof history)[number]): string => {
       const tab = tabs.find((t) => t.id === entry.tabId)
-      if (tab?.title) return tab.title
+      if (tab?.title) return displayTabTitle(tab)
+      if (['welcome', 'settings', 'export'].includes(entry.type))
+        return displayTabTitle({ id: entry.tabId, type: entry.type, title: '' })
       if (entry.dataId) {
         const page = pages.find((p) => p.id === entry.dataId)
         if (page?.name) return page.name
       }
-      return '未知页面'
+      return t('tabs.unknownPage')
     }
 
     const historyItems: MenuProps['items'] = history
@@ -252,7 +267,7 @@ export function Tabs(): React.JSX.Element {
     return [
       {
         key: 'clear',
-        label: '清空导航历史',
+        label: t('tabs.clearHistory'),
         icon: <DeleteOutlined />,
         danger: true,
         onClick: clearHistory
@@ -274,7 +289,7 @@ export function Tabs(): React.JSX.Element {
         trigger={['contextMenu']}
       >
         <div className="tabs-nav-buttons">
-          <Tooltip title={formatShortcutTooltip('后退', 'tabHistoryBack')}>
+          <Tooltip title={formatShortcutTooltip(t('tabs.back'), 'tabHistoryBack')}>
             <Button
               type="text"
               size="small"
@@ -283,7 +298,7 @@ export function Tabs(): React.JSX.Element {
               onClick={goBack}
             />
           </Tooltip>
-          <Tooltip title={formatShortcutTooltip('前进', 'tabHistoryForward')}>
+          <Tooltip title={formatShortcutTooltip(t('tabs.forward'), 'tabHistoryForward')}>
             <Button
               type="text"
               size="small"
@@ -302,14 +317,14 @@ export function Tabs(): React.JSX.Element {
         onChange={setActiveTab}
         onEdit={handleEdit}
         addIcon={
-          <Tooltip title={formatShortcutTooltip('新建', 'tabNew')}>
+          <Tooltip title={formatShortcutTooltip(t('common.new'), 'tabNew')}>
             <span>
               <PlusOutlined />
             </span>
           </Tooltip>
         }
         removeIcon={
-          <Tooltip title={formatShortcutTooltip('关闭', 'tabClose')}>
+          <Tooltip title={formatShortcutTooltip(t('common.close'), 'tabClose')}>
             <span>
               <CloseOutlined />
             </span>

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useCallback } from 'react'
 import { App, Button, Spin, Segmented, Dropdown, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
@@ -31,10 +32,34 @@ const DEVICE_WIDTHS: Record<DeviceType, number> = {
 }
 
 const DEVICE_OPTIONS = [
-  { value: 'mobile', icon: <MobileOutlined />, title: '手机 (375px)' },
-  { value: 'tablet', icon: <TabletOutlined />, title: '平板 (768px)' },
-  { value: 'desktop', icon: <DesktopOutlined />, title: '电脑 (1024px)' },
-  { value: 'auto', icon: <ColumnWidthOutlined />, title: '自适应' }
+  {
+    value: 'mobile',
+    icon: <MobileOutlined />,
+    get title(): string {
+      return t('export.mobile')
+    }
+  },
+  {
+    value: 'tablet',
+    icon: <TabletOutlined />,
+    get title(): string {
+      return t('export.tablet')
+    }
+  },
+  {
+    value: 'desktop',
+    icon: <DesktopOutlined />,
+    get title(): string {
+      return t('export.desktop')
+    }
+  },
+  {
+    value: 'auto',
+    icon: <ColumnWidthOutlined />,
+    get title(): string {
+      return t('export.responsive')
+    }
+  }
 ]
 
 /**
@@ -48,6 +73,8 @@ const DEVICE_OPTIONS = [
  * - Screenshot target container
  */
 export function PreviewPanel(): React.JSX.Element {
+  useI18n()
+
   const { message } = App.useApp()
   const {
     sourceType,
@@ -106,34 +133,34 @@ export function PreviewPanel(): React.JSX.Element {
     try {
       await doExport()
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '导出失败')
+      message.error(err instanceof Error ? err.message : t('export.failed'))
     }
   }
 
   const handleCopy = async (): Promise<void> => {
     try {
       await copyToClipboard()
-      message.success('已复制到剪贴板')
+      message.success(t('common.copiedClipboard'))
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '复制失败')
+      message.error(err instanceof Error ? err.message : t('common.copyFailed'))
     }
   }
 
   const handleDownloadImage = async (): Promise<void> => {
     try {
       await downloadImage()
-      message.success('图片已下载')
+      message.success(t('image.downloaded'))
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '下载图片失败')
+      message.error(err instanceof Error ? err.message : t('image.downloadFailed'))
     }
   }
 
   const handleCopyImage = async (): Promise<void> => {
     try {
       await copyImageToClipboard()
-      message.success('图片已复制到剪贴板')
+      message.success(t('image.copied'))
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '复制图片失败')
+      message.error(err instanceof Error ? err.message : t('image.copyFailed'))
     }
   }
 
@@ -142,26 +169,26 @@ export function PreviewPanel(): React.JSX.Element {
     {
       key: 'download',
       icon: <DownloadOutlined />,
-      label: '下载文件',
+      label: t('export.downloadFile'),
       onClick: handleExport
     },
     {
       key: 'copy',
       icon: <CopyOutlined />,
-      label: '复制内容',
+      label: t('export.copyContent'),
       onClick: handleCopy
     },
     { type: 'divider' },
     {
       key: 'download-image',
       icon: <PictureOutlined />,
-      label: '下载图片',
+      label: t('image.download'),
       onClick: handleDownloadImage
     },
     {
       key: 'copy-image',
       icon: <CopyOutlined />,
-      label: '复制图片',
+      label: t('image.copy'),
       onClick: handleCopyImage
     }
   ]
@@ -193,15 +220,24 @@ export function PreviewPanel(): React.JSX.Element {
             value={previewOptions.mode}
             onChange={(value) => handleModeChange(value as PreviewMode)}
             options={[
-              { value: 'view', icon: <EyeOutlined />, label: '预览' },
-              { value: 'edit', icon: <EditOutlined />, label: '编辑', disabled: !editorPlugin }
+              { value: 'view', icon: <EyeOutlined />, label: t('export.preview') },
+              {
+                value: 'edit',
+                icon: <EditOutlined />,
+                label: t('common.edit'),
+                disabled: !editorPlugin
+              }
             ]}
           />
           {isDirty && (
-            <span style={{ color: 'var(--ant-color-warning)', fontSize: 12 }}>(已修改)</span>
+            <span style={{ color: 'var(--ant-color-warning)', fontSize: 12 }}>
+              {t('export.modified')}
+            </span>
           )}
           {hasPreview && isPreviewStale && (
-            <span style={{ color: 'var(--ant-color-text-secondary)' }}>请重新生成预览</span>
+            <span style={{ color: 'var(--ant-color-text-secondary)' }}>
+              {t('export.regeneratePreview')}
+            </span>
           )}
         </div>
         <div className="preview-panel__header-right">
@@ -219,7 +255,8 @@ export function PreviewPanel(): React.JSX.Element {
           )}
           <Dropdown {...getStandardDropdownProps({ items: exportMenuItems })} disabled={!canExport}>
             <Button type="primary" disabled={!canExport}>
-              <DownloadOutlined /> 导出 <DownOutlined />
+              <DownloadOutlined /> {t('common.export')}
+              <DownOutlined />
             </Button>
           </Dropdown>
         </div>
@@ -231,14 +268,14 @@ export function PreviewPanel(): React.JSX.Element {
         {isGenerating && (
           <div className="preview-panel__loading">
             <Spin size="large" />
-            <span>正在生成预览...</span>
+            <span>{t('export.generatingPreview')}</span>
           </div>
         )}
 
         {/* Error state - only show if no preview available */}
         {!isGenerating && error && !hasPreview && (
           <div className="preview-panel__error">
-            <span>生成预览时出错</span>
+            <span>{t('export.previewFailed')}</span>
             <span style={{ fontSize: 14 }}>{error}</span>
           </div>
         )}
@@ -247,7 +284,7 @@ export function PreviewPanel(): React.JSX.Element {
         {!isGenerating && !error && !hasPreview && (
           <div className="preview-panel__empty">
             <FileTextOutlined style={{ fontSize: 48, opacity: 0.3 }} />
-            <span>{hasSource ? '请在左侧点击"生成预览"按钮' : '请先选择数据源'}</span>
+            <span>{hasSource ? t('export.previewHint') : t('export.selectSourceFirst')}</span>
           </div>
         )}
 
@@ -298,7 +335,7 @@ export function PreviewPanel(): React.JSX.Element {
 
               {previewOptions.mode === 'edit' && !EditorComponent && (
                 <div className="preview-panel__empty">
-                  <span>该格式暂不支持编辑</span>
+                  <span>{t('export.formatNotEditable')}</span>
                 </div>
               )}
             </>

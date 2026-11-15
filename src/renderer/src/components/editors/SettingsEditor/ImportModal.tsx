@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useState, useMemo, useCallback } from 'react'
 import {
   Modal,
@@ -35,9 +36,11 @@ const { Text } = Typography
 
 /** 导入数据与本机数据存在同 id 时的标记 */
 function ConflictBadge(): React.JSX.Element {
+  useI18n()
+
   return (
     <Text type="warning" style={{ marginLeft: 8 }}>
-      <WarningOutlined /> ID冲突
+      <WarningOutlined /> {t('import.idConflict')}
     </Text>
   )
 }
@@ -53,6 +56,8 @@ type TabKey = 'chats' | 'llm' | 'model' | 'ui'
 type ConflictStrategy = 'generate-new' | 'skip' | 'overwrite'
 
 export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Element {
+  useI18n()
+
   const { message } = App.useApp()
   const existingPages = usePagesStore((s) => s.pages)
   const existingFolders = useFoldersStore((s) => s.folders)
@@ -145,7 +150,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
       const data = JSON.parse(text) as ExportData
 
       if (!data.version || !data.data) {
-        message.error('无效的导入文件格式')
+        message.error(t('import.invalidFormat'))
         return false
       }
 
@@ -179,7 +184,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
       return false
     } catch {
-      message.error('文件解析失败')
+      message.error(t('import.parseFailed'))
       return false
     }
   }
@@ -231,9 +236,11 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
         strategy: conflictStrategy
       })
       setRestoreResult(result)
-      if (!result.error) message.success('导入完成')
+      if (!result.error) message.success(t('import.complete'))
     } catch (error) {
-      message.error('导入失败：' + (error instanceof Error ? error.message : String(error)))
+      message.error(
+        t('import.errorPrefix') + (error instanceof Error ? error.message : String(error))
+      )
     } finally {
       setImporting(false)
     }
@@ -266,7 +273,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           indeterminate={isIndeterminate}
           onChange={(e) => setChecked(e.target.checked ? allKeys : [])}
         >
-          全选 / 取消全选
+          {t('common.toggleAll')}
         </Checkbox>
         {tree.length > 0 ? (
           <Tree
@@ -278,7 +285,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             treeData={tree}
           />
         ) : (
-          <Text type="secondary">无数据</Text>
+          <Text type="secondary">{t('import.noData')}</Text>
         )}
       </Flex>
     )
@@ -287,7 +294,7 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   // 上传界面
   if (!importData) {
     return (
-      <Modal title="导入数据" open={open} onCancel={handleClose} footer={null} width={500}>
+      <Modal title={t('data.import')} open={open} onCancel={handleClose} footer={null} width={500}>
         <Dragger
           accept=".json"
           showUploadList={false}
@@ -298,9 +305,9 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             <InboxOutlined />
           </p>
           <p className="ant-upload-text" style={{ fontSize: 14 }}>
-            点击或拖拽文件到此处
+            {t('import.dropFile')}
           </p>
-          <p className="ant-upload-hint">支持 .json 格式的备份文件</p>
+          <p className="ant-upload-hint">{t('import.backupFormat')}</p>
         </Dragger>
       </Modal>
     )
@@ -310,22 +317,22 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
   const tabItems = [
     {
       key: 'chats',
-      label: `对话 (${stats.pageIds.length})`,
+      label: t('backup.conversations', { v0: String(stats.pageIds.length) }),
       children: renderTree(chatsTree, checkedChats, setCheckedChats)
     },
     {
       key: 'llm',
-      label: `LLM配置 (${stats.llmIds.length})`,
+      label: t('backup.llms', { v0: String(stats.llmIds.length) }),
       children: renderTree(llmTree, checkedLLM, setCheckedLLM)
     },
     {
       key: 'model',
-      label: `模型配置 (${stats.modelIds.length})`,
+      label: t('backup.models', { v0: String(stats.modelIds.length) }),
       children: renderTree(modelTree, checkedModel, setCheckedModel)
     },
     {
       key: 'ui',
-      label: '界面',
+      label: t('backup.interface'),
       children: (
         <Flex vertical gap={8}>
           <Checkbox
@@ -333,9 +340,9 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
             onChange={(e) => setIncludeUI(e.target.checked)}
             disabled={!importData.data.viewState}
           >
-            导入标签页和布局设置
+            {t('import.includeLayout')}
           </Checkbox>
-          {!importData.data.viewState && <Text type="secondary">备份文件中不包含界面状态数据</Text>}
+          {!importData.data.viewState && <Text type="secondary">{t('import.noLayout')}</Text>}
         </Flex>
       )
     }
@@ -343,20 +350,20 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
 
   return (
     <Modal
-      title="导入数据 - 预览"
+      title={t('import.previewTitle')}
       open={open}
       onCancel={handleClose}
       width={600}
       footer={
         <Space>
-          <Button onClick={handleClose}>取消</Button>
+          <Button onClick={handleClose}>{t('common.cancel')}</Button>
           <Button
             type="primary"
             onClick={handleImport}
             loading={importing}
             disabled={!hasSelection || Boolean(restoreResult)}
           >
-            导入选中项
+            {t('import.selected')}
           </Button>
         </Space>
       }
@@ -366,8 +373,18 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           <Alert
             type={restoreResult.error ? 'error' : 'success'}
             showIcon
-            message={restoreResult.error ? `导入已停止：${restoreResult.error}` : '导入完成'}
-            description={`已完成 ${restoreResult.counts.pages} 个对话、${restoreResult.counts.folders} 个文件夹、${restoreResult.counts.configs} 个配置，跳过 ${restoreResult.counts.skipped} 项。${restoreResult.warnings.join('；')}`}
+            message={
+              restoreResult.error
+                ? t('import.stopped', { v0: String(restoreResult.error) })
+                : t('import.complete')
+            }
+            description={t('import.progressSummary', {
+              v0: String(restoreResult.counts.pages),
+              v1: String(restoreResult.counts.folders),
+              v2: String(restoreResult.counts.configs),
+              v3: String(restoreResult.counts.skipped),
+              v4: String(restoreResult.warnings.join('；'))
+            })}
           />
         )}
         <Alert
@@ -375,7 +392,8 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
           showIcon
           message={
             <>
-              文件导出时间: <DateTimeText value={importData.exportedAt} />
+              {t('import.exportedAt')}
+              <DateTimeText value={importData.exportedAt} />
             </>
           }
         />
@@ -383,15 +401,15 @@ export function ImportModal({ open, onClose }: ImportModalProps): React.JSX.Elem
         <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k as TabKey)} items={tabItems} />
 
         <Flex vertical gap={4}>
-          <Text strong>ID 冲突处理:</Text>
+          <Text strong>{t('import.conflictPolicy')}</Text>
           <Radio.Group
             value={conflictStrategy}
             onChange={(e) => setConflictStrategy(e.target.value)}
           >
             <Space direction="vertical">
-              <Radio value="generate-new">生成新 ID（保留两份）</Radio>
-              <Radio value="skip">跳过冲突项</Radio>
-              <Radio value="overwrite">覆盖现有项</Radio>
+              <Radio value="generate-new">{t('import.generateNewIds')}</Radio>
+              <Radio value="skip">{t('import.skipConflicts')}</Radio>
+              <Radio value="overwrite">{t('import.overwrite')}</Radio>
             </Space>
           </Radio.Group>
         </Flex>

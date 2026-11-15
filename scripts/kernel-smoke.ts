@@ -17,6 +17,7 @@ import { walkFiles } from '../src/main/runtime/fsx'
 
 const host: RuntimeHost = {
   getVersion: () => 'smoke',
+  getPreferredSystemLanguages: () => ['zh-CN'],
   saveFile: async () => ({}),
   openTextFile: async () => null,
   pickDirectory: async () => null,

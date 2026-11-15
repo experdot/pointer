@@ -1,11 +1,25 @@
 import type { FC } from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
+import { Alert, Spin } from 'antd'
+import { rendererI18n, useI18n } from '@renderer/i18n'
+import { errorMessage } from '@renderer/runtime/client'
 import type { EditorPlugin, EditorProps, FormatType } from '../../types'
 
-// Configure Monaco Editor to use local files instead of CDN
-loader.config({ monaco })
+let monacoLoading: Promise<void> | undefined
+
+/** NLS 必须先于 Monaco 模块执行。编辑器只从本地产物加载。 */
+function initializeMonaco(): Promise<void> {
+  monacoLoading ??= (async () => {
+    if (rendererI18n.language === 'zh-CN') {
+      await import('monaco-editor/esm/nls.messages.zh-cn.js')
+    }
+    const monaco = await import('monaco-editor')
+    loader.config({ monaco })
+    await loader.init()
+  })()
+  return monacoLoading
+}
 
 /**
  * Get Monaco language identifier for format
@@ -31,8 +45,26 @@ function getLanguageForFormat(format: FormatType): string {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const MonacoTextEditorComponent: FC<EditorProps> = ({ content, format, options, onChange }) => {
+  const { t } = useI18n()
+  const [ready, setReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const textContent = typeof content === 'string' ? content : ''
   const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'light'>('light')
+
+  useEffect(() => {
+    let active = true
+    void initializeMonaco().then(
+      () => {
+        if (active) setReady(true)
+      },
+      (error) => {
+        if (active) setLoadError(errorMessage(error))
+      }
+    )
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Detect system theme
   useEffect(() => {
@@ -53,6 +85,9 @@ const MonacoTextEditorComponent: FC<EditorProps> = ({ content, format, options, 
     [onChange]
   )
 
+  if (loadError) return <Alert type="error" message={t('app.errorTitle')} description={loadError} />
+  if (!ready) return <Spin aria-label={t('common.loading')} />
+
   return (
     <div
       style={{
@@ -62,6 +97,7 @@ const MonacoTextEditorComponent: FC<EditorProps> = ({ content, format, options, 
     >
       <Editor
         height="100%"
+        loading={<Spin aria-label={t('common.loading')} />}
         language={getLanguageForFormat(format)}
         value={textContent}
         theme={editorTheme}

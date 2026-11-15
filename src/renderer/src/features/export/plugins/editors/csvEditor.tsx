@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import type { FC } from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Table, Input, Button, Space, Popconfirm } from 'antd'
@@ -39,6 +40,8 @@ function toCsv(headers: string[], rows: string[][]): string {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const CsvTableEditorComponent: FC<EditorProps> = ({ content, onChange }) => {
+  useI18n()
+
   const textContent = typeof content === 'string' ? content : ''
 
   // Parse initial data
@@ -98,7 +101,7 @@ const CsvTableEditorComponent: FC<EditorProps> = ({ content, onChange }) => {
 
   // Add column
   const addColumn = (): void => {
-    const newHeaders = [...headers, `Column ${headers.length + 1}`]
+    const newHeaders = [...headers, t('table.columnName', { index: headers.length + 1 })]
     const newRows = rows.map((row) => [...row, ''])
     setHeaders(newHeaders)
     setRows(newRows)
@@ -139,10 +142,10 @@ const CsvTableEditorComponent: FC<EditorProps> = ({ content, onChange }) => {
         )}
         {headers.length > 1 && (
           <Popconfirm
-            title="确认删除此列？"
+            title={t('table.deleteColumn')}
             onConfirm={() => deleteColumn(colIndex)}
-            okText="删除"
-            cancelText="取消"
+            okText={t('common.delete')}
+            cancelText={t('common.cancel')}
           >
             <Button size="small" type="text" icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -186,17 +189,17 @@ const CsvTableEditorComponent: FC<EditorProps> = ({ content, onChange }) => {
   columns.push({
     title: (
       <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addColumn}>
-        列
+        {t('table.column')}
       </Button>
     ),
     key: 'actions',
     width: 80,
     render: (_, __, rowIndex) => (
       <Popconfirm
-        title="确认删除此行？"
+        title={t('table.deleteRow')}
         onConfirm={() => deleteRow(rowIndex)}
-        okText="删除"
-        cancelText="取消"
+        okText={t('common.delete')}
+        cancelText={t('common.cancel')}
       >
         <Button size="small" type="text" icon={<DeleteOutlined />} danger />
       </Popconfirm>
@@ -225,10 +228,10 @@ const CsvTableEditorComponent: FC<EditorProps> = ({ content, onChange }) => {
       <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--ant-color-border)' }}>
         <Space>
           <Button size="small" icon={<PlusOutlined />} onClick={addRow}>
-            添加行
+            {t('table.addRow')}
           </Button>
           <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }}>
-            {rows.length} 行 x {headers.length} 列
+            {t('table.dimensions', { rows: rows.length, columns: headers.length })}
           </span>
         </Space>
       </div>

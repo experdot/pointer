@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { testDirectory } from '../../tests/helpers/temp'
 import { createRuntimeHost } from './runtimeHost'
+import { createI18n } from '@shared/i18n'
 
 const mocks = vi.hoisted(() => ({ save: vi.fn(), open: vi.fn(), openPath: vi.fn() }))
 vi.mock('electron', () => ({
@@ -20,6 +21,24 @@ afterEach(async () => {
 })
 
 describe('文件对话框与系统集成', () => {
+  it('原生图片筛选文案跟随当前语言', async () => {
+    mocks.open.mockResolvedValue({ canceled: true, filePaths: [] })
+    const { instance, t } = createI18n('en-US')
+    const host = createRuntimeHost(t)
+    await host.pickImages({})
+    expect(mocks.open).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filters: [expect.objectContaining({ name: 'Images' })]
+      })
+    )
+    await instance.changeLanguage('zh-CN')
+    await host.pickImages({})
+    expect(mocks.open).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filters: [expect.objectContaining({ name: '图片' })]
+      })
+    )
+  })
   it('取消各种对话框没有文件写入或伪造成功结果', async () => {
     mocks.save.mockResolvedValue({ canceled: true })
     mocks.open.mockResolvedValue({ canceled: true, filePaths: [] })

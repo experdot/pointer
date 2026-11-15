@@ -25,6 +25,8 @@
  *   正文
  */
 
+import { msg, LocalizedError } from '@shared/i18n/message'
+
 import type { AttachmentRef, ChatMessage, MessageRole, Topic } from './chat'
 import { ROLE_DISPLAY_NAMES, roleFromDisplayName } from './chat'
 import type { Page } from './page'
@@ -155,7 +157,8 @@ function serializeTopics(topics: readonly Topic[]): string {
 
 function serializePageBlock(doc: PageFileDocument): string {
   assertOrderKey(doc.page.orderKey)
-  if (doc.version !== PAGE_FILE_FORMAT_VERSION) throw new Error('不支持的页面文件版本')
+  if (doc.version !== PAGE_FILE_FORMAT_VERSION)
+    throw new LocalizedError(msg('errors.page.unsupportedVersion'))
   let xml = `${PAGE_BLOCK_START}${doc.version}">\n`
   xml += element('id', doc.page.id)
   xml += element('name', doc.page.name)

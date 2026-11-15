@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useMemo } from 'react'
 import { TreeSelect, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
@@ -25,6 +26,8 @@ export function ModelConfigSelector({
   variant = 'borderless',
   disabled
 }: ModelConfigSelectorProps): React.JSX.Element {
+  useI18n()
+
   const { settings, setDefaultModelConfigId } = useSettingsStore()
   const { items, folders } = settings.modelConfigs
 
@@ -46,7 +49,7 @@ export function ModelConfigSelector({
       {menu}
       <Divider style={{ margin: '4px 0' }} />
       <div className="model-config-selector__settings-link" onClick={() => openSettings('model')}>
-        <SettingOutlined /> 管理模型配置
+        <SettingOutlined /> {t('config.manageModel')}
       </div>
     </>
   )
@@ -58,7 +61,7 @@ export function ModelConfigSelector({
       style={style}
       value={currentValue}
       onChange={handleChange}
-      placeholder="模型配置"
+      placeholder={t('config.model')}
       variant={variant}
       disabled={disabled}
       treeData={treeData}

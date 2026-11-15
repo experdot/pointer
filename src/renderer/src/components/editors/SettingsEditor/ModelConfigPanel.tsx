@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useCallback, useState } from 'react'
 import { Form, Button, Input, InputNumber, Flex, Empty, Slider, Space, App, Tooltip } from 'antd'
 import { RobotOutlined, CopyOutlined } from '@ant-design/icons'
@@ -9,6 +10,8 @@ import type { ModelConfig, ConfigFolder } from '@renderer/types/shared'
 const { TextArea } = Input
 
 export function ModelConfigPanel(): React.JSX.Element {
+  useI18n()
+
   const {
     items,
     folders,
@@ -44,12 +47,14 @@ export function ModelConfigPanel(): React.JSX.Element {
   )
 
   const handleCopyAsText = (config: ModelConfig): void => {
-    const text = `名称: ${config.name}
-系统提示词: ${config.systemPrompt || '(无)'}
-Temperature: ${config.temperature}
-Top P: ${config.topP}`
+    const text = t('config.copyModelText', {
+      v0: String(config.name),
+      v1: String(config.systemPrompt || t('common.none')),
+      v2: String(config.temperature),
+      v3: String(config.topP)
+    })
     navigator.clipboard.writeText(text)
-    message.success('已复制到剪贴板')
+    message.success(t('common.copiedClipboard'))
   }
 
   return (
@@ -65,7 +70,7 @@ Top P: ${config.topP}`
         moveNode={moveNode}
         createItem={(inFolderId) =>
           createConfig(
-            { name: '新配置', systemPrompt: '', temperature: 0.7, topP: 1 },
+            { name: t('config.newName'), systemPrompt: '', temperature: 0.7, topP: 1 },
             undefined,
             inFolderId
           )
@@ -79,14 +84,14 @@ Top P: ${config.topP}`
         clearFolder={clearFolder}
         toggleFolderExpanded={toggleFolderExpanded}
         defaultItemId={defaultModelConfigId}
-        emptyText="暂无配置"
-        addItemText="新建配置"
+        emptyText={t('config.empty')}
+        addItemText={t('config.create')}
       />
 
       <div className="settings-config-detail">
         {selectedConfig ? (
           <Form layout="vertical" key={selectedConfig.id}>
-            <Form.Item label="名称">
+            <Form.Item label={t('common.name')}>
               <Input
                 value={nameField.value}
                 onChange={(e) => nameField.setValue(e.target.value)}
@@ -96,7 +101,7 @@ Top P: ${config.topP}`
                 onCompositionEnd={nameField.handlers.onCompositionEnd}
               />
             </Form.Item>
-            <Form.Item label="系统提示词">
+            <Form.Item label={t('config.systemPrompt')}>
               <TextArea
                 value={promptField.value}
                 onChange={(e) => promptField.setValue(e.target.value)}
@@ -107,10 +112,7 @@ Top P: ${config.topP}`
                 rows={4}
               />
             </Form.Item>
-            <Form.Item
-              label="Temperature"
-              tooltip="控制输出的随机性。值越高，回复越多样化；值越低，回复越确定和集中。"
-            >
+            <Form.Item label={t('config.temperature')} tooltip={t('config.temperatureHelp')}>
               <Flex gap={16} align="center">
                 <Slider
                   style={{ flex: 1 }}
@@ -131,10 +133,7 @@ Top P: ${config.topP}`
                 />
               </Flex>
             </Form.Item>
-            <Form.Item
-              label="Top P"
-              tooltip="核采样参数。限制模型只从累积概率达到该值的词中选择，值越小输出越保守。"
-            >
+            <Form.Item label={t('config.topP')} tooltip={t('config.topPHelp')}>
               <Flex gap={16} align="center">
                 <Slider
                   style={{ flex: 1 }}
@@ -165,11 +164,13 @@ Top P: ${config.topP}`
                     )
                   }
                 >
-                  {defaultModelConfigId === selectedConfig.id ? '已设为默认' : '设为默认'}
+                  {defaultModelConfigId === selectedConfig.id
+                    ? t('config.isDefault')
+                    : t('config.setDefault')}
                 </Button>
-                <Tooltip title="复制配置文本到剪贴板">
+                <Tooltip title={t('config.copyText')}>
                   <Button
-                    aria-label="复制配置文本到剪贴板"
+                    aria-label={t('config.copyText')}
                     icon={<CopyOutlined />}
                     onClick={() => handleCopyAsText(selectedConfig)}
                   />
@@ -178,7 +179,7 @@ Top P: ${config.topP}`
             </Form.Item>
           </Form>
         ) : (
-          <Empty description="选择或创建配置" />
+          <Empty description={t('config.selectOrCreate')} />
         )}
       </div>
     </Flex>

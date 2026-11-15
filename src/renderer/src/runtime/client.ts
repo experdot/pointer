@@ -5,6 +5,7 @@
  * 组件与 store 不应直接访问 window.runtime。
  */
 
+import { t } from '@renderer/i18n'
 import type {
   RuntimeCommandName,
   RuntimeCommandPayload,
@@ -14,8 +15,9 @@ import type {
   RuntimeQueryPayload,
   RuntimeQueryResult
 } from '@shared/contracts'
-import { RuntimeError } from '@shared/contracts'
+import { RuntimeError, isApplicationLocaleOperation } from '@shared/contracts'
 import { useSessionStore } from '../stores/sessionStore'
+import { formatError, type LocalizedMessage } from '@shared/i18n/message'
 
 const queries = new Map<string, number>()
 let sequence = 0
@@ -26,7 +28,7 @@ export function resetQueries(): void {
 function port(): RuntimePort {
   const runtime = window.runtime
   if (!runtime) {
-    throw new Error('内核端口不可用：preload 未注入 window.runtime')
+    throw new Error(t('errors.runtime.unavailable'))
   }
   return runtime
 }
@@ -42,9 +44,10 @@ export async function query<K extends RuntimeQueryName>(
   const result = await port().query(name, payload, scopeId).catch(rethrow)
   if (
     name !== 'session.get' &&
+    !isApplicationLocaleOperation(name) &&
     (scopeId !== useSessionStore.getState().scopeId || queries.get(key) !== serial)
   ) {
-    throw new RuntimeError('runtime.stale-response', '已忽略过期查询')
+    throw new RuntimeError('runtime.stale-response', t('errors.runtime.staleQuery'))
   }
   return result
 }
@@ -57,9 +60,10 @@ export async function command<K extends RuntimeCommandName>(
   const result = await port().command(name, payload, scopeId).catch(rethrow)
   if (
     !/^(session\.|account\.|workspace\.)/.test(name) &&
+    !isApplicationLocaleOperation(name) &&
     scopeId !== useSessionStore.getState().scopeId
   ) {
-    throw new RuntimeError('runtime.stale-response', '已忽略过期命令结果')
+    throw new RuntimeError('runtime.stale-response', t('errors.runtime.staleCommand'))
   }
   return result
 }
@@ -73,7 +77,7 @@ export function onFlush(handler: () => Promise<void>): () => void {
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return formatError(error, t)
 }
 
 function rethrow(error: unknown): never {
@@ -85,11 +89,15 @@ function rethrow(error: unknown): never {
     typeof error.code === 'string' &&
     typeof error.message === 'string'
   ) {
-    throw new RuntimeError(
+    const failure = new RuntimeError(
       error.code,
-      error.message,
+      'localized' in error && error.localized
+        ? (error.localized as LocalizedMessage)
+        : error.message,
       'details' in error ? error.details : undefined
     )
+    failure.message = errorMessage(failure)
+    throw failure
   }
   throw error
 }

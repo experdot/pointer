@@ -4,13 +4,20 @@
  * 单独抽出来是为了让 RuntimeCore 不直接依赖 Electron 的交互 API。
  */
 
+import { msg, LocalizedError } from '@shared/i18n/message'
+
 import { app, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 import type { RuntimeHost } from './runtime'
+import type { Translate } from '@shared/i18n'
+import { sourceTranslate } from '@shared/i18n/message'
 
-export function createRuntimeHost(): RuntimeHost {
+export function createRuntimeHost(t: Translate = sourceTranslate): RuntimeHost {
   return {
+    getPreferredSystemLanguages(): string[] {
+      return app.getPreferredSystemLanguages()
+    },
     getVersion(): string {
       return app.getVersion()
     },
@@ -54,7 +61,7 @@ export function createRuntimeHost(): RuntimeHost {
     async pickImages(options) {
       const result = await dialog.showOpenDialog({
         properties: options.multiple === false ? ['openFile'] : ['openFile', 'multiSelections'],
-        filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }]
+        filters: [{ name: t('native.images'), extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }]
       })
 
       if (result.canceled) return []
@@ -74,7 +81,8 @@ export function createRuntimeHost(): RuntimeHost {
 
     async openInFileManager(targetPath) {
       const error = await shell.openPath(targetPath)
-      if (error) throw new Error(`打开文件管理器失败：${error}`)
+      if (error)
+        throw new LocalizedError(msg('errors.native.openFileManager', { v0: String(error) }))
     }
   }
 }

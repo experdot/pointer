@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useEffect } from 'react'
 import {
   Typography,
@@ -30,6 +31,8 @@ import { useSavedAction } from '../../../hooks/useSavedAction'
 const { Text, Link } = Typography
 
 export function AboutPanel(): React.JSX.Element {
+  useI18n()
+
   const updateStore = useUpdateStore()
   const setCurrentVersion = useUpdateStore((state) => state.setCurrentVersion)
   const { settings, setAutoCheckUpdate } = useSettingsStore()
@@ -74,7 +77,7 @@ export function AboutPanel(): React.JSX.Element {
       updateStore.setIsStartupCheck(false)
 
       const timeoutPromise = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('检查更新超时')), 30000)
+        timer = setTimeout(() => reject(new Error(t('update.timeout'))), 30000)
       })
 
       const updatePromise = command('app.checkUpdate', undefined)
@@ -85,16 +88,16 @@ export function AboutPanel(): React.JSX.Element {
 
       updateStore.setCheckingForUpdates(false)
       if (!result.available) {
-        message.info('当前已是最新版本')
+        message.info(t('update.upToDate'))
       } else {
-        message.success(`发现新版本 ${result.version ?? ''}`)
+        message.success(t('update.foundVersion', { v0: String(result.version ?? '') }))
       }
     } catch (err) {
       console.error('Check for updates failed:', err)
-      const errorMessage = err instanceof Error ? err.message : '检查更新失败'
+      const errorMessage = err instanceof Error ? err.message : t('update.checkFailed')
       updateStore.setError(errorMessage)
       updateStore.setCheckingForUpdates(false)
-      message.error(`检查更新失败: ${errorMessage}`)
+      message.error(t('update.checkError', { v0: String(errorMessage) }))
     } finally {
       clearTimeout(timer)
     }
@@ -107,25 +110,25 @@ export function AboutPanel(): React.JSX.Element {
       await command('app.downloadUpdate', undefined)
     } catch (err) {
       console.error('Download update failed:', err)
-      updateStore.setError(err instanceof Error ? err.message : '下载更新失败')
+      updateStore.setError(err instanceof Error ? err.message : t('update.downloadError'))
       updateStore.setDownloading(false)
-      message.error('下载更新失败')
+      message.error(t('update.downloadError'))
     }
   }
 
   const handleInstallUpdate = (): void => {
     modal.confirm({
-      title: '安装更新',
-      content: '应用将会关闭并安装更新，然后自动重启。是否继续？',
+      title: t('update.install'),
+      content: t('update.installConfirm'),
       icon: <ExclamationCircleOutlined />,
-      okText: '安装',
-      cancelText: '取消',
+      okText: t('common.install'),
+      cancelText: t('common.cancel'),
       onOk: async () => {
         try {
           await runSaved(() => command('app.quitAndInstall', undefined))
         } catch (err) {
           console.error('Install update failed:', err)
-          message.error(err instanceof Error ? err.message : '安装更新失败')
+          message.error(err instanceof Error ? err.message : t('update.installError'))
         }
       }
     })
@@ -147,19 +150,19 @@ export function AboutPanel(): React.JSX.Element {
     <Flex vertical gap={16} style={{ maxWidth: 640 }}>
       {/* 应用更新标题 */}
       <Text strong style={{ fontSize: 16 }}>
-        应用更新
+        {t('update.title')}
       </Text>
 
       {/* 版本和更新设置 */}
       <Card size="small">
         <Space direction="vertical" style={{ width: '100%' }}>
           <Flex justify="space-between" align="center">
-            <Text strong>当前版本</Text>
-            <Badge count={currentVersion || '获取中...'} color="blue" />
+            <Text strong>{t('update.currentVersion')}</Text>
+            <Badge count={currentVersion || t('common.loading')} color="blue" />
           </Flex>
 
           <Flex justify="space-between" align="center">
-            <Text>自动检查更新</Text>
+            <Text>{t('update.autoCheck')}</Text>
             <Switch checked={autoCheckUpdate} onChange={setAutoCheckUpdate} size="small" />
           </Flex>
         </Space>
@@ -168,7 +171,7 @@ export function AboutPanel(): React.JSX.Element {
       {/* 更新错误 */}
       {error && (
         <Alert
-          message="更新错误"
+          message={t('update.error')}
           description={error}
           type="error"
           closable
@@ -182,22 +185,29 @@ export function AboutPanel(): React.JSX.Element {
           <Space direction="vertical" style={{ width: '100%' }}>
             <Flex align="center" gap={8}>
               <InfoCircleOutlined style={{ color: '#1890ff' }} />
-              <Text strong>发现新版本 {updateInfo.version}</Text>
+              <Text strong>
+                {t('update.available')}
+                {updateInfo.version}
+              </Text>
             </Flex>
 
             {updateInfo.releaseName && (
-              <Text type="secondary">发布名称: {updateInfo.releaseName}</Text>
+              <Text type="secondary">
+                {t('update.releaseName')}
+                {updateInfo.releaseName}
+              </Text>
             )}
 
             {updateInfo.releaseDate && (
               <Text type="secondary">
-                发布日期: <DateTimeText value={updateInfo.releaseDate} />
+                {t('update.releaseDate')}
+                <DateTimeText value={updateInfo.releaseDate} />
               </Text>
             )}
 
             {updateInfo.releaseNotes && (
               <div>
-                <Text strong>更新说明:</Text>
+                <Text strong>{t('update.releaseNotes')}</Text>
                 <div style={{ marginTop: 8 }}>
                   <Markdown content={updateInfo.releaseNotes} />
                 </div>
@@ -211,7 +221,7 @@ export function AboutPanel(): React.JSX.Element {
       {downloading && downloadProgress && (
         <Card size="small">
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Text strong>下载更新中...</Text>
+            <Text strong>{t('update.downloading')}</Text>
             <Progress
               percent={Math.round(downloadProgress.percent)}
               status="active"
@@ -230,8 +240,8 @@ export function AboutPanel(): React.JSX.Element {
       {/* 更新下载完成 */}
       {updateDownloaded && (
         <Alert
-          message="更新已下载"
-          description="更新已下载完成，点击下方按钮重启应用以完成安装。"
+          message={t('update.downloaded')}
+          description={t('update.downloadComplete')}
           type="success"
           icon={<CheckCircleOutlined />}
         />
@@ -240,37 +250,37 @@ export function AboutPanel(): React.JSX.Element {
       {/* 操作按钮 */}
       <Space>
         <Button
-          aria-label="检查更新"
+          aria-label={t('update.check')}
           icon={<ReloadOutlined />}
           loading={checkingForUpdates}
           onClick={handleCheckForUpdates}
           disabled={downloading}
         >
-          检查更新
+          {t('update.check')}
         </Button>
 
         {updateAvailable && !updateDownloaded && (
           <Button
-            aria-label="下载更新"
+            aria-label={t('update.download')}
             type="primary"
             icon={<CloudDownloadOutlined />}
             loading={downloading}
             onClick={handleDownloadUpdate}
             disabled={checkingForUpdates}
           >
-            下载更新
+            {t('update.download')}
           </Button>
         )}
 
         {updateDownloaded && (
           <Button
-            aria-label="安装并重启"
+            aria-label={t('update.installRestart')}
             type="primary"
             danger
             icon={<DownloadOutlined />}
             onClick={handleInstallUpdate}
           >
-            安装并重启
+            {t('update.installRestart')}
           </Button>
         )}
       </Space>
@@ -279,25 +289,25 @@ export function AboutPanel(): React.JSX.Element {
 
       {/* 关于应用标题 */}
       <Text strong style={{ fontSize: 16 }}>
-        关于应用
+        {t('about.title')}
       </Text>
 
       {/* 应用信息 */}
       <Flex vertical gap={8}>
         <Flex justify="space-between">
-          <Text type="secondary">应用名称</Text>
-          <Text>Pointer - AI聊天助手</Text>
+          <Text type="secondary">{t('about.nameLabel')}</Text>
+          <Text>{t('about.name')}</Text>
         </Flex>
         <Flex justify="space-between">
-          <Text type="secondary">当前版本</Text>
-          <Text>{currentVersion || '获取中...'}</Text>
+          <Text type="secondary">{t('update.currentVersion')}</Text>
+          <Text>{currentVersion || t('common.loading')}</Text>
         </Flex>
         <Flex justify="space-between">
-          <Text type="secondary">许可证</Text>
-          <Text>MIT 开源许可证</Text>
+          <Text type="secondary">{t('about.licenseLabel')}</Text>
+          <Text>{t('about.license')}</Text>
         </Flex>
         <Flex justify="space-between">
-          <Text type="secondary">项目地址</Text>
+          <Text type="secondary">{t('about.project')}</Text>
           <Link href="https://github.com/experdot/pointer" target="_blank">
             GitHub
           </Link>

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useI18n } from '@renderer/i18n'
 import type { PreviewerPlugin, PreviewerProps } from '../../types'
 
 /**
@@ -8,6 +9,7 @@ import type { PreviewerPlugin, PreviewerProps } from '../../types'
  */
 // eslint-disable-next-line react-refresh/only-export-components
 const HtmlPreviewerComponent: FC<PreviewerProps> = ({ result }) => {
+  const { t } = useI18n()
   const content = typeof result.content === 'string' ? result.content : ''
 
   return (
@@ -27,7 +29,7 @@ const HtmlPreviewerComponent: FC<PreviewerProps> = ({ result }) => {
           border: 'none',
           background: '#fff'
         }}
-        title="HTML Preview"
+        title={t('export.htmlPreview')}
       />
     </div>
   )

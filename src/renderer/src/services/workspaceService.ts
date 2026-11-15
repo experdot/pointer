@@ -4,6 +4,7 @@
  * 会话切换由内核负责资源的打开与关闭，这里只转发命令并读取镜像状态。
  */
 
+import { t } from '@renderer/i18n'
 import type { WorkspacePathValidation, WorkspaceSummary } from '@shared/domain'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -20,10 +21,10 @@ export async function openFolderAsWorkspace(
   await useSettingsStore.getState().flush()
   const validation = await useWorkspaceStore.getState().validatePath(dirPath)
   if (!validation.valid) {
-    throw new Error(validation.error ?? '目录不可用')
+    throw new Error(validation.error ?? t('workspace.directoryUnavailable'))
   }
   if (validation.lockedByAccountId) {
-    throw new Error('该目录已被其他账户使用')
+    throw new Error(t('workspace.directoryInUse'))
   }
   return useWorkspaceStore.getState().openCustomWorkspace(dirPath, name)
 }

@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, {
   useRef,
   useCallback,
@@ -57,6 +58,8 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
   },
   ref
 ) {
+  useI18n()
+
   // 只订阅本页的输入内容与需要的 action：在别的页签打字不再重渲染这个输入框
   const content = useChatUIStore((state) => state.getState(pageId).inputContent)
   const setInputContent = useChatUIStore((state) => state.setInputContent)
@@ -72,7 +75,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     try {
       await action()
     } catch (error) {
-      setSendError(error instanceof Error ? error.message : '附件操作失败')
+      setSendError(error instanceof Error ? error.message : t('attachment.failed'))
     }
   }, [])
 
@@ -171,7 +174,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     if (!trimmed && pendingAttachments.length === 0) return
     if (disabled || !hasLLMConfig || !hasDefaultLLM || sending.current) return
     if (isStreaming && pendingAttachments.length) {
-      setSendError('消息队列暂不支持附件，请等待当前回答结束后发送')
+      setSendError(t('queue.noAttachments'))
       return
     }
 
@@ -237,7 +240,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       // 停止按钮
       return (
         <Button type="default" danger icon={<StopOutlined />} onClick={handleStop}>
-          停止
+          {t('common.stop')}
         </Button>
       )
     }
@@ -246,7 +249,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       // 继续队列按钮
       return (
         <Button type="primary" icon={<CaretRightOutlined />} onClick={onResumeQueue}>
-          继续队列
+          {t('queue.resume')}
         </Button>
       )
     }
@@ -254,14 +257,14 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     // 发送按钮
     return (
       <Button
-        aria-label="发送"
+        aria-label={t('chat.send')}
         type="primary"
         icon={<SendOutlined />}
         onClick={handleSend}
         loading={isSending}
         disabled={(!content.trim() && pendingAttachments.length === 0) || disabled}
       >
-        发送
+        {t('chat.send')}
       </Button>
     )
   }
@@ -274,13 +277,13 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
     if (!hasLLMConfig) {
       return (
         <span className="chat-editor__no-config-text">
-          未配置模型，请先
-          <a onClick={() => openSettings('llm')}>配置 LLM</a>
+          {t('ai.notConfigured')}
+          <a onClick={() => openSettings('llm')}>{t('ai.configure')}</a>
         </span>
       )
     }
     if (!hasDefaultLLM) {
-      return <span className="chat-editor__no-config-text">请先在下方选择一个模型</span>
+      return <span className="chat-editor__no-config-text">{t('ai.selectFirst')}</span>
     }
     return null
   }
@@ -304,7 +307,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
       <div className="chat-editor__textarea-wrapper">
         <TextArea
-          aria-label="消息内容"
+          aria-label={t('chat.messageContent')}
           ref={textAreaRef}
           className="chat-editor__textarea"
           value={content}
@@ -317,7 +320,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
             composing.current = false
           }}
           onPaste={handlePaste}
-          placeholder="输入消息..."
+          placeholder={t('chat.inputPlaceholder')}
           autoSize={{ minRows: 2, maxRows: 10 }}
           disabled={isInputDisabled}
           autoFocus
@@ -336,9 +339,9 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
 
       <div className="chat-editor__input-toolbar">
         <div className="chat-editor__input-toolbar-left">
-          <Tooltip title="添加图片">
+          <Tooltip title={t('attachment.addImage')}>
             <Button
-              aria-label="添加图片"
+              aria-label={t('attachment.addImage')}
               type="text"
               className="chat-editor__attachment-btn"
               icon={<PictureOutlined />}
@@ -359,7 +362,7 @@ export const InputArea = forwardRef<InputAreaRef, InputAreaProps>(function Input
       {isDragOver && (
         <div className="chat-editor__input-drag-overlay">
           <PictureOutlined />
-          <span>释放以添加图片</span>
+          <span>{t('attachment.dropImages')}</span>
         </div>
       )}
     </div>

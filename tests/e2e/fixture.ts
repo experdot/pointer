@@ -19,12 +19,14 @@ interface Desktop {
 }
 
 interface Fixtures {
+  systemLanguages: string[]
   desktop: Desktop
   provider: { url: string; requests: Request[] }
 }
 
 export const test = base.extend<Fixtures>({
-  desktop: async ({ playwright }, run, testInfo) => {
+  systemLanguages: [['zh-CN'], { option: true }],
+  desktop: async ({ playwright, systemLanguages }, run, testInfo) => {
     const directory = await testDirectory()
     const errors: string[] = []
     const mainLog: string[] = []
@@ -34,7 +36,12 @@ export const test = base.extend<Fixtures>({
     const launch = async (): Promise<void> => {
       app = await playwright._electron.launch({
         args: [resolve('tests/fixtures/electron.cjs')],
-        env: { ...process.env, ELECTRON_RENDERER_URL: '', POINTER_TEST_DATA: directory.path },
+        env: {
+          ...process.env,
+          ELECTRON_RENDERER_URL: '',
+          POINTER_TEST_DATA: directory.path,
+          POINTER_TEST_LANGUAGES: JSON.stringify(systemLanguages)
+        },
         timeout: 20000
       })
       running = true
@@ -160,8 +167,8 @@ export async function configureThroughUI(page: Page, url: string): Promise<void>
   await page.getByRole('tab', { name: 'LLM 配置' }).click()
   await page.getByRole('button', { name: '新建配置' }).click()
   await page.getByLabel('配置名称', { exact: true }).fill('本地测试模型')
-  await page.getByRole('combobox', { name: 'API Base URL' }).fill(url)
-  await page.getByLabel('API Key', { exact: true }).fill('test-only')
+  await page.getByRole('combobox', { name: 'API 基础地址' }).fill(url)
+  await page.getByLabel('API 密钥', { exact: true }).fill('test-only')
   await page.getByRole('combobox', { name: '模型名称' }).fill('test-model')
   await page.getByRole('button', { name: '测试连接', exact: true }).click()
   await expect(page.getByText('连接成功', { exact: true })).toBeVisible()

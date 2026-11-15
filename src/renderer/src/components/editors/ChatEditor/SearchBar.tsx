@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React, { useEffect, useRef, useCallback } from 'react'
 import { Input, Button, Tooltip } from 'antd'
 import { SearchOutlined, UpOutlined, DownOutlined, CloseOutlined } from '@ant-design/icons'
@@ -24,6 +25,8 @@ function matchesFindToggle(event: React.KeyboardEvent, key: string): boolean {
 }
 
 export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): React.JSX.Element {
+  useI18n()
+
   const inputRef = useRef<InputRef>(null)
 
   const searchState = useChatUIStore((state) => state.getState(pageId).search)
@@ -140,11 +143,13 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
         value={searchState.query}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
-        placeholder="搜索..."
+        placeholder={t('search.placeholder')}
         status={!isRegexValid ? 'error' : undefined}
         suffix={
           <div className="search-bar__options">
-            <Tooltip title={`区分大小写 (${getShortcutLabel('findMatchCase')})`}>
+            <Tooltip
+              title={t('search.caseShortcut', { v0: String(getShortcutLabel('findMatchCase')) })}
+            >
               <Button
                 type={searchState.matchCase ? 'primary' : 'text'}
                 size="small"
@@ -154,7 +159,9 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
               </Button>
             </Tooltip>
 
-            <Tooltip title={`使用正则表达式 (${getShortcutLabel('findRegex')})`}>
+            <Tooltip
+              title={t('search.regexShortcut', { v0: String(getShortcutLabel('findRegex')) })}
+            >
               <Button
                 type={searchState.useRegex ? 'primary' : 'text'}
                 size="small"
@@ -164,7 +171,9 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
               </Button>
             </Tooltip>
 
-            <Tooltip title={`全词匹配 (${getShortcutLabel('findWholeWord')})`}>
+            <Tooltip
+              title={t('search.wordShortcut', { v0: String(getShortcutLabel('findWholeWord')) })}
+            >
               <Button
                 type={searchState.matchWholeWord ? 'primary' : 'text'}
                 size="small"
@@ -185,7 +194,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
       )}
 
       <div className="search-bar__nav">
-        <Tooltip title="上一个 (Shift+Enter)">
+        <Tooltip title={t('search.previousShortcut')}>
           <Button
             type="text"
             size="small"
@@ -195,7 +204,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
           />
         </Tooltip>
 
-        <Tooltip title="下一个 (Enter)">
+        <Tooltip title={t('search.nextShortcut')}>
           <Button
             type="text"
             size="small"
@@ -206,7 +215,7 @@ export function SearchBar({ pageId, messages, containerRef }: SearchBarProps): R
         </Tooltip>
       </div>
 
-      <Tooltip title="关闭 (Escape)">
+      <Tooltip title={t('search.closeShortcut')}>
         <Button
           type="text"
           size="small"

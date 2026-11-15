@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Alert, Select, Checkbox, Empty, Spin } from 'antd'
 import { buildIndex, pathToMessage } from '@shared/domain'
@@ -24,10 +25,30 @@ interface MessagesSourceSelectorProps extends SourceSelectorProps<MessagesSource
 
 // Selection mode options for Select
 const SELECTION_MODE_OPTIONS = [
-  { value: 'current-branch', label: '当前分支' },
-  { value: 'all-branches', label: '所有分支' },
-  { value: 'free-select', label: '自由选择' },
-  { value: 'topic-messages', label: 'Topic 消息' }
+  {
+    value: 'current-branch',
+    get label(): string {
+      return t('chat.currentBranch')
+    }
+  },
+  {
+    value: 'all-branches',
+    get label(): string {
+      return t('chat.allBranches')
+    }
+  },
+  {
+    value: 'free-select',
+    get label(): string {
+      return t('export.freeSelect')
+    }
+  },
+  {
+    value: 'topic-messages',
+    get label(): string {
+      return t('export.topicMessages')
+    }
+  }
 ]
 
 /**
@@ -43,6 +64,8 @@ export function MessagesSourceSelector({
   onChange,
   pageId
 }: MessagesSourceSelectorProps): React.JSX.Element {
+  useI18n()
+
   const [loading, setLoading] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
@@ -245,7 +268,7 @@ export function MessagesSourceSelector({
   }
 
   if (!pageId) {
-    return <Empty description="请先打开一个聊天页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+    return <Empty description={t('export.openChatFirst')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
   if (loading) {
@@ -258,19 +281,19 @@ export function MessagesSourceSelector({
 
   if (messages.length === 0) {
     if (loadError) return <Alert type="error" message={loadError} />
-    return <Empty description="没有消息可导出" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+    return <Empty description={t('export.noMessages')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
   return (
     <div>
       {/* Selection mode */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 8, fontWeight: 500 }}>选择模式</div>
+        <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('export.selectionMode')}</div>
         <Select
-          aria-label="消息选择模式"
+          aria-label={t('export.messageSelectionMode')}
           value={selectionMode}
           onChange={(value) => handleModeChange(value as MessageSelectionMode)}
-          options={selectionModeOptions}
+          options={selectionModeOptions.map((option) => ({ ...option }))}
           style={{ width: '100%' }}
         />
       </div>
@@ -278,7 +301,7 @@ export function MessagesSourceSelector({
       {/* Topic selector (for topic-messages mode) */}
       {selectionMode === 'topic-messages' && topics.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>选择 Topic</div>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('export.selectTopic')}</div>
           <Select
             value={selectedTopicId}
             onChange={(value) => handleTopicSelect(value)}
@@ -286,7 +309,7 @@ export function MessagesSourceSelector({
               value: topic.id,
               label: topic.name
             }))}
-            placeholder="请选择 Topic"
+            placeholder={t('export.topicPlaceholder')}
             style={{ width: '100%' }}
           />
         </div>
@@ -305,7 +328,10 @@ export function MessagesSourceSelector({
               }
               onChange={handleSelectAll}
             >
-              全选 ({selectedMessageIds.length}/{branchMessages.length})
+              {t('common.selectCount', {
+                selected: selectedMessageIds.length,
+                total: branchMessages.length
+              })}
             </Checkbox>
           </div>
           <div className="free-select-list__content">
@@ -314,7 +340,7 @@ export function MessagesSourceSelector({
                 {group.topic && (
                   <div className="free-select-group__header">
                     <Checkbox
-                      aria-label={`选择话题 ${group.topic.name}`}
+                      aria-label={t('export.selectNamedTopic', { v0: String(group.topic.name) })}
                       indeterminate={
                         group.messages.some((m) => selectedMessageIds.includes(m.id)) &&
                         !group.messages.every((m) => selectedMessageIds.includes(m.id))
@@ -336,7 +362,7 @@ export function MessagesSourceSelector({
                       className={`free-select-item ${group.topic ? 'free-select-item--indented' : ''}`}
                     >
                       <Checkbox
-                        aria-label={`选择消息 ${preview}`}
+                        aria-label={t('export.selectNamedMessage', { v0: String(preview) })}
                         checked={selectedMessageIds.includes(message.id)}
                         onChange={(e) => handleItemCheck(message.id, e.target.checked)}
                       />
@@ -361,7 +387,7 @@ export function MessagesSourceSelector({
           borderRadius: 6
         }}
       >
-        已选择 <strong>{selectedMessageIds.length}</strong> 条消息
+        {t('common.selectedMessages', { count: selectedMessageIds.length })}
       </div>
     </div>
   )

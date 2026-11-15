@@ -1,3 +1,4 @@
+import { t } from '@renderer/i18n'
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { UpdateStatus } from '@shared/contracts'
@@ -260,7 +261,7 @@ export const useUpdateStore = create<UpdateState & UpdateActions>()(
             if (status.version) state.updateInfo = { version: status.version }
             break
           case 'error':
-            state.error = status.message ?? '更新失败'
+            state.error = status.message ?? t('update.failed')
             state.checkingForUpdates = false
             state.downloading = false
             state.downloadProgress = null

@@ -33,7 +33,7 @@ UI → services/* → stores/* → runtime/client → 内核命令 → 内核事
 
 ## 三、契约面
 
-`RuntimePort` 的业务方法为 `query`、`command`、`subscribe`；对应 IPC 通道为 `runtime:query`、`runtime:command`、`runtime:event`。另有 `onFlush` 配合 `runtime:flush` / `runtime:flushed` 关闭握手。失败统一返回 `{ ok: false, code, message, details? }`，内核抛出携带稳定错误码的 `RuntimeError`。
+`RuntimePort` 的业务方法为 `query`、`command`、`subscribe`；对应 IPC 通道为 `runtime:query`、`runtime:command`、`runtime:event`。另有 `onFlush` 配合 `runtime:flush` / `runtime:flushed` 关闭握手。失败统一返回 `{ ok: false, code, message, details?, localized? }`，内核抛出携带稳定错误码的 `RuntimeError`。可翻译错误的 `localized` 包含语义键与插值参数，展示时按当前语言解析；供应商原始错误保留原文。
 
 契约集中定义于 `src/shared/contracts`。按用途分组：
 
@@ -49,6 +49,7 @@ UI → services/* → stores/* → runtime/client → 内核命令 → 内核事
 
 ```
 accounts.json          账户列表与当前账户
+app-preferences.json   应用级语言偏好（system / zh-CN / en-US）
 accounts/<accountId>/
   workspaces.json      该账户的工作区列表与当前工作区
   settings.json        账户级设置（LLM 配置、模型配置，API Key 以明文随配置保存）
@@ -128,7 +129,20 @@ workspaces/<accountId>/default/    默认工作区
 - `data.reset` 执行真实持久化重置：对话删除当前工作区页面与队列；文件夹保留对话并提升至根，同级重名唯一化；设置恢复当前账户默认值；标签和布局只重置当前工作区对应状态。前端 `reset()` 仅清理镜像。
 - CSV、HTML、TXT 表格导出共享 remark GFM AST，保留空列和转义分隔符。CSV 预览用完整文本状态机，支持 BOM、CRLF、引号内换行及双引号转义。
 
-## 九、验证
+## 九、语言与文案
+
+- `src/shared/domain/locale.ts` 解析 `system | zh-CN | en-US`。首次安装、升级时缺少偏好以及偏好损坏时默认跟随系统；按 Electron `app.getPreferredSystemLanguages()` 的优先顺序匹配，`zh-*` 统一简体中文、`en-*` 统一英文，无匹配时回退英文。启动及再次选择「跟随系统」时读取系统语言。
+- `LocaleService` 原子写入应用数据目录的 `app-preferences.json`，成功后递增 `revision` 并广播。该文件独立于账户设置、工作区备份与重置。
+- `app.locale.get`、`app.locale.set`、`app.locale.changed` 属于应用级契约，不因账户或工作区 scope 变化而丢弃。关闭时等待语言写入；保存失败不更新偏好。展示层先订阅，再获取语言快照，之后加载工作区；镜像忽略较旧 revision。
+- 中英文词典集中在 `src/shared/i18n`，语义键由英文资源推导类型，所有资源随应用打包。内核每个实例拥有独立 i18next 实例；preload 仅转发键和参数。领域层只产生纯数据描述，不访问语言偏好或 IO。
+- React 组件使用 `useI18n()` 订阅语言，服务调用共享 `t()`；缓存的菜单需把翻译函数纳入依赖。Ant Design 的 ConfigProvider 同步切换 locale，日期通过 Intl 显式指定语言，数量文案通过完整句子和复数规则处理。
+- 固定页签名称、提示、菜单、导出标签和新对象的默认名称随语言变化；已有对象名、输入草稿、对话原文及已生成导出内容保留。AI 标题模板按界面语言提供指令，要求生成结果遵循对话内容的主要语言，不限制正常聊天回复语言。
+- 系统创建的账户以 `usesDefaultName` 标识默认名称，账户卡片、切换列表和编辑初始值按当前语言显示；仅改头像保留标识，用户改名后取消。旧账户缺少标识时，仅首个且名称等于已知中英文默认账户名的记录按默认名称兼容，其他名称保持原文；存储的名称不随语言切换改写。
+- 系统默认工作区同样使用 `usesDefaultName`，标识随工作区列表传到展示层，用户改名后取消。旧工作区缺少标识时，仅 `type: default` 且名称匹配中英文默认文案的记录按默认名称兼容；自定义目录即使同名也保留原文，语言切换不修改工作区路径和身份文件。
+- `applicationMenu.ts` 显式设置 Electron 原生菜单的文案，启动加载语言后安装，收到 `app.locale.changed` 时重建；编辑和窗口操作继续使用原生 role。树节点菜单仅延迟首次构造，不缓存已翻译标签，已打开的右键和更多菜单随语言刷新。已保存的对话、文件夹、配置和 CSV 列标题保持原文，仅新增时使用当前语言。
+- Monaco NLS 必须先于编辑器模块加载。首次打开导出编辑器时加载当前语言的本地资源；已加载的 Monaco 内置菜单切换语言需要重启，设置页提示此限制。外层应用界面立即切换，不重载页面，不中断生成或重置编辑内容。
+
+## 十、验证
 
 完整测试分层、覆盖矩阵、资源预算和本地验收结果见 [testing.md](testing.md)。
 

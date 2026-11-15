@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { compareNodes } from '@shared/domain'
 import React, { useCallback, useMemo } from 'react'
 import { Select, Collapse, Tag } from 'antd'
@@ -7,19 +8,56 @@ import { useFoldersStore } from '../../../stores/foldersStore'
 import type { SearchOptions } from '@renderer/types/shared'
 
 const roleOptions = [
-  { value: 'all', label: '全部角色' },
-  { value: 'user', label: '仅用户消息' },
-  { value: 'assistant', label: '仅 AI 消息' }
+  {
+    value: 'all',
+    get label(): string {
+      return t('search.allRoles')
+    }
+  },
+  {
+    value: 'user',
+    get label(): string {
+      return t('search.userOnly')
+    }
+  },
+  {
+    value: 'assistant',
+    get label(): string {
+      return t('search.assistantOnly')
+    }
+  }
 ]
 
 const timeOptions = [
-  { value: 'all', label: '不限时间' },
-  { value: 'today', label: '今天' },
-  { value: 'week', label: '最近一周' },
-  { value: 'month', label: '最近一月' }
+  {
+    value: 'all',
+    get label(): string {
+      return t('search.anyTime')
+    }
+  },
+  {
+    value: 'today',
+    get label(): string {
+      return t('time.today')
+    }
+  },
+  {
+    value: 'week',
+    get label(): string {
+      return t('time.lastWeek')
+    }
+  },
+  {
+    value: 'month',
+    get label(): string {
+      return t('time.lastMonth')
+    }
+  }
 ]
 
 export function SearchOptions(): React.JSX.Element {
+  useI18n()
+
   const { options, setOptions } = useGlobalSearchStore()
   const { folders } = useFoldersStore()
 
@@ -87,38 +125,38 @@ export function SearchOptions(): React.JSX.Element {
             key: 'filters',
             label: (
               <span className="search-filter-label">
-                <FilterOutlined /> 筛选条件
+                <FilterOutlined /> {t('search.filters')}
               </span>
             ),
             children: (
               <div className="search-filters">
                 <div className="search-filter-item">
-                  <span className="search-filter-title">角色</span>
+                  <span className="search-filter-title">{t('search.role')}</span>
                   <Select
                     value={options.roleFilter}
                     onChange={(value) => handleOptionChange('roleFilter', value)}
-                    options={roleOptions}
+                    options={roleOptions.map((option) => ({ ...option }))}
                     style={{ width: '100%' }}
                   />
                 </div>
                 <div className="search-filter-item">
-                  <span className="search-filter-title">时间</span>
+                  <span className="search-filter-title">{t('common.time')}</span>
                   <Select
                     value={options.timeRange}
                     onChange={(value) => handleOptionChange('timeRange', value)}
-                    options={timeOptions}
+                    options={timeOptions.map((option) => ({ ...option }))}
                     style={{ width: '100%' }}
                   />
                 </div>
                 {folders.length > 0 && (
                   <div className="search-filter-item">
-                    <span className="search-filter-title">文件夹</span>
+                    <span className="search-filter-title">{t('common.folders')}</span>
                     <Select
                       mode="multiple"
                       value={options.folderIds || []}
                       onChange={handleFolderChange}
                       options={folderOptions}
-                      placeholder="全部文件夹"
+                      placeholder={t('search.allFolders')}
                       style={{ width: '100%' }}
                       maxTagCount={1}
                       maxTagPlaceholder={(omitted) => `+${omitted.length}`}

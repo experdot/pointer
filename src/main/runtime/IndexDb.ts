@@ -5,6 +5,8 @@
  * 用户数据始终保存在 .pointer.md 文件中。
  */
 
+import { msg, LocalizedError } from '@shared/i18n/message'
+
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -106,7 +108,7 @@ export class IndexDb {
       }
       const integrity = this.db.prepare('PRAGMA quick_check').all()
       if (integrity.some((row) => row.quick_check !== 'ok'))
-        throw Object.assign(new Error('SQLite 索引完整性校验失败'), { errcode: 11 })
+        throw Object.assign(new LocalizedError(msg('errors.index.integrity')), { errcode: 11 })
       this.insertMessage = this.db.prepare(
         `INSERT INTO messages (id, page_id, role, title, created_at, content)
        VALUES (?, ?, ?, ?, ?, ?)

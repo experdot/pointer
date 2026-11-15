@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import { useCallback, useState } from 'react'
 import { App } from 'antd'
 import type { ChatMessage } from '@shared/domain'
@@ -31,6 +32,8 @@ interface UseChatTitlesResult {
 }
 
 export function useChatTitles({ pageId, currentPath }: UseChatTitlesOptions): UseChatTitlesResult {
+  useI18n()
+
   const { message } = App.useApp()
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null)
 
@@ -53,7 +56,9 @@ export function useChatTitles({ pageId, currentPath }: UseChatTitlesOptions): Us
       const result = await generateMessageTitle(pageId, messageId, options)
       if (!result.success) {
         console.error('生成标题失败：', result.error)
-        message.error(`生成标题失败：${result.error ?? '未知原因'}`)
+        message.error(
+          t('chat.titleFailed', { v0: String(result.error ?? t('common.unknownReason')) })
+        )
       }
     },
     [message, pageId]
@@ -84,7 +89,9 @@ export function useChatTitles({ pageId, currentPath }: UseChatTitlesOptions): Us
       }
 
       if (failures.length > 0) {
-        message.warning(`有 ${failures.length} 条标题生成失败：${failures[0]}`)
+        message.warning(
+          t('chat.titlesFailed', { v0: String(failures.length), v1: String(failures[0]) })
+        )
       }
     },
     [currentPath, message, pageId]

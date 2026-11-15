@@ -32,6 +32,7 @@ export interface Diagnostic {
   code: string
   message: string
   entityId?: string
+  localized?: import('../i18n/message').LocalizedMessage
 }
 
 /** 文件夹的全部后代 id（不含自身）；visited 守卫保证成环数据也能终止。 */

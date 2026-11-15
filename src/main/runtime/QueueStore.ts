@@ -2,6 +2,8 @@
  * 消息队列存储（每个会话一个文件）
  */
 
+import { msg } from '@shared/i18n/message'
+
 import type { MessageQueue, QueueItem } from '@shared/domain'
 import { emptyQueue, enqueue, removeItem, setPaused, updateItem, clear } from '@shared/domain'
 import type { PathResolver } from './paths'
@@ -17,7 +19,7 @@ export class QueueStore {
   ) {}
 
   async get(pageId: string): Promise<MessageQueue> {
-    if (!this.pageExists(pageId)) throw new RuntimeError('page.not-found', '页面不存在')
+    if (!this.pageExists(pageId)) throw new RuntimeError('page.not-found', msg('chat.pageMissing'))
     const file = await readJson<MessageQueue>(this.paths.queueFile(this.workspacePath, pageId))
     return file ? { ...file, pageId } : emptyQueue(pageId)
   }
@@ -53,7 +55,8 @@ export class QueueStore {
   }
 
   private async save(queue: MessageQueue): Promise<void> {
-    if (!this.pageExists(queue.pageId)) throw new RuntimeError('page.not-found', '页面不存在')
+    if (!this.pageExists(queue.pageId))
+      throw new RuntimeError('page.not-found', msg('chat.pageMissing'))
     await this.writeJson(this.paths.queueFile(this.workspacePath, queue.pageId), queue)
   }
 }

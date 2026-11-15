@@ -4,6 +4,8 @@
  * 页面只承载元数据；消息与 Topic 属于 Conversation（见 chat.ts）。
  */
 
+import { describe } from '@shared/i18n/message'
+
 import type { Diagnostic, TreeMove, TreeNodeBase } from './common'
 import { compareNodes, descendantFolderIds, nameKey } from './common'
 import { orderKeyBetween, orderKeysBetween, validateOrderKeys } from './ordering'
@@ -185,7 +187,7 @@ export function validatePageTree(tree: PageTree): Diagnostic[] {
     if (node.parentFolderId && !folderIds.has(node.parentFolderId)) {
       diagnostics.push({
         code: 'tree.orphan',
-        message: `节点「${node.name}」的父文件夹不存在`,
+        ...describe('errors.tree.parentMissing', { v0: String(node.name) }),
         entityId: node.id
       })
     }
@@ -196,7 +198,7 @@ export function validatePageTree(tree: PageTree): Diagnostic[] {
     if (seenIds.has(node.id)) {
       diagnostics.push({
         code: 'tree.duplicate-id',
-        message: `存在重复的节点 id：${node.id}`,
+        ...describe('errors.tree.duplicateNodeId', { v0: String(node.id) }),
         entityId: node.id
       })
     }
@@ -210,7 +212,7 @@ export function validatePageTree(tree: PageTree): Diagnostic[] {
       if (visited.has(currentId)) {
         diagnostics.push({
           code: 'tree.cycle',
-          message: `文件夹层级存在循环引用：${folder.name}`,
+          ...describe('errors.tree.folderCycle', { v0: String(folder.name) }),
           entityId: folder.id
         })
         break
@@ -228,7 +230,7 @@ export function validatePageTree(tree: PageTree): Diagnostic[] {
     if (bucket.has(key)) {
       diagnostics.push({
         code: 'tree.duplicate-name',
-        message: `同一层级存在同名节点：${node.name}`,
+        ...describe('errors.tree.duplicateName', { v0: String(node.name) }),
         entityId: node.id
       })
     }

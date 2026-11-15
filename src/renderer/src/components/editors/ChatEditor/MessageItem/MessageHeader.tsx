@@ -1,3 +1,4 @@
+import { t, useI18n } from '@renderer/i18n'
 import React from 'react'
 import { Button, Tooltip } from 'antd'
 import { DownOutlined, UpOutlined } from '@ant-design/icons'
@@ -19,13 +20,15 @@ export const MessageHeader = React.memo(function MessageHeader({
   onRetry,
   onSwitchBranch
 }: MessageHeaderProps): React.JSX.Element {
+  useI18n()
+
   return (
     <div className="message-item__header">
-      <span className="message-item__role">{isUser ? '你' : 'AI'}</span>
+      <span className="message-item__role">{isUser ? t('chat.you') : 'AI'}</span>
       <DateTimeText value={message.createdAt} className="message-item__time" />
 
       {/* 折叠按钮 */}
-      <Tooltip title={message.collapsed ? '展开' : '折叠'}>
+      <Tooltip title={message.collapsed ? t('common.expand') : t('common.collapse')}>
         <Button
           type="text"
           size="small"
