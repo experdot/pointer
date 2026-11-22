@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { App, ConfigProvider, Empty } from 'antd'
 import enUS from 'antd/locale/en_US'
 import zhCN from 'antd/locale/zh_CN'
@@ -10,6 +10,7 @@ import { useI18n } from './i18n'
 import { useLocaleStore } from './stores/localeStore'
 import type { LocaleSnapshot } from '@shared/contracts'
 import type { Folder, Page, WorkspaceSummary } from '@shared/domain'
+import { deferred } from '../../../tests/helpers/deferred'
 import { Explorer } from './components/panels/Explorer'
 import { LLMConfigPanel } from './components/editors/SettingsEditor/LLMConfigPanel'
 import { TreeView } from './components/common/TreeView'
@@ -78,31 +79,41 @@ describe('默认账户名称', () => {
   })
 
   it('编辑显示当前语言，未修改名称时保存不固化默认名称', async () => {
-    const command = vi.fn().mockResolvedValue(undefined)
+    const defaultNameSave = deferred()
+    const customNameSave = deferred()
+    const command = vi
+      .fn()
+      .mockReturnValueOnce(defaultNameSave.promise)
+      .mockReturnValueOnce(customNameSave.promise)
     window.runtime = { command } as unknown as Window['runtime']
     const { container } = render(
       <App>
         <UserProfileCard onClose={vi.fn()} />
       </App>
     )
+    const card = within(container)
+    const namePlaceholder = 'Enter an account name'
     fireEvent.click(container.querySelector('.ant-avatar')!)
-    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('Default account')
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull())
+    expect(card.getByPlaceholderText(namePlaceholder)).toHaveProperty('value', 'Default account')
+    fireEvent.click(card.getByText('Save', { selector: 'button span' }))
     expect(command).toHaveBeenCalledWith(
       'account.update',
       { accountId: 'default', patch: { avatar: 'user' } },
       null
     )
+    await act(async () => defaultNameSave.resolve())
+    expect(card.queryByPlaceholderText(namePlaceholder)).toBeNull()
+
     fireEvent.click(container.querySelector('.ant-avatar')!)
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Personal' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull())
+    fireEvent.change(card.getByPlaceholderText(namePlaceholder), { target: { value: 'Personal' } })
+    fireEvent.click(card.getByText('Save', { selector: 'button span' }))
     expect(command).toHaveBeenLastCalledWith(
       'account.update',
       { accountId: 'default', patch: { name: 'Personal', avatar: 'user' } },
       null
     )
+    await act(async () => customNameSave.resolve())
+    expect(card.queryByPlaceholderText(namePlaceholder)).toBeNull()
   })
 
   it('手动设置的同名账户不会被翻译', () => {

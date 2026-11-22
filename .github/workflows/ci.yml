@@ -17,6 +17,12 @@ on:
         type: boolean
         default: false
   workflow_dispatch:
+    inputs:
+      windows_coverage_workers:
+        description: Number of Vitest workers for Windows coverage
+        type: choice
+        default: '4'
+        options: ['2', '4']
 
 permissions:
   contents: read
@@ -39,7 +45,10 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm test:release
-      - run: pnpm test:coverage
+      - name: Windows coverage (${{ inputs.windows_coverage_workers || '4' }} workers)
+        run: pnpm test:coverage --maxWorkers=$env:POINTER_WINDOWS_COVERAGE_WORKERS
+        env:
+          POINTER_WINDOWS_COVERAGE_WORKERS: ${{ inputs.windows_coverage_workers || '4' }}
       - run: pnpm test:stress
       - run: pnpm smoke:kernel
       - run: pnpm exec playwright test

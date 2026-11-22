@@ -1,4 +1,4 @@
-import { expect, vi, type Mock } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import { RuntimeCore, type RuntimeHost } from '../../src/main/runtime/RuntimeCore'
 import { defaultSettings, type Settings } from '../../src/shared/domain'
 import type {
@@ -39,6 +39,7 @@ export interface KernelFixture {
   ): Promise<RuntimeQueryResult<K>>
   configure(baseUrl?: string): Promise<Settings>
   restart(): Promise<void>
+  waitForEvent(match: (event: RuntimeEvent) => boolean): Promise<RuntimeEvent>
   terminal(requestId: string): Promise<void>
   dispose(): Promise<void>
 }
@@ -93,19 +94,28 @@ export async function createKernel(): Promise<KernelFixture> {
       runtime.subscribe((event) => events.push(event))
       await runtime.init()
     },
-    async terminal(requestId: string) {
-      await vi.waitFor(() => {
-        expect(
-          events.some(
-            (event) =>
-              ['chat.completed', 'chat.failed', 'chat.aborted', 'chat.saveFailed'].includes(
-                event.type
-              ) &&
-              'requestId' in event.payload &&
-              event.payload.requestId === requestId
-          )
-        ).toBe(true)
+    async waitForEvent(match) {
+      const delivered = events.find(match)
+      if (delivered) return delivered
+
+      return new Promise<RuntimeEvent>((resolve) => {
+        const unsubscribe = runtime.subscribe((event) => {
+          if (match(event)) {
+            unsubscribe()
+            resolve(event)
+          }
+        })
       })
+    },
+    async terminal(requestId: string) {
+      await fixture.waitForEvent(
+        (event) =>
+          ['chat.completed', 'chat.failed', 'chat.aborted', 'chat.saveFailed'].includes(
+            event.type
+          ) &&
+          'requestId' in event.payload &&
+          event.payload.requestId === requestId
+      )
     },
     async dispose() {
       // 故障注入先撤销，再释放可能仍有待保存内容的内核。
