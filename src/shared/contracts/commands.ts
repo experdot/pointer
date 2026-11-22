@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   Conversation,
   Folder,
+  ImportConversationSummary,
   MessageDraft,
   Page,
   Settings,
@@ -80,6 +81,11 @@ export interface ImportSource {
 export interface ImportResult {
   importedPages: number
   importedMessages: number
+}
+
+export interface DeepSeekIndexPreview {
+  draftId: string
+  sessions: ImportConversationSummary[]
 }
 
 interface FileFilter {
@@ -262,6 +268,10 @@ interface RuntimeCommandMap {
   }
   'dialog.pickImages': { payload: { multiple?: boolean }; result: PickedImage[] }
   'library.import': { payload: ImportSource; result: ImportResult }
+  'library.importDeepSeekIndex': {
+    payload: { draftId: string; ids: string[] }
+    result: ImportResult
+  }
   'backup.restore': {
     payload: import('./backup').BackupRestoreInput
     result: import('./backup').BackupRestoreResult

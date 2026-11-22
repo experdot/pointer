@@ -25,7 +25,11 @@ function windowStub(destroyed = false): {
 let bus: EventEmitter
 let flush: () => Promise<void>
 let emit: (event: RuntimeEvent) => void
-let runtime: { query: ReturnType<typeof vi.fn>; command: ReturnType<typeof vi.fn> }
+let runtime: {
+  query: ReturnType<typeof vi.fn>
+  command: ReturnType<typeof vi.fn>
+  prepareDeepSeekIndex: ReturnType<typeof vi.fn>
+}
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -35,7 +39,7 @@ beforeEach(() => {
     bus.removeListener(channel, listener)
   )
   mocks.windows.mockReturnValue([])
-  runtime = { query: vi.fn(), command: vi.fn() }
+  runtime = { query: vi.fn(), command: vi.fn(), prepareDeepSeekIndex: vi.fn() }
   setupRuntimeIpc({
     ...runtime,
     getScopeId: () => 'scope',
@@ -73,6 +77,26 @@ describe('主进程 IPC 适配', () => {
       details: { retry: true }
     })
     expect(await handler({}, null)).toMatchObject({ ok: false })
+  })
+
+  it('索引预览的专用通道透传路径和作用域，并序列化失败', async () => {
+    const handler = mocks.handle.mock.calls.find(
+      ([channel]) => channel === RUNTIME_CHANNELS.prepareDeepSeekIndex
+    )![1]
+    const path = '/export/chat_session_index.json'
+    const preview = { draftId: 'draft', sessions: [] }
+    runtime.prepareDeepSeekIndex.mockResolvedValue(preview)
+    expect(await handler({}, path, 'scope')).toEqual({
+      ok: true,
+      scopeId: 'scope',
+      value: preview
+    })
+    expect(runtime.prepareDeepSeekIndex).toHaveBeenCalledWith(path, 'scope')
+    runtime.prepareDeepSeekIndex.mockRejectedValue(new RuntimeError('runtime.stale-scope', 'stale'))
+    expect(await handler({}, path, 'other')).toMatchObject({
+      ok: false,
+      code: 'runtime.stale-scope'
+    })
   })
 
   it('事件只广播给仍存活的窗口', () => {

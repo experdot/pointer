@@ -11,7 +11,13 @@ import { watch, type FSWatcher } from 'node:fs'
 import { relative } from 'node:path'
 import type { RuntimeEventName, RuntimeEventPayload } from '@shared/contracts'
 import { randomUUID } from 'node:crypto'
-import type { ChatMessage, Conversation, Settings, Workspace } from '@shared/domain'
+import type {
+  ChatMessage,
+  Conversation,
+  ImportedConversation,
+  Settings,
+  Workspace
+} from '@shared/domain'
 import {
   appendMessage,
   childrenOf,
@@ -30,6 +36,7 @@ import {
 } from '@shared/domain'
 import type {
   AttachmentContent,
+  DeepSeekIndexPreview,
   ImportResult,
   ImportSource,
   ModelCatalog,
@@ -61,12 +68,19 @@ import { WorkspaceStore } from './WorkspaceStore'
 import { listModels, testConnection as testProviderConnection } from './providers'
 import { isWorkspaceFileChange, readBinary } from './fsx'
 import { restoreBackup } from './BackupRestorer'
+import { readDeepSeekIndex, readDeepSeekSession } from './deepSeekImport'
 
 type QueryHandlers = {
   [K in RuntimeQueryName]: (payload: RuntimeQueryPayload<K>) => Promise<RuntimeQueryResult<K>>
 }
 type CommandHandlers = {
   [K in RuntimeCommandName]: (payload: RuntimeCommandPayload<K>) => Promise<RuntimeCommandResult<K>>
+}
+
+interface DeepSeekImportDraft extends DeepSeekIndexPreview {
+  scopeId: string | null
+  indexPath: string
+  importing: boolean
 }
 
 const LIFECYCLE_COMMANDS = new Set<RuntimeCommandName>([
@@ -170,6 +184,7 @@ export class RuntimeCore {
   private viewState: ViewStateStore | null = null
   private queues: QueueStore | null = null
   private search: SearchService | null = null
+  private deepSeekImportDraft: DeepSeekImportDraft | null = null
 
   private watcher: FSWatcher | null = null
   private watcherTimer: NodeJS.Timeout | null = null
@@ -746,6 +761,9 @@ export class RuntimeCore {
     'library.import': async (input) => {
       return this.importLibrary(input)
     },
+    'library.importDeepSeekIndex': async (input) => {
+      return this.importDeepSeekIndex(input)
+    },
     'backup.restore': async (input) => {
       const result = await restoreBackup(
         this.requireWorkspace(),
@@ -906,6 +924,7 @@ export class RuntimeCore {
     await this.workspaceLease?.release()
     this.workspaceLease = null
     this.workspace = null
+    this.deepSeekImportDraft = null
     this.index = null
     this.viewState = null
     this.queues = null
@@ -1090,8 +1109,81 @@ export class RuntimeCore {
       throw new RuntimeError('library.empty', parsed.errors[0] ?? msg('errors.import.empty'))
     }
 
-    const folderId = input.folderName?.trim()
-      ? (await workspace.createFolder({ name: input.folderName.trim() }, Date.now())).id
+    return this.writeImportedConversations(workspace, selected, input.folderName)
+  }
+
+  private assertImportScope(scopeId: string | null): void {
+    this.assertScope(scopeId)
+    if (this.closingRequested || this.transitioning)
+      throw new RuntimeError('runtime.closing', msg('errors.runtime.closing'))
+  }
+
+  async prepareDeepSeekIndex(
+    indexPath: string,
+    scopeId = this.scopeId
+  ): Promise<DeepSeekIndexPreview> {
+    this.assertImportScope(scopeId)
+    this.requireWorkspace()
+
+    const sessions = await readDeepSeekIndex(indexPath, Date.now(), this.locale.translations.t)
+    this.assertImportScope(scopeId)
+    if (sessions.length === 0) throw new RuntimeError('library.empty', msg('errors.import.empty'))
+    if (this.deepSeekImportDraft?.importing)
+      throw new RuntimeError('library.deepseek-busy', msg('errors.import.deepSeekBusy'))
+
+    const draftId = randomUUID()
+    this.deepSeekImportDraft = { draftId, sessions, scopeId, indexPath, importing: false }
+    return { draftId, sessions }
+  }
+
+  private async importDeepSeekIndex(
+    input: RuntimeCommandPayload<'library.importDeepSeekIndex'>
+  ): Promise<ImportResult> {
+    const workspace = this.requireWorkspace()
+    const draft = this.deepSeekImportDraft
+    if (!draft || draft.draftId !== input?.draftId || draft.scopeId !== this.scopeId)
+      throw new RuntimeError(
+        'library.deepseek-draft-expired',
+        msg('errors.import.deepSeekDraftExpired')
+      )
+    if (draft.importing)
+      throw new RuntimeError('library.deepseek-busy', msg('errors.import.deepSeekBusy'))
+
+    const ids = new Set(Array.isArray(input.ids) ? input.ids : [])
+    if (ids.size === 0) throw new RuntimeError('library.empty', msg('errors.import.empty'))
+    const selected = draft.sessions.filter((session) => ids.has(session.id))
+    if (selected.length !== ids.size)
+      throw new RuntimeError('library.deepseek-selection', msg('errors.import.deepSeekSelection'))
+
+    draft.importing = true
+    try {
+      // 在占用工作区写队列前，先校验勾选的全部会话。
+      const now = Date.now()
+      const conversations: ImportedConversation[] = []
+      for (const { id } of selected) {
+        conversations.push(
+          await readDeepSeekSession(draft.indexPath, id, now, this.locale.translations.t)
+        )
+      }
+      this.assertImportScope(draft.scopeId)
+      const result = await workspace.write(() => {
+        this.assertImportScope(draft.scopeId)
+        return this.writeImportedConversations(workspace, conversations)
+      })
+      if (this.deepSeekImportDraft === draft) this.deepSeekImportDraft = null
+      return result
+    } finally {
+      draft.importing = false
+    }
+  }
+
+  private async writeImportedConversations(
+    workspace: WorkspaceStore,
+    selected: ImportedConversation[],
+    folderName?: string
+  ): Promise<ImportResult> {
+    const folderId = folderName?.trim()
+      ? (await workspace.createFolder({ name: folderName.trim() }, Date.now())).id
       : undefined
 
     let importedPages = 0

@@ -7,6 +7,8 @@
 import { t } from '@renderer/i18n'
 import { command } from '../runtime/client'
 
+export { prepareDeepSeekIndex } from '../runtime/client'
+
 type ImportPlatform = 'openai' | 'deepseek' | 'pointer'
 
 interface ImportFileInput {
@@ -45,6 +47,11 @@ export function getSupportedPlatforms(): Array<{ platform: ImportPlatform; name:
     platform,
     name: PLATFORM_LABELS[platform]
   }))
+}
+
+export async function importDeepSeekIndex(draftId: string, ids: string[]): Promise<ImportSummary> {
+  const { importedPages } = await command('library.importDeepSeekIndex', { draftId, ids })
+  return { success: importedPages, skipped: 0, failed: 0, errors: [] }
 }
 
 export async function importConversations(
