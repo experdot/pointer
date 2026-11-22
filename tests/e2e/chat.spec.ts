@@ -11,7 +11,7 @@ test('真实 preload 隔离、订阅取消、scope 校验和错误响应', async
   expect(isolation).toEqual({
     node: 'undefined',
     process: 'undefined',
-    runtime: ['command', 'onFlush', 'query', 'subscribe'],
+    runtime: ['command', 'onFlush', 'prepareDeepSeekIndex', 'query', 'subscribe'],
     frozen: true
   })
   const result = await page.evaluate(async () => {
