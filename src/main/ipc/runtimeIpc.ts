@@ -96,6 +96,18 @@ export function setupRuntimeIpc(runtime: RuntimeCore): void {
     }
   })
 
+  ipcMain.handle(
+    RUNTIME_CHANNELS.prepareDeepSeekIndex,
+    async (_event, indexPath: string, scopeId?: string | null) => {
+      try {
+        const value = await runtime.prepareDeepSeekIndex(indexPath, scopeId ?? null)
+        return { ok: true, scopeId: runtime.getScopeId(), value }
+      } catch (error) {
+        return toFailure(error)
+      }
+    }
+  )
+
   runtime.subscribe((event) => {
     for (const window of BrowserWindow.getAllWindows()) {
       if (window.isDestroyed()) continue

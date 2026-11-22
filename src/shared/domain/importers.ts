@@ -7,9 +7,11 @@
 
 import type { ChatMessage, MessageRole } from './chat'
 import type { Translate } from '../i18n'
-import { sourceTranslate } from '../i18n/message'
+import { LocalizedError, msg, sourceTranslate } from '../i18n/message'
+import { validateConversation } from './messageTree'
 
 export type ImportFormat = 'openai' | 'deepseek' | 'pointer'
+export const DEEPSEEK_INDEX_FILENAME = 'chat_session_index.json'
 
 export interface ImportedConversation {
   id: string
@@ -18,6 +20,13 @@ export interface ImportedConversation {
   updatedAt?: number
   messages: ChatMessage[]
   leafMessageId?: string
+}
+
+export interface ImportConversationSummary {
+  id: string
+  title: string
+  createdAt: number
+  messageCount: number
 }
 
 interface ImportParseResult {
@@ -142,6 +151,8 @@ export function detectFormat(payload: unknown): ImportFormat | null {
     if (record.type === 'chats-only' && Array.isArray(record.pages)) return 'pointer'
   }
 
+  if (isDeepSeekV3Conversation(payload)) return 'deepseek'
+
   return null
 }
 
@@ -160,6 +171,13 @@ export function parseImport(
     case 'openai':
       return parseOpenAI(payload as OpenAIExport[], now, t)
     case 'deepseek':
+      if (isDeepSeekV3Conversation(payload)) {
+        return {
+          format: 'deepseek',
+          conversations: [parseDeepSeekV3Conversation(payload, now, t)],
+          errors: []
+        }
+      }
       return parseDeepSeek(payload as DeepSeekExport[], now, t)
     case 'pointer':
       return parsePointer(payload as PointerExport, now, t)
@@ -374,6 +392,122 @@ function parseDeepSeek(payload: DeepSeekExport[], now: number, t: Translate): Im
   }
 
   return { format: 'deepseek', conversations, errors }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isDeepSeekV3Conversation(
+  value: unknown
+): value is Record<string, unknown> & { id: string; messages: unknown[] } {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    Array.isArray(value.messages) &&
+    Object.hasOwn(value, 'current_message_id')
+  )
+}
+
+function isDeepSeekMessageId(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value)
+}
+
+function isDeepSeekFragmentList(value: unknown): value is Array<DeepSeekFragment | null> {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (fragment: unknown) =>
+        fragment === null || (isRecord(fragment) && typeof fragment.type === 'string')
+    )
+  )
+}
+
+export function parseDeepSeekIndex(
+  payload: unknown,
+  now: number,
+  t: Translate = sourceTranslate
+): ImportConversationSummary[] {
+  if (!Array.isArray(payload)) throw new LocalizedError(msg('errors.import.deepSeekIndexFormat'))
+
+  const ids = new Set<string>()
+  return payload.map((entry: unknown) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== 'string' ||
+      !entry.id ||
+      ids.has(entry.id) ||
+      typeof entry.message_count !== 'number' ||
+      !Number.isSafeInteger(entry.message_count) ||
+      entry.message_count < 0
+    )
+      throw new LocalizedError(msg('errors.import.deepSeekIndexFormat'))
+
+    ids.add(entry.id)
+    return {
+      id: entry.id,
+      title: (typeof entry.title === 'string' && entry.title.trim()) || t('chat.untitled'),
+      createdAt: timestampToMillis(entry.inserted_at, now),
+      messageCount: entry.message_count
+    }
+  })
+}
+
+export function parseDeepSeekV3Conversation(
+  payload: unknown,
+  now: number,
+  t: Translate = sourceTranslate
+): ImportedConversation {
+  if (!isDeepSeekV3Conversation(payload))
+    throw new LocalizedError(msg('errors.import.deepSeekConversationFormat'))
+
+  const nextBranchIndex = new Map<string | undefined, number>()
+  const messages = payload.messages.map((node: unknown, index: number): ChatMessage => {
+    if (
+      !isRecord(node) ||
+      !isDeepSeekMessageId(node.id) ||
+      (node.parent_id !== null && !isDeepSeekMessageId(node.parent_id)) ||
+      typeof node.role !== 'string' ||
+      (node.fragments != null && !isDeepSeekFragmentList(node.fragments))
+    )
+      throw new LocalizedError(msg('errors.import.deepSeekMessageFormat', { v0: index + 1 }))
+
+    const parentMessageId = node.parent_id === null ? undefined : String(node.parent_id)
+    const branchIndex = nextBranchIndex.get(parentMessageId) ?? 0
+    nextBranchIndex.set(parentMessageId, branchIndex + 1)
+    const { content, reasoning } = parseDeepSeekFragments(node.fragments ?? [])
+    return {
+      id: String(node.id),
+      parentMessageId,
+      branchIndex,
+      role: normalizeRole(node.role),
+      content,
+      reasoning,
+      createdAt: timestampToMillis(node.inserted_at, now)
+    }
+  })
+
+  const currentId = payload.current_message_id
+  if (currentId == null ? messages.length > 0 : !isDeepSeekMessageId(currentId))
+    throw new LocalizedError(msg('errors.import.deepSeekCurrentMessage'))
+
+  const leafMessageId = currentId == null ? undefined : String(currentId)
+  const [diagnostic] = validateConversation({
+    pageId: payload.id,
+    topics: [],
+    messages,
+    leafMessageId
+  })
+  if (diagnostic) throw new LocalizedError(diagnostic.localized ?? diagnostic.message)
+
+  return {
+    id: payload.id,
+    title: (typeof payload.title === 'string' && payload.title.trim()) || t('chat.untitled'),
+    createdAt: timestampToMillis(payload.inserted_at, now),
+    updatedAt: payload.updated_at ? timestampToMillis(payload.updated_at, now) : undefined,
+    messages,
+    leafMessageId
+  }
 }
 
 // ==================== Pointer 旧版导出 ====================

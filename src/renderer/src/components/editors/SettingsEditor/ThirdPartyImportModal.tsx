@@ -1,18 +1,21 @@
-import { t, useI18n } from '@renderer/i18n'
-import React, { useState, useMemo, useCallback } from 'react'
+import { rendererI18n, t, useI18n } from '@renderer/i18n'
+import React, { useState, useMemo, useCallback, useId } from 'react'
+import { Trans } from 'react-i18next'
+import dayjs from 'dayjs'
 import {
   Modal,
   Upload,
   Table,
+  AutoComplete,
   Input,
   Select,
   Checkbox,
   Button,
   Space,
+  Spin,
   Typography,
   App,
   Flex,
-  Progress,
   Result,
   Tag,
   Alert
@@ -24,15 +27,25 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined
 } from '@ant-design/icons'
-import type { UploadFile, TableColumnsType } from 'antd'
+import type { UploadProps, TableColumnsType } from 'antd'
+import type { ImportDestination } from '@shared/contracts'
+import { formatError } from '@shared/i18n/message'
 import { DateTimeText } from '../../common/DateTimeText'
 import {
   importConversations,
+  importDeepSeekIndex,
+  prepareDeepSeekIndex,
   getPlatformName,
   getSupportedPlatforms
 } from '../../../services/thirdPartyImportService'
-import type { ImportedConversation, ImportFormat } from '@renderer/types/shared'
-import { detectFormat, parseImport } from '@renderer/types/shared'
+import { useFoldersStore } from '../../../stores/foldersStore'
+import type { Folder, ImportConversationSummary, ImportFormat } from '@renderer/types/shared'
+import {
+  compareNodes,
+  DEEPSEEK_INDEX_FILENAME,
+  detectFormat,
+  parseImport
+} from '@renderer/types/shared'
 
 type ImportResult = Awaited<ReturnType<typeof importConversations>>
 
@@ -45,6 +58,9 @@ interface ThirdPartyImportModalProps {
 }
 
 type Step = 'upload' | 'select' | 'importing' | 'done'
+type PendingImport =
+  | { text: string; format: ImportFormat }
+  | { draftId: string; format: 'deepseek' }
 
 // 时间范围预设
 const TIME_PRESETS = [
@@ -95,20 +111,45 @@ export function ThirdPartyImportModal({
   useI18n()
 
   const { message } = App.useApp()
+  const folders = useFoldersStore((state) => state.folders)
+  const targetFolderInputId = useId()
 
   // 状态
   const [step, setStep] = useState<Step>('upload')
-  const [importer, setImporter] = useState<ImportFormat | null>(null)
-  const [conversations, setConversations] = useState<ImportedConversation[]>([])
+  const [conversations, setConversations] = useState<ImportConversationSummary[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [timePreset, setTimePreset] = useState('all')
-  const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [result, setResult] = useState<ImportResult | null>(null)
-  const [pendingPayload, setPendingPayload] = useState<{
-    text: string
-    format: ImportFormat
-  } | null>(null)
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [readingFile, setReadingFile] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [targetFolder, setTargetFolder] = useState<{ text: string; folderId?: string }>({
+    text: ''
+  })
+  const importer = pendingImport?.format
+  const busy = readingFile || step === 'importing'
+
+  const folderOptions = useMemo(() => {
+    const byParent = new Map<string | undefined, Folder[]>()
+    for (const folder of folders) {
+      const siblings = byParent.get(folder.parentFolderId) ?? []
+      siblings.push(folder)
+      byParent.set(folder.parentFolderId, siblings)
+    }
+
+    const options: { value: string; label: string }[] = []
+    const appendChildren = (parentId: string | undefined, parentLabel: string): void => {
+      for (const folder of byParent.get(parentId)?.sort(compareNodes) ?? []) {
+        const label = parentLabel ? `${parentLabel} / ${folder.name}` : folder.name
+        options.push({ value: folder.id, label })
+        appendChildren(folder.id, label)
+      }
+    }
+
+    appendChildren(undefined, '')
+    return options
+  }, [folders])
 
   // 过滤后的对话列表
   const filteredConversations = useMemo(() => {
@@ -130,10 +171,33 @@ export function ThirdPartyImportModal({
     })
   }, [conversations, searchQuery, timePreset])
 
+  const showPreview = (source: PendingImport, sessions: ImportConversationSummary[]): void => {
+    setPendingImport(source)
+    setConversations(sessions)
+    setSelectedIds(new Set(sessions.map((session) => session.id)))
+    setSearchQuery('')
+    setTimePreset('all')
+    setTargetFolder({
+      text: t('import.defaultFolderName', {
+        platform: getPlatformName(source.format),
+        date: dayjs().format('YYYY-MM-DD')
+      })
+    })
+    setStep('select')
+  }
+
   // 处理文件上传
-  const handleFileUpload = async (file: UploadFile): Promise<boolean> => {
+  const handleFileUpload: NonNullable<UploadProps['beforeUpload']> = async (file) => {
+    setReadingFile(true)
+    setImportError(null)
     try {
-      const text = await (file as unknown as File).text()
+      if (file.name.toLowerCase() === DEEPSEEK_INDEX_FILENAME) {
+        const draft = await prepareDeepSeekIndex(file)
+        showPreview({ draftId: draft.draftId, format: 'deepseek' }, draft.sessions)
+        return false
+      }
+
+      const text = await file.text()
       const data = JSON.parse(text)
 
       const format = detectFormat(data)
@@ -148,18 +212,22 @@ export function ThirdPartyImportModal({
         return false
       }
 
-      setImporter(format)
-      setConversations(parsed.conversations)
-      // 默认全选
-      setSelectedIds(new Set(parsed.conversations.map((c) => c.id)))
-      setPendingPayload({ text, format })
-      setStep('select')
-
-      return false
-    } catch {
-      message.error(t('import.invalidJson'))
-      return false
+      showPreview(
+        { text, format },
+        parsed.conversations.map(({ id, title, createdAt, messages }) => ({
+          id,
+          title,
+          createdAt,
+          messageCount: messages.length
+        }))
+      )
+    } catch (error) {
+      if (error instanceof SyntaxError) message.error(t('import.invalidJson'))
+      else setImportError(formatError(error, t))
+    } finally {
+      setReadingFile(false)
     }
+    return false
   }
 
   // 全选/取消全选
@@ -193,28 +261,37 @@ export function ThirdPartyImportModal({
       message.warning(t('import.selectConversation'))
       return
     }
+    if (!pendingImport) {
+      message.error(t('import.uploadFirst'))
+      return
+    }
 
     setStep('importing')
-    setProgress({ current: 0, total: selectedIds.size })
+    setImportError(null)
 
     try {
-      if (!pendingPayload) {
-        message.error(t('import.uploadFirst'))
-        return
-      }
-
-      setProgress({ current: 1, total: 1 })
-      const result = await importConversations(
-        [{ name: 'import.json', content: pendingPayload.text }],
-        { platform: pendingPayload.format, ids: [...selectedIds] }
-      )
+      const ids = [...selectedIds]
+      const folderName = targetFolder.text.trim()
+      const destination: ImportDestination = targetFolder.folderId
+        ? { folderId: targetFolder.folderId }
+        : folderName
+          ? { folderName }
+          : {}
+      const result =
+        'draftId' in pendingImport
+          ? await importDeepSeekIndex(pendingImport.draftId, ids, destination)
+          : await importConversations([{ name: 'import.json', content: pendingImport.text }], {
+              platform: pendingImport.format,
+              ids,
+              ...destination
+            })
 
       setResult(result)
       setStep('done')
     } catch (err) {
-      message.error(
-        t('import.errorColon') + (err instanceof Error ? err.message : t('common.unknownError'))
-      )
+      const detail = err instanceof Error ? err.message : t('common.unknownError')
+      if ('draftId' in pendingImport) setImportError(detail)
+      else message.error(t('import.errorColon') + detail)
       setStep('select')
     }
   }
@@ -222,18 +299,19 @@ export function ThirdPartyImportModal({
   // 重置并关闭
   const handleClose = (): void => {
     setStep('upload')
-    setImporter(null)
+    setPendingImport(null)
+    setImportError(null)
     setConversations([])
     setSelectedIds(new Set())
     setSearchQuery('')
     setTimePreset('all')
-    setProgress({ current: 0, total: 0 })
+    setTargetFolder({ text: '' })
     setResult(null)
     onClose()
   }
 
   // 表格列定义
-  const columns: TableColumnsType<ImportedConversation> = [
+  const columns: TableColumnsType<ImportConversationSummary> = [
     {
       title: (
         <Checkbox
@@ -271,24 +349,39 @@ export function ThirdPartyImportModal({
     },
     {
       title: t('import.messageCount'),
-      dataIndex: 'messages',
-      width: 80,
-      render: (messages) => messages?.length || 0
+      dataIndex: 'messageCount',
+      width: 80
     }
   ]
+
+  const errorAlert = importError && <Alert type="error" showIcon message={importError} />
 
   // 渲染上传界面
   const renderUpload = (): React.ReactNode => (
     <Flex vertical gap={16}>
-      <Dragger accept=".json" showUploadList={false} beforeUpload={handleFileUpload}>
+      <Dragger
+        accept=".json"
+        showUploadList={false}
+        beforeUpload={handleFileUpload}
+        disabled={readingFile}
+      >
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
         <p className="ant-upload-text" style={{ fontSize: 14 }}>
           {t('import.dropFile')}
         </p>
-        <p className="ant-upload-hint">{t('import.exportFormat')}</p>
+        <p className="ant-upload-hint">
+          <Trans
+            i18n={rendererI18n}
+            i18nKey="import.exportFormat"
+            values={{ indexFile: DEEPSEEK_INDEX_FILENAME }}
+            components={{ code: <code /> }}
+          />
+        </p>
       </Dragger>
+
+      {errorAlert}
 
       <Flex align="center" gap={8}>
         <Text type="secondary">{t('import.platforms')}</Text>
@@ -317,6 +410,7 @@ export function ThirdPartyImportModal({
           </Space>
         }
       />
+      {errorAlert}
 
       <Flex gap={12}>
         <Input
@@ -345,6 +439,20 @@ export function ThirdPartyImportModal({
         scroll={{ y: 300 }}
       />
 
+      <Flex vertical gap={4}>
+        <label htmlFor={targetFolderInputId}>{t('import.targetFolder')}</label>
+        <AutoComplete
+          id={targetFolderInputId}
+          allowClear
+          value={targetFolder.text}
+          options={folderOptions}
+          filterOption={false}
+          placeholder={t('import.targetRootPlaceholder')}
+          onChange={(text) => setTargetFolder({ text: text ?? '' })}
+          onSelect={(folderId, option) => setTargetFolder({ text: option.label, folderId })}
+        />
+      </Flex>
+
       <Flex justify="space-between" align="center">
         <Text type="secondary">
           {t('import.selectionCount', {
@@ -365,11 +473,7 @@ export function ThirdPartyImportModal({
   const renderImporting = (): React.ReactNode => (
     <Flex vertical gap={16} align="center" style={{ padding: 12 }}>
       <Title level={4}>{t('import.importing')}</Title>
-      <Progress
-        type="circle"
-        percent={Math.round((progress.current / progress.total) * 100)}
-        format={() => `${progress.current}/${progress.total}`}
-      />
+      <Spin size="large" />
       <Text type="secondary">{t('import.keepOpen')}</Text>
     </Flex>
   )
@@ -447,11 +551,23 @@ export function ThirdPartyImportModal({
   const renderFooter = (): React.ReactNode => {
     switch (step) {
       case 'upload':
-        return <Button onClick={handleClose}>{t('common.cancel')}</Button>
+        return (
+          <Button onClick={handleClose} disabled={readingFile}>
+            {t('common.cancel')}
+          </Button>
+        )
       case 'select':
         return (
           <Space>
-            <Button onClick={() => setStep('upload')}>{t('common.back')}</Button>
+            <Button
+              onClick={() => {
+                setPendingImport(null)
+                setImportError(null)
+                setStep('upload')
+              }}
+            >
+              {t('common.back')}
+            </Button>
             <Button type="primary" onClick={handleImport} disabled={selectedIds.size === 0}>
               {t('import.conversations', { count: selectedIds.size })}
             </Button>
@@ -470,9 +586,10 @@ export function ThirdPartyImportModal({
         v0: String(importer ? ` - ${getPlatformName(importer)}` : '')
       })}
       open={open}
-      onCancel={step === 'importing' ? undefined : handleClose}
-      closable={step !== 'importing'}
-      maskClosable={step !== 'importing'}
+      onCancel={busy ? undefined : handleClose}
+      closable={!busy}
+      maskClosable={!busy}
+      keyboard={!busy}
       footer={renderFooter()}
       width={700}
       destroyOnHidden

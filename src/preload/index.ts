@@ -5,10 +5,11 @@
  * 渲染进程无法直接访问文件系统或网络。
  */
 
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   RUNTIME_CHANNELS,
   isApplicationLocaleOperation,
+  type DeepSeekIndexPreview,
   type RuntimeCommandName,
   type RuntimeCommandPayload,
   type RuntimeCommandResult,
@@ -77,6 +78,23 @@ const runtime: RuntimePort = {
         ? undefined
         : scopeId
     )
+  },
+  async prepareDeepSeekIndex(file, scopeId) {
+    // 从点击选择或拖入的磁盘文件取路径，只在预加载与主进程之间传递。
+    const indexPath = webUtils.getPathForFile(file)
+    if (!indexPath)
+      throw {
+        name: 'RuntimeError',
+        code: 'library.deepseek-local-index',
+        message: 'The DeepSeek index must be a local file',
+        localized: { key: 'errors.import.deepSeekIndexLocalFile' } satisfies LocalizedMessage
+      }
+    const response = (await ipcRenderer.invoke(
+      RUNTIME_CHANNELS.prepareDeepSeekIndex,
+      indexPath,
+      scopeId
+    )) as RuntimeResponse<DeepSeekIndexPreview>
+    return unwrap(response, scopeId)
   },
   onFlush: (handler): (() => void) => {
     const listener = async (_event: Electron.IpcRendererEvent, id: string): Promise<void> => {

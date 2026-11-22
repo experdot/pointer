@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createKernel, controlledProvider, type KernelFixture } from '../../../tests/helpers/kernel'
+import { deferred } from '../../../tests/helpers/deferred'
 import { validateConversation } from '@shared/domain'
 import * as fsx from './fsx'
 
@@ -106,7 +107,9 @@ describe('生成与分支的完整生命周期', () => {
     const page = await f.command('page.create', {})
     const handle = await f.command('chat.send', { pageId: page.id, content: '问题' })
     provider.requests[0].delta('部分内容')
-    await vi.waitFor(() => expect(f.events.some((event) => event.type === 'chat.delta')).toBe(true))
+    await f.waitForEvent(
+      (event) => event.type === 'chat.delta' && event.payload.requestId === handle.requestId
+    )
     provider.requests[0].fail(new Error('连接断开'))
     await f.terminal(handle.requestId)
     const answer = (await f.query('conversation.get', { pageId: page.id })).messages.find(
@@ -126,10 +129,18 @@ describe('生成与分支的完整生命周期', () => {
 describe('队列持久化与执行', () => {
   it('出队保存失败不启动模型、不丢项目，重试后恰好发送一次', async () => {
     const provider = controlledProvider()
+    const modelRequested = deferred()
+    const fetch = provider.fetch.getMockImplementation()!
+    provider.fetch.mockImplementation(async (...args) => {
+      const response = await fetch(...args)
+      modelRequested.resolve()
+      return response
+    })
     const page = await f.command('page.create', {})
     await f.command('queue.setPaused', { pageId: page.id, paused: true })
     const id = await f.command('queue.add', { pageId: page.id, content: '排队的问题' })
     const originalWrite = fsx.writeJsonAtomic
+    const rejectedWrite = deferred()
     let rejected = false
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     vi.spyOn(fsx, 'writeJsonAtomic').mockImplementation(async (path, value) => {
@@ -139,23 +150,26 @@ describe('队列持久化与执行', () => {
         (value as { items: unknown[] }).items.length === 0
       ) {
         rejected = true
+        rejectedWrite.resolve()
         throw new Error('出队保存失败')
       }
       return originalWrite(path, value)
     })
     await f.command('queue.setPaused', { pageId: page.id, paused: false })
-    await vi.waitFor(() => expect(rejected).toBe(true))
+    await rejectedWrite.promise
     const queue = await f.query('queue.get', { pageId: page.id })
     expect(queue.items.map((item) => item.id)).toEqual([id])
     expect(provider.fetch).not.toHaveBeenCalled()
     expect((await f.query('conversation.get', { pageId: page.id })).messages).toEqual([])
     await f.command('queue.setPaused', { pageId: page.id, paused: false })
-    await vi.waitFor(() => expect(provider.requests).toHaveLength(1))
+    await modelRequested.promise
+    expect(provider.requests).toHaveLength(1)
     provider.requests[0].delta('回答')
     provider.requests[0].finish()
-    await vi.waitFor(async () =>
-      expect((await f.query('conversation.get', { pageId: page.id })).messages).toHaveLength(2)
+    await f.waitForEvent(
+      (event) => event.type === 'chat.completed' && event.payload.pageId === page.id
     )
+    expect((await f.query('conversation.get', { pageId: page.id })).messages).toHaveLength(2)
     expect((await f.query('queue.get', { pageId: page.id })).items).toEqual([])
     await f.restart()
     expect(provider.fetch).toHaveBeenCalledTimes(1)

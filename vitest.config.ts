@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { workerFactorySource } from './scripts/worker-build.mjs'
 
+const isCI = process.env.CI === 'true'
+
 export default defineConfig({
   plugins: [
     react(),
@@ -42,12 +44,18 @@ export default defineConfig({
           ]
         }
       },
-      { test: { name: 'kernel', include: ['src/main/runtime/**/*.test.ts'] } },
+      {
+        test: {
+          name: 'kernel',
+          include: ['src/main/runtime/**/*.test.ts'],
+          testTimeout: isCI ? 15_000 : 5_000
+        }
+      },
       { test: { name: 'renderer', include: ['src/renderer/**/*.test.ts'] } },
       {
         test: {
           name: 'renderer-dom',
-          testTimeout: 15000,
+          testTimeout: isCI ? 45_000 : 15_000,
           include: ['src/renderer/**/*.test.tsx'],
           environment: 'jsdom',
           setupFiles: ['tests/helpers/dom.ts']

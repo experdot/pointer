@@ -7,7 +7,12 @@ const ipc = vi.hoisted(() => ({
   removeListener: vi.fn(),
   send: vi.fn()
 }))
-vi.mock('electron', () => ({ ipcRenderer: ipc, contextBridge: { exposeInMainWorld: vi.fn() } }))
+const webUtils = vi.hoisted(() => ({ getPathForFile: vi.fn() }))
+vi.mock('electron', () => ({
+  ipcRenderer: ipc,
+  contextBridge: { exposeInMainWorld: vi.fn() },
+  webUtils
+}))
 let runtime: RuntimePort
 
 beforeAll(async () => {
@@ -20,6 +25,29 @@ beforeEach(() => vi.clearAllMocks())
 afterAll(() => vi.unstubAllGlobals())
 
 describe('preload 契约回归', () => {
+  it('从磁盘 File 获取索引路径，只把预览结果和草稿 ID 返回界面', async () => {
+    const file = new File(['[]'], 'chat_session_index.json')
+    const path = '/export/chat_session_index.json'
+    const preview = { draftId: 'draft', sessions: [] }
+    webUtils.getPathForFile.mockReturnValue(path)
+    ipc.invoke.mockResolvedValue({ ok: true, scopeId: 'A', value: preview })
+    await expect(runtime.prepareDeepSeekIndex(file, 'A')).resolves.toEqual(preview)
+    expect(webUtils.getPathForFile).toHaveBeenCalledWith(file)
+    expect(ipc.invoke).toHaveBeenCalledWith(RUNTIME_CHANNELS.prepareDeepSeekIndex, path, 'A')
+    await expect(runtime.prepareDeepSeekIndex(file, 'B')).rejects.toMatchObject({
+      code: 'runtime.stale-response'
+    })
+  })
+
+  it('索引没有磁盘路径时留在上传步骤且不请求主进程', async () => {
+    const file = new File(['[]'], 'chat_session_index.json')
+    webUtils.getPathForFile.mockReturnValue('')
+    await expect(runtime.prepareDeepSeekIndex(file, 'A')).rejects.toMatchObject({
+      code: 'library.deepseek-local-index'
+    })
+    expect(ipc.invoke).not.toHaveBeenCalled()
+  })
+
   it('[R13] 响应作用域不符时拒绝，不把旧数据交给镜像', async () => {
     ipc.invoke.mockResolvedValue({ ok: true, scopeId: 'B', value: {} })
     await expect(runtime.query('tree.get', undefined, 'A')).rejects.toMatchObject({
