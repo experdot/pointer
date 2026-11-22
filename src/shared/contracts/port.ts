@@ -5,7 +5,12 @@
  * 文件路径、文件格式、锁与队列都属于内核内部实现。
  */
 
-import type { RuntimeCommandName, RuntimeCommandPayload, RuntimeCommandResult } from './commands'
+import type {
+  DeepSeekIndexPreview,
+  RuntimeCommandName,
+  RuntimeCommandPayload,
+  RuntimeCommandResult
+} from './commands'
 import type { RuntimeEvent } from './events'
 import type { RuntimeQueryName, RuntimeQueryPayload, RuntimeQueryResult } from './queries'
 import { LocalizedError, LocalizedAggregateError, type LocalizedMessage } from '../i18n/message'
@@ -21,6 +26,7 @@ export interface RuntimePort {
     payload: RuntimeCommandPayload<K>,
     scopeId?: string | null
   ): Promise<RuntimeCommandResult<K>>
+  prepareDeepSeekIndex(file: File, scopeId?: string | null): Promise<DeepSeekIndexPreview>
   subscribe(listener: (event: RuntimeEvent) => void): () => void
   onFlush?(handler: () => Promise<void>): () => void
 }
@@ -29,6 +35,7 @@ export interface RuntimePort {
 export const RUNTIME_CHANNELS = {
   query: 'runtime:query',
   command: 'runtime:command',
+  prepareDeepSeekIndex: 'runtime:prepare-deepseek-index',
   event: 'runtime:event',
   flush: 'runtime:flush',
   flushed: 'runtime:flushed'

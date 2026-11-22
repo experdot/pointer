@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   Conversation,
   Folder,
+  ImportConversationSummary,
   MessageDraft,
   Page,
   Settings,
@@ -69,10 +70,13 @@ export interface PickedImage extends ImportFile {
   size: number
 }
 
-export interface ImportSource {
+export type ImportDestination =
+  | { folderId: string; folderName?: never }
+  | { folderId?: never; folderName?: string }
+
+export type ImportSource = ImportDestination & {
   source: 'chatgpt' | 'deepseek' | 'pointer'
   payload: string
-  folderName?: string
   /** 仅导入这些源对话 id；不传表示全部导入 */
   ids?: string[]
 }
@@ -80,6 +84,11 @@ export interface ImportSource {
 export interface ImportResult {
   importedPages: number
   importedMessages: number
+}
+
+export interface DeepSeekIndexPreview {
+  draftId: string
+  sessions: ImportConversationSummary[]
 }
 
 interface FileFilter {
@@ -262,6 +271,10 @@ interface RuntimeCommandMap {
   }
   'dialog.pickImages': { payload: { multiple?: boolean }; result: PickedImage[] }
   'library.import': { payload: ImportSource; result: ImportResult }
+  'library.importDeepSeekIndex': {
+    payload: ImportDestination & { draftId: string; ids: string[] }
+    result: ImportResult
+  }
   'backup.restore': {
     payload: import('./backup').BackupRestoreInput
     result: import('./backup').BackupRestoreResult

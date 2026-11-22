@@ -7,6 +7,7 @@
 
 import { t } from '@renderer/i18n'
 import type {
+  DeepSeekIndexPreview,
   RuntimeCommandName,
   RuntimeCommandPayload,
   RuntimeCommandResult,
@@ -65,6 +66,14 @@ export async function command<K extends RuntimeCommandName>(
   ) {
     throw new RuntimeError('runtime.stale-response', t('errors.runtime.staleCommand'))
   }
+  return result
+}
+
+export async function prepareDeepSeekIndex(file: File): Promise<DeepSeekIndexPreview> {
+  const scopeId = useSessionStore.getState().scopeId
+  const result = await port().prepareDeepSeekIndex(file, scopeId).catch(rethrow)
+  if (scopeId !== useSessionStore.getState().scopeId)
+    throw new RuntimeError('runtime.stale-response', t('errors.runtime.staleCommand'))
   return result
 }
 

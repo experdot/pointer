@@ -10,6 +10,8 @@ describe('导入格式检测', () => {
   it('识别三种导出格式', () => {
     expect(detectFormat([{ mapping: {}, current_node: 'a' }])).toBe('openai')
     expect(detectFormat([{ mapping: { root: {} } }])).toBe('deepseek')
+    expect(detectFormat({ id: 'session', current_message_id: null, messages: [] })).toBe('deepseek')
+    expect(detectFormat([{ id: 'session', message_count: 1 }])).toBeNull()
     expect(detectFormat({ type: 'chats-only', pages: [] })).toBe('pointer')
     expect(detectFormat({ unrelated: true })).toBeNull()
   })
