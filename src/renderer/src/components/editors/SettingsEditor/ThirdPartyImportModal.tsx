@@ -1,10 +1,12 @@
 import { rendererI18n, t, useI18n } from '@renderer/i18n'
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useId } from 'react'
 import { Trans } from 'react-i18next'
+import dayjs from 'dayjs'
 import {
   Modal,
   Upload,
   Table,
+  AutoComplete,
   Input,
   Select,
   Checkbox,
@@ -26,6 +28,7 @@ import {
   CloseCircleOutlined
 } from '@ant-design/icons'
 import type { UploadProps, TableColumnsType } from 'antd'
+import type { ImportDestination } from '@shared/contracts'
 import { formatError } from '@shared/i18n/message'
 import { DateTimeText } from '../../common/DateTimeText'
 import {
@@ -35,8 +38,14 @@ import {
   getPlatformName,
   getSupportedPlatforms
 } from '../../../services/thirdPartyImportService'
-import type { ImportConversationSummary, ImportFormat } from '@renderer/types/shared'
-import { DEEPSEEK_INDEX_FILENAME, detectFormat, parseImport } from '@renderer/types/shared'
+import { useFoldersStore } from '../../../stores/foldersStore'
+import type { Folder, ImportConversationSummary, ImportFormat } from '@renderer/types/shared'
+import {
+  compareNodes,
+  DEEPSEEK_INDEX_FILENAME,
+  detectFormat,
+  parseImport
+} from '@renderer/types/shared'
 
 type ImportResult = Awaited<ReturnType<typeof importConversations>>
 
@@ -102,6 +111,8 @@ export function ThirdPartyImportModal({
   useI18n()
 
   const { message } = App.useApp()
+  const folders = useFoldersStore((state) => state.folders)
+  const targetFolderInputId = useId()
 
   // 状态
   const [step, setStep] = useState<Step>('upload')
@@ -113,8 +124,32 @@ export function ThirdPartyImportModal({
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const [readingFile, setReadingFile] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
+  const [targetFolder, setTargetFolder] = useState<{ text: string; folderId?: string }>({
+    text: ''
+  })
   const importer = pendingImport?.format
   const busy = readingFile || step === 'importing'
+
+  const folderOptions = useMemo(() => {
+    const byParent = new Map<string | undefined, Folder[]>()
+    for (const folder of folders) {
+      const siblings = byParent.get(folder.parentFolderId) ?? []
+      siblings.push(folder)
+      byParent.set(folder.parentFolderId, siblings)
+    }
+
+    const options: { value: string; label: string }[] = []
+    const appendChildren = (parentId: string | undefined, parentLabel: string): void => {
+      for (const folder of byParent.get(parentId)?.sort(compareNodes) ?? []) {
+        const label = parentLabel ? `${parentLabel} / ${folder.name}` : folder.name
+        options.push({ value: folder.id, label })
+        appendChildren(folder.id, label)
+      }
+    }
+
+    appendChildren(undefined, '')
+    return options
+  }, [folders])
 
   // 过滤后的对话列表
   const filteredConversations = useMemo(() => {
@@ -142,6 +177,12 @@ export function ThirdPartyImportModal({
     setSelectedIds(new Set(sessions.map((session) => session.id)))
     setSearchQuery('')
     setTimePreset('all')
+    setTargetFolder({
+      text: t('import.defaultFolderName', {
+        platform: getPlatformName(source.format),
+        date: dayjs().format('YYYY-MM-DD')
+      })
+    })
     setStep('select')
   }
 
@@ -230,12 +271,19 @@ export function ThirdPartyImportModal({
 
     try {
       const ids = [...selectedIds]
+      const folderName = targetFolder.text.trim()
+      const destination: ImportDestination = targetFolder.folderId
+        ? { folderId: targetFolder.folderId }
+        : folderName
+          ? { folderName }
+          : {}
       const result =
         'draftId' in pendingImport
-          ? await importDeepSeekIndex(pendingImport.draftId, ids)
+          ? await importDeepSeekIndex(pendingImport.draftId, ids, destination)
           : await importConversations([{ name: 'import.json', content: pendingImport.text }], {
               platform: pendingImport.format,
-              ids
+              ids,
+              ...destination
             })
 
       setResult(result)
@@ -257,6 +305,7 @@ export function ThirdPartyImportModal({
     setSelectedIds(new Set())
     setSearchQuery('')
     setTimePreset('all')
+    setTargetFolder({ text: '' })
     setResult(null)
     onClose()
   }
@@ -389,6 +438,20 @@ export function ThirdPartyImportModal({
         pagination={{ pageSize: 10, showSizeChanger: false }}
         scroll={{ y: 300 }}
       />
+
+      <Flex vertical gap={4}>
+        <label htmlFor={targetFolderInputId}>{t('import.targetFolder')}</label>
+        <AutoComplete
+          id={targetFolderInputId}
+          allowClear
+          value={targetFolder.text}
+          options={folderOptions}
+          filterOption={false}
+          placeholder={t('import.targetRootPlaceholder')}
+          onChange={(text) => setTargetFolder({ text: text ?? '' })}
+          onSelect={(folderId, option) => setTargetFolder({ text: option.label, folderId })}
+        />
+      </Flex>
 
       <Flex justify="space-between" align="center">
         <Text type="secondary">

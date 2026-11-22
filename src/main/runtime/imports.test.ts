@@ -81,7 +81,7 @@ afterEach(async () => {
 })
 
 describe('第三方导入的选择、计数和事务', () => {
-  it('DeepSeek 搜索、思考和多段回答可以写入 SQLite，重启后正文与思考均保留', async () => {
+  it('旧版 DeepSeek 可导入已有子文件夹，重启后目录、正文和思考均保留', async () => {
     const payload = deepseekExport([
       { type: 'SEARCH', results: [] },
       { type: 'THINK', content: '思考一' },
@@ -90,11 +90,22 @@ describe('第三方导入的选择、计数和事务', () => {
       { type: 'RESPONSE', content: '回答一' },
       { type: 'RESPONSE', content: '回答二' }
     ])
+    const parent = await f.command('folder.create', { name: '研究' })
+    const destination = await f.command('folder.create', {
+      name: '论文',
+      parentFolderId: parent.id
+    })
     expect(
-      await f.command('library.import', { source: 'deepseek', payload: JSON.stringify(payload) })
+      await f.command('library.import', {
+        source: 'deepseek',
+        payload: JSON.stringify(payload),
+        folderId: destination.id
+      })
     ).toEqual({ importedPages: 1, importedMessages: 2 })
     await f.restart()
     const tree = await f.query('tree.get', undefined)
+    expect(tree.folders).toHaveLength(2)
+    expect(tree.pages[0].parentFolderId).toBe(destination.id)
     const conversation = await f.query('conversation.get', { pageId: tree.pages[0].id })
     expect(conversation.messages[1]).toMatchObject({
       id: '2',
@@ -169,7 +180,7 @@ describe('第三方导入的选择、计数和事务', () => {
 })
 
 describe('新版 DeepSeek 索引导入', () => {
-  it('只读选中的文件，重启后保留完整消息树和原来选中的较早分支', async () => {
+  it('只读选中的文件，导入新建文件夹后重启保留目录和原来选中的较早分支', async () => {
     const { indexPath, sessionsPath } = await writeDeepSeekIndex([splitSession, otherSession])
     await writeFile(join(sessionsPath, 'session-1.json'), JSON.stringify(splitSession))
     const draft = await f.runtime.prepareDeepSeekIndex(indexPath)
@@ -184,7 +195,9 @@ describe('新版 DeepSeek 索引导入', () => {
     })
     expect((await f.query('tree.get', undefined)).pages).toEqual([])
 
-    const input = { draftId: draft.draftId, ids: [splitSession.id] }
+    const folderName = '会话归档'
+    const existing = await f.command('folder.create', { name: folderName })
+    const input = { draftId: draft.draftId, ids: [splitSession.id], folderName }
     const results = await Promise.allSettled([
       f.command('library.importDeepSeekIndex', input),
       f.command('library.importDeepSeekIndex', input)
@@ -198,8 +211,13 @@ describe('新版 DeepSeek 索引导入', () => {
     })
 
     await f.restart()
-    const { pages } = await f.query('tree.get', undefined)
+    const { pages, folders } = await f.query('tree.get', undefined)
     expect(pages).toHaveLength(1)
+    expect(folders).toHaveLength(2)
+    const importedFolder = folders.find((folder) => folder.id === pages[0].parentFolderId)
+    expect(importedFolder?.name).toBe('会话归档 (1)')
+    expect(importedFolder?.parentFolderId).toBeUndefined()
+    expect(pages[0].parentFolderId).not.toBe(existing.id)
     const conversation = await f.query('conversation.get', { pageId: pages[0].id })
     expect(conversation.messages).toMatchObject([
       { id: '1', role: 'user', content: '', parentMessageId: undefined, branchIndex: 0 },
@@ -218,12 +236,37 @@ describe('新版 DeepSeek 索引导入', () => {
     expect(currentPath(conversation).map((message) => message.id)).toEqual(['1', '2'])
   })
 
+  it('目标文件夹已删除时拒绝导入，并允许用同一个索引草稿重新选择', async () => {
+    const { indexPath, sessionsPath } = await writeDeepSeekIndex([splitSession])
+    await writeFile(join(sessionsPath, 'session-1.json'), JSON.stringify(splitSession))
+    const draft = await f.runtime.prepareDeepSeekIndex(indexPath)
+    const folder = await f.command('folder.create', { name: '待删除的目标' })
+    await f.command('folder.delete', { folderIds: [folder.id], mode: 'cascade' })
+    const input = { draftId: draft.draftId, ids: [splitSession.id] }
+    await expect(
+      f.command('library.importDeepSeekIndex', { ...input, folderId: folder.id })
+    ).rejects.toMatchObject({
+      code: 'folder.not-found',
+      localized: { key: 'errors.import.targetFolderMissing' }
+    })
+    expect(await f.query('tree.get', undefined)).toEqual({ pages: [], folders: [] })
+
+    expect(await f.command('library.importDeepSeekIndex', input)).toEqual({
+      importedPages: 1,
+      importedMessages: 5
+    })
+  })
+
   it('报告缺失、损坏和树引用错误的文件，修复后可用原选项重新导入', async () => {
     const { indexPath, sessionsPath } = await writeDeepSeekIndex([splitSession, otherSession])
     await writeFile(join(sessionsPath, 'session-1.json'), JSON.stringify(splitSession))
     const secondPath = join(sessionsPath, 'session-2.json')
     const draft = await f.runtime.prepareDeepSeekIndex(indexPath)
-    const input = { draftId: draft.draftId, ids: [splitSession.id, otherSession.id] }
+    const input = {
+      draftId: draft.draftId,
+      ids: [splitSession.id, otherSession.id],
+      folderName: '重试归档'
+    }
 
     for (const [data, reason] of [
       [undefined, '找不到文件'],
@@ -291,7 +334,7 @@ describe('新版 DeepSeek 索引导入', () => {
   })
 })
 
-it('独立导入新版 DeepSeek 单会话，重启后恢复整棵树及非末尾的选中分支', async () => {
+it('新版 DeepSeek 单会话可导入根目录，重启后恢复整棵树及非末尾的选中分支', async () => {
   expect(
     await f.command('library.import', {
       source: 'deepseek',
@@ -301,8 +344,10 @@ it('独立导入新版 DeepSeek 单会话，重启后恢复整棵树及非末尾
   ).toEqual({ importedPages: 1, importedMessages: 5 })
 
   await f.restart()
-  const { pages } = await f.query('tree.get', undefined)
+  const { pages, folders } = await f.query('tree.get', undefined)
+  expect(folders).toEqual([])
   expect(pages).toHaveLength(1)
+  expect(pages[0].parentFolderId).toBeUndefined()
   const conversation = await f.query('conversation.get', { pageId: pages[0].id })
   expect(conversation.messages.map(({ id, parentMessageId }) => [id, parentMessageId])).toEqual([
     ['1', undefined],

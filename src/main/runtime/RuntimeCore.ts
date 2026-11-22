@@ -37,6 +37,7 @@ import {
 import type {
   AttachmentContent,
   DeepSeekIndexPreview,
+  ImportDestination,
   ImportResult,
   ImportSource,
   ModelCatalog,
@@ -1109,7 +1110,7 @@ export class RuntimeCore {
       throw new RuntimeError('library.empty', parsed.errors[0] ?? msg('errors.import.empty'))
     }
 
-    return this.writeImportedConversations(workspace, selected, input.folderName)
+    return this.writeImportedConversations(workspace, selected, input)
   }
 
   private assertImportScope(scopeId: string | null): void {
@@ -1168,7 +1169,7 @@ export class RuntimeCore {
       this.assertImportScope(draft.scopeId)
       const result = await workspace.write(() => {
         this.assertImportScope(draft.scopeId)
-        return this.writeImportedConversations(workspace, conversations)
+        return this.writeImportedConversations(workspace, conversations, input)
       })
       if (this.deepSeekImportDraft === draft) this.deepSeekImportDraft = null
       return result
@@ -1180,11 +1181,15 @@ export class RuntimeCore {
   private async writeImportedConversations(
     workspace: WorkspaceStore,
     selected: ImportedConversation[],
-    folderName?: string
+    destination: ImportDestination
   ): Promise<ImportResult> {
-    const folderId = folderName?.trim()
-      ? (await workspace.createFolder({ name: folderName.trim() }, Date.now())).id
-      : undefined
+    let folderId = destination.folderId
+    if (folderId !== undefined && !workspace.getFolder(folderId))
+      throw new RuntimeError('folder.not-found', msg('errors.import.targetFolderMissing'))
+
+    const folderName = destination.folderName?.trim()
+    if (folderId === undefined && folderName)
+      folderId = (await workspace.createFolder({ name: folderName }, Date.now())).id
 
     let importedPages = 0
     let importedMessages = 0

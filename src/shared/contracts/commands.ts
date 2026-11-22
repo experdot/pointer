@@ -70,10 +70,13 @@ export interface PickedImage extends ImportFile {
   size: number
 }
 
-export interface ImportSource {
+export type ImportDestination =
+  | { folderId: string; folderName?: never }
+  | { folderId?: never; folderName?: string }
+
+export type ImportSource = ImportDestination & {
   source: 'chatgpt' | 'deepseek' | 'pointer'
   payload: string
-  folderName?: string
   /** 仅导入这些源对话 id；不传表示全部导入 */
   ids?: string[]
 }
@@ -269,7 +272,7 @@ interface RuntimeCommandMap {
   'dialog.pickImages': { payload: { multiple?: boolean }; result: PickedImage[] }
   'library.import': { payload: ImportSource; result: ImportResult }
   'library.importDeepSeekIndex': {
-    payload: { draftId: string; ids: string[] }
+    payload: ImportDestination & { draftId: string; ids: string[] }
     result: ImportResult
   }
   'backup.restore': {

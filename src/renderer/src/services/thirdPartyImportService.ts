@@ -5,6 +5,7 @@
  */
 
 import { t } from '@renderer/i18n'
+import type { ImportDestination } from '@shared/contracts'
 import { command } from '../runtime/client'
 
 export { prepareDeepSeekIndex } from '../runtime/client'
@@ -49,24 +50,33 @@ export function getSupportedPlatforms(): Array<{ platform: ImportPlatform; name:
   }))
 }
 
-export async function importDeepSeekIndex(draftId: string, ids: string[]): Promise<ImportSummary> {
-  const { importedPages } = await command('library.importDeepSeekIndex', { draftId, ids })
+export async function importDeepSeekIndex(
+  draftId: string,
+  ids: string[],
+  destination: ImportDestination
+): Promise<ImportSummary> {
+  const { importedPages } = await command('library.importDeepSeekIndex', {
+    draftId,
+    ids,
+    ...destination
+  })
   return { success: importedPages, skipped: 0, failed: 0, errors: [] }
 }
 
 export async function importConversations(
   files: readonly ImportFileInput[],
-  options: { platform: ImportPlatform; folderName?: string; ids?: string[] }
+  options: ImportDestination & { platform: ImportPlatform; ids?: string[] }
 ): Promise<ImportSummary> {
   const summary: ImportSummary = { success: 0, skipped: 0, failed: 0, errors: [] }
+  const { platform, ids, ...destination } = options
 
   for (const file of files) {
     try {
       const result = await command('library.import', {
-        source: KERNEL_SOURCES[options.platform],
+        source: KERNEL_SOURCES[platform],
         payload: file.content,
-        folderName: options.folderName,
-        ids: options.ids
+        ids,
+        ...destination
       })
 
       if (result.importedPages === 0) {
