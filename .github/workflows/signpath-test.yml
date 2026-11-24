@@ -1,0 +1,78 @@
+name: Test SignPath signing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  sign-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Package Windows x64 installer
+        run: pnpm exec electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Stage installer for signing
+        run: |
+          $version = (Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).version
+          $installer = Join-Path dist "pointer-$version-setup.exe"
+          $stagedInstaller = Join-Path $env:RUNNER_TEMP 'pointer-setup.exe'
+          Copy-Item -LiteralPath $installer -Destination $stagedInstaller
+
+      - name: Upload unsigned installer
+        id: unsigned-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: signpath-unsigned-installer
+          path: ${{ runner.temp }}/pointer-setup.exe
+          if-no-files-found: error
+
+      - name: Submit test signing request
+        id: signpath
+        uses: SignPath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3.2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: a624e6c7-d39d-4bab-94fb-45a3519f4ac0
+          project-slug: pointer
+          signing-policy-slug: test-signing
+          artifact-configuration-slug: windows-test
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: ${{ runner.temp }}/signpath-signed
+
+      - name: Inspect test signature
+        env:
+          SIGNPATH_REQUEST_URL: ${{ steps.signpath.outputs.signing-request-web-url }}
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'signpath-signed/pointer-setup.exe'
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          # 自签测试证书可能显示为不受信任，这里检查嵌入签名和已报告的摘要错误。
+          if ($null -eq $signature.SignerCertificate -or $signature.SignatureType -ne 'Authenticode' -or
+              $signature.Status -in @('NotSigned', 'HashMismatch')) {
+            throw "Could not confirm the installer's embedded Authenticode signature ($($signature.Status))"
+          }
+          Write-Host "Authenticode status $($signature.Status)"
+          Write-Host "Signer $($signature.SignerCertificate.Subject)"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "[SignPath signing request]($env:SIGNPATH_REQUEST_URL)"
+
+      - name: Upload test-signed installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: signpath-signed-installer-test
+          path: ${{ runner.temp }}/signpath-signed/pointer-setup.exe
+          if-no-files-found: error
